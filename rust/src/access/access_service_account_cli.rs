@@ -15,8 +15,8 @@ use super::access_cli_shared::{
 pub(crate) const ACCESS_SERVICE_ACCOUNT_HELP_TEXT: &str = "Examples:\n\n  grafana-util access service-account list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --json\n  grafana-util access service-account token add --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --name deploy-bot --token-name nightly";
 pub(crate) const ACCESS_SERVICE_ACCOUNT_LIST_HELP_TEXT: &str = "Examples:\n\n  grafana-util access service-account list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-format text\n  grafana-util access service-account list --url http://localhost:3000 --basic-user admin --basic-password admin --output-format yaml";
 pub(crate) const ACCESS_SERVICE_ACCOUNT_ADD_HELP_TEXT: &str = "Examples:\n\n  grafana-util access service-account add --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --name deploy-bot --role Editor --json";
-pub(crate) const ACCESS_SERVICE_ACCOUNT_EXPORT_HELP_TEXT: &str = "Examples:\n\n  grafana-util access service-account export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./access-service-accounts --overwrite";
-pub(crate) const ACCESS_SERVICE_ACCOUNT_IMPORT_HELP_TEXT: &str = "Examples:\n\n  grafana-util access service-account import --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --import-dir ./access-service-accounts --dry-run --output-format table\n  grafana-util access service-account import --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --import-dir ./access-service-accounts --replace-existing --yes";
+pub(crate) const ACCESS_SERVICE_ACCOUNT_EXPORT_HELP_TEXT: &str = "Examples:\n\n  grafana-util access service-account export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-dir ./access-service-accounts --overwrite";
+pub(crate) const ACCESS_SERVICE_ACCOUNT_IMPORT_HELP_TEXT: &str = "Examples:\n\n  grafana-util access service-account import --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --input-dir ./access-service-accounts --dry-run --output-format table\n  grafana-util access service-account import --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --input-dir ./access-service-accounts --replace-existing --yes";
 pub(crate) const ACCESS_SERVICE_ACCOUNT_DIFF_HELP_TEXT: &str = "Examples:\n\n  grafana-util access service-account diff --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --diff-dir ./access-service-accounts";
 pub(crate) const ACCESS_SERVICE_ACCOUNT_DELETE_HELP_TEXT: &str = "Examples:\n\n  grafana-util access service-account delete --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --name deploy-bot --yes --json";
 pub(crate) const ACCESS_SERVICE_ACCOUNT_TOKEN_HELP_TEXT: &str = "Examples:\n\n  grafana-util access service-account token add --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --name deploy-bot --token-name nightly\n  grafana-util access service-account token delete --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --name deploy-bot --token-name nightly --yes --json";
@@ -28,6 +28,11 @@ pub(crate) const ACCESS_SERVICE_ACCOUNT_TOKEN_DELETE_HELP_TEXT: &str = "Examples
 pub struct ServiceAccountListArgs {
     #[command(flatten)]
     pub common: CommonCliArgs,
+    #[arg(
+        long,
+        help = "List service accounts from a local export bundle directory instead of live Grafana."
+    )]
+    pub input_dir: Option<PathBuf>,
     #[arg(long, help = "Filter service accounts by a free-text search.")]
     pub query: Option<String>,
     #[arg(
@@ -85,11 +90,11 @@ pub struct ServiceAccountExportArgs {
     #[command(flatten)]
     pub common: CommonCliArgs,
     #[arg(
-        long,
+        long = "output-dir",
         default_value = DEFAULT_ACCESS_SERVICE_ACCOUNT_EXPORT_DIR,
         help = "Directory to write service-accounts.json and export-metadata.json."
     )]
-    pub export_dir: PathBuf,
+    pub output_dir: PathBuf,
     #[arg(
         long,
         default_value_t = false,
@@ -110,10 +115,10 @@ pub struct ServiceAccountImportArgs {
     #[command(flatten)]
     pub common: CommonCliArgs,
     #[arg(
-        long,
+        long = "input-dir",
         help = "Import directory that contains service-accounts.json and export-metadata.json."
     )]
-    pub import_dir: PathBuf,
+    pub input_dir: PathBuf,
     #[arg(
         long,
         default_value_t = false,

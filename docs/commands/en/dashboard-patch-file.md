@@ -7,8 +7,8 @@ Patch one local dashboard JSON file in place or write it to a new path.
 Use this when you need to rewrite dashboard metadata locally before review or publish, without contacting Grafana.
 
 ## Key flags
-- `--input`: dashboard JSON file to patch.
-- `--output`: write to a different path instead of overwriting the input.
+- `--input`: dashboard JSON file to patch. Use `-` to read one wrapped or bare dashboard JSON document from standard input.
+- `--output`: write to a different path instead of overwriting the input. Required when `--input -` is used.
 - `--name`: replace the dashboard title.
 - `--uid`: replace the dashboard UID.
 - `--folder-uid`: set the preserved folder UID.
@@ -26,8 +26,12 @@ grafana-util dashboard patch-file --input ./dashboards/raw/cpu-main.json --name 
 grafana-util dashboard patch-file --input ./drafts/cpu-main.json --output ./drafts/cpu-main-patched.json --uid cpu-main --message 'Add folder metadata before publish'
 ```
 
+```bash
+# Purpose: Patch one generated dashboard from standard input into an explicit output file.
+jsonnet dashboards/cpu.jsonnet | grafana-util dashboard patch-file --input - --output ./drafts/cpu-main.json --folder-uid infra
+```
+
 ## Related commands
 - [dashboard review](./dashboard-review.md)
 - [dashboard publish](./dashboard-publish.md)
-- [dashboard get](./dashboard-get.md)
-
+- [dashboard fetch-live](./dashboard-fetch-live.md)

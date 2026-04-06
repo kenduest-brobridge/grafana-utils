@@ -205,6 +205,24 @@ fn build_import_payload_accepts_wrapped_document() {
 }
 
 #[test]
+fn build_import_payload_omits_general_folder_uid() {
+    let payload = build_import_payload(
+        &json!({
+            "uid": "abc",
+            "title": "CPU",
+            "meta": {"folderUid": "general"}
+        }),
+        None,
+        false,
+        "",
+    )
+    .unwrap();
+
+    assert_eq!(payload["dashboard"]["id"], Value::Null);
+    assert!(payload.get("folderUid").is_none());
+}
+
+#[test]
 fn build_preserved_web_import_document_clears_numeric_id() {
     let document = build_preserved_web_import_document(&json!({
         "dashboard": {"id": 7, "uid": "abc", "title": "CPU"}

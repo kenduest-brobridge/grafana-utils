@@ -61,7 +61,7 @@ For the exact flags behind this chapter, keep [profile](../../commands/en/profil
 ### Download and Install
 ```bash
 # Purpose: Download and Install.
-curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh
 ```
 
 If you want one fixed release or one explicit install directory, the same script also supports:
@@ -69,7 +69,7 @@ If you want one fixed release or one explicit install directory, the same script
 ```bash
 # Purpose: Install one pinned release into one explicit binary directory.
 VERSION=0.8.0 BIN_DIR="$HOME/.local/bin" \
-  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
+  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh
 ```
 
 The installer uses `BIN_DIR` when you set it. Otherwise it tries `/usr/local/bin` when that directory is writable, then falls back to `$HOME/.local/bin`.

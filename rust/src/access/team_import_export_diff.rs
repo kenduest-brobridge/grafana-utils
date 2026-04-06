@@ -6,6 +6,9 @@ use std::fs;
 use std::path::Path;
 
 use crate::common::{load_json_object_file, message, string_field, value_as_object, Result};
+use crate::export_metadata::{
+    build_export_metadata_common, export_metadata_common_map, EXPORT_BUNDLE_KIND_ROOT,
+};
 
 use super::render::map_get_text;
 use super::team_runtime::normalize_access_identity;
@@ -247,10 +250,12 @@ pub(super) fn assert_not_overwrite(path: &Path, dry_run: bool, overwrite: bool) 
 
 pub(super) fn build_team_access_export_metadata(
     source_url: &str,
+    source_profile: Option<&str>,
     source_dir: &Path,
     record_count: usize,
+    with_members: bool,
 ) -> Map<String, Value> {
-    Map::from_iter(vec![
+    let metadata = Map::from_iter(vec![
         (
             "kind".to_string(),
             Value::String(ACCESS_EXPORT_KIND_TEAMS.to_string()),
@@ -271,14 +276,37 @@ pub(super) fn build_team_access_export_metadata(
             "sourceDir".to_string(),
             Value::String(source_dir.to_string_lossy().to_string()),
         ),
-    ])
+        ("withMembers".to_string(), Value::Bool(with_members)),
+        (
+            "teamCount".to_string(),
+            Value::Number((record_count as i64).into()),
+        ),
+    ]);
+    let common = build_export_metadata_common(
+        "access",
+        "teams",
+        EXPORT_BUNDLE_KIND_ROOT,
+        "live",
+        Some(source_url),
+        None,
+        source_profile,
+        Some("org"),
+        None,
+        None,
+        source_dir,
+        &source_dir.join(ACCESS_EXPORT_METADATA_FILENAME),
+        record_count,
+    );
+    let mut metadata = metadata;
+    metadata.extend(export_metadata_common_map(&common));
+    metadata
 }
 
 pub(super) fn load_team_import_records(
-    import_dir: &Path,
+    input_dir: &Path,
     expected_kind: &str,
 ) -> Result<Vec<Map<String, Value>>> {
-    let path = import_dir.join(ACCESS_TEAM_EXPORT_FILENAME);
+    let path = input_dir.join(ACCESS_TEAM_EXPORT_FILENAME);
     if !path.is_file() {
         return Err(message(format!(
             "Access import file not found: {}",
@@ -337,7 +365,7 @@ pub(super) fn load_team_import_records(
         }
     };
 
-    let metadata_path = import_dir.join(ACCESS_EXPORT_METADATA_FILENAME);
+    let metadata_path = input_dir.join(ACCESS_EXPORT_METADATA_FILENAME);
     if metadata_path.is_file() {
         let _metadata = load_json_object_file(&metadata_path, "Access import metadata")?;
     }

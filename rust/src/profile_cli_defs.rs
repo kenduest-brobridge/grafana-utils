@@ -4,7 +4,7 @@ use std::path::PathBuf;
 use crate::common::CliColorChoice;
 use crate::dashboard::SimpleOutputFormat;
 
-const PROFILE_HELP_TEXT: &str = "Examples:\n\n  grafana-util profile list\n  grafana-util profile show --profile prod --output-format yaml\n  grafana-util profile add prod --url https://grafana.example.com --basic-user admin --prompt-password --store-secret encrypted-file\n  grafana-util profile example --mode basic\n  grafana-util profile example --mode full\n  grafana-util profile init --overwrite";
+const PROFILE_HELP_TEXT: &str = "Examples:\n\n  grafana-util profile list\n  grafana-util profile current\n  grafana-util profile show --profile prod --output-format yaml\n  grafana-util profile validate --profile prod\n  grafana-util profile validate --profile prod --live --output-format json\n  grafana-util profile add prod --url https://grafana.example.com --basic-user admin --prompt-password --store-secret encrypted-file\n  grafana-util profile example --mode basic\n  grafana-util profile example --mode full\n  grafana-util profile init --overwrite";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum ProfileSecretStorageMode {
@@ -50,6 +50,16 @@ pub enum ProfileCommand {
         after_help = "Use --profile NAME to show a specific profile instead of the default-selection rules."
     )]
     Show(ProfileShowArgs),
+    #[command(
+        about = "Show the currently selected profile and resolved config path.",
+        after_help = "Use this to confirm which repo-local profile would be selected before running status live, overview live, or any Grafana command that accepts --profile."
+    )]
+    Current(ProfileCurrentArgs),
+    #[command(
+        about = "Validate the selected profile and optionally check live Grafana reachability.",
+        after_help = "Static validation checks profile selection, auth shape, env-backed credentials, and secret-store resolution. Add --live to also call Grafana /api/health with the selected profile."
+    )]
+    Validate(ProfileValidateArgs),
     #[command(
         about = "Add one named profile to grafana-util.yaml.",
         after_help = "Creates or updates one profile entry without requiring manual YAML editing."
@@ -99,6 +109,44 @@ pub struct ProfileShowArgs {
         value_enum,
         default_value_t = SimpleOutputFormat::Text,
         help = "Render the selected profile as text, table, csv, json, or yaml."
+    )]
+    pub output_format: SimpleOutputFormat,
+}
+
+#[derive(Debug, Clone, Args)]
+pub struct ProfileCurrentArgs {
+    #[arg(
+        long,
+        help = "Show a specific profile by name instead of using the default-selection rules."
+    )]
+    pub profile: Option<String>,
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = SimpleOutputFormat::Text,
+        help = "Render the selected profile summary as text, table, csv, json, or yaml."
+    )]
+    pub output_format: SimpleOutputFormat,
+}
+
+#[derive(Debug, Clone, Args)]
+pub struct ProfileValidateArgs {
+    #[arg(
+        long,
+        help = "Validate a specific profile by name instead of using the default-selection rules."
+    )]
+    pub profile: Option<String>,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Also call Grafana /api/health with the selected profile after static validation succeeds."
+    )]
+    pub live: bool,
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = SimpleOutputFormat::Text,
+        help = "Render the validation result as text, table, csv, json, or yaml."
     )]
     pub output_format: SimpleOutputFormat,
 }

@@ -3,15 +3,25 @@ use std::collections::BTreeMap;
 
 use reqwest::Method;
 use serde_json::{Map, Value};
+use std::path::{Path, PathBuf};
 
 use crate::common::{message, string_field, Result};
+use crate::grafana_api::DashboardResourceClient;
 
 use super::delete_support::normalize_folder_path;
-use super::list::{fetch_current_org_with_request, list_orgs_with_request, org_id_value};
+use super::inspect::{resolve_export_folder_inventory_item, resolve_export_folder_path};
+use super::inspect_live::{prepare_inspect_export_import_dir_for_variant, TempInspectDir};
+use super::list::{fetch_current_org_with_request, org_id_value};
 use super::{
-    build_auth_context, build_http_client_for_org, collect_folder_inventory_with_request,
-    fetch_dashboard_with_request, list_dashboard_summaries_with_request, BrowseArgs,
+    build_auth_context, build_http_client, build_http_client_for_org,
+    collect_folder_inventory_with_request, fetch_dashboard_with_request,
+    list_dashboard_summaries_with_request, BrowseArgs, DashboardImportInputFormat,
     DEFAULT_DASHBOARD_TITLE, DEFAULT_FOLDER_TITLE,
+};
+use crate::dashboard::files::{
+    discover_dashboard_files, extract_dashboard_object, load_export_metadata,
+    load_folder_inventory, load_json_file, resolve_dashboard_export_root,
+    resolve_dashboard_import_source,
 };
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -66,10 +76,177 @@ pub(crate) fn load_dashboard_browse_document_for_args<F>(
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
+    if let Some(input_dir) = args.input_dir.as_deref() {
+        return load_dashboard_browse_document_from_local_import_dir(
+            input_dir,
+            args.input_format,
+            args.path.as_deref(),
+        );
+    }
     if args.all_orgs {
         return load_dashboard_browse_document_all_orgs(request_json, args);
     }
     load_dashboard_browse_document_with_request(request_json, args.page_size, args.path.as_deref())
+}
+
+fn load_dashboard_browse_document_from_local_import_dir(
+    input_dir: &Path,
+    input_format: DashboardImportInputFormat,
+    root_path: Option<&str>,
+) -> Result<DashboardBrowseDocument> {
+    let temp_dir = TempInspectDir::new("dashboard-browse-local")?;
+    let resolved = resolve_local_browse_source(&temp_dir.path, input_dir, input_format)?;
+    let metadata = load_export_metadata(&resolved.metadata_dir, None)?;
+    let folder_inventory = load_folder_inventory(&resolved.metadata_dir, metadata.as_ref())?;
+    let dashboard_files = discover_dashboard_files(&resolved.dashboard_dir)?;
+    let summaries = build_local_dashboard_summaries(
+        &resolved.dashboard_dir,
+        &dashboard_files,
+        &folder_inventory,
+        metadata.as_ref(),
+    )?;
+    let org_name = metadata
+        .as_ref()
+        .and_then(|item| item.org.as_deref())
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or("Local export");
+    let org_id = metadata
+        .as_ref()
+        .and_then(|item| item.org_id.as_deref())
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or(super::DEFAULT_ORG_ID);
+    let mut document = build_dashboard_browse_document_for_org(
+        &summaries,
+        &folder_inventory,
+        root_path,
+        org_name,
+        org_id,
+        true,
+        false,
+    )?;
+    document.summary.scope_label = if root_path.is_some() {
+        format!("Local export tree ({})", resolved.dashboard_dir.display())
+    } else {
+        format!("Local export tree ({})", resolved.dashboard_dir.display())
+    };
+    Ok(document)
+}
+
+fn resolve_local_browse_source(
+    temp_root: &Path,
+    input_dir: &Path,
+    input_format: DashboardImportInputFormat,
+) -> Result<super::files::ResolvedDashboardImportSource> {
+    match input_format {
+        DashboardImportInputFormat::Raw => {
+            if resolve_dashboard_export_root(input_dir)?
+                .map(|resolved| resolved.manifest.scope_kind.is_root())
+                .unwrap_or(false)
+            {
+                let dashboard_dir = prepare_inspect_export_import_dir_for_variant(
+                    temp_root,
+                    input_dir,
+                    super::RAW_EXPORT_SUBDIR,
+                )?;
+                return Ok(super::files::ResolvedDashboardImportSource {
+                    dashboard_dir: dashboard_dir.clone(),
+                    metadata_dir: dashboard_dir,
+                });
+            }
+            resolve_dashboard_import_source(input_dir, input_format)
+        }
+        DashboardImportInputFormat::Provisioning => {
+            resolve_dashboard_import_source(input_dir, input_format)
+        }
+    }
+}
+
+fn build_local_dashboard_summaries(
+    input_dir: &Path,
+    dashboard_files: &[PathBuf],
+    folder_inventory: &[super::FolderInventoryItem],
+    metadata: Option<&crate::dashboard::models::ExportMetadata>,
+) -> Result<Vec<Map<String, Value>>> {
+    let mut summaries = Vec::new();
+    let folder_inventory_by_uid = folder_inventory
+        .iter()
+        .cloned()
+        .map(|item| (item.uid.clone(), item))
+        .collect::<std::collections::BTreeMap<String, super::FolderInventoryItem>>();
+    for dashboard_file in dashboard_files {
+        if dashboard_file
+            .file_name()
+            .and_then(|value| value.to_str())
+            .map(|value| value.ends_with(".history.json"))
+            .unwrap_or(false)
+            || dashboard_file
+                .components()
+                .any(|component| component.as_os_str() == "history")
+        {
+            continue;
+        }
+        let document = load_json_file(dashboard_file)?;
+        let document_object = document
+            .as_object()
+            .ok_or_else(|| message("Dashboard file must be a JSON object."))?;
+        let dashboard = extract_dashboard_object(document_object)?;
+        let uid = string_field(dashboard, "uid", "");
+        if uid.is_empty() {
+            continue;
+        }
+        let folder_item = resolve_export_folder_inventory_item(
+            document_object,
+            dashboard_file,
+            input_dir,
+            &folder_inventory_by_uid,
+        );
+        let folder_path = resolve_export_folder_path(
+            document_object,
+            dashboard_file,
+            input_dir,
+            &folder_inventory_by_uid,
+        );
+        let folder_uid = folder_item
+            .as_ref()
+            .map(|item| item.uid.clone())
+            .unwrap_or_else(|| string_field(document_object, "folderUid", ""));
+        let folder_title = folder_item
+            .as_ref()
+            .map(|item| item.title.clone())
+            .unwrap_or_else(|| string_field(document_object, "folderTitle", DEFAULT_FOLDER_TITLE));
+        let mut summary = Map::new();
+        summary.insert("uid".to_string(), Value::String(uid));
+        summary.insert(
+            "title".to_string(),
+            Value::String(string_field(dashboard, "title", DEFAULT_DASHBOARD_TITLE)),
+        );
+        summary.insert("folderUid".to_string(), Value::String(folder_uid));
+        summary.insert("folderTitle".to_string(), Value::String(folder_title));
+        summary.insert("folderPath".to_string(), Value::String(folder_path));
+        summary.insert("url".to_string(), Value::String(String::new()));
+        summary.insert(
+            "sourceFile".to_string(),
+            Value::String(dashboard_file.display().to_string()),
+        );
+        summary.insert(
+            "orgName".to_string(),
+            Value::String(
+                metadata
+                    .and_then(|item| item.org.clone())
+                    .unwrap_or_else(|| "Local export".to_string()),
+            ),
+        );
+        summary.insert(
+            "orgId".to_string(),
+            Value::String(
+                metadata
+                    .and_then(|item| item.org_id.clone())
+                    .unwrap_or_else(|| super::DEFAULT_ORG_ID.to_string()),
+            ),
+        );
+        summaries.push(summary);
+    }
+    Ok(summaries)
 }
 
 pub(crate) fn load_dashboard_browse_document_with_request<F>(
@@ -99,11 +276,12 @@ where
         &org_name,
         &org_id,
         false,
+        false,
     )
 }
 
 fn load_dashboard_browse_document_all_orgs<F>(
-    request_json: &mut F,
+    _request_json: &mut F,
     args: &BrowseArgs,
 ) -> Result<DashboardBrowseDocument>
 where
@@ -116,7 +294,9 @@ where
         ));
     }
 
-    let mut orgs = list_orgs_with_request(&mut *request_json)?;
+    let client = build_http_client(&args.common)?;
+    let dashboard = DashboardResourceClient::new(&client);
+    let mut orgs = dashboard.list_orgs()?;
     orgs.sort_by(|left, right| {
         string_field(left, "name", "")
             .to_ascii_lowercase()
@@ -138,16 +318,14 @@ where
         let org_id = org_id_value(org)?;
         let org_id_text = org_id.to_string();
         let client = build_http_client_for_org(&args.common, org_id)?;
-        let dashboard_summaries = list_dashboard_summaries_with_request(
-            |method, path, params, payload| client.request_json(method, path, params, payload),
-            args.page_size,
-        )?;
+        let dashboard = DashboardResourceClient::new(&client);
+        let dashboard_summaries = dashboard.list_dashboard_summaries(args.page_size)?;
         let summaries = super::list::attach_dashboard_folder_paths_with_request(
-            |method, path, params, payload| client.request_json(method, path, params, payload),
+            |method, path, params, payload| dashboard.request_json(method, path, params, payload),
             &dashboard_summaries,
         )?;
         let folder_inventory = collect_folder_inventory_with_request(
-            |method, path, params, payload| client.request_json(method, path, params, payload),
+            |method, path, params, payload| dashboard.request_json(method, path, params, payload),
             &summaries,
         )?;
         let scoped = build_dashboard_browse_document_for_org(
@@ -156,6 +334,7 @@ where
             args.path.as_deref(),
             &org_name,
             &org_id_text,
+            false,
             true,
         )?;
         if scoped.summary.dashboard_count == 0 && scoped.summary.folder_count == 0 {
@@ -214,6 +393,7 @@ pub(crate) fn build_dashboard_browse_document(
         super::DEFAULT_ORG_NAME,
         super::DEFAULT_ORG_ID,
         false,
+        false,
     )
 }
 
@@ -223,6 +403,7 @@ fn build_dashboard_browse_document_for_org(
     root_path: Option<&str>,
     org_name: &str,
     org_id: &str,
+    local_mode: bool,
     allow_empty_root: bool,
 ) -> Result<DashboardBrowseDocument> {
     let normalized_root = root_path
@@ -353,9 +534,17 @@ fn build_dashboard_browse_document_for_org(
                         .copied()
                         .unwrap_or(0)
                 ),
-                "Delete: press d to remove dashboards in this subtree.".to_string(),
-                "Delete folders: press D to remove dashboards and folders in this subtree."
-                    .to_string(),
+                if local_mode {
+                    "Local browse: read-only file tree.".to_string()
+                } else {
+                    "Delete: press d to remove dashboards in this subtree.".to_string()
+                },
+                if local_mode {
+                    "Local browse: delete actions are unavailable.".to_string()
+                } else {
+                    "Delete folders: press D to remove dashboards and folders in this subtree."
+                        .to_string()
+                },
             ],
             url: None,
             org_name: org_name.to_string(),
@@ -412,10 +601,22 @@ fn build_dashboard_browse_document_for_org(
                             url.clone()
                         }
                     ),
-                    "View: press v to load live dashboard details.".to_string(),
-                    "Advanced edit: press E to open raw dashboard JSON in an external editor."
-                        .to_string(),
-                    "Delete: press d to delete this dashboard.".to_string(),
+                    if local_mode {
+                        "Local browse: live details are unavailable.".to_string()
+                    } else {
+                        "View: press v to load live dashboard details.".to_string()
+                    },
+                    if local_mode {
+                        format!("Source file: {}", string_field(summary, "sourceFile", "-"))
+                    } else {
+                        "Advanced edit: press E to open raw dashboard JSON in an external editor."
+                            .to_string()
+                    },
+                    if local_mode {
+                        "Local browse: delete actions are unavailable.".to_string()
+                    } else {
+                        "Delete: press d to delete this dashboard.".to_string()
+                    },
                 ],
                 url: (!url.is_empty()).then_some(url),
                 org_name: org_name.to_string(),
@@ -625,5 +826,97 @@ fn folder_depth(path: &str, root_path: Option<&str>) -> usize {
     match root_path {
         Some(root) => depth.saturating_sub(root.split(" / ").count().saturating_sub(1)),
         None => depth,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::common::CliColorChoice;
+    use crate::dashboard::{BrowseArgs, CommonCliArgs};
+    use serde_json::json;
+    use std::fs;
+    use tempfile::tempdir;
+
+    fn make_browse_args(input_dir: std::path::PathBuf) -> BrowseArgs {
+        BrowseArgs {
+            common: CommonCliArgs {
+                color: CliColorChoice::Auto,
+                profile: None,
+                url: "https://grafana.example.com".to_string(),
+                api_token: Some("secret".to_string()),
+                username: None,
+                password: None,
+                prompt_password: false,
+                prompt_token: false,
+                timeout: 30,
+                verify_ssl: false,
+            },
+            input_dir: Some(input_dir),
+            input_format: DashboardImportInputFormat::Raw,
+            page_size: 500,
+            org_id: None,
+            all_orgs: false,
+            path: None,
+        }
+    }
+
+    #[test]
+    fn local_import_dir_browse_ignores_history_artifacts() {
+        let temp = tempdir().unwrap();
+        let raw_dir = temp.path().join("raw");
+        let dashboard_dir = raw_dir.join("Platform/Infra");
+        let history_dir = raw_dir.join("history");
+        fs::create_dir_all(&dashboard_dir).unwrap();
+        fs::create_dir_all(&history_dir).unwrap();
+        fs::write(
+            dashboard_dir.join("cpu-main.json"),
+            serde_json::to_string_pretty(&json!({
+                "dashboard": {
+                    "uid": "cpu-main",
+                    "title": "CPU Main"
+                }
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        fs::write(
+            history_dir.join("cpu-main.history.json"),
+            serde_json::to_string_pretty(&json!({
+                "kind": "grafana-util-dashboard-history-export",
+                "schemaVersion": 1,
+                "dashboardUid": "cpu-main"
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+
+        let args = make_browse_args(raw_dir.clone());
+        let document = load_dashboard_browse_document_for_args(
+            &mut |_method, _path, _params, _payload| {
+                Err(message("local browse should not call Grafana"))
+            },
+            &args,
+        )
+        .unwrap();
+
+        assert_eq!(document.summary.dashboard_count, 1);
+        assert_eq!(document.summary.folder_count, 2);
+        assert_eq!(
+            document.summary.scope_label,
+            format!("Local export tree ({})", raw_dir.display())
+        );
+        assert_eq!(document.nodes.len(), 3);
+        assert_eq!(document.nodes[0].kind, DashboardBrowseNodeKind::Folder);
+        assert_eq!(document.nodes[0].title, "Platform");
+        assert_eq!(document.nodes[1].kind, DashboardBrowseNodeKind::Folder);
+        assert_eq!(document.nodes[1].title, "Infra");
+        assert_eq!(document.nodes[2].kind, DashboardBrowseNodeKind::Dashboard);
+        assert_eq!(document.nodes[2].title, "CPU Main");
+        assert_eq!(document.nodes[2].details[4], "UID: cpu-main");
+        assert!(document.nodes[2]
+            .details
+            .iter()
+            .any(|line| line.contains("Local browse: live details are unavailable.")));
     }
 }

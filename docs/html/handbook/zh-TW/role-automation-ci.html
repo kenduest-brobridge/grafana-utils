@@ -767,7 +767,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="適用對象">適用對象</h2>
 <ul><li>CI owner、平台自動化維護者、腳本作者</li><li>需要把 <code>grafana-util</code> 放進 pipeline 的人</li><li>需要把輸出接進 CI/CD 或其他自動化流程的人</li></ul>
 <h2 id="主要目標">主要目標</h2>
-<ul><li>先把連線設定收斂成可重複的 profile</li><li>先用 JSON 或 table 類輸出讓腳本穩定判讀</li><li>先在 <code>status staged</code> 與 <code>change preflight</code> 擋掉有問題的變更</li><li>只在確定 scope 合理時才用 token 或 service account token</li></ul>
+<ul><li>先把連線設定收斂成可重複的 profile</li><li>先用 JSON 或 table 類輸出讓腳本穩定判讀</li><li>先在 <code>status staged</code> 與 <code>change check</code> 擋掉有問題的變更</li><li>只在確定 scope 合理時才用 token 或 service account token</li></ul>
 <h2 id="採用前後對照">採用前後對照</h2>
 <ul><li>以前：每個 job 都要自己重建同一套驗證與輸出接線。</li><li>現在：用一個環境變數驅動的 profile，就能讓重複跑的流程更穩定、更好排查。</li></ul>
 <h2 id="成功判準">成功判準</h2>
@@ -786,7 +786,7 @@ grafana-util profile show --profile ci --output-format yaml</code></pre>
 <pre><code># 用途：建議先跑的 5 個指令。
 grafana-util status staged --desired-file ./desired.json --output-format json</code></pre>
 <pre><code># 用途：建議先跑的 5 個指令。
-grafana-util change preflight --desired-file ./desired.json --fetch-live --output-format json</code></pre>
+grafana-util change check --desired-file ./desired.json --fetch-live --output-format json</code></pre>
 <pre><code># 用途：建議先跑的 5 個指令。
 grafana-util overview live --profile ci --output-format yaml</code></pre>
 <p>如果 pipeline 只需要驗證某個 live 操作面，可把最後一行換成 direct Basic auth 或單一 org token 的等價查詢，但不要把查詢範圍開得比權限更大。</p>

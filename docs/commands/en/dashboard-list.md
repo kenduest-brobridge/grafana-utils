@@ -10,8 +10,8 @@ Use this when you want a non-interactive inventory view of live dashboards, opti
 - `--page-size`: dashboard search page size.
 - `--org-id`: list one explicit Grafana org.
 - `--all-orgs`: aggregate results across visible orgs. Prefer Basic auth.
-- `--with-sources`: include resolved datasource names for table or CSV output.
-- `--output-columns`: choose the displayed columns.
+- `--show-sources`: include resolved datasource names in the list output. `--with-sources` remains accepted as a compatibility alias.
+- `--output-columns`: choose the displayed columns. Selecting `sources` or `source_uids` also resolves datasource names.
 - `--output-format`, `--json`, `--yaml`, `--csv`, `--table`, `--text`: output mode controls.
 - `--no-header`: suppress table headers.
 
@@ -33,6 +33,11 @@ grafana-util dashboard list --url http://localhost:3000 --token "$GRAFANA_API_TO
 ```bash
 # Purpose: List dashboard summaries without writing export files.
 grafana-util dashboard list --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --json
+```
+
+```bash
+# Purpose: List dashboard summaries and include resolved source names in a table.
+grafana-util dashboard list --url http://localhost:3000 --basic-user admin --basic-password admin --show-sources --table
 ```
 
 ## Related commands

@@ -766,11 +766,11 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
     <section class="command-intro">
   <div class="command-intro-grid"><div class="command-intro-block">
   <p class="command-intro-label">這頁在說什麼</p>
-  <p class="command-intro-text">根據 dashboard governance 成品，評估單一 datasource 的影響範圍。</p>
+  <p class="command-intro-text">直接從 live Grafana、本地匯出樹，或可重用的 dashboard governance 成品評估單一 datasource 的影響範圍。</p>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">什麼時候看這頁</p>
-  <ul class="command-intro-list"><li>當你準備調整、搬移或排查某個 datasource，想先知道有哪些 dashboard 與 alert 相關資產會被牽動，再動到 live 系統時，就該用這個指令。</li></ul>
+  <ul class="command-intro-list"><li>當你準備調整、搬移或排查某個 datasource，想先知道有哪些 dashboard 與 alert 相關資產會被牽動，再動到 live 系統時，就該用這個指令。常見流程請優先用 live 或 local 輸入；只有重用治理成品時才保留 artifact 路徑。</li></ul>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">適合誰</p>
@@ -779,20 +779,28 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 </section>
 <h2 id="用途">用途</h2>
-<p>根據 dashboard governance 成品，評估單一 datasource 的影響範圍。</p>
+<p>直接從 live Grafana、本地匯出樹，或可重用的 dashboard governance 成品評估單一 datasource 的影響範圍。</p>
 <h2 id="何時使用">何時使用</h2>
-<p>當你準備調整、搬移或排查某個 datasource，想先知道有哪些 dashboard 與 alert 相關資產會被牽動，再動到 live 系統時，就該用這個指令。</p>
+<p>當你準備調整、搬移或排查某個 datasource，想先知道有哪些 dashboard 與 alert 相關資產會被牽動，再動到 live 系統時，就該用這個指令。常見流程請優先用 live 或 local 輸入；只有重用治理成品時才保留 artifact 路徑。</p>
 <h2 id="採用前後對照">採用前後對照</h2>
 <ul><li><strong>採用前</strong>：datasource 的風險通常只能靠記憶、命名習慣或人工在 Grafana 裡搜尋來猜。</li><li><strong>採用後</strong>：跑一次 <code>impact</code>，就能知道某個 datasource UID 往下會影響哪些 dashboard 與 alert 資產。</li></ul>
 <h2 id="重點旗標">重點旗標</h2>
-<ul><li><code>--governance</code>：dashboard governance JSON 輸入。</li><li><code>--datasource-uid</code>：要追蹤的 datasource UID。</li><li><code>--alert-contract</code>：可選的 alert contract JSON 輸入。</li><li><code>--output-format</code>：輸出 <code>text</code> 或 <code>json</code>。</li><li><code>--interactive</code>：開啟互動式終端機瀏覽器。</li></ul>
+<ul><li><code>--url</code>：直接分析線上 Grafana。</li><li><code>--input-dir</code>：直接分析本地匯出樹。</li><li><code>--input-format</code>：分析本地匯出時選擇 <code>raw</code> 或 <code>provisioning</code>。</li><li><code>--governance</code>：dashboard governance JSON 輸入（<code>governance-json</code> 成品）。</li><li><code>--datasource-uid</code>：要追蹤的 datasource UID。</li><li><code>--alert-contract</code>：可選的 alert contract JSON 輸入。</li><li><code>--output-format</code>：輸出 <code>text</code> 或 <code>json</code>。</li><li><code>--interactive</code>：開啟互動式終端機瀏覽器。</li></ul>
 <h2 id="範例">範例</h2>
-<pre><code># 用途：根據 dashboard governance 成品，評估單一 datasource 的影響範圍。
+<pre><code># 用途：直接從 live Grafana 評估單一 datasource 的影響範圍。
 grafana-util dashboard impact \
-  --governance ./governance.json \
+  --url http://localhost:3000 \
+  --basic-user admin \
+  --basic-password admin \
   --datasource-uid prom-main \
   --output-format text</code></pre>
-<pre><code># 用途：根據 dashboard governance 成品，評估單一 datasource 的影響範圍。
+<pre><code># 用途：從本地匯出樹評估單一 datasource 的影響範圍。
+grafana-util dashboard impact \
+  --input-dir ./dashboards/raw \
+  --input-format raw \
+  --datasource-uid prom-main \
+  --output-format json</code></pre>
+<pre><code># 用途：從可重用的治理成品（`governance-json`）評估單一 datasource 的影響範圍。
 grafana-util dashboard impact \
   --governance ./governance.json \
   --datasource-uid prom-main \
@@ -803,7 +811,7 @@ grafana-util dashboard impact \
 <h2 id="失敗時先檢查">失敗時先檢查</h2>
 <ul><li>如果結果是空的，先確認 <code>datasource uid</code> 是不是和 governance 成品裡一致，而不是只填了你記得的顯示名稱</li><li>如果少了 alert 相關資產，先確認是否有帶 <code>--alert-contract</code></li><li>如果 JSON 要交給 CI 或外部工具，先驗證 top-level shape，再判斷「零影響」是否可信</li></ul>
 <h2 id="相關指令">相關指令</h2>
-<ul><li><a href="dashboard-inspect-export.html">dashboard inspect-export</a></li><li><a href="dashboard-topology.html">dashboard topology</a></li><li><a href="dashboard-governance-gate.html">dashboard governance-gate</a></li></ul>
+<ul><li><a href="dashboard-analyze-export.html">dashboard analyze（本地）</a></li><li><a href="dashboard-topology.html">dashboard topology</a></li><li><a href="dashboard-governance-gate.html">dashboard governance-gate</a></li></ul>
     
   </article>
   <aside class="sidebar">

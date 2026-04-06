@@ -68,7 +68,7 @@ class PublicDocsEvidenceTests(unittest.TestCase):
             REPO_ROOT / "docs" / "commands" / "en" / "dashboard-export.md": "## Before / After",
             REPO_ROOT / "docs" / "commands" / "en" / "dashboard-import.md": "## Before / After",
             REPO_ROOT / "docs" / "commands" / "en" / "alert-plan.md": "## Before / After",
-            REPO_ROOT / "docs" / "commands" / "en" / "dashboard-inspect-export.md": "## Before / After",
+            REPO_ROOT / "docs" / "commands" / "en" / "dashboard-analyze-export.md": "## Before / After",
             REPO_ROOT / "docs" / "commands" / "en" / "access-service-account-token.md": "## Before / After",
             REPO_ROOT / "docs" / "commands" / "en" / "access.md": "## Before / After",
             REPO_ROOT / "docs" / "commands" / "en" / "access-service-account.md": "## Before / After",
@@ -87,7 +87,7 @@ class PublicDocsEvidenceTests(unittest.TestCase):
             REPO_ROOT / "docs" / "commands" / "zh-TW" / "dashboard-export.md": "## 採用前後對照",
             REPO_ROOT / "docs" / "commands" / "zh-TW" / "dashboard-import.md": "## 採用前後對照",
             REPO_ROOT / "docs" / "commands" / "zh-TW" / "alert-plan.md": "## 採用前後對照",
-            REPO_ROOT / "docs" / "commands" / "zh-TW" / "dashboard-inspect-export.md": "## 採用前後對照",
+            REPO_ROOT / "docs" / "commands" / "zh-TW" / "dashboard-analyze-export.md": "## 採用前後對照",
             REPO_ROOT / "docs" / "commands" / "zh-TW" / "access-service-account-token.md": "## 採用前後對照",
             REPO_ROOT / "docs" / "commands" / "zh-TW" / "access.md": "## 採用前後對照",
             REPO_ROOT / "docs" / "commands" / "zh-TW" / "access-service-account.md": "## 採用前後對照",
@@ -122,14 +122,69 @@ class PublicDocsEvidenceTests(unittest.TestCase):
 
     def test_command_root_pages_group_related_commands_by_workflow(self):
         expectations = {
-            REPO_ROOT / "docs" / "commands" / "en" / "dashboard.md": ["### Inspect", "### Move", "### Review Before Mutate", "### Capture"],
+            REPO_ROOT / "docs" / "commands" / "en" / "dashboard.md": ["### Browse and Inventory", "### Move", "### Review Before Mutate", "### Capture"],
             REPO_ROOT / "docs" / "commands" / "en" / "alert.md": ["### Inspect", "### Move", "### Review Before Mutate", "### Related Surface"],
             REPO_ROOT / "docs" / "commands" / "en" / "access.md": ["### Inspect", "### Review Before Mutate"],
             REPO_ROOT / "docs" / "commands" / "en" / "datasource.md": ["### Inspect", "### Move", "### Review Before Mutate"],
-            REPO_ROOT / "docs" / "commands" / "zh-TW" / "dashboard.md": ["### 盤點", "### 搬移", "### 變更前檢查", "### 截圖與素材"],
+            REPO_ROOT / "docs" / "commands" / "zh-TW" / "dashboard.md": ["### 盤點", "### 分析與報表", "### 變更前檢查", "### 截圖與素材"],
             REPO_ROOT / "docs" / "commands" / "zh-TW" / "alert.md": ["### 盤點", "### 搬移", "### 變更前檢查", "### 規則與路由撰寫"],
             REPO_ROOT / "docs" / "commands" / "zh-TW" / "access.md": ["### 盤點", "### 服務帳號與 token"],
             REPO_ROOT / "docs" / "commands" / "zh-TW" / "datasource.md": ["### 盤點", "### 搬移", "### 變更前檢查"],
+        }
+        for path, markers in expectations.items():
+            text = path.read_text(encoding="utf-8")
+            for marker in markers:
+                self.assertIn(marker, text, path.name)
+
+    def test_dashboard_export_docs_cover_history_artifacts(self):
+        expectations = {
+            REPO_ROOT / "docs" / "commands" / "en" / "dashboard-export.md": ["--include-history", "history/"],
+            REPO_ROOT / "docs" / "commands" / "zh-TW" / "dashboard-export.md": ["--include-history", "history/"],
+            REPO_ROOT / "docs" / "user-guide" / "en" / "dashboard.md": ["--include-history", "history/"],
+            REPO_ROOT / "docs" / "user-guide" / "zh-TW" / "dashboard.md": ["--include-history", "history/"],
+        }
+        for path, markers in expectations.items():
+            text = path.read_text(encoding="utf-8")
+            for marker in markers:
+                self.assertIn(marker, text, path.name)
+
+    def test_dashboard_analyze_docs_use_canonical_analyze_and_output_names(self):
+        expectations = {
+            REPO_ROOT / "README.md": ["dashboard analyze --input-dir ./dashboards/raw --input-format raw --output-format dependency"],
+            REPO_ROOT / "README.zh-TW.md": ["dashboard analyze --input-dir ./dashboards/raw --input-format raw --output-format dependency"],
+            REPO_ROOT / "docs" / "commands" / "en" / "dashboard-analyze-live.md": ["dashboard analyze --url", "--output-format", "governance"],
+            REPO_ROOT / "docs" / "commands" / "en" / "dashboard-analyze-export.md": ["dashboard analyze --input-dir", "--output-format", "governance-json", "queries-json"],
+            REPO_ROOT / "docs" / "commands" / "en" / "dashboard-governance-gate.md": ["--url", "--input-dir", "governance-json", "queries-json"],
+            REPO_ROOT / "docs" / "commands" / "en" / "dashboard-topology.md": ["--url", "--input-dir", "governance-json", "queries-json"],
+            REPO_ROOT / "docs" / "commands" / "en" / "dashboard-impact.md": ["--url", "--input-dir", "governance-json"],
+            REPO_ROOT / "docs" / "commands" / "zh-TW" / "dashboard-analyze-live.md": ["dashboard analyze --url", "--output-format", "governance"],
+            REPO_ROOT / "docs" / "commands" / "zh-TW" / "dashboard-analyze-export.md": ["dashboard analyze --input-dir", "--output-format", "governance-json", "queries-json"],
+            REPO_ROOT / "docs" / "commands" / "zh-TW" / "dashboard-governance-gate.md": ["--url", "--input-dir", "governance-json", "queries-json"],
+            REPO_ROOT / "docs" / "commands" / "zh-TW" / "dashboard-topology.md": ["--url", "--input-dir", "governance-json", "queries-json"],
+            REPO_ROOT / "docs" / "commands" / "zh-TW" / "dashboard-impact.md": ["--url", "--input-dir", "governance-json"],
+        }
+        for path, markers in expectations.items():
+            text = path.read_text(encoding="utf-8")
+            self.assertNotIn("--report", text, path.name)
+            for marker in markers:
+                self.assertIn(marker, text, path.name)
+
+    def test_dashboard_history_docs_cover_schema_help_and_contract_markers(self):
+        expectations = {
+            REPO_ROOT / "docs" / "commands" / "en" / "dashboard-history.md": [
+                "--help-schema",
+                "schemaVersion",
+                "grafana-util-dashboard-history-list",
+                "grafana-util-dashboard-history-restore",
+                "grafana-util-dashboard-history-export",
+            ],
+            REPO_ROOT / "docs" / "commands" / "zh-TW" / "dashboard-history.md": [
+                "--help-schema",
+                "schemaVersion",
+                "grafana-util-dashboard-history-list",
+                "grafana-util-dashboard-history-restore",
+                "grafana-util-dashboard-history-export",
+            ],
         }
         for path, markers in expectations.items():
             text = path.read_text(encoding="utf-8")

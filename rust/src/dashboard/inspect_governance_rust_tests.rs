@@ -8,7 +8,7 @@ use tempfile::tempdir;
 #[test]
 fn build_export_inspection_governance_document_summarizes_families_and_risks() {
     let summary = test_support::ExportInspectionSummary {
-        import_dir: "/tmp/raw".to_string(),
+        input_dir: "/tmp/raw".to_string(),
         export_org: None,
         export_org_id: None,
         dashboard_count: 2,
@@ -79,7 +79,7 @@ fn build_export_inspection_governance_document_summarizes_families_and_risks() {
         }],
     };
     let report = test_support::ExportInspectionQueryReport {
-        import_dir: "/tmp/raw".to_string(),
+        input_dir: "/tmp/raw".to_string(),
         summary: test_support::QueryReportSummary {
             dashboard_count: 2,
             panel_count: 2,
@@ -210,7 +210,7 @@ fn build_export_inspection_governance_document_summarizes_families_and_risks() {
 #[test]
 fn build_export_inspection_governance_document_flags_broad_loki_selectors() {
     let summary = test_support::ExportInspectionSummary {
-        import_dir: "/tmp/raw".to_string(),
+        input_dir: "/tmp/raw".to_string(),
         export_org: Some("Main Org.".to_string()),
         export_org_id: Some("1".to_string()),
         dashboard_count: 1,
@@ -252,7 +252,7 @@ fn build_export_inspection_governance_document_flags_broad_loki_selectors() {
     query.measurements = vec!["{}".to_string()];
 
     let report = test_support::ExportInspectionQueryReport {
-        import_dir: "/tmp/raw".to_string(),
+        input_dir: "/tmp/raw".to_string(),
         summary: test_support::QueryReportSummary {
             dashboard_count: 1,
             panel_count: 1,
@@ -285,7 +285,7 @@ fn build_export_inspection_governance_document_flags_broad_loki_selectors() {
 #[test]
 fn build_export_inspection_governance_document_keeps_known_family_without_inventory_match() {
     let summary = test_support::ExportInspectionSummary {
-        import_dir: "/tmp/raw".to_string(),
+        input_dir: "/tmp/raw".to_string(),
         export_org: Some("Main Org.".to_string()),
         export_org_id: Some("1".to_string()),
         dashboard_count: 1,
@@ -302,7 +302,7 @@ fn build_export_inspection_governance_document_keeps_known_family_without_invent
         mixed_dashboards: Vec::new(),
     };
     let report = test_support::ExportInspectionQueryReport {
-        import_dir: "/tmp/raw".to_string(),
+        input_dir: "/tmp/raw".to_string(),
         summary: test_support::QueryReportSummary {
             dashboard_count: 1,
             panel_count: 1,
@@ -357,7 +357,7 @@ fn build_export_inspection_governance_document_flags_query_quality_and_dashboard
     .unwrap();
 
     let summary = test_support::ExportInspectionSummary {
-        import_dir: temp.path().display().to_string(),
+        input_dir: temp.path().display().to_string(),
         export_org: Some("Main Org.".to_string()),
         export_org_id: Some("1".to_string()),
         dashboard_count: 1,
@@ -478,7 +478,7 @@ fn build_export_inspection_governance_document_flags_query_quality_and_dashboard
         queries.push(extra);
     }
     let report = test_support::ExportInspectionQueryReport {
-        import_dir: temp.path().display().to_string(),
+        input_dir: temp.path().display().to_string(),
         summary: test_support::QueryReportSummary {
             dashboard_count: 1,
             panel_count: 31,

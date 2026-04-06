@@ -6,8 +6,8 @@ use serde_json::{Map, Value};
 use crate::common::Result;
 
 use crate::access::render::{
-    format_table, map_get_text, normalize_team_row, render_csv, render_objects_json, render_yaml,
-    team_summary_line, team_table_rows,
+    format_table, map_get_text, normalize_team_row, paginate_rows, render_csv, render_objects_json,
+    render_yaml, team_summary_line, team_table_rows,
 };
 use crate::access::team_import_export_diff::{
     build_record_diff_fields, build_team_diff_map, load_team_import_records,
@@ -148,6 +148,73 @@ where
         }
         println!();
         println!("Listed {} team(s) at {}", rows.len(), args.common.url);
+    }
+    Ok(rows.len())
+}
+
+pub(crate) fn list_teams_from_input_dir(args: &TeamListArgs) -> Result<usize> {
+    let input_dir = args
+        .input_dir
+        .as_ref()
+        .expect("team local list requires input_dir");
+    let mut rows = load_team_import_records(input_dir, ACCESS_EXPORT_KIND_TEAMS)?
+        .into_iter()
+        .map(|team| normalize_team_row(&team))
+        .collect::<Vec<Map<String, Value>>>();
+    if let Some(query) = &args.query {
+        let query = query.to_ascii_lowercase();
+        rows.retain(|row| {
+            map_get_text(row, "name")
+                .to_ascii_lowercase()
+                .contains(&query)
+                || map_get_text(row, "email")
+                    .to_ascii_lowercase()
+                    .contains(&query)
+        });
+    }
+    if let Some(name) = &args.name {
+        rows.retain(|row| map_get_text(row, "name") == *name);
+    }
+    if !args.with_members {
+        for row in &mut rows {
+            row.insert("members".to_string(), Value::Array(Vec::new()));
+        }
+    }
+    let rows = paginate_rows(&rows, args.page, args.per_page);
+    if args.json {
+        println!("{}", render_objects_json(&rows)?);
+    } else if args.yaml {
+        println!("{}", render_yaml(&rows)?);
+    } else if args.csv {
+        for line in render_csv(
+            &["id", "name", "email", "memberCount", "members"],
+            &team_table_rows(&rows),
+        ) {
+            println!("{line}");
+        }
+    } else if args.table {
+        for line in format_table(
+            &["ID", "NAME", "EMAIL", "MEMBER_COUNT", "MEMBERS"],
+            &team_table_rows(&rows),
+        ) {
+            println!("{line}");
+        }
+        println!();
+        println!(
+            "Listed {} team(s) from local bundle at {}",
+            rows.len(),
+            input_dir.display()
+        );
+    } else {
+        for row in &rows {
+            println!("{}", team_summary_line(row));
+        }
+        println!();
+        println!(
+            "Listed {} team(s) from local bundle at {}",
+            rows.len(),
+            input_dir.display()
+        );
     }
     Ok(rows.len())
 }

@@ -25,6 +25,6 @@ grafana-util dashboard clone-live --profile prod --source-uid cpu-main --name 'C
 ```
 
 ## Related commands
-- [dashboard get](./dashboard-get.md)
+- [dashboard fetch-live](./dashboard-fetch-live.md)
 - [dashboard patch-file](./dashboard-patch-file.md)
 - [dashboard publish](./dashboard-publish.md)

@@ -5,9 +5,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use crate::common::{
-    message, object_field, should_print_stdout, write_plain_output_file, Result,
-};
+use crate::common::{emit_plain_output, message, object_field, Result};
 
 use super::super::files::{load_datasource_inventory, load_folder_inventory};
 use super::super::inspect_live::load_variant_index_entries;
@@ -35,22 +33,11 @@ pub(crate) fn write_inspect_output(
     output_file: Option<&PathBuf>,
     also_stdout: bool,
 ) -> Result<()> {
-    let normalized = output.trim_end_matches('\n');
-    if normalized.is_empty() {
-        return Ok(());
-    }
-    if let Some(output_path) = output_file {
-        write_plain_output_file(output_path, normalized)?;
-    }
-    if should_print_stdout(output_file.map(PathBuf::as_path), also_stdout) {
-        print!("{normalized}");
-        println!();
-    }
-    Ok(())
+    emit_plain_output(output, output_file.map(PathBuf::as_path), also_stdout)
 }
 
 fn load_export_identity_values(
-    import_dir: &Path,
+    input_dir: &Path,
     metadata: Option<&ExportMetadata>,
     field_name: &str,
 ) -> Result<BTreeSet<String>> {
@@ -68,7 +55,7 @@ fn load_export_identity_values(
     let index_file = metadata
         .map(|item| item.index_file.clone())
         .unwrap_or_else(|| "index.json".to_string());
-    let index_path = import_dir.join(&index_file);
+    let index_path = input_dir.join(&index_file);
     if index_path.is_file() {
         let raw = fs::read_to_string(&index_path)?;
         let entries: Vec<VariantIndexEntry> = serde_json::from_str(&raw).map_err(|error| {
@@ -88,7 +75,7 @@ fn load_export_identity_values(
             }
         }
     }
-    for folder in load_folder_inventory(import_dir, metadata)? {
+    for folder in load_folder_inventory(input_dir, metadata)? {
         let value = match field_name {
             "org" => folder.org.trim(),
             "orgId" => folder.org_id.trim(),
@@ -98,7 +85,7 @@ fn load_export_identity_values(
             values.insert(value.to_string());
         }
     }
-    for datasource in load_datasource_inventory(import_dir, metadata)? {
+    for datasource in load_datasource_inventory(input_dir, metadata)? {
         let value = match field_name {
             "org" => datasource.org.trim(),
             "orgId" => datasource.org_id.trim(),
@@ -112,11 +99,11 @@ fn load_export_identity_values(
 }
 
 pub(crate) fn resolve_export_identity_field(
-    import_dir: &Path,
+    input_dir: &Path,
     metadata: Option<&ExportMetadata>,
     field_name: &str,
 ) -> Result<Option<String>> {
-    let values = load_export_identity_values(import_dir, metadata, field_name)?;
+    let values = load_export_identity_values(input_dir, metadata, field_name)?;
     if values.is_empty() {
         return Ok(None);
     }
@@ -127,11 +114,11 @@ pub(crate) fn resolve_export_identity_field(
 }
 
 pub(crate) fn load_dashboard_org_scope_by_file(
-    import_dir: &Path,
+    input_dir: &Path,
     metadata: Option<&ExportMetadata>,
 ) -> Result<BTreeMap<String, (String, String)>> {
     let mut scope_by_file = BTreeMap::new();
-    for entry in load_variant_index_entries(import_dir, metadata)? {
+    for entry in load_variant_index_entries(input_dir, metadata)? {
         scope_by_file.insert(
             normalize_index_entry_path(&entry.path),
             (entry.org, entry.org_id),
@@ -140,8 +127,8 @@ pub(crate) fn load_dashboard_org_scope_by_file(
     Ok(scope_by_file)
 }
 
-pub(crate) fn load_inspect_source_root(import_dir: &Path) -> Option<PathBuf> {
-    let source_root_path = import_dir.join(".inspect-source-root");
+pub(crate) fn load_inspect_source_root(input_dir: &Path) -> Option<PathBuf> {
+    let source_root_path = input_dir.join(".inspect-source-root");
     let raw = fs::read_to_string(source_root_path).ok()?;
     let text = raw.trim();
     if text.is_empty() {
@@ -152,14 +139,14 @@ pub(crate) fn load_inspect_source_root(import_dir: &Path) -> Option<PathBuf> {
 }
 
 pub(crate) fn resolve_dashboard_source_file_path(
-    import_dir: &Path,
+    input_dir: &Path,
     dashboard_file: &Path,
     source_root: Option<&Path>,
 ) -> String {
     let Some(source_root) = source_root else {
         return dashboard_file.display().to_string();
     };
-    let Ok(relative_path) = dashboard_file.strip_prefix(import_dir) else {
+    let Ok(relative_path) = dashboard_file.strip_prefix(input_dir) else {
         return dashboard_file.display().to_string();
     };
     let mut parts = relative_path.components();
@@ -194,7 +181,7 @@ fn normalize_merged_dashboard_folder_path(path: &Path) -> String {
 pub(crate) fn resolve_export_folder_inventory_item(
     document: &Map<String, Value>,
     dashboard_file: &Path,
-    import_dir: &Path,
+    input_dir: &Path,
     folders_by_uid: &BTreeMap<String, FolderInventoryItem>,
 ) -> Option<FolderInventoryItem> {
     let folder_uid = object_field(document, "meta")
@@ -219,7 +206,7 @@ pub(crate) fn resolve_export_folder_inventory_item(
         }
     }
     let relative_parent = dashboard_file
-        .strip_prefix(import_dir)
+        .strip_prefix(input_dir)
         .ok()
         .and_then(|path| path.parent())
         .unwrap_or_else(|| Path::new(""));
@@ -249,18 +236,18 @@ pub(crate) fn resolve_export_folder_inventory_item(
 pub(crate) fn resolve_export_folder_path(
     document: &Map<String, Value>,
     dashboard_file: &Path,
-    import_dir: &Path,
+    input_dir: &Path,
     folders_by_uid: &BTreeMap<String, FolderInventoryItem>,
 ) -> String {
     if let Some(folder) =
-        resolve_export_folder_inventory_item(document, dashboard_file, import_dir, folders_by_uid)
+        resolve_export_folder_inventory_item(document, dashboard_file, input_dir, folders_by_uid)
     {
         if !folder.path.trim().is_empty() {
             return folder.path;
         }
     }
     let relative_parent = dashboard_file
-        .strip_prefix(import_dir)
+        .strip_prefix(input_dir)
         .ok()
         .and_then(|path| path.parent())
         .unwrap_or_else(|| Path::new(""));
@@ -269,5 +256,28 @@ pub(crate) fn resolve_export_folder_path(
         DEFAULT_FOLDER_TITLE.to_string()
     } else {
         folder_name
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::tempdir;
+
+    #[test]
+    fn write_inspect_output_strips_ansi_and_trailing_newlines() {
+        let temp = tempdir().unwrap();
+        let output_file = temp.path().join("inspect.txt");
+
+        write_inspect_output(
+            "{\n  \u{1b}[1;36m\"summary\"\u{1b}[0m: \u{1b}[33m1\u{1b}[0m\n}\n\n",
+            Some(&output_file),
+            false,
+        )
+        .unwrap();
+
+        let raw = fs::read_to_string(output_file).unwrap();
+        assert_eq!(raw, "{\n  \"summary\": 1\n}\n");
     }
 }

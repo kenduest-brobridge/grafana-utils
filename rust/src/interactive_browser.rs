@@ -1,8 +1,7 @@
 //! Shared read-only TUI browser for list/detail artifact inspection.
 #![cfg_attr(not(test), allow(dead_code))]
-#[cfg(all(test, not(feature = "tui")))]
+#[cfg(not(feature = "tui"))]
 use crate::common::tui;
-#[cfg(any(feature = "tui", test))]
 use crate::common::Result;
 #[cfg(feature = "tui")]
 use crate::tui_shell;
@@ -48,12 +47,12 @@ pub(crate) struct BrowserItem {
     pub(crate) details: Vec<String>,
 }
 
-#[cfg(any(feature = "tui", test))]
+#[cfg(feature = "tui")]
 struct TerminalSession {
     terminal: Terminal<CrosstermBackend<Stdout>>,
 }
 
-#[cfg(any(feature = "tui", test))]
+#[cfg(feature = "tui")]
 impl TerminalSession {
     fn enter() -> Result<Self> {
         enable_raw_mode()?;
@@ -65,7 +64,7 @@ impl TerminalSession {
     }
 }
 
-#[cfg(any(feature = "tui", test))]
+#[cfg(feature = "tui")]
 impl Drop for TerminalSession {
     fn drop(&mut self) {
         let _ = disable_raw_mode();
@@ -74,7 +73,7 @@ impl Drop for TerminalSession {
     }
 }
 
-#[cfg(any(feature = "tui", test))]
+#[cfg(feature = "tui")]
 fn item_color(kind: &str) -> Color {
     match kind {
         "dashboard" => Color::Yellow,
@@ -90,7 +89,7 @@ fn item_color(kind: &str) -> Color {
     }
 }
 
-#[cfg(any(feature = "tui", test))]
+#[cfg(feature = "tui")]
 fn collect_kind_filters(items: &[BrowserItem]) -> Vec<String> {
     let mut filters = vec!["all".to_string()];
     for item in items {
@@ -101,7 +100,7 @@ fn collect_kind_filters(items: &[BrowserItem]) -> Vec<String> {
     filters
 }
 
-#[cfg(any(feature = "tui", test))]
+#[cfg(feature = "tui")]
 fn visible_item_indexes(items: &[BrowserItem], filter_kind: &str) -> Vec<usize> {
     items
         .iter()
@@ -116,13 +115,13 @@ fn visible_item_indexes(items: &[BrowserItem], filter_kind: &str) -> Vec<usize> 
         .collect()
 }
 
-#[cfg(any(feature = "tui", test))]
+#[cfg(feature = "tui")]
 fn selected_detail_line_count(item: Option<&BrowserItem>) -> usize {
     item.map(|candidate| candidate.details.len().max(1))
         .unwrap_or(1)
 }
 
-#[cfg(any(feature = "tui", test))]
+#[cfg(feature = "tui")]
 pub(crate) fn run_interactive_browser(
     title: &str,
     summary_lines: &[String],
@@ -412,7 +411,7 @@ pub(crate) fn run_interactive_browser(
     }
 }
 
-#[cfg(any(feature = "tui", test))]
+#[cfg(feature = "tui")]
 fn pane_block(title: &str, focused: bool, accent: Color, bg: Color) -> Block<'static> {
     let title_bg = if focused { accent } else { bg };
     let title_fg = if focused { Color::Black } else { Color::White };
@@ -433,7 +432,7 @@ fn pane_block(title: &str, focused: bool, accent: Color, bg: Color) -> Block<'st
         )
 }
 
-#[cfg(all(test, not(feature = "tui")))]
+#[cfg(not(feature = "tui"))]
 pub(crate) fn run_interactive_browser(
     _title: &str,
     _summary_lines: &[String],

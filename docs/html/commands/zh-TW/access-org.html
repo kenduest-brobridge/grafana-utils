@@ -766,11 +766,11 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
     <section class="command-intro">
   <div class="command-intro-grid"><div class="command-intro-block">
   <p class="command-intro-label">這頁在說什麼</p>
-  <p class="command-intro-text">列出、建立、修改、匯出、匯入、比對或刪除 Grafana 組織。</p>
+  <p class="command-intro-text">列出 live 或本機的 Grafana 組織、建立、修改、匯出、匯入、比對或刪除 Grafana 組織。</p>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">什麼時候看這頁</p>
-  <ul class="command-intro-list"><li>檢視組織清單與 org 使用者。</li><li>建立新組織或重新命名既有組織。</li><li>在環境之間匯出或匯入 org 套件。</li><li>以 id 或精確名稱刪除組織。</li></ul>
+  <ul class="command-intro-list"><li>檢視組織清單與 org 使用者。</li><li>從 live Grafana 或本機匯出套件中檢視組織。</li><li>建立新組織或重新命名既有組織。</li><li>在環境之間匯出或匯入 org 套件。</li><li>以 id 或精確名稱刪除組織。</li></ul>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">適合誰</p>
@@ -779,9 +779,9 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 </section>
 <h2 id="目的">目的</h2>
-<p>列出、建立、修改、匯出、匯入、比對或刪除 Grafana 組織。</p>
+<p>列出 live 或本機的 Grafana 組織、建立、修改、匯出、匯入、比對或刪除 Grafana 組織。</p>
 <h2 id="使用時機">使用時機</h2>
-<ul><li>檢視組織清單與 org 使用者。</li><li>建立新組織或重新命名既有組織。</li><li>在環境之間匯出或匯入 org 套件。</li><li>以 id 或精確名稱刪除組織。</li></ul>
+<ul><li>檢視組織清單與 org 使用者。</li><li>從 live Grafana 或本機匯出套件中檢視組織。</li><li>建立新組織或重新命名既有組織。</li><li>在環境之間匯出或匯入 org 套件。</li><li>以 id 或精確名稱刪除組織。</li></ul>
 <h2 id="採用前後對照">採用前後對照</h2>
 <ul><li><strong>採用前</strong>：org 管理常常先從一次性的管理員點擊流程或只適用單一環境的腳本開始。</li><li><strong>採用後</strong>：同一個命名空間就能處理 inventory、重新命名、匯出／匯入與刪除，而且可以重複使用管理員認證。</li></ul>
 <h2 id="成功判準">成功判準</h2>
@@ -789,12 +789,14 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="失敗時先檢查">失敗時先檢查</h2>
 <ul><li>如果建立、重新命名、匯出、匯入或刪除失敗，先確認選到的 profile 具備必要的管理員權限</li><li>如果以名稱查詢卻對到錯的 org，先核對精確的 org id 或精確名稱，再重試</li><li>如果套件匯出或匯入看起來不完整，先確認目標環境是否選對</li></ul>
 <h2 id="主要旗標">主要旗標</h2>
-<ul><li><code>list</code>: <code>--org-id</code>, <code>--name</code>, <code>--query</code>, <code>--with-users</code>, <code>--table</code>, <code>--csv</code>, <code>--json</code>, <code>--yaml</code>, <code>--output-format</code></li><li><code>add</code>: <code>--name</code>, <code>--json</code></li><li><code>modify</code>: <code>--org-id</code>, <code>--name</code>, <code>--set-name</code>, <code>--json</code></li><li><code>export</code> 與 <code>diff</code>: <code>--org-id</code>, <code>--name</code>, <code>--export-dir</code> 或 <code>--diff-dir</code>, <code>--overwrite</code>, <code>--dry-run</code>, <code>--with-users</code></li><li><code>import</code>: <code>--import-dir</code>, <code>--replace-existing</code>, <code>--dry-run</code>, <code>--yes</code></li><li><code>delete</code>: <code>--org-id</code>, <code>--name</code>, <code>--yes</code>, <code>--json</code></li></ul>
+<ul><li><code>list</code>: <code>--input-dir</code>, <code>--org-id</code>, <code>--name</code>, <code>--query</code>, <code>--with-users</code>, <code>--table</code>, <code>--csv</code>, <code>--json</code>, <code>--yaml</code>, <code>--output-format</code></li><li><code>add</code>: <code>--name</code>, <code>--json</code></li><li><code>modify</code>: <code>--org-id</code>, <code>--name</code>, <code>--set-name</code>, <code>--json</code></li><li><code>export</code> 與 <code>diff</code>: <code>--org-id</code>, <code>--name</code>, <code>--output-dir</code> 或 <code>--diff-dir</code>, <code>--overwrite</code>, <code>--dry-run</code>, <code>--with-users</code></li><li><code>import</code>: <code>--input-dir</code>, <code>--replace-existing</code>, <code>--dry-run</code>, <code>--yes</code></li><li><code>delete</code>: <code>--org-id</code>, <code>--name</code>, <code>--yes</code>, <code>--json</code></li></ul>
 <h2 id="說明">說明</h2>
 <ul><li>只要 profile 具備必要管理員權限，就可優先用 <code>--profile</code> 做可重複的 org inventory。</li><li>org 管理面通常比窄權限 API token 更廣。建立、重新命名、匯出、匯入與刪除流程，較建議使用 Basic auth 或管理員憑證支援的 profile。</li></ul>
 <h2 id="範例">範例</h2>
 <pre><code># 用途：在重新命名或搬移前，先確認 org inventory。
 grafana-util access org list --profile prod --output-format text</code></pre>
+<pre><code># 用途：先看本機存好的 org 套件。
+grafana-util access org list --input-dir ./access-orgs --output-format table</code></pre>
 <pre><code># 用途：確認目前 org 名稱後，重新命名這個 org。
 grafana-util access org modify --url http://localhost:3000 --basic-user admin --basic-password admin --name platform --set-name platform-core --json</code></pre>
 <pre><code># 用途：在正式刪除前，先看清楚這個 org 的資訊。

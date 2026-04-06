@@ -783,7 +783,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="when-to-use">When to use</h2>
 <p>Use this when you want a non-interactive inventory view of live dashboards, optionally with resolved sources or structured output.</p>
 <h2 id="key-flags">Key flags</h2>
-<ul><li><code>--page-size</code>: dashboard search page size.</li><li><code>--org-id</code>: list one explicit Grafana org.</li><li><code>--all-orgs</code>: aggregate results across visible orgs. Prefer Basic auth.</li><li><code>--with-sources</code>: include resolved datasource names for table or CSV output.</li><li><code>--output-columns</code>: choose the displayed columns.</li><li><code>--output-format</code>, <code>--json</code>, <code>--yaml</code>, <code>--csv</code>, <code>--table</code>, <code>--text</code>: output mode controls.</li><li><code>--no-header</code>: suppress table headers.</li></ul>
+<ul><li><code>--page-size</code>: dashboard search page size.</li><li><code>--org-id</code>: list one explicit Grafana org.</li><li><code>--all-orgs</code>: aggregate results across visible orgs. Prefer Basic auth.</li><li><code>--show-sources</code>: include resolved datasource names in the list output. <code>--with-sources</code> remains accepted as a compatibility alias.</li><li><code>--output-columns</code>: choose the displayed columns. Selecting <code>sources</code> or <code>source_uids</code> also resolves datasource names.</li><li><code>--output-format</code>, <code>--json</code>, <code>--yaml</code>, <code>--csv</code>, <code>--table</code>, <code>--text</code>: output mode controls.</li><li><code>--no-header</code>: suppress table headers.</li></ul>
 <h2 id="notes">Notes</h2>
 <ul><li>Use <code>--profile</code> for repeatable single-org inventory.</li><li>For <code>--all-orgs</code>, prefer admin-backed <code>--profile</code> or direct Basic auth because token scope can hide other orgs.</li></ul>
 <h2 id="examples">Examples</h2>
@@ -793,6 +793,8 @@ grafana-util dashboard list --profile prod</code></pre>
 grafana-util dashboard list --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --json</code></pre>
 <pre><code># Purpose: List dashboard summaries without writing export files.
 grafana-util dashboard list --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --json</code></pre>
+<pre><code># Purpose: List dashboard summaries and include resolved source names in a table.
+grafana-util dashboard list --url http://localhost:3000 --basic-user admin --basic-password admin --show-sources --table</code></pre>
 <h2 id="related-commands">Related commands</h2>
 <ul><li><a href="dashboard-browse.html">dashboard browse</a></li><li><a href="dashboard-export.html">dashboard export</a></li><li><a href="dashboard-diff.html">dashboard diff</a></li></ul>
     

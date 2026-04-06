@@ -2,7 +2,7 @@
 
 set -eu
 
-REPO="${REPO:-kenduest-brobridge/grafana-utils}"
+REPO="${REPO:-kenduest-brobridge/grafana-util}"
 BINARY_NAME="${BINARY_NAME:-grafana-util}"
 VERSION="${VERSION:-latest}"
 BIN_DIR="${BIN_DIR:-}"
@@ -22,7 +22,7 @@ fail() {
 print_help() {
   cat <<'EOF'
 Usage:
-  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
+  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh
 
 Environment overrides:
   VERSION=0.8.0           Install one specific release tag instead of latest.

@@ -364,6 +364,18 @@ def assemble_site(output_dir: Path) -> None:
             export_ref_tree(tag.raw, source_root)
             if not has_modern_docs_source(source_root):
                 continue
+            try:
+                generate_outputs(
+                    lane_config(
+                        source_root=source_root,
+                        output_prefix=tag.minor_label,
+                        version_label=tag.minor_label,
+                        version_links=(),
+                    )
+                )
+            except FileNotFoundError as exc:
+                print(f"Skipping {tag.raw}: {exc}")
+                continue
             supported_release_tags.append(tag)
 
         version_lanes = [tag.minor_label for tag in supported_release_tags]
@@ -400,16 +412,19 @@ def assemble_site(output_dir: Path) -> None:
             dev_source_root = tmp_root / "dev"
             export_ref_tree(dev_ref, dev_source_root)
             if has_modern_docs_source(dev_source_root):
-                outputs.update(
-                    generate_outputs(
-                        lane_config(
-                            source_root=dev_source_root,
-                            output_prefix="dev",
-                            version_label="Dev preview",
-                            version_links=version_links,
+                try:
+                    outputs.update(
+                        generate_outputs(
+                            lane_config(
+                                source_root=dev_source_root,
+                                output_prefix="dev",
+                                version_label="Dev preview",
+                                version_links=version_links,
+                            )
                         )
                     )
-                )
+                except FileNotFoundError as exc:
+                    print(f"Skipping dev preview: {exc}")
 
     outputs["index.html"] = render_version_portal(
         latest_lane=supported_release_tags[0].minor_label if supported_release_tags else None,

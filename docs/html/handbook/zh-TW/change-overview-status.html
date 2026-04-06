@@ -765,7 +765,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 
     <p>這一章聚焦在變更前後的最後檢查，幫你確認目前狀態、差異與套用前的準備是否到位。</p>
 <h2 id="適用對象">適用對象</h2>
-<ul><li>要先看 live / staged 狀態再決定下一步的人</li><li>負責變更審查、preflight 或 apply gate 的人</li><li>需要把 status / overview / change 串成固定流程的人</li></ul>
+<ul><li>要先看 live / staged 狀態再決定下一步的人</li><li>負責變更審查、check 或 apply gate 的人</li><li>需要把 status / overview / change 串成固定流程的人</li></ul>
 <h2 id="主要目標">主要目標</h2>
 <ul><li>先區分 live 與 staged</li><li>再確認變更包、輸入結構與差異摘要</li><li>最後才進入 apply</li></ul>
 <h2 id="採用前後對照">採用前後對照</h2>
@@ -775,8 +775,11 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="失敗時先檢查">失敗時先檢查</h2>
 <ul><li>如果 staged 與 live 看的不是同一個面，先停下來確認哪一條 lane 過期。</li><li>如果 snapshot 或 summary 跟預期不符，先把它當成流程警訊，不要只當成排版問題。</li><li>如果你說不出為什麼需要看這章，可能代表你走錯 lane 了。</li></ul>
 <h2 id="指令詳細頁面">指令詳細頁面</h2>
-<p>如果你現在要查的是指令細節，而不是整段工作流程，直接跳到下面這些指令頁就可以：</p>
-<ul><li><a href="../../commands/zh-TW/change.html">change</a></li><li><a href="../../commands/zh-TW/change.html#summary">change summary</a></li><li><a href="../../commands/zh-TW/change.html#plan">change plan</a></li><li><a href="../../commands/zh-TW/change.html#review">change review</a></li><li><a href="../../commands/zh-TW/change.html#apply">change apply</a></li><li><a href="../../commands/zh-TW/change.html#audit">change audit</a></li><li><a href="../../commands/zh-TW/change.html#preflight">change preflight</a></li><li><a href="../../commands/zh-TW/change.html#assess-alerts">change assess-alerts</a></li><li><a href="../../commands/zh-TW/change.html#bundle">change bundle</a></li><li><a href="../../commands/zh-TW/change.html#bundle-preflight">change bundle-preflight</a></li><li><a href="../../commands/zh-TW/change.html#promotion-preflight">change promotion-preflight</a></li><li><a href="../../commands/zh-TW/status.html">status</a></li><li><a href="../../commands/zh-TW/status.html#staged">status staged</a></li><li><a href="../../commands/zh-TW/status.html#live">status live</a></li><li><a href="../../commands/zh-TW/overview.html">overview</a></li><li><a href="../../commands/zh-TW/overview.html#live">overview live</a></li><li><a href="../../commands/zh-TW/snapshot.html">snapshot</a></li><li><a href="../../commands/zh-TW/snapshot.html#export">snapshot export</a></li><li><a href="../../commands/zh-TW/snapshot.html#review">snapshot review</a></li><li><a href="../../commands/zh-TW/profile.html">profile</a></li><li><a href="../../commands/zh-TW/profile.html#list">profile list</a></li><li><a href="../../commands/zh-TW/profile.html#show">profile show</a></li><li><a href="../../commands/zh-TW/profile.html#add">profile add</a></li><li><a href="../../commands/zh-TW/profile.html#example">profile example</a></li><li><a href="../../commands/zh-TW/profile.html#init">profile init</a></li><li><a href="../../commands/zh-TW/index.html">指令詳細總索引</a></li></ul>
+<p>如果你現在要查的是指令細節，而不是整段工作流程，先看這兩組：</p>
+<p>Primary lane：</p>
+<ul><li><a href="../../commands/zh-TW/change.html">change</a></li><li><a href="../../commands/zh-TW/change-inspect.html">change inspect</a></li><li><a href="../../commands/zh-TW/change-check.html">change check</a></li><li><a href="../../commands/zh-TW/change-preview.html">change preview</a></li><li><a href="../../commands/zh-TW/change-apply.html">change apply</a></li><li><a href="../../commands/zh-TW/status.html">status</a></li><li><a href="../../commands/zh-TW/status.html#staged">status staged</a></li><li><a href="../../commands/zh-TW/status.html#live">status live</a></li><li><a href="../../commands/zh-TW/overview.html">overview</a></li><li><a href="../../commands/zh-TW/overview.html#live">overview live</a></li></ul>
+<p>Advanced workflows：</p>
+<ul><li>如果你需要較低階 staged contract，或要看 bundle / promotion handoff 文件，從 <a href="../../commands/zh-TW/change.html#advanced">change advanced</a> 或 <a href="../../commands/zh-TW/index.html">指令詳細總索引</a> 開始。</li><li><a href="../../commands/zh-TW/snapshot.html">snapshot</a></li><li><a href="../../commands/zh-TW/snapshot.html#export">snapshot export</a></li><li><a href="../../commands/zh-TW/snapshot.html#review">snapshot review</a></li><li><a href="../../commands/zh-TW/profile.html">profile</a></li><li><a href="../../commands/zh-TW/profile.html#list">profile list</a></li><li><a href="../../commands/zh-TW/profile.html#show">profile show</a></li><li><a href="../../commands/zh-TW/profile.html#add">profile add</a></li><li><a href="../../commands/zh-TW/profile.html#example">profile example</a></li><li><a href="../../commands/zh-TW/profile.html#init">profile init</a></li></ul>
 <h2 id="狀態操作面">狀態操作面</h2>
 <p>這裡會區分 <strong>Live</strong>（目前 Grafana 上真的在跑的內容）和 <strong>Staged</strong>（你準備要部署的內容）。</p>
 <h3 id="1-即時整備度檢查-live-check">1. 即時整備度檢查 (Live Check)</h3>
@@ -807,31 +810,42 @@ grafana-util status staged --dashboard-export-dir ./dashboards/raw --alert-expor
 <p><code>status staged</code> 比較偏向給腳本或 CI 判讀的驗證結果。<code>blockers</code> 代表一定得先處理，<code>warnings</code> 則表示需要人工再多看一眼。</p>
 <h2 id="變更生命週期-change-lifecycle">變更生命週期 (Change Lifecycle)</h2>
 <p>管理從 Git 到正式 Grafana 環境的過渡。</p>
-<h3 id="1-變更摘要-change-summary">1. 變更摘要 (Change Summary)</h3>
-<p>獲取目前變更包的高階摘要。</p>
-<pre><code># 用途：獲取目前變更包的高階摘要。
-grafana-util change summary --desired-file ./desired.json</code></pre>
-<pre><code># 用途：獲取目前變更包的高階摘要。
-grafana-util change summary --desired-file ./desired.json --output-format json</code></pre>
+<h3 id="第一次使用先走這條最短路徑">第一次使用，先走這條最短路徑</h3>
+<p>如果你還不確定要從哪裡開始，先照這個順序走：</p>
+<ol><li><code>change inspect --workspace .</code></li><li><code>change check --workspace .</code></li><li><code>change preview --workspace . --fetch-live --profile &lt;profile&gt;</code></li><li><code>change apply --preview-file ./change-preview.json --approve --execute-live --profile &lt;profile&gt;</code></li></ol>
+<p><code>--workspace</code> 是最短路徑，因為 <code>change</code> 會先嘗試在目前 repo 或工作目錄裡找常見 staged inputs。若這不符合你的目錄布局，再改用 <code>--desired-file</code>、<code>--dashboard-export-dir</code>、<code>--alert-export-dir</code>、<code>--source-bundle</code>、<code>--target-inventory</code> 這些明確旗標。</p>
+<h3 id="1-變更檢視-change-inspect">1. 變更檢視 (Change Inspect)</h3>
+<p>先看目前變更包的高階摘要與輸入形狀。</p>
+<pre><code># 用途：先從目前 workspace 自動發現常見 staged inputs。
+grafana-util change inspect --workspace .</code></pre>
+<pre><code># 用途：用明確 staged 匯出目錄建立 inspection 輸出。
+grafana-util change inspect --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-format json</code></pre>
 <p><strong>預期輸出：</strong></p>
 <pre><code>CHANGE PACKAGE SUMMARY:
 - dashboards: 5 modified, 2 added
 - alerts: 3 modified
 - access: 1 added
 - total impact: 11 operations</code></pre>
-<p>先用 summary 看整個變更包的規模，再往下看 plan。若總數異常偏大，應先停下來檢查 staged 輸入。</p>
-<h3 id="2-預檢驗證-preflight-validation">2. 預檢驗證 (Preflight Validation)</h3>
-<p>驗證匯出 / 匯入目錄結構的完整性。</p>
-<pre><code># 用途：驗證匯出 / 匯入目錄結構的完整性。
-grafana-util change preflight --desired-file ./desired.json --availability-file ./availability.json</code></pre>
-<pre><code># 用途：驗證匯出 / 匯入目錄結構的完整性。
-grafana-util change preflight --desired-file ./desired.json --fetch-live --output-format json</code></pre>
+<p>先用 inspect 看整個變更包的規模與輸入形狀，再往下看 preview。若總數異常偏大，應先停下來檢查 staged 輸入。</p>
+<h3 id="2-變更檢查-change-check">2. 變更檢查 (Change Check)</h3>
+<p>驗證匯出 / 匯入目錄結構與 staged readiness。</p>
+<pre><code># 用途：先檢查目前 workspace 自動發現到的 staged package。
+grafana-util change check --workspace . --availability-file ./availability.json</code></pre>
+<pre><code># 用途：把 live availability hints 併進 staged 檢查。
+grafana-util change check --workspace . --fetch-live --output-format json</code></pre>
 <p><strong>預期輸出：</strong></p>
 <pre><code>PREFLIGHT CHECK:
 - dashboards: valid (7 files)
 - datasources: valid (1 inventory found)
 - result: 0 errors, 0 blockers</code></pre>
-<p>preflight 適合放在規劃或套用前，做結構層的檢查。通過只代表輸入形狀合理，不代表 live 狀態已經完全吻合。</p>
+<p>check 適合放在 preview 或 apply 前，做 staged readiness 與結構層檢查。通過只代表輸入形狀合理，不代表 live 狀態已經完全吻合。</p>
+<h3 id="3-變更預覽-change-preview">3. 變更預覽 (Change Preview)</h3>
+<p>先建立可操作的 preview，確認這次真的會改到哪些東西。</p>
+<pre><code># 用途：預覽目前 staged package 對 live Grafana 的影響。
+grafana-util change preview --workspace . --fetch-live --profile prod</code></pre>
+<pre><code># 用途：用明確 desired/live 輸入產出 JSON preview。
+grafana-util change preview --desired-file ./desired.json --live-file ./live.json --output-format json</code></pre>
+<p>preview 是現在 task-first 路徑裡對應舊 <code>plan</code> 的入口。底層 contract 還是同一套，但對使用者來說，先想「這次會改到什麼」比先想「我要 build 哪種 plan 文件」更自然。 這份 preview contract 也是排序契約的公開面：<code>ordering.mode</code>、每筆 operation 的 <code>orderIndex</code> / <code>orderGroup</code> / <code>kindOrder</code>，以及 <code>summary.blocked_reasons</code> 會讓審查者看出 plan 的執行順序與尚未解除的受阻工作。</p>
 <h2 id="互動模式-tui-語意">互動模式 (TUI) 語意</h2>
 <p><code>overview live --output-format interactive</code> 會透過共用的 live status 路徑顯示 live project overview。</p>
 <pre><code># 用途：overview live --output-format interactive 會透過共用的 live status 路徑顯示 live project overview。
@@ -845,7 +859,7 @@ grafana-util overview live --url http://localhost:3000 --basic-user admin --basi
   <aside class="sidebar">
   <button class="sidebar-toggle sidebar-toggle-right" type="button" aria-expanded="true" aria-label="Toggle page sidebar">▶</button>
   <div class="sidebar-content">
-    <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#適用對象"><span class="toc-label">適用對象</span></a></li><li class="toc-level-2"><a href="#主要目標"><span class="toc-label">主要目標</span></a></li><li class="toc-level-2"><a href="#採用前後對照"><span class="toc-label">採用前後對照</span></a></li><li class="toc-level-2"><a href="#成功判準"><span class="toc-label">成功判準</span></a></li><li class="toc-level-2"><a href="#失敗時先檢查"><span class="toc-label">失敗時先檢查</span></a></li><li class="toc-level-2"><a href="#指令詳細頁面"><span class="toc-label">指令詳細頁面</span></a></li><li class="toc-level-2"><a href="#狀態操作面"><span class="toc-label">狀態操作面</span></a></li><li class="toc-level-3"><a href="#1-即時整備度檢查-live-check"><span class="toc-label">1. 即時整備度檢查 (Live Check)</span></a></li><li class="toc-level-3"><a href="#2-暫存整備度檢查-staged-check"><span class="toc-label">2. 暫存整備度檢查 (Staged Check)</span></a></li><li class="toc-level-2"><a href="#變更生命週期-change-lifecycle"><span class="toc-label">變更生命週期 (Change Lifecycle)</span></a></li><li class="toc-level-3"><a href="#1-變更摘要-change-summary"><span class="toc-label">1. 變更摘要 (Change Summary)</span></a></li><li class="toc-level-3"><a href="#2-預檢驗證-preflight-validation"><span class="toc-label">2. 預檢驗證 (Preflight Validation)</span></a></li><li class="toc-level-2"><a href="#互動模式-tui-語意"><span class="toc-label">互動模式 (TUI) 語意</span></a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: 繁體中文</a></li><li><a href="../en/change-overview-status.html" class="sidebar-meta-link">Switch to English</a></li></ul></section>
+    <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#適用對象"><span class="toc-label">適用對象</span></a></li><li class="toc-level-2"><a href="#主要目標"><span class="toc-label">主要目標</span></a></li><li class="toc-level-2"><a href="#採用前後對照"><span class="toc-label">採用前後對照</span></a></li><li class="toc-level-2"><a href="#成功判準"><span class="toc-label">成功判準</span></a></li><li class="toc-level-2"><a href="#失敗時先檢查"><span class="toc-label">失敗時先檢查</span></a></li><li class="toc-level-2"><a href="#指令詳細頁面"><span class="toc-label">指令詳細頁面</span></a></li><li class="toc-level-2"><a href="#狀態操作面"><span class="toc-label">狀態操作面</span></a></li><li class="toc-level-3"><a href="#1-即時整備度檢查-live-check"><span class="toc-label">1. 即時整備度檢查 (Live Check)</span></a></li><li class="toc-level-3"><a href="#2-暫存整備度檢查-staged-check"><span class="toc-label">2. 暫存整備度檢查 (Staged Check)</span></a></li><li class="toc-level-2"><a href="#變更生命週期-change-lifecycle"><span class="toc-label">變更生命週期 (Change Lifecycle)</span></a></li><li class="toc-level-3"><a href="#第一次使用先走這條最短路徑"><span class="toc-label">第一次使用，先走這條最短路徑</span></a></li><li class="toc-level-3"><a href="#1-變更檢視-change-inspect"><span class="toc-label">1. 變更檢視 (Change Inspect)</span></a></li><li class="toc-level-3"><a href="#2-變更檢查-change-check"><span class="toc-label">2. 變更檢查 (Change Check)</span></a></li><li class="toc-level-3"><a href="#3-變更預覽-change-preview"><span class="toc-label">3. 變更預覽 (Change Preview)</span></a></li><li class="toc-level-2"><a href="#互動模式-tui-語意"><span class="toc-label">互動模式 (TUI) 語意</span></a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: 繁體中文</a></li><li><a href="../en/change-overview-status.html" class="sidebar-meta-link">Switch to English</a></li></ul></section>
   </div>
 </aside>
 

@@ -12,8 +12,8 @@ mod profile_cli_runtime;
 
 pub use profile_cli_defs::{
     parse_cli_from, root_command, ProfileAddArgs, ProfileCliArgs, ProfileCommand,
-    ProfileExampleArgs, ProfileExampleMode, ProfileInitArgs, ProfileListArgs,
-    ProfileSecretStorageMode, ProfileShowArgs,
+    ProfileCurrentArgs, ProfileExampleArgs, ProfileExampleMode, ProfileInitArgs, ProfileListArgs,
+    ProfileSecretStorageMode, ProfileShowArgs, ProfileValidateArgs,
 };
 pub use profile_cli_runtime::run_profile_cli;
 

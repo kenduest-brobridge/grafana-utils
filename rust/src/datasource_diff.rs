@@ -1,5 +1,6 @@
 //! Datasource diff model and normalization helpers.
 //! Holds compare records/status used by list/import/export drift detection and report rendering.
+use serde::Serialize;
 use serde_json::Value;
 use std::collections::BTreeMap;
 
@@ -8,10 +9,12 @@ use super::datasource_import_export::DatasourceImportRecord;
 pub(crate) type DatasourceDiffRecord = DatasourceImportRecord;
 
 /// Struct definition for DatasourceFieldDifference.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub(crate) struct DatasourceFieldDifference {
     pub(crate) field: &'static str,
+    #[serde(rename = "before")]
     pub(crate) expected: String,
+    #[serde(rename = "after")]
     pub(crate) actual: String,
 }
 
@@ -23,6 +26,18 @@ pub(crate) enum DatasourceDiffStatus {
     MissingInLive,
     MissingInExport,
     AmbiguousLiveMatch,
+}
+
+impl DatasourceDiffStatus {
+    pub(crate) fn as_str(&self) -> &'static str {
+        match self {
+            DatasourceDiffStatus::Matches => "same",
+            DatasourceDiffStatus::Different => "different",
+            DatasourceDiffStatus::MissingInLive => "missing-remote",
+            DatasourceDiffStatus::MissingInExport => "extra-remote",
+            DatasourceDiffStatus::AmbiguousLiveMatch => "ambiguous",
+        }
+    }
 }
 
 /// Struct definition for DatasourceDiffEntry.

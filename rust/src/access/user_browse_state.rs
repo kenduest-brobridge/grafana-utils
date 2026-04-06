@@ -7,6 +7,7 @@ use ratatui::widgets::ListState;
 use serde_json::{Map, Value};
 
 use crate::access::render::map_get_text;
+use crate::access::UserBrowseArgs;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum DisplayMode {
@@ -361,7 +362,7 @@ fn flatten_user_rows(
     rows
 }
 
-pub(super) fn row_matches_args(row: &Map<String, Value>, args: &super::UserBrowseArgs) -> bool {
+pub(super) fn row_matches_args(row: &Map<String, Value>, args: &UserBrowseArgs) -> bool {
     if let Some(query) = &args.query {
         let query = query.to_ascii_lowercase();
         if !row_matches(row, &query) {

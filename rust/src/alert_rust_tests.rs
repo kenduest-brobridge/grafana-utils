@@ -344,7 +344,7 @@ fn parse_cli_supports_diff_dir_and_dry_run() {
     ]);
     assert_eq!(args.url, "https://grafana.example.com");
     assert_eq!(args.diff_dir.as_deref(), Some(Path::new("./alerts/raw")));
-    assert!(args.import_dir.is_none());
+    assert!(args.input_dir.is_none());
     assert!(!args.dry_run);
 }
 
@@ -416,13 +416,13 @@ fn parse_cli_supports_import_subcommand() {
     let args: AlertCliArgs = parse_cli_from([
         "grafana-alert-utils",
         "import",
-        "--import-dir",
+        "--input-dir",
         "./alerts/raw",
         "--replace-existing",
         "--dry-run",
         "--json",
     ]);
-    assert_eq!(args.import_dir.as_deref(), Some(Path::new("./alerts/raw")));
+    assert_eq!(args.input_dir.as_deref(), Some(Path::new("./alerts/raw")));
     assert!(args.replace_existing);
     assert!(args.dry_run);
     assert!(args.json);
@@ -440,7 +440,8 @@ fn import_help_mentions_structured_dry_run_json() {
 fn diff_help_mentions_structured_json() {
     let help = render_alert_subcommand_help(&["diff"]);
     assert!(help.contains("--json"));
-    assert!(help.contains("Render diff output as structured JSON."));
+    assert!(help.contains("Deprecated compatibility flag. Equivalent to --output-format json."));
+    assert!(help.contains("--output-format"));
 }
 
 #[test]
@@ -959,7 +960,7 @@ settings:
 
 #[test]
 fn request_optional_object_with_request_treats_http_404_as_missing() {
-    let result = super::alert_runtime_support::request_optional_object_with_request(
+    let result = crate::grafana_api::alert_live::request_optional_object_with_request(
         |_method, path, _params, _payload| {
             Err(api_response(
                 404,

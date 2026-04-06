@@ -6,10 +6,16 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fs;
 use std::path::Path;
 
-use super::super::{ACCESS_EXPORT_KIND_ORGS, ACCESS_EXPORT_VERSION, ACCESS_ORG_EXPORT_FILENAME};
+use super::super::{
+    ACCESS_EXPORT_KIND_ORGS, ACCESS_EXPORT_METADATA_FILENAME, ACCESS_EXPORT_VERSION,
+    ACCESS_ORG_EXPORT_FILENAME,
+};
 use super::{list_org_users_with_request, list_organizations_with_request};
 use crate::access::render::{normalize_org_role, scalar_text};
 use crate::common::{message, string_field, value_as_object, Result};
+use crate::export_metadata::{
+    build_export_metadata_common, export_metadata_common_map, EXPORT_BUNDLE_KIND_ROOT,
+};
 
 type OrgDiffRecord = (String, Map<String, Value>);
 type OrgDiffMap = BTreeMap<String, OrgDiffRecord>;
@@ -170,10 +176,15 @@ pub(super) fn build_record_diff_fields(
 
 pub(super) fn build_org_export_metadata(
     source_url: &str,
+    source_profile: Option<&str>,
     source_dir: &Path,
     record_count: usize,
+    with_users: bool,
+    org_id: Option<i64>,
+    org_name: Option<&str>,
 ) -> Map<String, Value> {
-    Map::from_iter(vec![
+    let selected_org_id = org_id.map(|value| value.to_string());
+    let metadata = Map::from_iter(vec![
         (
             "kind".to_string(),
             Value::String(ACCESS_EXPORT_KIND_ORGS.to_string()),
@@ -194,11 +205,38 @@ pub(super) fn build_org_export_metadata(
             "sourceDir".to_string(),
             Value::String(source_dir.to_string_lossy().to_string()),
         ),
-    ])
+        ("withUsers".to_string(), Value::Bool(with_users)),
+        (
+            "orgCount".to_string(),
+            Value::Number((record_count as i64).into()),
+        ),
+    ]);
+    let common = build_export_metadata_common(
+        "access",
+        "orgs",
+        EXPORT_BUNDLE_KIND_ROOT,
+        "live",
+        Some(source_url),
+        None,
+        source_profile,
+        Some(if selected_org_id.is_some() || org_name.is_some() {
+            "single-org"
+        } else {
+            "global"
+        }),
+        selected_org_id.as_deref(),
+        org_name,
+        source_dir,
+        &source_dir.join(ACCESS_EXPORT_METADATA_FILENAME),
+        record_count,
+    );
+    let mut metadata = metadata;
+    metadata.extend(export_metadata_common_map(&common));
+    metadata
 }
 
-pub(super) fn load_org_import_records(import_dir: &Path) -> Result<Vec<Map<String, Value>>> {
-    let path = import_dir.join(ACCESS_ORG_EXPORT_FILENAME);
+pub(super) fn load_org_import_records(input_dir: &Path) -> Result<Vec<Map<String, Value>>> {
+    let path = input_dir.join(ACCESS_ORG_EXPORT_FILENAME);
     if !path.is_file() {
         return Err(message(format!(
             "Access import file not found: {}",

@@ -1,12 +1,13 @@
 //! Dashboard governance gate evaluator.
-//! Consumes governance-json and query-report JSON artifacts plus a small policy JSON.
+//! Direct live/local analysis is the common path; governance-json and query-report artifacts stay available for advanced reuse.
 use serde::Serialize;
 use serde_json::Value;
 #[cfg(any(feature = "tui", test))]
 use std::cmp::Reverse;
 
-use crate::common::{load_json_object_file, message, render_json_value, Result};
+use crate::common::{message, render_json_value, Result};
 
+use super::analysis_source::{resolve_dashboard_analysis_artifacts, DashboardAnalysisSourceArgs};
 use super::governance_gate_rules as rules;
 #[cfg(all(feature = "tui", not(test)))]
 use super::governance_gate_tui::run_governance_gate_interactive;
@@ -60,10 +61,6 @@ pub(crate) struct DashboardGovernanceGateResult {
     pub(crate) summary: DashboardGovernanceGateSummary,
     pub(crate) violations: Vec<DashboardGovernanceGateFinding>,
     pub(crate) warnings: Vec<DashboardGovernanceGateFinding>,
-}
-
-fn load_object(path: &std::path::Path, label: &str) -> Result<Value> {
-    load_json_object_file(path, label)
 }
 
 #[cfg(any(feature = "tui", test))]
@@ -404,9 +401,20 @@ pub(crate) fn render_dashboard_governance_gate_result(
 
 pub(crate) fn run_dashboard_governance_gate(args: &GovernanceGateArgs) -> Result<()> {
     let policy = load_governance_policy(args)?;
-    let governance = load_object(&args.governance, "Dashboard governance JSON")?;
-    let queries = load_object(&args.queries, "Dashboard query report JSON")?;
-    let result = evaluate_dashboard_governance_gate(&policy, &governance, &queries)?;
+    let artifacts = resolve_dashboard_analysis_artifacts(&DashboardAnalysisSourceArgs {
+        common: &args.common,
+        page_size: args.page_size,
+        org_id: args.org_id,
+        all_orgs: args.all_orgs,
+        input_dir: args.input_dir.as_deref(),
+        input_format: args.input_format,
+        input_type: args.input_type,
+        governance: args.governance.as_deref(),
+        queries: args.queries.as_deref(),
+        require_queries: true,
+    })?;
+    let result =
+        evaluate_dashboard_governance_gate(&policy, &artifacts.governance, &artifacts.queries)?;
 
     if let Some(output_path) = args.json_output.as_ref() {
         write_json_document(&result, output_path)?;

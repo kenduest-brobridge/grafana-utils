@@ -30,6 +30,6 @@ grafana-util dashboard clone-live --url http://localhost:3000 --token "$GRAFANA_
 ```
 
 ## 相關指令
-- [dashboard get](./dashboard-get.md)
+- [dashboard fetch-live](./dashboard-fetch-live.md)
 - [dashboard patch-file](./dashboard-patch-file.md)
 - [dashboard publish](./dashboard-publish.md)

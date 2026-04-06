@@ -80,5 +80,5 @@ grafana-util dashboard raw-to-prompt --input-file ./legacy/cpu.json --profile pr
 ## Related commands
 - [dashboard export](./dashboard-export.md)
 - [dashboard import](./dashboard-import.md)
-- [dashboard inspect-export](./dashboard-inspect-export.md)
+- [dashboard analyze (local)](./dashboard-analyze-export.md)
 - [dashboard diff](./dashboard-diff.md)

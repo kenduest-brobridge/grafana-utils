@@ -245,6 +245,40 @@ fn fetch_live_resource_specs_with_request_collects_alerts_and_alerting_resources
 }
 
 #[test]
+fn fetch_live_resource_specs_with_request_ignores_null_template_list() {
+    let specs = fetch_live_resource_specs_with_request(
+        |method, path, params, _| match (method.clone(), path) {
+            (Method::GET, "/api/folders") => Ok(Some(json!([]))),
+            (Method::GET, "/api/search") => {
+                let page = params
+                    .iter()
+                    .find(|(key, _)| key == "page")
+                    .map(|(_, value)| value.as_str())
+                    .unwrap_or("1");
+                if page == "1" {
+                    Ok(Some(json!([])))
+                } else {
+                    Ok(Some(json!([])))
+                }
+            }
+            (Method::GET, "/api/datasources") => Ok(Some(json!([]))),
+            (Method::GET, "/api/v1/provisioning/alert-rules") => Ok(Some(json!([]))),
+            (Method::GET, "/api/v1/provisioning/contact-points") => Ok(Some(json!([]))),
+            (Method::GET, "/api/v1/provisioning/mute-timings") => Ok(Some(json!([]))),
+            (Method::GET, "/api/v1/provisioning/policies") => Ok(Some(json!({}))),
+            (Method::GET, "/api/v1/provisioning/templates") => Ok(Some(serde_json::Value::Null)),
+            _ => Err(crate::common::message(format!(
+                "unexpected {method} {path}"
+            ))),
+        },
+        500,
+    )
+    .unwrap();
+
+    assert!(!specs.iter().any(|item| item["kind"] == "alert-template"));
+}
+
+#[test]
 fn fetch_live_availability_with_request_collects_contact_points_and_plugins() {
     let availability =
         fetch_live_availability_with_request(|method, path, _, _| match (method, path) {

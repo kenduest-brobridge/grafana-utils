@@ -386,25 +386,26 @@ fn collect_query_report_rows(
     }
 }
 
+#[cfg_attr(not(feature = "tui"), allow(dead_code))]
 pub(crate) fn build_export_inspection_query_report(
-    import_dir: &Path,
+    input_dir: &Path,
 ) -> Result<ExportInspectionQueryReport> {
-    build_export_inspection_query_report_for_variant(import_dir, RAW_EXPORT_SUBDIR)
+    build_export_inspection_query_report_for_variant(input_dir, RAW_EXPORT_SUBDIR)
 }
 
 pub(crate) fn build_export_inspection_query_report_for_variant(
-    import_dir: &Path,
+    input_dir: &Path,
     expected_variant: &str,
 ) -> Result<ExportInspectionQueryReport> {
     // Build the normalized row set once; every downstream output format should derive
     // from this report instead of re-reading dashboard files or re-running analysis.
-    let summary = build_export_inspection_summary_for_variant(import_dir, expected_variant)?;
-    let metadata = load_export_metadata(import_dir, Some(expected_variant))?;
-    let dashboard_org_scope = load_dashboard_org_scope_by_file(import_dir, metadata.as_ref())?;
-    let source_root = load_inspect_source_root(import_dir);
-    let dashboard_files = discover_dashboard_files(import_dir)?;
-    let datasource_inventory = load_datasource_inventory(import_dir, metadata.as_ref())?;
-    let folder_inventory = load_folder_inventory(import_dir, metadata.as_ref())?;
+    let summary = build_export_inspection_summary_for_variant(input_dir, expected_variant)?;
+    let metadata = load_export_metadata(input_dir, Some(expected_variant))?;
+    let dashboard_org_scope = load_dashboard_org_scope_by_file(input_dir, metadata.as_ref())?;
+    let source_root = load_inspect_source_root(input_dir);
+    let dashboard_files = discover_dashboard_files(input_dir)?;
+    let datasource_inventory = load_datasource_inventory(input_dir, metadata.as_ref())?;
+    let folder_inventory = load_folder_inventory(input_dir, metadata.as_ref())?;
     let folders_by_uid = folder_inventory
         .into_iter()
         .map(|item| (item.uid.clone(), item))
@@ -421,13 +422,13 @@ pub(crate) fn build_export_inspection_query_report_for_variant(
         let folder_path = resolve_export_folder_path(
             document_object,
             dashboard_file,
-            import_dir,
+            input_dir,
             &folders_by_uid,
         );
         let dashboard_uid = string_field(dashboard, "uid", DEFAULT_UNKNOWN_UID);
         let dashboard_title = string_field(dashboard, "title", DEFAULT_DASHBOARD_TITLE);
         let relative_dashboard_path = dashboard_file
-            .strip_prefix(import_dir)
+            .strip_prefix(input_dir)
             .map(normalize_relative_dashboard_path)
             .unwrap_or_else(|_| normalize_relative_dashboard_path(dashboard_file));
         let (dashboard_org, dashboard_org_id) = dashboard_org_scope
@@ -437,7 +438,7 @@ pub(crate) fn build_export_inspection_query_report_for_variant(
         let mut folder_record = resolve_export_folder_inventory_item(
             document_object,
             dashboard_file,
-            import_dir,
+            input_dir,
             &folders_by_uid,
         );
         if folder_record
@@ -466,7 +467,7 @@ pub(crate) fn build_export_inspection_query_report_for_variant(
             .and_then(|item| item.parent_uid.clone())
             .unwrap_or_default();
         let dashboard_file_display =
-            resolve_dashboard_source_file_path(import_dir, dashboard_file, source_root.as_deref());
+            resolve_dashboard_source_file_path(input_dir, dashboard_file, source_root.as_deref());
         let context = QueryReportContext {
             export_org: &dashboard_org,
             export_org_id: &dashboard_org_id,
@@ -487,7 +488,7 @@ pub(crate) fn build_export_inspection_query_report_for_variant(
     Ok(build_query_report(
         source_root
             .as_ref()
-            .map_or(import_dir, |value| value.as_path())
+            .map_or(input_dir, |value| value.as_path())
             .display()
             .to_string(),
         summary.dashboard_count,

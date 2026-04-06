@@ -769,7 +769,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <p>如果你曾經遇過下面這些痛點，這個工具就是為了解這些事：</p>
 <ul><li>想先看整個 Grafana 環境目前長什麼樣，但 UI 很難快速盤點多 org 或大量資產</li><li>想搬 dashboard、alert 或 data source，卻不想只靠手動點 UI</li><li>想先知道變更會影響什麼，再決定要不要套用</li><li>想把匯出結果放進 Git、CI/CD 或 review 流程，但又不想把秘密資料直接寫進檔案</li><li>想做可重複的維運流程，而不是每次都重新拼湊參數與操作步驟</li></ul>
 <h2 id="採用前後對照">採用前後對照</h2>
-<table><thead><tr><th>原本常見情況</th><th>改用 <code>grafana-util</code> 後</th></tr></thead><tbody><tr><td>想知道現在 Grafana 環境長什麼樣，只能一直切 UI 或查 API。</td><td>先用 <code>overview</code>、<code>status</code> 或 <code>change summary</code> 建立第一個審查面。</td></tr><tr><td>匯出/匯入像一次性的動作，缺少中間檢查點。</td><td>先匯出、再 inspect、再 dry-run，最後才決定要不要回放。</td></tr><tr><td>告警或權限變更很難在套用前說清楚。</td><td>先看 summary、plan 與結構化輸出，再進入 apply。</td></tr><tr><td>認證與 secret 容易散落在命令列與腳本裡。</td><td>用 profile 與 secret 模式把重複設定收起來。</td></tr></tbody></table>
+<table><thead><tr><th>原本常見情況</th><th>改用 <code>grafana-util</code> 後</th></tr></thead><tbody><tr><td>想知道現在 Grafana 環境長什麼樣，只能一直切 UI 或查 API。</td><td>先用 <code>overview</code>、<code>status</code> 或 <code>change inspect</code> 建立第一個審查面。</td></tr><tr><td>匯出/匯入像一次性的動作，缺少中間檢查點。</td><td>先匯出、再 inspect、再 dry-run，最後才決定要不要回放。</td></tr><tr><td>告警或權限變更很難在套用前說清楚。</td><td>先看 summary、plan 與結構化輸出，再進入 apply。</td></tr><tr><td>認證與 secret 容易散落在命令列與腳本裡。</td><td>用 profile 與 secret 模式把重複設定收起來。</td></tr></tbody></table>
 <p>這個工具真正改變的是維運順序，不只是把某一條命令縮短。</p>
 <h2 id="成功判準">成功判準</h2>
 <ul><li>你可以直接指出這個工具要解掉哪一類維運痛點。</li><li>你知道自己第一步應該走哪條工作流：盤點、審查、回放，還是變更控管。</li><li>你能判斷這個 repo 是否比單次 shell script 或純 UI 點選更適合你的情境。</li></ul>
@@ -779,7 +779,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <p><code>grafana-util</code> 比較接近一套 Grafana 維運工作流工具，而不是單一功能的 CLI。</p>
 <p>它是我長期維護的個人工具，不是完整平台，也不是要把 Grafana 的所有 API 面都包起來。重點比較放在那些高摩擦、容易出錯的維運路徑，讓它們更容易審查、重複執行，或接進自動化流程。</p>
 <p>它把常見需求拆成幾個面向：</p>
-<ul><li><strong>盤點與觀察</strong>：用 <code>status</code>、<code>overview</code> 先看目前狀態</li><li><strong>資產操作</strong>：用 <code>dashboard</code>、<code>datasource</code>、<code>alert</code>、<code>access</code> 管理不同類型的 Grafana 資產</li><li><strong>變更審查</strong>：用 <code>change</code> 先看摘要、preflight 與 plan，再決定要不要套用</li><li><strong>連線與憑證</strong>：用 <code>profile</code> 把 URL、驗證方式與 secret 來源整理起來</li></ul>
+<ul><li><strong>盤點與觀察</strong>：用 <code>status</code>、<code>overview</code> 先看目前狀態</li><li><strong>資產操作</strong>：用 <code>dashboard</code>、<code>datasource</code>、<code>alert</code>、<code>access</code> 管理不同類型的 Grafana 資產</li><li><strong>變更審查</strong>：用 <code>change</code> 走 <code>inspect</code>、<code>check</code>、<code>preview</code>、<code>apply</code> 這條 task-first 路徑</li><li><strong>連線與憑證</strong>：用 <code>profile</code> 把 URL、驗證方式與 secret 來源整理起來</li></ul>
 <p>重點不是記住每個 command，而是先知道自己在做哪一種工作。</p>
 <h2 id="放到工具脈絡裡看">放到工具脈絡裡看</h2>
 <p>如果你也知道 <code>grafanactl</code> 或 <code>grizzly</code>，比較適合把差異理解成設計取向，而不是輸贏比較：</p>
@@ -788,7 +788,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="主要目標">主要目標</h2>
 <ul><li>先讓你一眼看懂這工具在解什麼問題</li><li>幫你判斷它適不適合你的 Grafana 維運工作</li><li>讓你知道應該從哪個 chapter 或 command 面向開始</li></ul>
 <h2 id="功能總覽表">功能總覽表</h2>
-<table><thead><tr><th>功能面向</th><th>主要 command</th><th>你會用它來做什麼</th></tr></thead><tbody><tr><td>環境狀態檢查</td><td><code>status</code></td><td>看 live 或 staged 狀態是否健康、是否適合往下做</td></tr><tr><td>全域總覽</td><td><code>overview</code></td><td>快速盤點整體 Grafana 環境、先決定下一步要往哪裡鑽</td></tr><tr><td>Dashboard 維運</td><td><code>dashboard</code></td><td>匯出、匯入、diff、inspect、截圖、拓樸分析</td></tr><tr><td>Data source 維運</td><td><code>datasource</code></td><td>data source 盤點、匯出、匯入、diff、修改與恢復</td></tr><tr><td>告警治理</td><td><code>alert</code></td><td>告警規則、通知路由、contact point、plan / apply</td></tr><tr><td>身分與存取</td><td><code>access</code></td><td>org、user、team、service account 與 token 管理</td></tr><tr><td>變更審查</td><td><code>change</code></td><td>先看 summary、preflight、plan、review，再決定要不要套用</td></tr><tr><td>連線與憑證設定</td><td><code>profile</code></td><td>把 URL、驗證方式與 secret 來源整理成可重複使用的設定</td></tr></tbody></table>
+<table><thead><tr><th>功能面向</th><th>主要 command</th><th>你會用它來做什麼</th></tr></thead><tbody><tr><td>環境狀態檢查</td><td><code>status</code></td><td>看 live 或 staged 狀態是否健康、是否適合往下做</td></tr><tr><td>全域總覽</td><td><code>overview</code></td><td>快速盤點整體 Grafana 環境、先決定下一步要往哪裡鑽</td></tr><tr><td>Dashboard 維運</td><td><code>dashboard</code></td><td>匯出、匯入、diff、inspect、截圖、拓樸分析</td></tr><tr><td>Data source 維運</td><td><code>datasource</code></td><td>data source 盤點、匯出、匯入、diff、修改與恢復</td></tr><tr><td>告警治理</td><td><code>alert</code></td><td>告警規則、通知路由、contact point、plan / apply</td></tr><tr><td>身分與存取</td><td><code>access</code></td><td>org、user、team、service account 與 token 管理</td></tr><tr><td>變更審查</td><td><code>change</code></td><td>先 inspect、check、preview，再決定要不要 apply</td></tr><tr><td>連線與憑證設定</td><td><code>profile</code></td><td>把 URL、驗證方式與 secret 來源整理成可重複使用的設定</td></tr></tbody></table>
 <p>如果你只想知道「現在該從哪裡開始」，可以先用這個表判斷自己遇到的是哪一類問題，再往對應章節走。</p>
 <h2 id="這個工具特別適合哪些情境">這個工具特別適合哪些情境</h2>
 <h3 id="1-日常維運與巡檢">1. 日常維運與巡檢</h3>
@@ -801,7 +801,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h3 id="3-變更前先做審查">3. 變更前先做審查</h3>
 <p>你不想直接套用變更，而是先回答：</p>
 <ul><li>這次到底會改到哪些東西？</li><li>staged 輸入是不是完整？</li><li>權限、secret、路由、依賴是否合理？</li></ul>
-<p>這時 <code>change summary</code>、<code>change preflight</code>、<code>alert plan</code> 這些流程就很重要。</p>
+<p>這時 <code>change inspect</code>、<code>change check</code>、<code>change preview</code>、<code>alert plan</code> 這些流程就很重要。</p>
 <h3 id="4-自動化與-cicd">4. 自動化與 CI/CD</h3>
 <p>你想把 Grafana 維運流程接進腳本、pipeline 或例行工作，而不是只靠人手動操作。</p>
 <p>這時重點通常是：</p>

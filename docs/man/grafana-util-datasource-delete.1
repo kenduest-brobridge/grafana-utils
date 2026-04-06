@@ -8,6 +8,11 @@ grafana\-util\-datasource\-delete \- Delete one live Grafana datasource through 
 Delete one live Grafana datasource through the Grafana API.
 .PP
 Use this when a datasource should be removed by UID or by name, either as a dry run or as an acknowledged live delete.
+.SH BEFORE / AFTER
+.IP \(bu 2
+Before: deleting a datasource often depended on remembering the exact row in the UI or typing a name from memory.
+.IP \(bu 2
+After: one command can target a UID or name, show a dry run, and make the final live delete explicit.
 .SH COMMON OPTIONS
 .TP
 .B \-\-uid
@@ -21,6 +26,20 @@ acknowledge the live delete.
 .TP
 .B \-\-dry\-run, \-\-table, \-\-json, \-\-output\-format, \-\-no\-header
 preview output controls.
+.SH SUCCESS CRITERIA
+.IP \(bu 2
+the target datasource is obvious before any live deletion
+.IP \(bu 2
+\-\-dry\-run makes the action reviewable
+.IP \(bu 2
+\-\-yes is only used when the operator intentionally wants the live delete
+.SH FAILURE CHECKS
+.IP \(bu 2
+if the command points at the wrong datasource, verify the UID or name before retrying
+.IP \(bu 2
+if the dry\-run is empty, check whether the org scope actually exposes the target datasource
+.IP \(bu 2
+if the live delete is rejected, confirm whether the account has delete permission for that org
 .SH EXAMPLES
 .PP
 Delete one live Grafana datasource through the Grafana API.

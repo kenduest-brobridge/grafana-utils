@@ -5,6 +5,7 @@ use super::{
     make_common_args, DiffArgs, FolderInventoryStatusKind, InspectExportArgs,
     EXPORT_METADATA_FILENAME, TOOL_SCHEMA_VERSION,
 };
+use crate::common::DiffOutputFormat;
 use serde_json::json;
 use std::fs;
 use std::path::PathBuf;
@@ -13,7 +14,7 @@ use tempfile::tempdir;
 #[test]
 fn validate_inspect_export_report_args_rejects_panel_filter_without_report() {
     let args = InspectExportArgs {
-        import_dir: PathBuf::from("./dashboards/raw"),
+        input_dir: PathBuf::from("./dashboards/raw"),
         input_type: None,
         input_format: test_support::DashboardImportInputFormat::Raw,
         text: false,
@@ -21,7 +22,6 @@ fn validate_inspect_export_report_args_rejects_panel_filter_without_report() {
         json: false,
         table: false,
         yaml: false,
-        report: None,
         output_format: None,
         report_columns: Vec::new(),
         report_filter_datasource: None,
@@ -36,7 +36,7 @@ fn validate_inspect_export_report_args_rejects_panel_filter_without_report() {
     let error = test_support::validate_inspect_export_report_args(&args).unwrap_err();
     assert!(error
         .to_string()
-        .contains("--report-filter-panel-id is only supported together with --report or report-like --output-format"));
+        .contains("--report-filter-panel-id is only supported together with table, csv, tree-table, dependency, dependency-json, governance, governance-json, or queries-json output."));
 }
 
 #[test]
@@ -121,10 +121,11 @@ fn diff_dashboards_with_client_returns_zero_for_matching_dashboard() {
     .unwrap();
     let args = DiffArgs {
         common: make_common_args("http://127.0.0.1:3000".to_string()),
-        import_dir: raw_dir,
+        input_dir: raw_dir,
         input_format: test_support::DashboardImportInputFormat::Raw,
         import_folder_uid: Some("old-folder".to_string()),
         context_lines: 3,
+        output_format: DiffOutputFormat::Text,
     };
 
     let count = test_support::diff_dashboards_with_request(
@@ -170,10 +171,11 @@ fn diff_dashboards_with_client_detects_dashboard_difference() {
     .unwrap();
     let args = DiffArgs {
         common: make_common_args("http://127.0.0.1:3000".to_string()),
-        import_dir: raw_dir,
+        input_dir: raw_dir,
         input_format: test_support::DashboardImportInputFormat::Raw,
         import_folder_uid: None,
         context_lines: 3,
+        output_format: DiffOutputFormat::Text,
     };
 
     let count = test_support::diff_dashboards_with_request(

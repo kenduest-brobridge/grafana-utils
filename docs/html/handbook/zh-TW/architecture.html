@@ -779,9 +779,9 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <p><code>grafana-util</code> 把維運工作拆成三種獨立的操作面，避免把「給人看的資訊」和「給程式判斷的資料」混在一起。</p>
 <table><thead><tr><th>介面類型</th><th>核心用途</th><th>主要受眾</th><th>輸出格式</th></tr></thead><tbody><tr><td><strong>Status</strong></td><td><strong>整備度與技術合約</strong></td><td>CI/CD 管線、自動化腳本</td><td>JSON, Table</td></tr><tr><td><strong>Overview</strong></td><td><strong>全域觀測性</strong></td><td>SRE 工程師、維運主管</td><td>互動式 TUI, 摘要報告</td></tr><tr><td><strong>Change</strong></td><td><strong>變更意向與生命週期</strong></td><td>PR 審查、稽核紀錄</td><td>JSON 計畫書, Diff</td></tr></tbody></table>
 <h3 id="什麼時候該選哪一個操作面">什麼時候該選哪一個操作面</h3>
-<ul><li>需要 gate、結構化輸出，或明確 pass/fail 判斷時，用 <code>status</code></li><li>需要從人的角度先看整個 estate、決定接下來往哪裡鑽時，用 <code>overview</code></li><li>已經知道有變更意圖，要做 summary、preflight、plan、review、apply 時，用 <code>change</code></li></ul>
+<ul><li>需要 gate、結構化輸出，或明確 pass/fail 判斷時，用 <code>status</code></li><li>需要從人的角度先看整個 estate、決定接下來往哪裡鑽時，用 <code>overview</code></li><li>已經知道有變更意圖，要做 inspect、check、preview、apply 時，用 <code>change</code></li></ul>
 <p>常見判斷：</p>
-<ul><li>「我現在能不能放心往下做？」 -&gt; <code>status live</code></li><li>「整個 Grafana 環境現在長什麼樣？」 -&gt; <code>overview live</code></li><li>「我的 staged 套件結構和檢查結果是否合理？」 -&gt; <code>status staged</code> + <code>change preflight</code></li><li>「到底會改到什麼？」 -&gt; <code>change summary</code>、<code>change plan</code>、<code>change review</code></li></ul>
+<ul><li>「我現在能不能放心往下做？」 -&gt; <code>status live</code></li><li>「整個 Grafana 環境現在長什麼樣？」 -&gt; <code>overview live</code></li><li>「我的 staged 套件結構和檢查結果是否合理？」 -&gt; <code>status staged</code> + <code>change check</code></li><li>「到底會改到什麼？」 -&gt; <code>change inspect</code>、<code>change preview</code>、<code>change apply</code></li></ul>
 <h3 id="為什麼這個切分很重要">為什麼這個切分很重要</h3>
 <p>如果這三個操作面在團隊心中混成一團，最常發生的是：</p>
 <ul><li>拿給人看的摘要去當成 CI gate</li><li>把 live 讀取結果當成 staged 套件也正確的依據</li><li>因為目前 live 狀態看起來沒問題，就直接跳過 preflight / review</li></ul>

@@ -2,11 +2,12 @@
 
 ## Purpose
 
-List, create, modify, export, import, diff, or delete Grafana organizations.
+List live or local Grafana organizations, create, modify, export, import, diff, or delete Grafana organizations.
 
 ## When to use
 
 - Inspect organization inventory and org users.
+- Inspect organizations from a live Grafana server or from a local export bundle.
 - Create a new organization or rename an existing one.
 - Export or import org bundles between environments.
 - Remove an organization by id or exact name.
@@ -30,11 +31,11 @@ List, create, modify, export, import, diff, or delete Grafana organizations.
 
 ## Key flags
 
-- `list`: `--org-id`, `--name`, `--query`, `--with-users`, `--table`, `--csv`, `--json`, `--yaml`, `--output-format`
+- `list`: `--input-dir`, `--org-id`, `--name`, `--query`, `--with-users`, `--table`, `--csv`, `--json`, `--yaml`, `--output-format`
 - `add`: `--name`, `--json`
 - `modify`: `--org-id`, `--name`, `--set-name`, `--json`
-- `export` and `diff`: `--org-id`, `--name`, `--export-dir` or `--diff-dir`, `--overwrite`, `--dry-run`, `--with-users`
-- `import`: `--import-dir`, `--replace-existing`, `--dry-run`, `--yes`
+- `export` and `diff`: `--org-id`, `--name`, `--output-dir` or `--diff-dir`, `--overwrite`, `--dry-run`, `--with-users`
+- `import`: `--input-dir`, `--replace-existing`, `--dry-run`, `--yes`
 - `delete`: `--org-id`, `--name`, `--yes`, `--json`
 
 ## Notes
@@ -47,6 +48,11 @@ List, create, modify, export, import, diff, or delete Grafana organizations.
 ```bash
 # Purpose: Inspect org inventory before a rename or migration.
 grafana-util access org list --profile prod --output-format text
+```
+
+```bash
+# Purpose: Review a saved org bundle before replaying it.
+grafana-util access org list --input-dir ./access-orgs --output-format table
 ```
 
 ```bash

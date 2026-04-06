@@ -6,8 +6,7 @@ use std::collections::BTreeSet;
 use std::path::Path;
 
 use crate::common::{
-    message, render_json_value, should_print_stdout, string_field, value_as_object,
-    write_plain_output_file, Result,
+    emit_plain_output, message, render_json_value, string_field, value_as_object, Result,
 };
 
 use super::{
@@ -271,13 +270,13 @@ fn validate_dashboard_document(
 }
 
 pub(crate) fn validate_dashboard_export_dir(
-    import_dir: &Path,
+    input_dir: &Path,
     reject_custom_plugins: bool,
     reject_legacy_properties: bool,
     target_schema_version: Option<i64>,
 ) -> Result<DashboardValidationResult> {
     let mut issues = Vec::new();
-    let files = discover_dashboard_files(import_dir)?;
+    let files = discover_dashboard_files(input_dir)?;
     for dashboard_file in &files {
         let document = load_json_file(dashboard_file)?;
         issues.extend(validate_dashboard_document(
@@ -363,15 +362,15 @@ pub(crate) fn render_validation_result_json(result: &DashboardValidationResult) 
 
 pub(crate) fn run_dashboard_validate_export(args: &ValidateExportArgs) -> Result<()> {
     let temp_dir = super::inspect::TempInspectDir::new("validate-export")?;
-    let import_dir = super::inspect::resolve_inspect_export_import_dir(
+    let input_dir = super::inspect::resolve_inspect_export_import_dir(
         &temp_dir.path,
-        &args.import_dir,
+        &args.input_dir,
         args.input_format,
         None,
         false,
     )?;
     let result = validate_dashboard_export_dir(
-        &import_dir.import_dir,
+        &input_dir.input_dir,
         args.reject_custom_plugins,
         args.reject_legacy_properties,
         args.target_schema_version,
@@ -382,12 +381,7 @@ pub(crate) fn run_dashboard_validate_export(args: &ValidateExportArgs) -> Result
         }
         super::ValidationOutputFormat::Json => render_validation_result_json(&result)?,
     };
-    if let Some(path) = args.output_file.as_ref() {
-        write_plain_output_file(path, &output)?;
-    }
-    if should_print_stdout(args.output_file.as_deref(), args.also_stdout) {
-        print!("{output}");
-    }
+    emit_plain_output(&output, args.output_file.as_deref(), args.also_stdout)?;
     if result.error_count > 0 {
         return Err(message(format!(
             "Dashboard validation found {} blocking issue(s).",
@@ -401,6 +395,7 @@ pub(crate) fn run_dashboard_validate_export(args: &ValidateExportArgs) -> Result
 #[allow(clippy::items_after_test_module)]
 mod tests {
     use super::*;
+    use crate::common::{set_json_color_choice, CliColorChoice};
     use crate::dashboard::{DashboardImportInputFormat, ValidationOutputFormat};
     use serde_json::json;
     use std::fs;
@@ -434,7 +429,7 @@ mod tests {
         let output_file = temp.path().join("validation.json");
 
         run_dashboard_validate_export(&ValidateExportArgs {
-            import_dir: provisioning_root,
+            input_dir: provisioning_root,
             input_format: DashboardImportInputFormat::Provisioning,
             reject_custom_plugins: true,
             reject_legacy_properties: true,
@@ -464,7 +459,7 @@ mod tests {
         let output_file = temp.path().join("validation.json");
 
         run_dashboard_validate_export(&ValidateExportArgs {
-            import_dir: dashboards_dir,
+            input_dir: dashboards_dir,
             input_format: DashboardImportInputFormat::Provisioning,
             reject_custom_plugins: false,
             reject_legacy_properties: false,
@@ -480,6 +475,70 @@ mod tests {
             report.contains("\"dashboardUid\": \"ops-main\"") || report.contains("\"issues\": []")
         );
         assert!(report.contains("\"dashboardCount\": 1"));
+    }
+
+    #[test]
+    fn run_dashboard_validate_export_supports_also_stdout_with_output_file() {
+        let temp = tempdir().unwrap();
+        let provisioning_root = temp.path().join("provisioning");
+        let dashboards_dir = provisioning_root.join("dashboards/team");
+        fs::create_dir_all(&dashboards_dir).unwrap();
+        write_valid_dashboard(
+            &dashboards_dir.join("cpu-main.json"),
+            "cpu-main",
+            "CPU Main",
+        );
+        let output_file = temp.path().join("validation.json");
+
+        run_dashboard_validate_export(&ValidateExportArgs {
+            input_dir: provisioning_root,
+            input_format: DashboardImportInputFormat::Provisioning,
+            reject_custom_plugins: true,
+            reject_legacy_properties: true,
+            target_schema_version: Some(39),
+            output_format: ValidationOutputFormat::Json,
+            output_file: Some(output_file.clone()),
+            also_stdout: true,
+        })
+        .unwrap();
+
+        let report = fs::read_to_string(output_file).unwrap();
+        assert!(report.contains("\"dashboardCount\": 1"));
+        assert!(report.contains("\"errorCount\": 0"));
+    }
+
+    #[test]
+    fn run_dashboard_validate_export_keeps_output_file_plain_even_with_color_enabled() {
+        let temp = tempdir().unwrap();
+        let provisioning_root = temp.path().join("provisioning");
+        let dashboards_dir = provisioning_root.join("dashboards");
+        fs::create_dir_all(&dashboards_dir).unwrap();
+        write_valid_dashboard(
+            &dashboards_dir.join("ops-main.json"),
+            "ops-main",
+            "Ops Main",
+        );
+        let output_file = temp.path().join("validation.json");
+        set_json_color_choice(CliColorChoice::Always);
+
+        let result = run_dashboard_validate_export(&ValidateExportArgs {
+            input_dir: dashboards_dir,
+            input_format: DashboardImportInputFormat::Provisioning,
+            reject_custom_plugins: false,
+            reject_legacy_properties: false,
+            target_schema_version: None,
+            output_format: ValidationOutputFormat::Json,
+            output_file: Some(output_file.clone()),
+            also_stdout: false,
+        });
+
+        set_json_color_choice(CliColorChoice::Auto);
+        result.unwrap();
+
+        let report = fs::read_to_string(output_file).unwrap();
+        assert!(!report.contains('\u{1b}'));
+        let parsed: Value = serde_json::from_str(&report).unwrap();
+        assert_eq!(parsed["summary"]["dashboardCount"], json!(1));
     }
 }
 

@@ -12,9 +12,7 @@ use serde_json::{Map, Value};
 use std::path::Path;
 
 use crate::common::{message, render_json_value, Result};
-use crate::dashboard::{
-    build_http_client, build_http_client_for_org, list_datasources, DEFAULT_ORG_ID,
-};
+use crate::dashboard::{build_api_client, build_http_client_for_org_from_api, DEFAULT_ORG_ID};
 use crate::datasource::{
     render_import_table, resolve_match, DatasourceImportArgs, DatasourceImportInputFormat,
 };
@@ -23,6 +21,7 @@ use crate::datasource_secret::{
     inline_secret_provider_contract, resolve_secret_placeholders,
     summarize_secret_placeholder_plan, summarize_secret_provider_contract,
 };
+use crate::grafana_api::DatasourceResourceClient;
 use crate::http::JsonHttpClient;
 
 #[path = "datasource_export_support.rs"]
@@ -58,10 +57,10 @@ pub(crate) use datasource_import_export_support::{
 };
 
 fn build_import_secret_visibility_entries(
-    import_dir: &Path,
+    input_dir: &Path,
     input_format: DatasourceImportInputFormat,
 ) -> Vec<Value> {
-    let Ok((_, records)) = load_import_records(import_dir, input_format) else {
+    let Ok((_, records)) = load_import_records(input_dir, input_format) else {
         return Vec::new();
     };
     let mut entries = Vec::new();
@@ -202,9 +201,9 @@ pub(crate) fn collect_datasource_import_dry_run_report(
     args: &DatasourceImportArgs,
 ) -> Result<DatasourceImportDryRunReport> {
     let replace_existing = args.replace_existing || args.update_existing_only;
-    let (metadata, records) = load_import_records(&args.import_dir, args.input_format)?;
+    let (metadata, records) = load_import_records(&args.input_dir, args.input_format)?;
     validate_matching_export_org(client, args, &records)?;
-    let live = list_datasources(client)?;
+    let live = DatasourceResourceClient::new(client).list_datasources()?;
     let target_org = fetch_current_org(client)?;
     let target_org_id = target_org
         .get("id")
@@ -237,7 +236,7 @@ pub(crate) fn collect_datasource_import_dry_run_report(
     }
     Ok(DatasourceImportDryRunReport {
         mode: mode.to_string(),
-        import_dir: args.import_dir.clone(),
+        input_dir: args.input_dir.clone(),
         input_format: args.input_format,
         source_org_id: records
             .iter()
@@ -258,7 +257,7 @@ pub(crate) fn build_datasource_import_dry_run_json_value(
     report: &DatasourceImportDryRunReport,
 ) -> Value {
     let secret_visibility =
-        build_import_secret_visibility_entries(&report.import_dir, report.input_format);
+        build_import_secret_visibility_entries(&report.input_dir, report.input_format);
     Value::Object(Map::from_iter(vec![
         ("mode".to_string(), Value::String(report.mode.clone())),
         (
@@ -349,10 +348,10 @@ pub(crate) fn print_datasource_import_dry_run_report(
         println!(
             "Dry-run checked {} datasource(s) from {}",
             report.datasource_count,
-            report.import_dir.display()
+            report.input_dir.display()
         );
         let secret_visibility =
-            build_import_secret_visibility_entries(&report.import_dir, report.input_format);
+            build_import_secret_visibility_entries(&report.input_dir, report.input_format);
         if !secret_visibility.is_empty() {
             println!(
                 "Secret placeholder visibility: {}",
@@ -370,10 +369,10 @@ pub(crate) fn print_datasource_import_dry_run_report(
         println!(
             "Dry-run checked {} datasource(s) from {}",
             report.datasource_count,
-            report.import_dir.display()
+            report.input_dir.display()
         );
         let secret_visibility =
-            build_import_secret_visibility_entries(&report.import_dir, report.input_format);
+            build_import_secret_visibility_entries(&report.input_dir, report.input_format);
         if !secret_visibility.is_empty() {
             println!(
                 "Secret placeholder visibility: {}",
@@ -492,10 +491,10 @@ pub(crate) fn import_datasources_with_client(
         return Ok(0);
     }
     let replace_existing = args.replace_existing || args.update_existing_only;
-    let (_metadata, records) = load_import_records(&args.import_dir, args.input_format)?;
+    let (_metadata, records) = load_import_records(&args.input_dir, args.input_format)?;
     let secret_values = parse_secret_values_argument(args.secret_values.as_deref())?;
     validate_matching_export_org(client, args, &records)?;
-    let live = list_datasources(client)?;
+    let live = DatasourceResourceClient::new(client).list_datasources()?;
     // Build the full request set first so match errors or missing secrets do not
     // leave the destination half-mutated.
     let plan = prepare_datasource_import_plan(
@@ -516,7 +515,7 @@ pub(crate) fn import_datasources_with_client(
     println!(
         "Imported {} datasource(s) from {}; updated {}, skipped {}, blocked {}",
         plan.would_create + plan.would_update,
-        args.import_dir.display(),
+        args.input_dir.display(),
         plan.would_update,
         plan.would_skip,
         0usize
@@ -525,7 +524,8 @@ pub(crate) fn import_datasources_with_client(
 }
 
 pub(crate) fn import_datasources_by_export_org(args: &DatasourceImportArgs) -> Result<usize> {
-    let admin_client = build_http_client(&args.common)?;
+    let admin_api = build_api_client(&args.common)?;
+    let admin_client = admin_api.http_client();
     let scopes = discover_export_org_import_scopes(args)?;
     if args.dry_run && args.json {
         println!("{}", build_routed_datasource_import_dry_run_json(args)?);
@@ -535,7 +535,7 @@ pub(crate) fn import_datasources_by_export_org(args: &DatasourceImportArgs) -> R
     let mut plans = Vec::new();
     for scope in scopes {
         let plan = resolve_export_org_target_plan(&admin_client, args, &scope)?;
-        let datasource_count = load_import_records(&plan.import_dir, args.input_format)?
+        let datasource_count = load_import_records(&plan.input_dir, args.input_format)?
             .1
             .len();
         org_rows.push(vec![
@@ -548,7 +548,7 @@ pub(crate) fn import_datasources_by_export_org(args: &DatasourceImportArgs) -> R
             plan.org_action.to_string(),
             format_routed_datasource_target_org_label(plan.target_org_id),
             datasource_count.to_string(),
-            plan.import_dir.display().to_string(),
+            plan.input_dir.display().to_string(),
         ]);
         plans.push(plan);
     }
@@ -560,7 +560,7 @@ pub(crate) fn import_datasources_by_export_org(args: &DatasourceImportArgs) -> R
     }
     let mut imported_count = 0usize;
     for plan in plans {
-        // Each routed import gets its own org-scoped client and import_dir so
+        // Each routed import gets its own org-scoped client and input_dir so
         // downstream matching/validation sees the same shape as a direct import.
         println!(
             "Importing {}",
@@ -569,7 +569,7 @@ pub(crate) fn import_datasources_by_export_org(args: &DatasourceImportArgs) -> R
                 &plan.source_org_name,
                 plan.org_action,
                 plan.target_org_id,
-                &plan.import_dir,
+                &plan.input_dir,
             )
         );
         let Some(target_org_id) = plan.target_org_id else {
@@ -580,8 +580,8 @@ pub(crate) fn import_datasources_by_export_org(args: &DatasourceImportArgs) -> R
         scoped_args.use_export_org = false;
         scoped_args.only_org_id = Vec::new();
         scoped_args.create_missing_orgs = false;
-        scoped_args.import_dir = plan.import_dir.clone();
-        let scoped_client = build_http_client_for_org(&args.common, target_org_id)?;
+        scoped_args.input_dir = plan.input_dir.clone();
+        let scoped_client = build_http_client_for_org_from_api(&admin_api, target_org_id)?;
         imported_count +=
             import_datasources_with_client(&scoped_client, &scoped_args).map_err(|error| {
                 message(format!(
@@ -591,7 +591,7 @@ pub(crate) fn import_datasources_by_export_org(args: &DatasourceImportArgs) -> R
                         &plan.source_org_name,
                         plan.org_action,
                         plan.target_org_id,
-                        &plan.import_dir,
+                        &plan.input_dir,
                     ),
                     error
                 ))
@@ -633,9 +633,9 @@ mod tests {
         }
     }
 
-    fn write_import_fixture(import_dir: &Path) {
+    fn write_import_fixture(input_dir: &Path) {
         fs::write(
-            import_dir.join(EXPORT_METADATA_FILENAME),
+            input_dir.join(EXPORT_METADATA_FILENAME),
             format!(
                 "{{\n  \"schemaVersion\": {},\n  \"kind\": \"{}\",\n  \"variant\": \"root\",\n  \"resource\": \"datasource\",\n  \"datasourceCount\": 2,\n  \"datasourcesFile\": \"{}\",\n  \"indexFile\": \"index.json\",\n  \"format\": \"grafana-datasource-inventory-v1\"\n}}\n",
                 1,
@@ -645,7 +645,7 @@ mod tests {
         )
         .unwrap();
         fs::write(
-            import_dir.join(DATASOURCE_EXPORT_FILENAME),
+            input_dir.join(DATASOURCE_EXPORT_FILENAME),
             r#"[
   {
     "uid": "prom-main",
@@ -773,7 +773,7 @@ mod tests {
         .unwrap();
         let args = DatasourceImportArgs {
             common: build_test_common_args("http://unused".to_string()),
-            import_dir: temp.path().to_path_buf(),
+            input_dir: temp.path().to_path_buf(),
             input_format: DatasourceImportInputFormat::Inventory,
             org_id: None,
             use_export_org: false,
@@ -917,7 +917,7 @@ mod tests {
         .unwrap();
         let args = DatasourceImportArgs {
             common: build_test_common_args("http://unused".to_string()),
-            import_dir: temp.path().to_path_buf(),
+            input_dir: temp.path().to_path_buf(),
             input_format: DatasourceImportInputFormat::Inventory,
             org_id: None,
             use_export_org: false,

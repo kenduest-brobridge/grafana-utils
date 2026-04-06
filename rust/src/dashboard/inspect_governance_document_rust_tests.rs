@@ -45,7 +45,7 @@ fn build_export_inspection_governance_document_groups_core_family_dependency_row
             })
             .collect::<Vec<test_support::ExportInspectionQueryRow>>();
         let summary = test_support::ExportInspectionSummary {
-            import_dir: "/tmp/raw".to_string(),
+            input_dir: "/tmp/raw".to_string(),
             export_org: None,
             export_org_id: None,
             dashboard_count: 1,
@@ -62,7 +62,7 @@ fn build_export_inspection_governance_document_groups_core_family_dependency_row
             mixed_dashboards: Vec::new(),
         };
         let report = test_support::ExportInspectionQueryReport {
-            import_dir: "/tmp/raw".to_string(),
+            input_dir: "/tmp/raw".to_string(),
             summary: test_support::QueryReportSummary {
                 dashboard_count: 1,
                 panel_count: datasource_types.len(),
@@ -139,7 +139,7 @@ fn build_export_inspection_governance_document_groups_core_family_dependency_row
 #[test]
 fn build_export_inspection_governance_document_rolls_up_dashboard_dependency_analysis() {
     let summary = test_support::ExportInspectionSummary {
-        import_dir: "/tmp/raw".to_string(),
+        input_dir: "/tmp/raw".to_string(),
         export_org: Some("Main Org.".to_string()),
         export_org_id: Some("1".to_string()),
         dashboard_count: 1,
@@ -204,7 +204,7 @@ fn build_export_inspection_governance_document_rolls_up_dashboard_dependency_ana
     query_b.buckets = vec!["1h".to_string(), "5m".to_string()];
 
     let report = test_support::ExportInspectionQueryReport {
-        import_dir: "/tmp/raw".to_string(),
+        input_dir: "/tmp/raw".to_string(),
         summary: test_support::QueryReportSummary {
             dashboard_count: 1,
             panel_count: 2,
@@ -245,7 +245,7 @@ fn build_export_inspection_governance_document_rolls_up_dashboard_dependency_ana
 #[test]
 fn build_export_inspection_governance_document_surfaces_datasource_blast_radius_dashboards() {
     let summary = test_support::ExportInspectionSummary {
-        import_dir: "/tmp/raw".to_string(),
+        input_dir: "/tmp/raw".to_string(),
         export_org: Some("Main Org.".to_string()),
         export_org_id: Some("1".to_string()),
         dashboard_count: 1,
@@ -297,7 +297,7 @@ fn build_export_inspection_governance_document_surfaces_datasource_blast_radius_
     query_b.query_field = "expr".to_string();
 
     let report = test_support::ExportInspectionQueryReport {
-        import_dir: "/tmp/raw".to_string(),
+        input_dir: "/tmp/raw".to_string(),
         summary: test_support::QueryReportSummary {
             dashboard_count: 1,
             panel_count: 2,
@@ -353,7 +353,7 @@ fn build_export_inspection_governance_document_surfaces_datasource_blast_radius_
 #[test]
 fn render_governance_table_report_displays_sections() {
     let summary = test_support::ExportInspectionSummary {
-        import_dir: "/tmp/raw".to_string(),
+        input_dir: "/tmp/raw".to_string(),
         export_org: None,
         export_org_id: None,
         dashboard_count: 2,
@@ -477,7 +477,7 @@ fn render_governance_table_report_displays_sections() {
     prom_ops.buckets = vec!["5m".to_string()];
 
     let report = test_support::ExportInspectionQueryReport {
-        import_dir: "/tmp/raw".to_string(),
+        input_dir: "/tmp/raw".to_string(),
         summary: test_support::QueryReportSummary {
             dashboard_count: 2,
             panel_count: 3,
@@ -541,7 +541,7 @@ fn render_governance_table_report_displays_sections() {
 #[test]
 fn build_export_inspection_governance_document_adds_dashboard_datasource_edges() {
     let summary = test_support::ExportInspectionSummary {
-        import_dir: "/tmp/raw".to_string(),
+        input_dir: "/tmp/raw".to_string(),
         export_org: Some("Main Org.".to_string()),
         export_org_id: Some("1".to_string()),
         dashboard_count: 2,
@@ -642,7 +642,7 @@ fn build_export_inspection_governance_document_adds_dashboard_datasource_edges()
     prom_ops.buckets = vec!["5m".to_string()];
 
     let report = test_support::ExportInspectionQueryReport {
-        import_dir: "/tmp/raw".to_string(),
+        input_dir: "/tmp/raw".to_string(),
         summary: test_support::QueryReportSummary {
             dashboard_count: 2,
             panel_count: 3,

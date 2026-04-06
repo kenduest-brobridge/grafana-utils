@@ -783,14 +783,14 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="when-to-use">When to use</h2>
 <p>Use this when you want to see what would change before importing or publishing a dashboard bundle.</p>
 <h2 id="key-flags">Key flags</h2>
-<ul><li><code>--import-dir</code>: compare this export directory against Grafana.</li><li><code>--input-format</code>: choose <code>raw</code> or <code>provisioning</code>.</li><li><code>--import-folder-uid</code>: override the destination folder UID for the comparison.</li><li><code>--context-lines</code>: unified diff context.</li></ul>
+<ul><li><code>--input-dir</code>: compare this export directory against Grafana.</li><li><code>--input-format</code>: choose <code>raw</code> or <code>provisioning</code>.</li><li><code>--import-folder-uid</code>: override the destination folder UID for the comparison.</li><li><code>--context-lines</code>: unified diff context.</li></ul>
 <h2 id="examples">Examples</h2>
 <pre><code># Purpose: Compare local dashboard files against live Grafana dashboards.
-grafana-util dashboard diff --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./dashboards/raw</code></pre>
+grafana-util dashboard diff --url http://localhost:3000 --basic-user admin --basic-password admin --input-dir ./dashboards/raw</code></pre>
 <pre><code># Purpose: Compare local dashboard files against live Grafana dashboards.
-grafana-util dashboard diff --url http://localhost:3000 --basic-user admin --basic-password admin --org-id 2 --import-dir ./dashboards/raw --json</code></pre>
+grafana-util dashboard diff --url http://localhost:3000 --basic-user admin --basic-password admin --org-id 2 --input-dir ./dashboards/raw --json</code></pre>
 <h2 id="related-commands">Related commands</h2>
-<ul><li><a href="dashboard-export.html">dashboard export</a></li><li><a href="dashboard-import.html">dashboard import</a></li><li><a href="dashboard-inspect-export.html">dashboard inspect-export</a></li></ul>
+<ul><li><a href="dashboard-export.html">dashboard export</a></li><li><a href="dashboard-import.html">dashboard import</a></li><li><a href="dashboard-analyze-export.html">dashboard analyze (local)</a></li></ul>
     
   </article>
   <aside class="sidebar">

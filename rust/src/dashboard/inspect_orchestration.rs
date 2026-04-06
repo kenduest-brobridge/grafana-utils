@@ -19,13 +19,16 @@ use super::super::cli_defs::{
 use super::super::files::{
     load_export_metadata, resolve_dashboard_export_root, resolve_dashboard_import_source,
 };
+#[cfg(feature = "tui")]
 use super::super::inspect_governance::build_export_inspection_governance_document;
 use super::super::inspect_live::{prepare_inspect_export_import_dir_for_variant, TempInspectDir};
 use super::super::inspect_report::{
     refresh_filtered_query_report_summary, report_format_supports_columns,
     resolve_report_column_ids_for_format, ExportInspectionQueryReport,
 };
+#[cfg(feature = "tui")]
 use super::super::inspect_workbench::run_inspect_workbench;
+#[cfg(feature = "tui")]
 use super::super::inspect_workbench_support::build_inspect_workbench_document;
 use super::super::{PROMPT_EXPORT_SUBDIR, RAW_EXPORT_SUBDIR};
 use super::inspect_output::{
@@ -45,7 +48,7 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph, Wrap};
 
 pub(crate) struct ResolvedInspectExportInput {
-    pub(crate) import_dir: PathBuf,
+    pub(crate) input_dir: PathBuf,
     pub(crate) expected_variant: &'static str,
 }
 
@@ -58,25 +61,20 @@ fn map_output_format_to_report(
         | InspectOutputFormat::Csv
         | InspectOutputFormat::Json
         | InspectOutputFormat::Yaml => None,
-        InspectOutputFormat::ReportTable => Some(InspectExportReportFormat::Table),
-        InspectOutputFormat::ReportCsv => Some(InspectExportReportFormat::Csv),
-        InspectOutputFormat::ReportJson => Some(InspectExportReportFormat::Json),
-        InspectOutputFormat::ReportTree => Some(InspectExportReportFormat::Tree),
-        InspectOutputFormat::ReportTreeTable => Some(InspectExportReportFormat::TreeTable),
-        InspectOutputFormat::ReportDependency => Some(InspectExportReportFormat::Dependency),
-        InspectOutputFormat::ReportDependencyJson => {
-            Some(InspectExportReportFormat::DependencyJson)
-        }
+        InspectOutputFormat::Tree => Some(InspectExportReportFormat::Tree),
+        InspectOutputFormat::TreeTable => Some(InspectExportReportFormat::TreeTable),
+        InspectOutputFormat::Dependency => Some(InspectExportReportFormat::Dependency),
+        InspectOutputFormat::DependencyJson => Some(InspectExportReportFormat::DependencyJson),
         InspectOutputFormat::Governance => Some(InspectExportReportFormat::Governance),
         InspectOutputFormat::GovernanceJson => Some(InspectExportReportFormat::GovernanceJson),
+        InspectOutputFormat::QueriesJson => Some(InspectExportReportFormat::QueriesJson),
     }
 }
 
 pub(crate) fn effective_inspect_report_format(
     args: &InspectExportArgs,
 ) -> Option<InspectExportReportFormat> {
-    args.report
-        .or_else(|| args.output_format.and_then(map_output_format_to_report))
+    args.output_format.and_then(map_output_format_to_report)
 }
 
 pub(crate) fn effective_inspect_output_format(args: &InspectExportArgs) -> InspectOutputFormat {
@@ -99,22 +97,22 @@ pub(crate) fn effective_inspect_output_format(args: &InspectExportArgs) -> Inspe
 
 pub(crate) fn resolve_inspect_export_import_dir(
     temp_root: &Path,
-    import_dir: &Path,
+    input_dir: &Path,
     input_format: DashboardImportInputFormat,
     input_type: Option<InspectExportInputType>,
     interactive: bool,
 ) -> Result<ResolvedInspectExportInput> {
     match input_format {
         DashboardImportInputFormat::Raw => {
-            resolve_raw_inspect_input(temp_root, import_dir, input_type, interactive)
+            resolve_raw_inspect_input(temp_root, input_dir, input_type, interactive)
         }
         DashboardImportInputFormat::Provisioning => {
             let resolved = resolve_dashboard_import_source(
-                import_dir,
+                input_dir,
                 DashboardImportInputFormat::Provisioning,
             )?;
             Ok(ResolvedInspectExportInput {
-                import_dir: resolved.dashboard_dir,
+                input_dir: resolved.dashboard_dir,
                 expected_variant: RAW_EXPORT_SUBDIR,
             })
         }
@@ -122,14 +120,14 @@ pub(crate) fn resolve_inspect_export_import_dir(
 }
 
 fn discover_org_variant_export_dirs(
-    import_dir: &Path,
+    input_dir: &Path,
     variant_dir_name: &'static str,
 ) -> Result<Vec<PathBuf>> {
     let mut org_variant_dirs = Vec::new();
-    if !import_dir.is_dir() {
+    if !input_dir.is_dir() {
         return Ok(org_variant_dirs);
     }
-    for entry in std::fs::read_dir(import_dir)? {
+    for entry in std::fs::read_dir(input_dir)? {
         let entry = entry?;
         let org_root = entry.path();
         if !org_root.is_dir() {
@@ -150,15 +148,15 @@ fn discover_org_variant_export_dirs(
 
 fn resolve_raw_inspect_input(
     temp_root: &Path,
-    import_dir: &Path,
+    input_dir: &Path,
     input_type: Option<InspectExportInputType>,
     _interactive: bool,
 ) -> Result<ResolvedInspectExportInput> {
-    let import_dir = resolve_dashboard_workspace_import_dir(import_dir)?;
-    let metadata = load_export_metadata(&import_dir, None)?;
-    let raw_dirs = discover_org_variant_export_dirs(&import_dir, RAW_EXPORT_SUBDIR)?;
-    let source_dirs = discover_org_variant_export_dirs(&import_dir, PROMPT_EXPORT_SUBDIR)?;
-    let is_dashboard_root = resolve_dashboard_export_root(&import_dir)?
+    let input_dir = resolve_dashboard_workspace_import_dir(input_dir)?;
+    let metadata = load_export_metadata(&input_dir, None)?;
+    let raw_dirs = discover_org_variant_export_dirs(&input_dir, RAW_EXPORT_SUBDIR)?;
+    let source_dirs = discover_org_variant_export_dirs(&input_dir, PROMPT_EXPORT_SUBDIR)?;
+    let is_dashboard_root = resolve_dashboard_export_root(&input_dir)?
         .map(|resolved| resolved.manifest.scope_kind.is_root())
         .unwrap_or(false);
 
@@ -168,7 +166,7 @@ fn resolve_raw_inspect_input(
             (Some(InspectExportInputType::Source), _, _) => PROMPT_EXPORT_SUBDIR,
             (None, false, true) => RAW_EXPORT_SUBDIR,
             (None, true, false) => PROMPT_EXPORT_SUBDIR,
-            (None, false, false) => match prompt_interactive_input_type(&import_dir)? {
+            (None, false, false) => match prompt_interactive_input_type(&input_dir)? {
                 InspectExportInputType::Raw => RAW_EXPORT_SUBDIR,
                 InspectExportInputType::Source => PROMPT_EXPORT_SUBDIR,
             },
@@ -182,16 +180,16 @@ fn resolve_raw_inspect_input(
         if selected_dirs.is_empty() {
             return Err(message(format!(
                 "Import path {} does not contain any org-scoped {selected_variant}/ dashboard exports.",
-                import_dir.display()
+                input_dir.display()
             )));
         }
         let inspect_variant_dir = prepare_inspect_export_import_dir_for_variant(
             temp_root,
-            &import_dir,
+            &input_dir,
             selected_variant,
         )?;
         return Ok(ResolvedInspectExportInput {
-            import_dir: inspect_variant_dir,
+            input_dir: inspect_variant_dir,
             expected_variant: selected_variant,
         });
     }
@@ -206,7 +204,7 @@ fn resolve_raw_inspect_input(
     };
 
     Ok(ResolvedInspectExportInput {
-        import_dir,
+        input_dir,
         expected_variant,
     })
 }
@@ -235,7 +233,7 @@ fn centered_popup_rect(area: Rect, width: u16, height: u16) -> Rect {
 #[cfg(feature = "tui")]
 fn render_interactive_loading_frame(
     frame: &mut ratatui::Frame<'_>,
-    import_dir: &Path,
+    input_dir: &Path,
     expected_variant: &str,
     active_step: usize,
 ) {
@@ -272,7 +270,7 @@ fn render_interactive_loading_frame(
             ]),
             Line::from(vec![
                 tui_shell::label("Source "),
-                tui_shell::plain(import_dir.display().to_string()),
+                tui_shell::plain(input_dir.display().to_string()),
             ]),
             Line::from(vec![
                 tui_shell::label("Variant "),
@@ -355,18 +353,18 @@ fn render_interactive_loading_frame(
 #[cfg(feature = "tui")]
 fn draw_interactive_loading_step(
     session: &mut TerminalSession,
-    import_dir: &Path,
+    input_dir: &Path,
     expected_variant: &str,
     active_step: usize,
 ) -> Result<()> {
     session.terminal.draw(|frame| {
-        render_interactive_loading_frame(frame, import_dir, expected_variant, active_step)
+        render_interactive_loading_frame(frame, input_dir, expected_variant, active_step)
     })?;
     Ok(())
 }
 
 #[cfg(feature = "tui")]
-fn run_interactive_input_type_selector(import_dir: &Path) -> Result<InspectExportInputType> {
+fn run_interactive_input_type_selector(input_dir: &Path) -> Result<InspectExportInputType> {
     let mut session = TerminalSession::enter()?;
     let options = [
         (
@@ -418,7 +416,7 @@ fn run_interactive_input_type_selector(import_dir: &Path) -> Result<InspectExpor
                     ]),
                     Line::from(vec![
                         tui_shell::label("Import "),
-                        tui_shell::plain(import_dir.display().to_string()),
+                        tui_shell::plain(input_dir.display().to_string()),
                     ]),
                     Line::from(""),
                     Line::from(
@@ -503,27 +501,27 @@ fn run_interactive_input_type_selector(import_dir: &Path) -> Result<InspectExpor
 }
 
 #[cfg(feature = "tui")]
-fn prompt_interactive_input_type(import_dir: &Path) -> Result<InspectExportInputType> {
+fn prompt_interactive_input_type(input_dir: &Path) -> Result<InspectExportInputType> {
     if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
         return Err(message(format!(
             "Import path {} contains both raw/ and prompt/ dashboard variants. Re-run with --input-type raw or --input-type source.",
-            import_dir.display()
+            input_dir.display()
         )));
     }
-    run_interactive_input_type_selector(import_dir)
+    run_interactive_input_type_selector(input_dir)
 }
 
 #[cfg(not(feature = "tui"))]
-fn prompt_interactive_input_type(import_dir: &Path) -> Result<InspectExportInputType> {
+fn prompt_interactive_input_type(input_dir: &Path) -> Result<InspectExportInputType> {
     if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
         return Err(message(format!(
             "Import path {} contains both raw/ and prompt/ dashboard variants. Re-run with --input-type raw or --input-type source.",
-            import_dir.display()
+            input_dir.display()
         )));
     }
     loop {
         println!("Title: Choose dashboard export variant");
-        println!("Import: {}", import_dir.display());
+        println!("Import: {}", input_dir.display());
         println!();
         println!("1. raw (Inspect API-safe raw export artifacts)");
         println!("2. source (Inspect prompt/source export artifacts)");
@@ -538,22 +536,22 @@ fn prompt_interactive_input_type(import_dir: &Path) -> Result<InspectExportInput
     }
 }
 
-fn resolve_dashboard_workspace_import_dir(import_dir: &Path) -> Result<PathBuf> {
-    if let Some(resolved_root) = resolve_dashboard_export_root(import_dir)? {
+fn resolve_dashboard_workspace_import_dir(input_dir: &Path) -> Result<PathBuf> {
+    if let Some(resolved_root) = resolve_dashboard_export_root(input_dir)? {
         return Ok(resolved_root.metadata_dir);
     }
 
-    let dashboard_dir = import_dir.join("dashboards");
-    if dashboard_dir.is_dir() && import_dir.join("datasources").is_dir() {
+    let dashboard_dir = input_dir.join("dashboards");
+    if dashboard_dir.is_dir() && input_dir.join("datasources").is_dir() {
         return Err(message(format!(
-            "Import path {} looks like a workspace export root containing dashboards/ and datasources/, but dashboards/export-metadata.json is missing. Point --import-dir at {} or at a dashboard variant directory such as {}/.../{}.",
-            import_dir.display(),
+            "Import path {} looks like a workspace export root containing dashboards/ and datasources/, but dashboards/export-metadata.json is missing. Point --input-dir at {} or at a dashboard variant directory such as {}/.../{}.",
+            input_dir.display(),
             dashboard_dir.display(),
             dashboard_dir.display(),
             RAW_EXPORT_SUBDIR
         )));
     }
-    Ok(import_dir.to_path_buf())
+    Ok(input_dir.to_path_buf())
 }
 
 pub(crate) fn apply_query_report_filters(
@@ -593,34 +591,20 @@ pub(crate) fn validate_inspect_export_report_args(args: &InspectExportArgs) -> R
     if report_format.is_none() {
         if !args.report_columns.is_empty() {
             return Err(message(
-                "--report-columns is only supported together with --report or report-like --output-format.",
+                "--report-columns is only supported together with table, csv, tree-table, or queries-json output.",
             ));
         }
         if args.report_filter_datasource.is_some() {
             return Err(message(
-                "--report-filter-datasource is only supported together with --report or report-like --output-format.",
+                "--report-filter-datasource is only supported together with table, csv, tree-table, dependency, dependency-json, governance, governance-json, or queries-json output.",
             ));
         }
         if args.report_filter_panel_id.is_some() {
             return Err(message(
-                "--report-filter-panel-id is only supported together with --report or report-like --output-format.",
+                "--report-filter-panel-id is only supported together with table, csv, tree-table, dependency, dependency-json, governance, governance-json, or queries-json output.",
             ));
         }
         return Ok(());
-    }
-    if report_format
-        .map(|format| {
-            matches!(
-                format,
-                InspectExportReportFormat::Governance | InspectExportReportFormat::GovernanceJson
-            )
-        })
-        .unwrap_or(false)
-        && !args.report_columns.is_empty()
-    {
-        return Err(message(
-            "--report-columns is not supported with governance output.",
-        ));
     }
     if report_format
         .map(|format| !report_format_supports_columns(format))
@@ -628,7 +612,7 @@ pub(crate) fn validate_inspect_export_report_args(args: &InspectExportArgs) -> R
         && !args.report_columns.is_empty()
     {
         return Err(message(
-            "--report-columns is only supported with report-table, report-csv, report-tree-table, or the equivalent --report modes.",
+            "--report-columns is only supported with table, csv, or tree-table output.",
         ));
     }
     let _ = resolve_report_column_ids_for_format(report_format, &args.report_columns)?;
@@ -637,11 +621,11 @@ pub(crate) fn validate_inspect_export_report_args(args: &InspectExportArgs) -> R
 
 fn analyze_export_dir_at_path(
     args: &InspectExportArgs,
-    import_dir: &Path,
+    input_dir: &Path,
     expected_variant: &str,
 ) -> Result<usize> {
     if args.interactive {
-        return run_interactive_export_workbench(import_dir, expected_variant);
+        return run_interactive_export_workbench(input_dir, expected_variant);
     }
     let write_output = |output: &str| -> Result<()> {
         write_inspect_output(output, args.output_file.as_ref(), args.also_stdout)
@@ -649,13 +633,13 @@ fn analyze_export_dir_at_path(
 
     if let Some(report_format) = effective_inspect_report_format(args) {
         let report = apply_query_report_filters(
-            build_export_inspection_query_report_for_variant(import_dir, expected_variant)?,
+            build_export_inspection_query_report_for_variant(input_dir, expected_variant)?,
             args.report_filter_datasource.as_deref(),
             args.report_filter_panel_id.as_deref(),
         );
         let rendered = render_export_inspection_report_output(
             args,
-            import_dir,
+            input_dir,
             expected_variant,
             report_format,
             &report,
@@ -665,23 +649,23 @@ fn analyze_export_dir_at_path(
     }
 
     let summary =
-        super::super::build_export_inspection_summary_for_variant(import_dir, expected_variant)?;
+        super::super::build_export_inspection_summary_for_variant(input_dir, expected_variant)?;
     let output = render_export_inspection_summary_output(args, &summary)?;
     write_output(&output)?;
     Ok(summary.dashboard_count)
 }
 
 #[cfg(feature = "tui")]
-fn run_interactive_export_workbench(import_dir: &Path, expected_variant: &str) -> Result<usize> {
+fn run_interactive_export_workbench(input_dir: &Path, expected_variant: &str) -> Result<usize> {
     let mut session = TerminalSession::enter()?;
-    draw_interactive_loading_step(&mut session, import_dir, expected_variant, 0)?;
+    draw_interactive_loading_step(&mut session, input_dir, expected_variant, 0)?;
     let summary =
-        super::super::build_export_inspection_summary_for_variant(import_dir, expected_variant)?;
-    draw_interactive_loading_step(&mut session, import_dir, expected_variant, 1)?;
-    let report = build_export_inspection_query_report_for_variant(import_dir, expected_variant)?;
-    draw_interactive_loading_step(&mut session, import_dir, expected_variant, 2)?;
+        super::super::build_export_inspection_summary_for_variant(input_dir, expected_variant)?;
+    draw_interactive_loading_step(&mut session, input_dir, expected_variant, 1)?;
+    let report = build_export_inspection_query_report_for_variant(input_dir, expected_variant)?;
+    draw_interactive_loading_step(&mut session, input_dir, expected_variant, 2)?;
     let governance = build_export_inspection_governance_document(&summary, &report);
-    draw_interactive_loading_step(&mut session, import_dir, expected_variant, 3)?;
+    draw_interactive_loading_step(&mut session, input_dir, expected_variant, 3)?;
     let document =
         build_inspect_workbench_document("export artifacts", &summary, &governance, &report);
     drop(session);
@@ -691,7 +675,7 @@ fn run_interactive_export_workbench(import_dir: &Path, expected_variant: &str) -
 
 #[cfg(not(feature = "tui"))]
 fn run_interactive_export_workbench(_import_dir: &Path, _expected_variant: &str) -> Result<usize> {
-    super::tui_not_built("inspect-export --interactive")
+    super::super::tui_not_built("analyze-export --interactive")
 }
 
 pub(crate) fn analyze_export_dir(args: &InspectExportArgs) -> Result<usize> {
@@ -699,12 +683,12 @@ pub(crate) fn analyze_export_dir(args: &InspectExportArgs) -> Result<usize> {
     let temp_dir = TempInspectDir::new("inspect-export")?;
     let resolved = resolve_inspect_export_import_dir(
         &temp_dir.path,
-        &args.import_dir,
+        &args.input_dir,
         args.input_format,
         args.input_type,
         args.interactive,
     )?;
-    analyze_export_dir_at_path(args, &resolved.import_dir, resolved.expected_variant)
+    analyze_export_dir_at_path(args, &resolved.input_dir, resolved.expected_variant)
 }
 
 #[cfg(test)]

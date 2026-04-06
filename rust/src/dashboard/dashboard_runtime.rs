@@ -1,12 +1,11 @@
 //! Parser/runtime helpers for dashboard CLI commands.
 use clap::Parser;
 
-use crate::common::{resolve_auth_headers, Result};
+use crate::common::Result;
 use crate::dashboard::{DEFAULT_TIMEOUT, DEFAULT_URL};
-use crate::http::{JsonHttpClient, JsonHttpClientConfig};
-use crate::profile_config::{
-    load_selected_profile, resolve_connection_settings, ConnectionMergeInput,
-};
+use crate::grafana_api::{AuthInputs, GrafanaApiClient, GrafanaConnection};
+use crate::http::JsonHttpClient;
+use crate::profile_config::ConnectionMergeInput;
 
 use super::{
     CommonCliArgs, DashboardCliArgs, DashboardCommand, DryRunOutputFormat, SimpleOutputFormat,
@@ -183,8 +182,8 @@ pub fn normalize_dashboard_cli_args(mut args: DashboardCliArgs) -> DashboardCliA
 }
 
 pub fn build_auth_context(common: &CommonCliArgs) -> Result<DashboardAuthContext> {
-    let selected_profile = load_selected_profile(common.profile.as_deref())?;
-    let resolved = resolve_connection_settings(
+    let connection = GrafanaConnection::resolve(
+        common.profile.as_deref(),
         ConnectionMergeInput {
             url: &common.url,
             url_default: DEFAULT_URL,
@@ -198,69 +197,69 @@ pub fn build_auth_context(common: &CommonCliArgs) -> Result<DashboardAuthContext
             insecure: false,
             ca_cert: None,
         },
-        selected_profile.as_ref(),
+        AuthInputs {
+            api_token: common.api_token.as_deref(),
+            username: common.username.as_deref(),
+            password: common.password.as_deref(),
+            prompt_password: common.prompt_password,
+            prompt_token: common.prompt_token,
+        },
+        false,
     )?;
-    let token = if common.prompt_token && common.api_token.is_none() {
-        None
-    } else {
-        resolved.api_token.as_deref()
-    };
-    let username = if common.prompt_password {
-        common.username.as_deref().or(resolved.username.as_deref())
-    } else {
-        resolved.username.as_deref()
-    };
-    let password = if common.prompt_password && common.password.is_none() {
-        None
-    } else {
-        resolved.password.as_deref()
-    };
-    let headers = resolve_auth_headers(
-        token,
-        username,
-        password,
-        common.prompt_password,
-        common.prompt_token,
-    )?;
-    let auth_mode = headers
-        .iter()
-        .find(|(name, _)| name == "Authorization")
-        .map(|(_, value)| {
-            if value.starts_with("Basic ") {
-                "basic".to_string()
-            } else {
-                "token".to_string()
-            }
-        })
-        .unwrap_or_else(|| "unknown".to_string());
     Ok(DashboardAuthContext {
-        url: resolved.url,
-        timeout: resolved.timeout,
-        verify_ssl: resolved.verify_ssl,
-        auth_mode,
-        headers,
+        url: connection.base_url,
+        timeout: connection.timeout_secs,
+        verify_ssl: connection.verify_ssl,
+        auth_mode: connection.auth_mode,
+        headers: connection.headers,
     })
 }
 
 pub fn build_http_client(common: &CommonCliArgs) -> Result<JsonHttpClient> {
-    let context = build_auth_context(common)?;
-    JsonHttpClient::new(JsonHttpClientConfig {
-        base_url: context.url,
-        headers: context.headers,
-        timeout_secs: context.timeout,
-        verify_ssl: context.verify_ssl,
-    })
+    Ok(build_api_client(common)?.into_http_client())
 }
 
 pub fn build_http_client_for_org(common: &CommonCliArgs, org_id: i64) -> Result<JsonHttpClient> {
-    let mut context = build_auth_context(common)?;
-    context
-        .headers
-        .push(("X-Grafana-Org-Id".to_string(), org_id.to_string()));
-    JsonHttpClient::new(JsonHttpClientConfig {
-        base_url: context.url,
-        headers: context.headers,
-        timeout_secs: context.timeout,
-        verify_ssl: context.verify_ssl,
-    })
+    Ok(build_api_client(common)?
+        .scoped_to_org(org_id)?
+        .into_http_client())
+}
+
+pub(crate) fn build_api_client(common: &CommonCliArgs) -> Result<GrafanaApiClient> {
+    let connection = build_connection(common)?;
+    GrafanaApiClient::from_connection(connection)
+}
+
+pub(crate) fn build_http_client_for_org_from_api(
+    api: &GrafanaApiClient,
+    org_id: i64,
+) -> Result<JsonHttpClient> {
+    Ok(api.scoped_to_org(org_id)?.into_http_client())
+}
+
+fn build_connection(common: &CommonCliArgs) -> Result<GrafanaConnection> {
+    GrafanaConnection::resolve(
+        common.profile.as_deref(),
+        ConnectionMergeInput {
+            url: &common.url,
+            url_default: DEFAULT_URL,
+            api_token: common.api_token.as_deref(),
+            username: common.username.as_deref(),
+            password: common.password.as_deref(),
+            org_id: None,
+            timeout: common.timeout,
+            timeout_default: DEFAULT_TIMEOUT,
+            verify_ssl: common.verify_ssl,
+            insecure: false,
+            ca_cert: None,
+        },
+        AuthInputs {
+            api_token: common.api_token.as_deref(),
+            username: common.username.as_deref(),
+            password: common.password.as_deref(),
+            prompt_password: common.prompt_password,
+            prompt_token: common.prompt_token,
+        },
+        false,
+    )
 }

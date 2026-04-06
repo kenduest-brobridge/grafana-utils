@@ -12,15 +12,18 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::common::{message, sanitize_path_component, string_field, Result};
+use crate::grafana_api::DashboardResourceClient;
 use crate::http::JsonHttpClient;
 
+use super::history::build_dashboard_history_export_document_with_request;
 use super::list::{
     attach_dashboard_org_metadata, collect_dashboard_source_metadata,
     fetch_current_org_with_request, list_orgs_with_request, org_id_value,
 };
 use super::{
-    build_datasource_catalog, build_datasource_inventory_record, build_export_metadata,
-    build_external_export_document, build_http_client, build_http_client_for_org,
+    build_api_client, build_datasource_catalog, build_datasource_inventory_record,
+    build_export_metadata, build_external_export_document, build_http_client,
+    build_http_client_for_org, build_http_client_for_org_from_api,
     build_preserved_web_import_document, build_root_export_index, build_variant_index,
     fetch_dashboard_with_request, list_dashboard_summaries_with_request,
     list_datasources_with_request, write_dashboard, write_json_document, DashboardIndexItem,
@@ -68,6 +71,24 @@ pub fn build_export_variant_dirs(output_dir: &Path) -> (PathBuf, PathBuf, PathBu
         output_dir.join(PROMPT_EXPORT_SUBDIR),
         output_dir.join(PROVISIONING_EXPORT_SUBDIR),
     )
+}
+
+fn build_history_output_path(history_dir: &Path, uid: &str) -> PathBuf {
+    history_dir.join(format!("{}.history.json", sanitize_path_component(uid)))
+}
+
+fn write_history_document<T: Serialize>(
+    payload: &T,
+    output_path: &Path,
+    overwrite: bool,
+) -> Result<()> {
+    if output_path.exists() && !overwrite {
+        return Err(message(format!(
+            "Refusing to overwrite existing file: {}. Use --overwrite.",
+            output_path.display()
+        )));
+    }
+    write_json_document(payload, output_path)
 }
 
 #[derive(Serialize)]
@@ -219,11 +240,12 @@ where
         .map(|value| value.to_string())
         .unwrap_or_else(|| DEFAULT_UNKNOWN_UID.to_string());
     let scope_output_dir = if args.all_orgs {
-        build_all_orgs_output_dir(&args.export_dir, &current_org)
+        build_all_orgs_output_dir(&args.output_dir, &current_org)
     } else {
-        args.export_dir.clone()
+        args.output_dir.clone()
     };
     let (raw_dir, prompt_dir, provisioning_dir) = build_export_variant_dirs(&scope_output_dir);
+    let history_dir = scope_output_dir.join("history");
     let provisioning_dashboards_dir = provisioning_dir.join("dashboards");
     let provisioning_config_dir = provisioning_dir.join("provisioning");
     if !args.dry_run && !args.without_dashboard_raw {
@@ -235,6 +257,9 @@ where
     if !args.dry_run && !args.without_dashboard_provisioning {
         fs::create_dir_all(&provisioning_dashboards_dir)?;
         fs::create_dir_all(&provisioning_config_dir)?;
+    }
+    if !args.dry_run && args.include_history {
+        fs::create_dir_all(&history_dir)?;
     }
     let datasource_list = list_datasources_with_request(&mut scoped_request)?;
     let datasource_inventory = datasource_list
@@ -285,6 +310,23 @@ where
             collect_dashboard_source_metadata(&payload, &datasource_catalog)?;
         used_source_names.extend(source_names);
         used_source_uids.extend(source_uids);
+        if args.include_history {
+            let history_document = build_dashboard_history_export_document_with_request(
+                &mut scoped_request,
+                &uid,
+                20,
+            )?;
+            let history_path = build_history_output_path(&history_dir, &uid);
+            if !args.dry_run {
+                write_history_document(&history_document, &history_path, args.overwrite)?;
+            }
+            if args.verbose {
+                println!(
+                    "{}",
+                    format_export_verbose_line("history", &uid, &history_path, args.dry_run)
+                );
+            }
+        }
         let mut item = super::build_dashboard_index_item(&summary, &uid);
         if !args.without_dashboard_raw {
             let raw_document = build_preserved_web_import_document(&payload)?;
@@ -368,6 +410,12 @@ where
                     Some(&current_org_name),
                     Some(&current_org_id),
                     None,
+                    "live",
+                    Some(&args.common.url),
+                    None,
+                    args.common.profile.as_deref(),
+                    raw_dir.as_path(),
+                    &metadata_path,
                 ),
                 &metadata_path,
             )?;
@@ -407,6 +455,12 @@ where
                     Some(&current_org_name),
                     Some(&current_org_id),
                     None,
+                    "live",
+                    Some(&args.common.url),
+                    None,
+                    args.common.profile.as_deref(),
+                    prompt_dir.as_path(),
+                    &metadata_path,
                 ),
                 &metadata_path,
             )?;
@@ -448,6 +502,12 @@ where
                     Some(&current_org_name),
                     Some(&current_org_id),
                     None,
+                    "live",
+                    Some(&args.common.url),
+                    None,
+                    args.common.profile.as_deref(),
+                    provisioning_dir.as_path(),
+                    &metadata_path,
                 ),
                 &metadata_path,
             )?;
@@ -485,7 +545,7 @@ where
         datasource_count: Some(datasource_inventory.len() as u64),
         used_datasource_count: Some(used_datasources.len() as u64),
         used_datasources: Some(used_datasources),
-        export_dir: if args.all_orgs {
+        output_dir: if args.all_orgs {
             Some(scope_output_dir.display().to_string())
         } else {
             None
@@ -504,6 +564,12 @@ where
                 Some(&current_org_name),
                 Some(&current_org_id),
                 None,
+                "live",
+                Some(&args.common.url),
+                None,
+                args.common.profile.as_deref(),
+                scope_output_dir.as_path(),
+                &scope_output_dir.join(EXPORT_METADATA_FILENAME),
             ),
             &scope_output_dir.join(EXPORT_METADATA_FILENAME),
         )?;
@@ -516,14 +582,16 @@ where
 }
 
 fn write_all_orgs_root_export_bundle(
-    export_dir: &Path,
+    output_dir: &Path,
     root_items: &[DashboardIndexItem],
     root_folders: &[FolderInventoryItem],
     org_summaries: Vec<ExportOrgSummary>,
+    source_url: &str,
+    source_profile: Option<&str>,
 ) -> Result<()> {
     write_json_document(
         &build_root_export_index(root_items, None, None, None, root_folders),
-        &export_dir.join("index.json"),
+        &output_dir.join("index.json"),
     )?;
     write_json_document(
         &build_export_metadata(
@@ -536,8 +604,14 @@ fn write_all_orgs_root_export_bundle(
             None,
             None,
             Some(org_summaries),
+            "live",
+            Some(source_url),
+            None,
+            source_profile,
+            output_dir,
+            &output_dir.join(EXPORT_METADATA_FILENAME),
         ),
-        &export_dir.join(EXPORT_METADATA_FILENAME),
+        &output_dir.join(EXPORT_METADATA_FILENAME),
     )?;
     Ok(())
 }
@@ -573,10 +647,12 @@ where
         }
         if !args.dry_run && !root_items.is_empty() {
             write_all_orgs_root_export_bundle(
-                &args.export_dir,
+                &args.output_dir,
                 &root_items,
                 &root_folders,
                 org_summaries,
+                &args.common.url,
+                args.common.profile.as_deref(),
             )?;
         }
         Ok(total)
@@ -597,16 +673,15 @@ pub fn export_dashboards_with_client(client: &JsonHttpClient, args: &ExportArgs)
 
 pub(crate) fn export_dashboards_with_org_clients(args: &ExportArgs) -> Result<usize> {
     if args.all_orgs {
-        let admin_client = build_http_client(&args.common)?;
+        let admin_api = build_api_client(&args.common)?;
+        let admin_dashboard = DashboardResourceClient::new(admin_api.http_client());
         let mut total = 0usize;
         let mut root_items = Vec::new();
         let mut root_folders = Vec::new();
         let mut org_summaries = Vec::new();
-        for org in list_orgs_with_request(|method, path, params, payload| {
-            admin_client.request_json(method, path, params, payload)
-        })? {
+        for org in admin_dashboard.list_orgs()? {
             let org_id = org_id_value(&org)?;
-            let org_client = build_http_client_for_org(&args.common, org_id)?;
+            let org_client = build_http_client_for_org_from_api(&admin_api, org_id)?;
             let scope_result = export_dashboards_in_scope_with_request(
                 &mut |method, path, params, payload| {
                     org_client.request_json(method, path, params, payload)
@@ -626,10 +701,12 @@ pub(crate) fn export_dashboards_with_org_clients(args: &ExportArgs) -> Result<us
         }
         if !args.dry_run && !root_items.is_empty() {
             write_all_orgs_root_export_bundle(
-                &args.export_dir,
+                &args.output_dir,
                 &root_items,
                 &root_folders,
                 org_summaries,
+                &args.common.url,
+                args.common.profile.as_deref(),
             )?;
         }
         Ok(total)
@@ -646,10 +723,12 @@ pub(crate) fn export_dashboards_with_org_clients(args: &ExportArgs) -> Result<us
         .exported_count)
     } else {
         let client = build_http_client(&args.common)?;
+        let dashboard = DashboardResourceClient::new(&client);
+        let current_org = dashboard.fetch_current_org()?;
         Ok(export_dashboards_in_scope_with_request(
             &mut |method, path, params, payload| client.request_json(method, path, params, payload),
             args,
-            None,
+            Some(&current_org),
             None,
         )?
         .exported_count)

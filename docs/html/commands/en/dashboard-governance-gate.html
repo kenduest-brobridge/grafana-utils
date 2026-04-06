@@ -766,11 +766,11 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
     <section class="command-intro">
   <div class="command-intro-grid"><div class="command-intro-block">
   <p class="command-intro-label">What this page covers</p>
-  <p class="command-intro-text">Evaluate governance policy against dashboard inspect JSON artifacts.</p>
+  <p class="command-intro-text">Evaluate governance policy directly against live Grafana or a local export tree, with saved analysis artifacts as an advanced reuse path.</p>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">When to open this page</p>
-  <ul class="command-intro-list"><li>Use this when you already have governance-json and query-report artifacts and want a policy pass or fail result before promotion.</li></ul>
+  <ul class="command-intro-list"><li>Use this when you want a policy pass or fail result before promotion. Prefer direct live or local analysis inputs for the common path; keep governance-json and queries-json for advanced reuse and CI pipelines.</li></ul>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">Who this page is for</p>
@@ -779,24 +779,26 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 </section>
 <h2 id="purpose">Purpose</h2>
-<p>Evaluate governance policy against dashboard inspect JSON artifacts.</p>
+<p>Evaluate governance policy directly against live Grafana or a local export tree, with saved analysis artifacts as an advanced reuse path.</p>
 <h2 id="when-to-use">When to use</h2>
-<p>Use this when you already have <code>governance-json</code> and query-report artifacts and want a policy pass or fail result before promotion.</p>
+<p>Use this when you want a policy pass or fail result before promotion. Prefer direct live or local analysis inputs for the common path; keep <code>governance-json</code> and <code>queries-json</code> for advanced reuse and CI pipelines.</p>
 <h2 id="before-after">Before / After</h2>
 <ul><li><strong>Before</strong>: teams can export dashboards and inspect them, but policy violations still need a human to spot them one by one.</li><li><strong>After</strong>: governance-gate turns those artifacts into an explicit pass/fail decision with machine-readable findings for CI or review.</li></ul>
 <h2 id="key-flags">Key flags</h2>
-<ul><li><code>--policy-source</code>: choose <code>file</code> or <code>builtin</code>.</li><li><code>--policy</code>: policy file path when using file-based policy input.</li><li><code>--builtin-policy</code>: named built-in policy when using builtin policy input.</li><li><code>--governance</code>: path to dashboard inspect governance JSON.</li><li><code>--queries</code>: path to dashboard inspect query-report JSON.</li><li><code>--output-format</code>: render text or JSON.</li><li><code>--json-output</code>: optionally write the normalized result JSON.</li><li><code>--interactive</code>: open the interactive terminal browser over findings.</li></ul>
+<ul><li><code>--policy-source</code>: choose <code>file</code> or <code>builtin</code>.</li><li><code>--policy</code>: policy file path when using file-based policy input.</li><li><code>--builtin-policy</code>: named built-in policy when using builtin policy input.</li><li><code>--url</code>: analyze live Grafana directly.</li><li><code>--input-dir</code>: analyze a local export tree directly.</li><li><code>--input-format</code>: choose <code>raw</code> or <code>provisioning</code> when analyzing local exports.</li><li><code>--governance</code>: path to dashboard inspect governance JSON (<code>governance-json</code> artifact, advanced reuse).</li><li><code>--queries</code>: path to dashboard inspect query-report JSON (<code>queries-json</code> artifact, advanced reuse).</li><li><code>--output-format</code>: render text or JSON.</li><li><code>--json-output</code>: optionally write the normalized result JSON.</li><li><code>--interactive</code>: open the interactive terminal browser over findings.</li></ul>
 <h2 id="examples">Examples</h2>
-<pre><code># Purpose: Evaluate governance policy against dashboard inspect JSON artifacts.
-grafana-util dashboard governance-gate --policy-source file --policy ./policy.yaml --governance ./governance.json --queries ./queries.json</code></pre>
-<pre><code># Purpose: Evaluate governance policy against dashboard inspect JSON artifacts.
+<pre><code># Purpose: Evaluate governance policy against live Grafana directly.
+grafana-util dashboard governance-gate --url http://localhost:3000 --basic-user admin --basic-password admin --policy-source file --policy ./policy.yaml</code></pre>
+<pre><code># Purpose: Evaluate governance policy against a local export tree directly.
+grafana-util dashboard governance-gate --input-dir ./dashboards/raw --input-format raw --policy-source builtin --builtin-policy default --output-format json --json-output ./governance-check.json</code></pre>
+<pre><code># Purpose: Advanced reuse: evaluate governance policy against reusable analysis artifacts.
 grafana-util dashboard governance-gate --policy-source builtin --builtin-policy default --governance ./governance.json --queries ./queries.json --output-format json --json-output ./governance-check.json</code></pre>
 <h2 id="what-success-looks-like">What success looks like</h2>
 <ul><li>policy checks fail before promotion, not after a dashboard lands in the wrong environment</li><li>text output is readable enough for manual review, while JSON output is stable enough for CI gates</li><li>the same artifacts can be rechecked after a policy change without rerunning export or inspect from scratch</li></ul>
 <h2 id="failure-checks">Failure checks</h2>
 <ul><li>if the command fails immediately, confirm the policy source and whether the policy file path or builtin policy name is valid</li><li>if the gate result seems incomplete, verify that <code>governance</code> and <code>queries</code> came from the same inspect run</li><li>if automation reads the result, prefer <code>--output-format json</code> and validate the contract before treating a pass/fail as final</li></ul>
 <h2 id="related-commands">Related commands</h2>
-<ul><li><a href="dashboard-inspect-export.html">dashboard inspect-export</a></li><li><a href="dashboard-inspect-live.html">dashboard inspect-live</a></li><li><a href="dashboard-topology.html">dashboard topology</a></li></ul>
+<ul><li><a href="dashboard-analyze-export.html">dashboard analyze (local)</a></li><li><a href="dashboard-analyze-live.html">dashboard analyze (live)</a></li><li><a href="dashboard-topology.html">dashboard topology</a></li></ul>
     
   </article>
   <aside class="sidebar">

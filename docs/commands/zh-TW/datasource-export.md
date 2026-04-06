@@ -7,7 +7,7 @@
 當您需要一個本地 datasource bundle，供後續檢查、比對或匯入時，使用這個指令。
 
 ## 重點旗標
-- `--export-dir`：匯出樹的目標目錄。
+- `--output-dir`：匯出樹的目標目錄。
 - `--org-id`：匯出指定的 Grafana org。
 - `--all-orgs`：把每個可見 org 匯出到各自的子目錄。需要 Basic auth。
 - `--overwrite`：取代既有檔案。
@@ -17,12 +17,12 @@
 ## 範例
 ```bash
 # 用途：將線上 Grafana datasource inventory 匯出成標準化 JSON 與 provisioning 檔案。
-grafana-util datasource export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./datasources --overwrite
+grafana-util datasource export --url http://localhost:3000 --basic-user admin --basic-password admin --output-dir ./datasources --overwrite
 ```
 
 ```bash
 # 用途：將線上 Grafana datasource inventory 匯出成標準化 JSON 與 provisioning 檔案。
-grafana-util datasource export --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --export-dir ./datasources --overwrite
+grafana-util datasource export --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --output-dir ./datasources --overwrite
 ```
 
 ## 採用前後對照
@@ -43,6 +43,6 @@ grafana-util datasource export --url http://localhost:3000 --basic-user admin --
 - 如果 bundle 看起來像舊資料，先確認匯出目錄與 `--overwrite` 是否有刻意使用
 
 ## 相關指令
-- [datasource inspect-export](./datasource-inspect-export.md)
+- [datasource list](./datasource-list.md)
 - [datasource import](./datasource-import.md)
 - [datasource diff](./datasource-diff.md)

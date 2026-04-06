@@ -37,22 +37,22 @@ This domain focuses on the governance gate: the final layer of validation before
 
 Need the command-by-command surface instead of the workflow guide?
 
+Primary lane:
+
 - [change](../../commands/en/change.md)
-- [change summary](../../commands/en/change.md#summary)
-- [change plan](../../commands/en/change.md#plan)
-- [change review](../../commands/en/change.md#review)
-- [change apply](../../commands/en/change.md#apply)
-- [change audit](../../commands/en/change.md#audit)
-- [change preflight](../../commands/en/change.md#preflight)
-- [change assess-alerts](../../commands/en/change.md#assess-alerts)
-- [change bundle](../../commands/en/change.md#bundle)
-- [change bundle-preflight](../../commands/en/change.md#bundle-preflight)
-- [change promotion-preflight](../../commands/en/change.md#promotion-preflight)
+- [change inspect](../../commands/en/change-inspect.md)
+- [change check](../../commands/en/change-check.md)
+- [change preview](../../commands/en/change-preview.md)
+- [change apply](../../commands/en/change-apply.md)
 - [status](../../commands/en/status.md)
 - [status staged](../../commands/en/status.md#staged)
 - [status live](../../commands/en/status.md#live)
 - [overview](../../commands/en/overview.md)
 - [overview live](../../commands/en/overview.md#live)
+
+Advanced workflows:
+
+- Need lower-level staged contracts or bundle/promotion handoff docs? Start at [change advanced](../../commands/en/change.md#advanced) or the [full command index](../../commands/en/index.md).
 - [snapshot](../../commands/en/snapshot.md)
 - [snapshot export](../../commands/en/snapshot.md#export)
 - [snapshot review](../../commands/en/snapshot.md#review)
@@ -62,7 +62,6 @@ Need the command-by-command surface instead of the workflow guide?
 - [profile add](../../commands/en/profile.md#add)
 - [profile example](../../commands/en/profile.md#example)
 - [profile init](../../commands/en/profile.md#init)
-- [full command index](../../commands/en/index.md)
 
 ---
 
@@ -118,16 +117,27 @@ grafana-util status staged --dashboard-export-dir ./dashboards/raw --alert-expor
 
 Manage the transition from Git to production Grafana.
 
-### 1. Change Summary
-Get a high-level summary of your current change package.
+### First-run shortcut
+
+If you are not sure where to start, use this sequence:
+
+1. `change inspect --workspace .`
+2. `change check --workspace .`
+3. `change preview --workspace . --fetch-live --profile <profile>`
+4. `change apply --preview-file ./change-preview.json --approve --execute-live --profile <profile>`
+
+`--workspace` is the shortest path because `change` will try to discover common staged inputs in the current repo or working tree. If that does not match your layout, switch to explicit flags such as `--desired-file`, `--dashboard-export-dir`, `--alert-export-dir`, `--source-bundle`, or `--target-inventory`.
+
+### 1. Change Inspect
+Get a fast, task-first summary of what the staged package contains.
 ```bash
-# Purpose: Get a high-level summary of your current change package.
-grafana-util change summary --desired-file ./desired.json
+# Purpose: Inspect the staged package from the current workspace.
+grafana-util change inspect --workspace .
 ```
 
 ```bash
-# Purpose: Get a high-level summary of your current change package.
-grafana-util change summary --desired-file ./desired.json --output-format json
+# Purpose: Inspect explicit staged exports as JSON.
+grafana-util change inspect --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-format json
 ```
 **Expected Output:**
 ```text
@@ -137,18 +147,18 @@ CHANGE PACKAGE SUMMARY:
 - access: 1 added
 - total impact: 11 operations
 ```
-Use the summary to size the change before you inspect the plan. If the total is unexpectedly large, stop and review the staged inputs first.
+Use inspect to size the change before you fetch live state. If the total is unexpectedly large, stop and review the staged inputs first.
 
-### 2. Preflight Validation
-Verify the structural integrity of your export/import trees.
+### 2. Change Check
+Verify staged readiness before you preview or apply anything.
 ```bash
-# Purpose: Verify the structural integrity of your export/import trees.
-grafana-util change preflight --desired-file ./desired.json --availability-file ./availability.json
+# Purpose: Check the discovered staged package with staged availability hints.
+grafana-util change check --workspace . --availability-file ./availability.json
 ```
 
 ```bash
-# Purpose: Verify the structural integrity of your export/import trees.
-grafana-util change preflight --desired-file ./desired.json --fetch-live --output-format json
+# Purpose: Check the staged package and merge live availability hints.
+grafana-util change check --workspace . --fetch-live --output-format json
 ```
 **Expected Output:**
 ```text
@@ -157,7 +167,22 @@ PREFLIGHT CHECK:
 - datasources: valid (1 inventory found)
 - result: 0 errors, 0 blockers
 ```
-Use preflight when you need a structural gate before planning or applying. A clean preflight means the inputs are shaped correctly, not that live Grafana already matches them.
+Use check when you need a readiness gate before preview or apply. A clean check means the inputs are shaped correctly and any requested availability checks passed; it does not mean live Grafana already matches them.
+
+### 3. Change Preview
+Build the actionable preview that shows what would change.
+```bash
+# Purpose: Preview the current staged package against live Grafana.
+grafana-util change preview --workspace . --fetch-live --profile prod
+```
+
+```bash
+# Purpose: Preview one explicit desired/live pair as JSON.
+grafana-util change preview --desired-file ./desired.json --live-file ./live.json --output-format json
+```
+
+Preview is the task-first replacement for the common `plan` step. It still emits the same reviewable staged contract underneath, but the operator entrypoint is now “preview what would change” instead of “build a plan document.”
+That preview contract is also where ordering lives: `ordering.mode`, `operations[].orderIndex` / `orderGroup` / `kindOrder`, and `summary.blocked_reasons` tell reviewers how the plan is sequenced and which operations remain blocked before apply.
 
 ---
 

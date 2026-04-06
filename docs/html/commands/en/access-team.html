@@ -766,11 +766,11 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
     <section class="command-intro">
   <div class="command-intro-grid"><div class="command-intro-block">
   <p class="command-intro-label">What this page covers</p>
-  <p class="command-intro-text">List, browse, create, modify, export, import, diff, or delete Grafana teams.</p>
+  <p class="command-intro-text">List or browse live and local Grafana teams, create, modify, export, import, diff, or delete Grafana teams.</p>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">When to open this page</p>
-  <ul class="command-intro-list"><li>Inspect team inventory and team memberships.</li><li>Create or update team membership and admin assignments.</li><li>Export or import team bundles.</li><li>Remove a team by id or exact name.</li></ul>
+  <ul class="command-intro-list"><li>Inspect team inventory and team memberships.</li><li>Inspect teams from a live Grafana server or from a local export bundle.</li><li>Create or update team membership and admin assignments.</li><li>Export or import team bundles.</li><li>Remove a team by id or exact name.</li></ul>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">Who this page is for</p>
@@ -779,9 +779,9 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 </section>
 <h2 id="purpose">Purpose</h2>
-<p>List, browse, create, modify, export, import, diff, or delete Grafana teams.</p>
+<p>List or browse live and local Grafana teams, create, modify, export, import, diff, or delete Grafana teams.</p>
 <h2 id="when-to-use">When to use</h2>
-<ul><li>Inspect team inventory and team memberships.</li><li>Create or update team membership and admin assignments.</li><li>Export or import team bundles.</li><li>Remove a team by id or exact name.</li></ul>
+<ul><li>Inspect team inventory and team memberships.</li><li>Inspect teams from a live Grafana server or from a local export bundle.</li><li>Create or update team membership and admin assignments.</li><li>Export or import team bundles.</li><li>Remove a team by id or exact name.</li></ul>
 <h2 id="before-after">Before / After</h2>
 <ul><li><strong>Before</strong>: team membership changes often happen through UI side menus or scattered scripts.</li><li><strong>After</strong>: one namespace handles inventory, membership updates, export/import, and deletion with the same auth model.</li></ul>
 <h2 id="what-success-looks-like">What success looks like</h2>
@@ -789,14 +789,18 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="failure-checks">Failure checks</h2>
 <ul><li>if list, add, modify, or delete fails, confirm the team exists in the selected org and the auth scope is correct</li><li>if membership looks incomplete, recheck the exact member names and whether <code>--with-members</code> was set</li><li>if an import behaves unexpectedly, verify the source bundle and the target environment before retrying</li></ul>
 <h2 id="key-flags">Key flags</h2>
-<ul><li><code>list</code>: <code>--query</code>, <code>--name</code>, <code>--with-members</code>, <code>--page</code>, <code>--per-page</code>, <code>--table</code>, <code>--csv</code>, <code>--json</code>, <code>--yaml</code>, <code>--output-format</code></li><li><code>browse</code>: <code>--query</code>, <code>--name</code>, <code>--with-members</code>, <code>--page</code>, <code>--per-page</code></li><li><code>add</code>: <code>--name</code>, <code>--email</code>, <code>--member</code>, <code>--admin</code>, <code>--json</code></li><li><code>modify</code>: <code>--team-id</code>, <code>--name</code>, <code>--add-member</code>, <code>--remove-member</code>, <code>--add-admin</code>, <code>--remove-admin</code>, <code>--json</code></li><li><code>export</code> and <code>diff</code>: <code>--export-dir</code> or <code>--diff-dir</code>, <code>--overwrite</code>, <code>--dry-run</code>, <code>--with-members</code></li><li><code>import</code>: <code>--import-dir</code>, <code>--replace-existing</code>, <code>--dry-run</code>, <code>--table</code>, <code>--json</code>, <code>--output-format</code>, <code>--yes</code></li><li><code>delete</code>: <code>--team-id</code>, <code>--name</code>, <code>--yes</code>, <code>--json</code></li></ul>
+<ul><li><code>list</code>: <code>--input-dir</code>, <code>--query</code>, <code>--name</code>, <code>--with-members</code>, <code>--page</code>, <code>--per-page</code>, <code>--table</code>, <code>--csv</code>, <code>--json</code>, <code>--yaml</code>, <code>--output-format</code></li><li><code>browse</code>: <code>--input-dir</code>, <code>--query</code>, <code>--name</code>, <code>--with-members</code>, <code>--page</code>, <code>--per-page</code></li><li><code>add</code>: <code>--name</code>, <code>--email</code>, <code>--member</code>, <code>--admin</code>, <code>--json</code></li><li><code>modify</code>: <code>--team-id</code>, <code>--name</code>, <code>--add-member</code>, <code>--remove-member</code>, <code>--add-admin</code>, <code>--remove-admin</code>, <code>--json</code></li><li><code>export</code> and <code>diff</code>: <code>--output-dir</code> or <code>--diff-dir</code>, <code>--overwrite</code>, <code>--dry-run</code>, <code>--with-members</code></li><li><code>import</code>: <code>--input-dir</code>, <code>--replace-existing</code>, <code>--dry-run</code>, <code>--table</code>, <code>--json</code>, <code>--output-format</code>, <code>--yes</code></li><li><code>delete</code>: <code>--team-id</code>, <code>--name</code>, <code>--yes</code>, <code>--json</code></li></ul>
 <h2 id="examples">Examples</h2>
 <pre><code># Purpose: Inspect team membership before adding or removing people.
 grafana-util access team list --url http://localhost:3000 --basic-user admin --basic-password admin --output-format text</code></pre>
+<pre><code># Purpose: Review a saved team bundle before replaying it.
+grafana-util access team list --input-dir ./access-teams --output-format table</code></pre>
+<pre><code># Purpose: Browse one saved team bundle interactively without touching Grafana.
+grafana-util access team browse --input-dir ./access-teams --name platform-team</code></pre>
 <pre><code># Purpose: Create a team with explicit member and admin assignments.
 grafana-util access team add --url http://localhost:3000 --basic-user admin --basic-password admin --name platform-team --email platform@example.com --member alice --admin alice --json</code></pre>
 <pre><code># Purpose: Import a team bundle before switching environments.
-grafana-util access team import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-teams --replace-existing --yes</code></pre>
+grafana-util access team import --url http://localhost:3000 --basic-user admin --basic-password admin --input-dir ./access-teams --replace-existing --yes</code></pre>
 <h2 id="related-commands">Related commands</h2>
 <ul><li><a href="access.html">access</a></li><li><a href="access-user.html">access user</a></li><li><a href="access-org.html">access org</a></li><li><a href="access-service-account.html">access service-account</a></li></ul>
     

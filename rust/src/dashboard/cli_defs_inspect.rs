@@ -11,12 +11,13 @@ use super::{
     ValidationOutputFormat,
 };
 
-/// Enum definition for InspectExportReportFormat.
+/// Enum definition for structured dashboard analysis outputs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum InspectExportReportFormat {
     Table,
     Csv,
-    Json,
+    #[value(name = "queries-json")]
+    QueriesJson,
     Tree,
     TreeTable,
     Dependency,
@@ -33,15 +34,14 @@ pub enum InspectOutputFormat {
     Csv,
     Json,
     Yaml,
-    ReportTable,
-    ReportCsv,
-    ReportJson,
-    ReportTree,
-    ReportTreeTable,
-    ReportDependency,
-    ReportDependencyJson,
+    Tree,
+    TreeTable,
+    Dependency,
+    DependencyJson,
     Governance,
     GovernanceJson,
+    #[value(name = "queries-json")]
+    QueriesJson,
 }
 
 /// Enum definition for ScreenshotOutputFormat.
@@ -247,20 +247,41 @@ pub struct InspectVarsArgs {
     pub common: CommonCliArgs,
     #[arg(
         long,
-        required_unless_present = "dashboard_url",
-        help = "Grafana dashboard UID whose templating variables should be listed. Required unless --dashboard-url is provided."
+        help = "Grafana dashboard UID whose templating variables should be listed. Use this to pick one dashboard from a local export tree or to read one live dashboard."
     )]
     pub dashboard_uid: Option<String>,
     #[arg(
         long,
-        required_unless_present = "dashboard_uid",
+        conflicts_with = "input",
         help = "Full Grafana dashboard URL. When provided, the runtime can derive the dashboard UID from the URL path."
     )]
     pub dashboard_url: Option<String>,
     #[arg(
         long,
+        value_name = "FILE",
+        conflicts_with = "input_dir",
+        help = "Read one local dashboard JSON file instead of calling Grafana. Use this for a raw dashboard file, a prompt file, or a file-provisioning dashboard object."
+    )]
+    pub input: Option<PathBuf>,
+    #[arg(
+        long = "input-dir",
+        value_name = "DIR",
+        conflicts_with = "input",
+        help = "Read one local dashboard from an export tree instead of calling Grafana. Point this at a raw/ export root, an all-orgs export root, or a provisioning/ dashboards tree."
+    )]
+    pub input_dir: Option<PathBuf>,
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = DashboardImportInputFormat::Raw,
+        requires = "input_dir",
+        help = "Interpret --input-dir as raw export files or Grafana file-provisioning artifacts. Use provisioning to accept either the provisioning/ root or its dashboards/ subdirectory."
+    )]
+    pub input_format: DashboardImportInputFormat,
+    #[arg(
+        long,
         value_name = "QUERY",
-        help = "Grafana variable query-string fragment, for example 'var-env=prod&var-host=web01'. This overlays current values in inspect-vars output."
+        help = "Grafana variable query-string fragment, for example 'var-env=prod&var-host=web01'. This overlays current values in list-vars output."
     )]
     pub vars_query: Option<String>,
     #[arg(
@@ -277,128 +298,257 @@ pub struct InspectVarsArgs {
     #[arg(
         long,
         default_value_t = false,
-        help = "Do not print table or CSV headers when rendering inspect-vars output."
+        help = "Do not print table or CSV headers when rendering list-vars output."
     )]
     pub no_header: bool,
-    #[arg(
-        long,
-        help = "Write inspect-vars output to this file."
-    )]
+    #[arg(long, help = "Write list-vars output to this file.")]
     pub output_file: Option<PathBuf>,
     #[arg(
         long,
         default_value_t = false,
         requires = "output_file",
-        help = "When --output-file is set, also print inspect-vars output to stdout."
+        help = "When --output-file is set, also print list-vars output to stdout."
     )]
     pub also_stdout: bool,
 }
 
-/// Struct definition for InspectExportArgs.
+/// Struct definition for AnalyzeArgs.
 #[derive(Debug, Clone, Args)]
-pub struct InspectExportArgs {
+pub struct AnalyzeArgs {
+    #[command(flatten)]
+    pub common: CommonCliArgs,
     #[arg(
-        long,
-        help = "Analyze dashboards from this directory. Use --input-format provisioning to point at a provisioning/ root or its dashboards/ subdirectory."
+        long = "input-dir",
+        help = "Analyze dashboards from this directory instead of live Grafana. Use --input-format provisioning to point at a provisioning/ root or its dashboards/ subdirectory."
     )]
-    pub import_dir: PathBuf,
+    pub input_dir: Option<PathBuf>,
     #[arg(
         long,
         value_enum,
-        help = "When --import-dir points at a dashboard export root that contains multiple variants, select which dashboard tree to inspect. Use raw for raw/ and source for prompt/."
+        requires = "input_dir",
+        help = "When --input-dir points at a dashboard export root that contains multiple variants, select which dashboard tree to analyze. Use raw for raw/ and source for prompt/."
     )]
     pub input_type: Option<InspectExportInputType>,
     #[arg(
         long,
         value_enum,
         default_value_t = DashboardImportInputFormat::Raw,
-        help = "Interpret --import-dir as raw export files or Grafana file-provisioning artifacts. Use provisioning to accept either the provisioning/ root or its dashboards/ subdirectory."
+        requires = "input_dir",
+        help = "Interpret --input-dir as raw export files or Grafana file-provisioning artifacts. Use provisioning to accept either the provisioning/ root or its dashboards/ subdirectory."
     )]
     pub input_format: DashboardImportInputFormat,
     #[arg(
         long,
+        default_value_t = DEFAULT_PAGE_SIZE,
+        help = "Dashboard search page size when analyze reads live Grafana."
+    )]
+    pub page_size: usize,
+    #[arg(
+        long,
+        default_value_t = 8usize,
+        help = "Maximum parallel dashboard fetch workers used when analyze reads live Grafana."
+    )]
+    pub concurrency: usize,
+    #[arg(
+        long,
+        conflicts_with_all = ["all_orgs", "input_dir"],
+        help = "Analyze dashboards from this Grafana org ID when reading live Grafana."
+    )]
+    pub org_id: Option<i64>,
+    #[arg(
+        long,
         default_value_t = false,
-        conflicts_with_all = ["table", "csv", "json", "yaml", "report", "output_format"],
-        help = "Render the export analysis as an operator-summary plain-text view."
+        conflicts_with_all = ["org_id", "input_dir"],
+        help = "Enumerate all visible Grafana orgs and analyze dashboards across them when reading live Grafana."
+    )]
+    pub all_orgs: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        conflicts_with_all = ["table", "csv", "json", "yaml", "output_format"],
+        help = "Render the dashboard analysis as plain text."
     )]
     pub text: bool,
     #[arg(
         long,
         default_value_t = false,
-        conflicts_with_all = ["text", "csv", "json", "yaml", "report", "output_format"],
-        help = "Render the export analysis as an operator-summary table."
+        conflicts_with_all = ["text", "csv", "json", "yaml", "output_format"],
+        help = "Render the dashboard analysis as a table-oriented summary."
     )]
     pub table: bool,
     #[arg(
         long,
         default_value_t = false,
-        conflicts_with_all = ["text", "table", "json", "yaml", "report", "output_format"],
-        help = "Render the export analysis as operator-summary CSV."
+        conflicts_with_all = ["text", "table", "json", "yaml", "output_format"],
+        help = "Render the dashboard analysis as CSV."
     )]
     pub csv: bool,
     #[arg(
         long,
         default_value_t = false,
-        conflicts_with_all = ["text", "table", "csv", "yaml", "report", "output_format"],
-        help = "Render the export analysis as the full machine-readable summary contract in JSON."
+        conflicts_with_all = ["text", "table", "csv", "yaml", "output_format"],
+        help = "Render the dashboard analysis as JSON."
     )]
     pub json: bool,
     #[arg(
         long,
         default_value_t = false,
-        conflicts_with_all = ["text", "table", "csv", "json", "report", "output_format"],
-        help = "Render the export analysis as the full machine-readable summary contract in YAML."
+        conflicts_with_all = ["text", "table", "csv", "json", "output_format"],
+        help = "Render the dashboard analysis as YAML."
     )]
     pub yaml: bool,
     #[arg(
         long,
         value_enum,
-        num_args = 0..=1,
-        default_missing_value = "table",
         conflicts_with_all = ["text", "table", "csv", "json", "yaml"],
-        help = "Render a full inspection report. Defaults to the operator-summary table view; use --report csv or --report tree-table for query-report tables, --report json for the machine-readable query report, --report tree for dashboard-first grouped text, --report dependency for the dependency contract, --report dependency-json for the machine-readable dependency contract, --report governance for datasource governance tables, or --report governance-json for the machine-readable governance contract."
-    )]
-    pub report: Option<InspectExportReportFormat>,
-    #[arg(
-        long,
-        value_enum,
-        conflicts_with_all = ["text", "table", "csv", "json", "yaml", "report"],
-        help = "Alternative single-flag output selector for inspect output. Use text, table, or csv for operator-summary views; use json or yaml for the full machine-readable summary contract; use report-table, report-csv, report-json, report-tree, report-tree-table, report-dependency, report-dependency-json, governance, or governance-json for report and contract views."
+        help = "Single-flag output selector for dashboard analysis. Use text, table, csv, json, yaml, tree, tree-table, dependency, dependency-json, governance, governance-json, or queries-json."
     )]
     pub output_format: Option<InspectOutputFormat>,
     #[arg(
         long,
         value_delimiter = ',',
         value_parser = parse_inspect_report_column,
-        help = "For --report table, csv, or tree-table output, or the equivalent report-like --output-format values, limit the query report to the selected columns. Use all to expand every supported column. Supported values: org, org_id, dashboard_uid, dashboard_title, dashboard_tags, folder_path, folder_full_path, folder_level, folder_uid, parent_folder_uid, panel_id, panel_title, panel_type, panel_target_count, panel_query_count, panel_datasource_count, panel_variables, ref_id, datasource, datasource_name, datasource_uid, datasource_org, datasource_org_id, datasource_database, datasource_bucket, datasource_organization, datasource_index_pattern, datasource_type, datasource_family, query_field, target_hidden, target_disabled, query_variables, metrics, functions, measurements, buckets, query, file. JSON-style aliases like orgId, dashboardUid, dashboardTags, folderFullPath, folderLevel, folderUid, parentFolderUid, panelTargetCount, panelQueryCount, panelDatasourceCount, panelVariables, datasourceName, datasourceUid, datasourceOrg, datasourceOrgId, datasourceDatabase, datasourceBucket, datasourceOrganization, datasourceIndexPattern, datasourceType, datasourceFamily, targetHidden, targetDisabled, and queryVariables are also accepted."
+        help = "For table, csv, or tree-table query analysis output, limit the query report to the selected columns. Use all to expand every supported column."
     )]
     pub report_columns: Vec<String>,
     #[arg(
         long,
-        help = "For --report output or report-like --output-format values, include only rows whose datasource label, uid, type, or family exactly matches this value."
+        help = "For table, csv, tree, tree-table, dependency, dependency-json, governance, governance-json, or queries-json output, include only rows whose datasource label, uid, type, or family exactly matches this value."
     )]
     pub report_filter_datasource: Option<String>,
     #[arg(
         long,
-        help = "For --report output or report-like --output-format values, include only rows whose panel id exactly matches this value."
+        help = "For table, csv, tree, tree-table, dependency, dependency-json, governance, governance-json, or queries-json output, include only rows whose panel id exactly matches this value."
     )]
     pub report_filter_panel_id: Option<String>,
     #[arg(
         long,
         default_value_t = false,
-        help = "Show extended help with report examples for inspect-export."
+        help = "Show a progress bar while live dashboards are fetched for analysis."
+    )]
+    pub progress: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Show extended help with advanced analysis examples."
     )]
     pub help_full: bool,
     #[arg(
         long,
         default_value_t = false,
-        help = "Do not print table headers when rendering the table summary, table-like --report output, or compatible --output-format values."
+        help = "Do not print headers when rendering table, csv, or tree-table analysis output."
     )]
     pub no_header: bool,
+    #[arg(long, help = "Write analysis output to this file.")]
+    pub output_file: Option<PathBuf>,
     #[arg(
         long,
-        help = "Write inspect output to this file."
+        default_value_t = false,
+        requires = "output_file",
+        help = "When --output-file is set, also print analysis output to stdout."
     )]
+    pub also_stdout: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Open the shared interactive analysis workbench over the analyzed dashboard set."
+    )]
+    pub interactive: bool,
+}
+
+/// Struct definition for InspectExportArgs.
+    #[derive(Debug, Clone, Args)]
+    pub struct InspectExportArgs {
+        #[arg(
+        long = "input-dir",
+        help = "Analyze dashboards from this directory. Use --input-format provisioning to point at a provisioning/ root or its dashboards/ subdirectory."
+    )]
+    pub input_dir: PathBuf,
+    #[arg(
+        long = "input-type",
+        value_enum,
+        help = "When --input-dir points at a dashboard export root that contains multiple variants, select which dashboard tree to inspect. Use raw for raw/ and source for prompt/."
+    )]
+    pub input_type: Option<InspectExportInputType>,
+    #[arg(
+        long = "input-format",
+        value_enum,
+        default_value_t = DashboardImportInputFormat::Raw,
+        help = "Interpret --input-dir as raw export files or Grafana file-provisioning artifacts. Use provisioning to accept either the provisioning/ root or its dashboards/ subdirectory."
+    )]
+    pub input_format: DashboardImportInputFormat,
+    #[arg(
+        long,
+        default_value_t = false,
+        conflicts_with_all = ["table", "csv", "json", "yaml", "output_format"],
+        help = "Render the export analysis as an operator-summary plain-text view."
+    )]
+    pub text: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        conflicts_with_all = ["text", "csv", "json", "yaml", "output_format"],
+        help = "Render the export analysis as an operator-summary table."
+    )]
+    pub table: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        conflicts_with_all = ["text", "table", "json", "yaml", "output_format"],
+        help = "Render the export analysis as operator-summary CSV."
+    )]
+    pub csv: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        conflicts_with_all = ["text", "table", "csv", "yaml", "output_format"],
+        help = "Render the export analysis as the full machine-readable summary contract in JSON."
+    )]
+    pub json: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        conflicts_with_all = ["text", "table", "csv", "json", "output_format"],
+        help = "Render the export analysis as the full machine-readable summary contract in YAML."
+    )]
+    pub yaml: bool,
+    #[arg(
+        long,
+        value_enum,
+        conflicts_with_all = ["text", "table", "csv", "json", "yaml"],
+        help = "Single-flag output selector for analyze-export output. Use text, table, csv, json, yaml, tree, tree-table, dependency, dependency-json, governance, governance-json, or queries-json."
+    )]
+    pub output_format: Option<InspectOutputFormat>,
+    #[arg(
+        long,
+        value_delimiter = ',',
+        value_parser = parse_inspect_report_column,
+        help = "For table, csv, or tree-table query analysis output, limit the query report to the selected columns. Use all to expand every supported column. Supported values: org, org_id, dashboard_uid, dashboard_title, dashboard_tags, folder_path, folder_full_path, folder_level, folder_uid, parent_folder_uid, panel_id, panel_title, panel_type, panel_target_count, panel_query_count, panel_datasource_count, panel_variables, ref_id, datasource, datasource_name, datasource_uid, datasource_org, datasource_org_id, datasource_database, datasource_bucket, datasource_organization, datasource_index_pattern, datasource_type, datasource_family, query_field, target_hidden, target_disabled, query_variables, metrics, functions, measurements, buckets, query, file. JSON-style aliases like orgId, dashboardUid, dashboardTags, folderFullPath, folderLevel, folderUid, parentFolderUid, panelTargetCount, panelQueryCount, panelDatasourceCount, panelVariables, datasourceName, datasourceUid, datasourceOrg, datasourceOrgId, datasourceDatabase, datasourceBucket, datasourceOrganization, datasourceIndexPattern, datasourceType, datasourceFamily, targetHidden, targetDisabled, and queryVariables are also accepted."
+    )]
+    pub report_columns: Vec<String>,
+    #[arg(
+        long,
+        help = "For table, csv, tree, tree-table, dependency, dependency-json, governance, governance-json, or queries-json output, include only rows whose datasource label, uid, type, or family exactly matches this value."
+    )]
+    pub report_filter_datasource: Option<String>,
+    #[arg(
+        long,
+        help = "For table, csv, tree, tree-table, dependency, dependency-json, governance, governance-json, or queries-json output, include only rows whose panel id exactly matches this value."
+    )]
+    pub report_filter_panel_id: Option<String>,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Show extended help with analysis examples for analyze-export."
+    )]
+    pub help_full: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Do not print table headers when rendering the table summary, table, csv, or tree-table query analysis output."
+    )]
+    pub no_header: bool,
+    #[arg(long, help = "Write inspect output to this file.")]
     pub output_file: Option<PathBuf>,
     #[arg(
         long,
@@ -444,69 +594,60 @@ pub struct InspectLiveArgs {
     #[arg(
         long,
         default_value_t = false,
-        conflicts_with_all = ["table", "csv", "json", "yaml", "report", "output_format"],
+        conflicts_with_all = ["table", "csv", "json", "yaml", "output_format"],
         help = "Render the live inspection analysis as plain text."
     )]
     pub text: bool,
     #[arg(
         long,
         default_value_t = false,
-        conflicts_with_all = ["text", "csv", "json", "yaml", "report", "output_format"],
+        conflicts_with_all = ["text", "csv", "json", "yaml", "output_format"],
         help = "Render the live inspection analysis as a table-oriented summary."
     )]
     pub table: bool,
     #[arg(
         long,
         default_value_t = false,
-        conflicts_with_all = ["text", "table", "json", "yaml", "report", "output_format"],
+        conflicts_with_all = ["text", "table", "json", "yaml", "output_format"],
         help = "Render the live inspection analysis as CSV."
     )]
     pub csv: bool,
     #[arg(
         long,
         default_value_t = false,
-        conflicts_with_all = ["text", "table", "csv", "yaml", "report", "output_format"],
+        conflicts_with_all = ["text", "table", "csv", "yaml", "output_format"],
         help = "Render the live inspection analysis as JSON."
     )]
     pub json: bool,
     #[arg(
         long,
         default_value_t = false,
-        conflicts_with_all = ["text", "table", "csv", "json", "report", "output_format"],
+        conflicts_with_all = ["text", "table", "csv", "json", "output_format"],
         help = "Render the live inspection analysis as YAML."
     )]
     pub yaml: bool,
     #[arg(
         long,
         value_enum,
-        num_args = 0..=1,
-        default_missing_value = "table",
         conflicts_with_all = ["text", "table", "csv", "json", "yaml"],
-        help = "Render a full inspection report. Defaults to flat per-query table output; use --report csv or --report json for alternate output, --report tree for dashboard-first grouped text, --report tree-table for dashboard-first grouped tables, --report dependency for dependency contracts, --report dependency-json for dependency contract JSON, --report governance for datasource governance tables, or --report governance-json for governance JSON."
-    )]
-    pub report: Option<InspectExportReportFormat>,
-    #[arg(
-        long,
-        value_enum,
-        conflicts_with_all = ["text", "table", "csv", "json", "yaml", "report"],
-        help = "Alternative single-flag output selector for inspect output. Use text, table, csv, json, yaml, report-table, report-csv, report-json, report-tree, report-tree-table, report-dependency, report-dependency-json, governance, or governance-json."
+        help = "Single-flag output selector for analyze-live output. Use text, table, csv, json, yaml, tree, tree-table, dependency, dependency-json, governance, governance-json, or queries-json."
     )]
     pub output_format: Option<InspectOutputFormat>,
     #[arg(
         long,
         value_delimiter = ',',
         value_parser = parse_inspect_report_column,
-        help = "For --report table, csv, or tree-table output, or the equivalent report-like --output-format values, limit the query report to the selected columns. Use all to expand every supported column. Supported values: org, org_id, dashboard_uid, dashboard_title, dashboard_tags, folder_path, folder_full_path, folder_level, folder_uid, parent_folder_uid, panel_id, panel_title, panel_type, panel_target_count, panel_query_count, panel_datasource_count, panel_variables, ref_id, datasource, datasource_name, datasource_uid, datasource_org, datasource_org_id, datasource_database, datasource_bucket, datasource_organization, datasource_index_pattern, datasource_type, datasource_family, query_field, target_hidden, target_disabled, query_variables, metrics, functions, measurements, buckets, query, file. JSON-style aliases like orgId, dashboardUid, dashboardTags, folderFullPath, folderLevel, folderUid, parentFolderUid, panelTargetCount, panelQueryCount, panelDatasourceCount, panelVariables, datasourceName, datasourceUid, datasourceOrg, datasourceOrgId, datasourceDatabase, datasourceBucket, datasourceOrganization, datasourceIndexPattern, datasourceType, datasourceFamily, targetHidden, targetDisabled, and queryVariables are also accepted."
+        help = "For table, csv, or tree-table query analysis output, limit the query report to the selected columns. Use all to expand every supported column. Supported values: org, org_id, dashboard_uid, dashboard_title, dashboard_tags, folder_path, folder_full_path, folder_level, folder_uid, parent_folder_uid, panel_id, panel_title, panel_type, panel_target_count, panel_query_count, panel_datasource_count, panel_variables, ref_id, datasource, datasource_name, datasource_uid, datasource_org, datasource_org_id, datasource_database, datasource_bucket, datasource_organization, datasource_index_pattern, datasource_type, datasource_family, query_field, target_hidden, target_disabled, query_variables, metrics, functions, measurements, buckets, query, file. JSON-style aliases like orgId, dashboardUid, dashboardTags, folderFullPath, folderLevel, folderUid, parentFolderUid, panelTargetCount, panelQueryCount, panelDatasourceCount, panelVariables, datasourceName, datasourceUid, datasourceOrg, datasourceOrgId, datasourceDatabase, datasourceBucket, datasourceOrganization, datasourceIndexPattern, datasourceType, datasourceFamily, targetHidden, targetDisabled, and queryVariables are also accepted."
     )]
     pub report_columns: Vec<String>,
     #[arg(
         long,
-        help = "For --report output or report-like --output-format values, include only rows whose datasource label, uid, type, or family exactly matches this value."
+        help = "For table, csv, tree, tree-table, dependency, dependency-json, governance, governance-json, or queries-json output, include only rows whose datasource label, uid, type, or family exactly matches this value."
     )]
     pub report_filter_datasource: Option<String>,
     #[arg(
         long,
-        help = "For --report output or report-like --output-format values, include only rows whose panel id exactly matches this value."
+        help = "For table, csv, tree, tree-table, dependency, dependency-json, governance, governance-json, or queries-json output, include only rows whose panel id exactly matches this value."
     )]
     pub report_filter_panel_id: Option<String>,
     #[arg(
@@ -518,19 +659,16 @@ pub struct InspectLiveArgs {
     #[arg(
         long,
         default_value_t = false,
-        help = "Show extended help with report examples for inspect-live."
+        help = "Show extended help with analysis examples for analyze-live."
     )]
     pub help_full: bool,
     #[arg(
         long,
         default_value_t = false,
-        help = "Do not print headers when rendering table, csv, or tree-table inspection output, including compatible --output-format values."
+        help = "Do not print headers when rendering table, csv, or tree-table inspection output."
     )]
     pub no_header: bool,
-    #[arg(
-        long,
-        help = "Write inspect output to this file."
-    )]
+    #[arg(long, help = "Write inspect output to this file.")]
     pub output_file: Option<PathBuf>,
     #[arg(
         long,
@@ -550,6 +688,46 @@ pub struct InspectLiveArgs {
 /// Struct definition for GovernanceGateArgs.
 #[derive(Debug, Clone, Args)]
 pub struct GovernanceGateArgs {
+    #[command(flatten)]
+    pub common: CommonCliArgs,
+    #[arg(
+        long,
+        default_value_t = DEFAULT_PAGE_SIZE,
+        help = "Dashboard search page size when governance-gate stages live analysis artifacts."
+    )]
+    pub page_size: usize,
+    #[arg(
+        long,
+        conflicts_with = "all_orgs",
+        help = "Analyze dashboards from one explicit Grafana org ID instead of the current org when reading live Grafana."
+    )]
+    pub org_id: Option<i64>,
+    #[arg(
+        long,
+        default_value_t = false,
+        conflicts_with = "org_id",
+        help = "Analyze dashboards across all visible Grafana orgs when reading live Grafana. Prefer Basic auth when you need cross-org analysis because API tokens are often scoped to one org."
+    )]
+    pub all_orgs: bool,
+    #[arg(
+        long = "input-dir",
+        conflicts_with_all = ["governance", "queries"],
+        help = "Analyze dashboards from this local export tree directly. Prefer --url for live Grafana or saved artifacts only for advanced reuse."
+    )]
+    pub input_dir: Option<PathBuf>,
+    #[arg(
+        long = "input-format",
+        value_enum,
+        default_value_t = DashboardImportInputFormat::Raw,
+        help = "Interpret --input-dir as raw export files or Grafana file-provisioning artifacts from a local export tree."
+    )]
+    pub input_format: DashboardImportInputFormat,
+    #[arg(
+        long = "input-type",
+        value_enum,
+        help = "Disambiguate a mixed export root when --input-dir can resolve to both raw and source-style dashboard inputs."
+    )]
+    pub input_type: Option<InspectExportInputType>,
     #[arg(
         long,
         value_enum,
@@ -568,10 +746,16 @@ pub struct GovernanceGateArgs {
         help = "Built-in governance policy name. Use with --policy-source builtin."
     )]
     pub builtin_policy: Option<String>,
-    #[arg(long, help = "Path to dashboard inspect governance-json output.")]
-    pub governance: PathBuf,
-    #[arg(long, help = "Path to dashboard inspect report json output.")]
-    pub queries: PathBuf,
+    #[arg(
+        long,
+        help = "Reuse a saved governance-json artifact. Prefer --url or --input-dir for the common path; keep this for advanced reuse."
+    )]
+    pub governance: Option<PathBuf>,
+    #[arg(
+        long,
+        help = "Reuse a saved queries-json artifact. Prefer --url or --input-dir for the common path; keep this for advanced reuse."
+    )]
+    pub queries: Option<PathBuf>,
     #[arg(
         long,
         value_enum,
@@ -595,11 +779,54 @@ pub struct GovernanceGateArgs {
 /// Struct definition for TopologyArgs.
 #[derive(Debug, Clone, Args)]
 pub struct TopologyArgs {
-    #[arg(long, help = "Path to dashboard governance JSON.")]
-    pub governance: PathBuf,
+    #[command(flatten)]
+    pub common: CommonCliArgs,
     #[arg(
         long,
-        help = "Optional reserved compatibility input. Topology currently renders from governance JSON and optional alert-contract data."
+        default_value_t = DEFAULT_PAGE_SIZE,
+        help = "Dashboard search page size when topology stages live analysis artifacts."
+    )]
+    pub page_size: usize,
+    #[arg(
+        long,
+        conflicts_with = "all_orgs",
+        help = "Analyze dashboards from one explicit Grafana org ID instead of the current org when reading live Grafana."
+    )]
+    pub org_id: Option<i64>,
+    #[arg(
+        long,
+        default_value_t = false,
+        conflicts_with = "org_id",
+        help = "Analyze dashboards across all visible Grafana orgs when reading live Grafana. Prefer Basic auth when you need cross-org analysis because API tokens are often scoped to one org."
+    )]
+    pub all_orgs: bool,
+    #[arg(
+        long = "input-dir",
+        conflicts_with_all = ["governance", "queries"],
+        help = "Analyze dashboards from this local export tree directly. Prefer --url for live Grafana or saved artifacts only for advanced reuse."
+    )]
+    pub input_dir: Option<PathBuf>,
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = DashboardImportInputFormat::Raw,
+        help = "Interpret --input-dir as raw export files or Grafana file-provisioning artifacts from a local export tree."
+    )]
+    pub input_format: DashboardImportInputFormat,
+    #[arg(
+        long,
+        value_enum,
+        help = "Disambiguate a mixed export root when --input-dir can resolve to both raw and source-style dashboard inputs."
+    )]
+    pub input_type: Option<InspectExportInputType>,
+    #[arg(
+        long,
+        help = "Reuse a saved governance-json artifact. Prefer --url or --input-dir for the common path; keep this for advanced reuse."
+    )]
+    pub governance: Option<PathBuf>,
+    #[arg(
+        long,
+        help = "Reuse a saved queries-json artifact when you already split analysis into artifact files. Prefer --url or --input-dir for the common path; keep this for advanced reuse."
     )]
     pub queries: Option<PathBuf>,
     #[arg(
@@ -611,7 +838,7 @@ pub struct TopologyArgs {
         long,
         value_enum,
         default_value_t = TopologyOutputFormat::Text,
-        help = "Render the topology as text, json, mermaid, or dot."
+        help = "Choose how to render the dependency view: text for terminal reading, json for CI/scripts, mermaid for Markdown/docs, or dot for Graphviz."
     )]
     pub output_format: TopologyOutputFormat,
     #[arg(
@@ -637,11 +864,54 @@ pub struct TopologyArgs {
 /// Struct definition for ImpactArgs.
 #[derive(Debug, Clone, Args)]
 pub struct ImpactArgs {
-    #[arg(long, help = "Path to dashboard governance JSON.")]
-    pub governance: PathBuf,
+    #[command(flatten)]
+    pub common: CommonCliArgs,
     #[arg(
         long,
-        help = "Optional reserved compatibility input. Impact currently derives blast radius from governance JSON and optional alert-contract data."
+        default_value_t = DEFAULT_PAGE_SIZE,
+        help = "Dashboard search page size when impact stages live analysis artifacts."
+    )]
+    pub page_size: usize,
+    #[arg(
+        long,
+        conflicts_with = "all_orgs",
+        help = "Analyze dashboards from one explicit Grafana org ID instead of the current org when reading live Grafana."
+    )]
+    pub org_id: Option<i64>,
+    #[arg(
+        long,
+        default_value_t = false,
+        conflicts_with = "org_id",
+        help = "Analyze dashboards across all visible Grafana orgs when reading live Grafana. Prefer Basic auth when you need cross-org analysis because API tokens are often scoped to one org."
+    )]
+    pub all_orgs: bool,
+    #[arg(
+        long = "input-dir",
+        conflicts_with_all = ["governance", "queries"],
+        help = "Analyze dashboards from this export directory instead of live Grafana or prebuilt artifact files."
+    )]
+    pub input_dir: Option<PathBuf>,
+    #[arg(
+        long = "input-format",
+        value_enum,
+        default_value_t = DashboardImportInputFormat::Raw,
+        help = "Interpret --input-dir as raw export files or Grafana file-provisioning artifacts."
+    )]
+    pub input_format: DashboardImportInputFormat,
+    #[arg(
+        long = "input-type",
+        value_enum,
+        help = "Disambiguate a mixed export root when --input-dir can resolve to both raw and source-style dashboard inputs."
+    )]
+    pub input_type: Option<InspectExportInputType>,
+    #[arg(
+        long,
+        help = "Reuse this dashboard governance JSON artifact instead of analyzing live Grafana or an export tree first."
+    )]
+    pub governance: Option<PathBuf>,
+    #[arg(
+        long,
+        help = "Optional query report artifact path when reusing prebuilt analysis files. Impact itself derives blast radius from governance data plus optional alert-contract data."
     )]
     pub queries: Option<PathBuf>,
     #[arg(
@@ -673,15 +943,15 @@ pub struct ImpactArgs {
 #[derive(Debug, Clone, Args)]
 pub struct ValidateExportArgs {
     #[arg(
-        long,
+        long = "input-dir",
         help = "Validate dashboards from this export directory. Use raw/ by default, or use provisioning/ or its dashboards/ subdirectory with --input-format provisioning."
     )]
-    pub import_dir: PathBuf,
+    pub input_dir: PathBuf,
     #[arg(
         long,
         value_enum,
         default_value_t = DashboardImportInputFormat::Raw,
-        help = "Interpret --import-dir as raw export files or Grafana file-provisioning artifacts. Use provisioning to accept either the provisioning/ root or its dashboards/ subdirectory."
+        help = "Interpret --input-dir as raw export files or Grafana file-provisioning artifacts. Use provisioning to accept either the provisioning/ root or its dashboards/ subdirectory."
     )]
     pub input_format: DashboardImportInputFormat,
     #[arg(

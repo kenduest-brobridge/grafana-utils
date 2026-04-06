@@ -182,7 +182,7 @@ fn run_sync_cli_apply_accepts_reviewed_plan_file() {
     .unwrap();
 
     let result = run_sync_cli(SyncGroupCommand::Apply(SyncApplyArgs {
-        plan_file,
+        plan_file: Some(plan_file),
         preflight_file: None,
         bundle_preflight_file: None,
         approve: true,
@@ -235,7 +235,7 @@ fn run_sync_cli_apply_rejects_reviewed_plan_with_wrong_lineage_parent() {
     .unwrap();
 
     let error = run_sync_cli(SyncGroupCommand::Apply(SyncApplyArgs {
-        plan_file,
+        plan_file: Some(plan_file),
         preflight_file: None,
         bundle_preflight_file: None,
         approve: true,
@@ -253,7 +253,7 @@ fn run_sync_cli_apply_rejects_reviewed_plan_with_wrong_lineage_parent() {
     .unwrap_err()
     .to_string();
 
-    assert!(error.contains("unexpected lineage parentTraceId"));
+    assert!(error.contains("unexpected lineage stage"));
 }
 
 #[test]
@@ -286,7 +286,7 @@ fn run_sync_cli_apply_rejects_unreviewed_plan_file() {
     .unwrap();
 
     let error = run_sync_cli(SyncGroupCommand::Apply(SyncApplyArgs {
-        plan_file,
+        plan_file: Some(plan_file),
         preflight_file: None,
         bundle_preflight_file: None,
         approve: true,
@@ -337,7 +337,7 @@ fn run_sync_cli_apply_requires_explicit_approval() {
     .unwrap();
 
     let error = run_sync_cli(SyncGroupCommand::Apply(SyncApplyArgs {
-        plan_file,
+        plan_file: Some(plan_file),
         preflight_file: None,
         bundle_preflight_file: None,
         approve: false,

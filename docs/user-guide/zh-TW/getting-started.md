@@ -61,7 +61,7 @@ profile 的重點是讓日常操作少重打重複參數，不是代表一開始
 ### 下載並安裝
 ```bash
 # 用途：下載並安裝。
-curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh
 ```
 
 若您想固定版本，或想指定安裝到哪個 binary 目錄，也可以直接這樣裝：
@@ -69,7 +69,7 @@ curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/mai
 ```bash
 # 用途：把固定版本安裝到指定的 binary 目錄。
 VERSION=0.8.0 BIN_DIR="$HOME/.local/bin" \
-  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
+  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh
 ```
 
 安裝腳本會優先使用您指定的 `BIN_DIR`。若沒有設定，會先嘗試可寫入的 `/usr/local/bin`，再退回 `$HOME/.local/bin`。

@@ -7,7 +7,7 @@ Export live Grafana datasource inventory as normalized JSON plus provisioning fi
 Use this when you need a local datasource bundle for later inspection, diff, or import.
 
 ## Key flags
-- `--export-dir`: target directory for the export tree.
+- `--output-dir`: target directory for the export tree.
 - `--org-id`: export one explicit Grafana org.
 - `--all-orgs`: export each visible org into per-org subdirectories. Requires Basic auth.
 - `--overwrite`: replace existing files.
@@ -17,12 +17,12 @@ Use this when you need a local datasource bundle for later inspection, diff, or 
 ## Examples
 ```bash
 # Purpose: Export live Grafana datasource inventory as normalized JSON plus provisioning files.
-grafana-util datasource export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./datasources --overwrite
+grafana-util datasource export --url http://localhost:3000 --basic-user admin --basic-password admin --output-dir ./datasources --overwrite
 ```
 
 ```bash
 # Purpose: Export live Grafana datasource inventory as normalized JSON plus provisioning files.
-grafana-util datasource export --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --export-dir ./datasources --overwrite
+grafana-util datasource export --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --output-dir ./datasources --overwrite
 ```
 
 ## Before / After
@@ -43,6 +43,6 @@ grafana-util datasource export --url http://localhost:3000 --basic-user admin --
 - if the bundle looks stale, verify the export directory and whether `--overwrite` was used intentionally
 
 ## Related commands
-- [datasource inspect-export](./datasource-inspect-export.md)
+- [datasource list](./datasource-list.md)
 - [datasource import](./datasource-import.md)
 - [datasource diff](./datasource-diff.md)

@@ -766,11 +766,11 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
     <section class="command-intro">
   <div class="command-intro-grid"><div class="command-intro-block">
   <p class="command-intro-label">這頁在說什麼</p>
-  <p class="command-intro-text">針對儀表板 inspect JSON 成品套用治理政策檢查。</p>
+  <p class="command-intro-text">直接針對 live Grafana 或本地匯出樹套用治理政策檢查，已保存的分析成品則作為進階重用路徑。</p>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">什麼時候看這頁</p>
-  <ul class="command-intro-list"><li>當您已經有 governance-json 與 query-report 成品，想在推進之前先得到政策通過或失敗結果時，使用這個指令。</li></ul>
+  <ul class="command-intro-list"><li>當您想在推進之前先得到政策通過或失敗結果時，使用這個指令。常見流程應直接用 live 或 local 輸入；只有進階重用與 CI pipeline 才保留 governance-json 與 queries-json。</li></ul>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">適合誰</p>
@@ -779,24 +779,26 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 </section>
 <h2 id="用途">用途</h2>
-<p>針對儀表板 inspect JSON 成品套用治理政策檢查。</p>
+<p>直接針對 live Grafana 或本地匯出樹套用治理政策檢查，已保存的分析成品則作為進階重用路徑。</p>
 <h2 id="何時使用">何時使用</h2>
-<p>當您已經有 <code>governance-json</code> 與 query-report 成品，想在推進之前先得到政策通過或失敗結果時，使用這個指令。</p>
+<p>當您想在推進之前先得到政策通過或失敗結果時，使用這個指令。常見流程應直接用 live 或 local 輸入；只有進階重用與 CI pipeline 才保留 <code>governance-json</code> 與 <code>queries-json</code>。</p>
 <h2 id="採用前後對照">採用前後對照</h2>
 <ul><li><strong>採用前</strong>：即使已經把 dashboard 匯出並 inspect 完，真正的政策違規還是要靠人一條一條看。</li><li><strong>採用後</strong>：governance-gate 會把這些成品整理成明確的 pass/fail 結果，也能直接交給 CI 或審核流程。</li></ul>
 <h2 id="重點旗標">重點旗標</h2>
-<ul><li><code>--policy-source</code>：選擇 <code>file</code> 或 <code>builtin</code>。</li><li><code>--policy</code>：使用檔案型政策輸入時的政策檔路徑。</li><li><code>--builtin-policy</code>：使用內建政策輸入時的名稱。</li><li><code>--governance</code>：儀表板 inspect governance JSON 路徑。</li><li><code>--queries</code>：儀表板 inspect query-report JSON 路徑。</li><li><code>--output-format</code>：輸出文字或 JSON。</li><li><code>--json-output</code>：可選擇輸出正規化後的結果 JSON。</li><li><code>--interactive</code>：在互動式終端機瀏覽器中檢視檢查結果。</li></ul>
+<ul><li><code>--policy-source</code>：選擇 <code>file</code> 或 <code>builtin</code>。</li><li><code>--policy</code>：使用檔案型政策輸入時的政策檔路徑。</li><li><code>--builtin-policy</code>：使用內建政策輸入時的名稱。</li><li><code>--url</code>：直接分析線上 Grafana。</li><li><code>--input-dir</code>：直接分析本地匯出樹。</li><li><code>--input-format</code>：分析本地匯出時選擇 <code>raw</code> 或 <code>provisioning</code>。</li><li><code>--governance</code>：儀表板 inspect governance JSON 路徑（<code>governance-json</code> 成品，進階重用）。</li><li><code>--queries</code>：儀表板 inspect query-report JSON 路徑（<code>queries-json</code> 成品，進階重用）。</li><li><code>--output-format</code>：輸出文字或 JSON。</li><li><code>--json-output</code>：可選擇輸出正規化後的結果 JSON。</li><li><code>--interactive</code>：在互動式終端機瀏覽器中檢視檢查結果。</li></ul>
 <h2 id="範例">範例</h2>
-<pre><code># 用途：針對儀表板 inspect JSON 成品套用治理政策檢查。
-grafana-util dashboard governance-gate --policy-source file --policy ./policy.yaml --governance ./governance.json --queries ./queries.json</code></pre>
-<pre><code># 用途：針對儀表板 inspect JSON 成品套用治理政策檢查。
+<pre><code># 用途：直接對線上 Grafana 套用治理政策檢查。
+grafana-util dashboard governance-gate --url http://localhost:3000 --basic-user admin --basic-password admin --policy-source file --policy ./policy.yaml</code></pre>
+<pre><code># 用途：直接對本地匯出樹套用治理政策檢查。
+grafana-util dashboard governance-gate --input-dir ./dashboards/raw --input-format raw --policy-source builtin --builtin-policy default --output-format json --json-output ./governance-check.json</code></pre>
+<pre><code># 用途：進階重用：對可重用的分析成品套用治理政策檢查。
 grafana-util dashboard governance-gate --policy-source builtin --builtin-policy default --governance ./governance.json --queries ./queries.json --output-format json --json-output ./governance-check.json</code></pre>
 <h2 id="成功判準">成功判準</h2>
 <ul><li>在 promotion 前就能把政策違規擋下來，而不是等 dashboard 上線後才發現</li><li>文字輸出夠清楚，適合人工檢查；JSON 輸出也夠穩定，適合接進 CI gate</li><li>換政策後可以重跑同一批 inspect 成品，不必重新 export 或 inspect</li></ul>
 <h2 id="失敗時先檢查">失敗時先檢查</h2>
 <ul><li>如果命令一開始就失敗，先確認 policy source、policy 檔案路徑或 builtin policy 名稱是否正確</li><li>如果 gate 結果看起來不完整，先檢查 <code>governance</code> 和 <code>queries</code> 是否來自同一次 inspect</li><li>如果自動化要讀結果，建議用 <code>--output-format json</code>，並先驗證 contract 再把 pass/fail 當成最終結果</li></ul>
 <h2 id="相關指令">相關指令</h2>
-<ul><li><a href="dashboard-inspect-export.html">dashboard inspect-export</a></li><li><a href="dashboard-inspect-live.html">dashboard inspect-live</a></li><li><a href="dashboard-topology.html">dashboard topology</a></li></ul>
+<ul><li><a href="dashboard-analyze-export.html">dashboard analyze（本地）</a></li><li><a href="dashboard-analyze-live.html">dashboard analyze（即時）</a></li><li><a href="dashboard-topology.html">dashboard topology</a></li></ul>
     
   </article>
   <aside class="sidebar">

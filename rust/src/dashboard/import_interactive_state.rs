@@ -20,6 +20,7 @@ use reqwest::Method;
 use serde_json::Value;
 
 use crate::common::Result;
+use crate::grafana_api::DashboardResourceClient;
 
 use super::import_lookup::ImportLookupCache;
 
@@ -468,6 +469,52 @@ impl InteractiveImportState {
         let source_folder_path = self.items[item_index].folder_path.clone();
         let result = super::import_interactive_review::build_interactive_import_review_with_request(
             request_json,
+            lookup_cache,
+            args,
+            &path,
+            &uid,
+            &source_folder_path,
+        );
+        let (status, review_state) = match result {
+            Ok(review) => (
+                format!(
+                    "Reviewed {}: {} {}.",
+                    uid, review.destination, review.action_label
+                ),
+                InteractiveImportReviewState::Resolved(Box::new(review)),
+            ),
+            Err(error) => (
+                format!("Review blocked for {}: {}", uid, error),
+                InteractiveImportReviewState::Failed(error.to_string()),
+            ),
+        };
+        self.status = status;
+        self.items[item_index].review = review_state;
+        self.mark_focus_reviewed();
+    }
+
+    pub(crate) fn resolve_focused_review_with_client(
+        &mut self,
+        client: &DashboardResourceClient<'_>,
+        lookup_cache: &mut ImportLookupCache,
+        args: &super::ImportArgs,
+    ) {
+        let Some(item_index) = self.selected_item_index() else {
+            self.mark_focus_reviewed();
+            return;
+        };
+        if !matches!(
+            self.items[item_index].review,
+            InteractiveImportReviewState::Pending
+        ) {
+            self.mark_focus_reviewed();
+            return;
+        }
+        let path = self.items[item_index].path.clone();
+        let uid = self.items[item_index].uid.clone();
+        let source_folder_path = self.items[item_index].folder_path.clone();
+        let result = super::import_interactive_review::build_interactive_import_review_with_client(
+            client,
             lookup_cache,
             args,
             &path,

@@ -766,11 +766,11 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
     <section class="command-intro">
   <div class="command-intro-grid"><div class="command-intro-block">
   <p class="command-intro-label">What this page covers</p>
-  <p class="command-intro-text">Estimate the blast radius of one datasource from dashboard governance artifacts.</p>
+  <p class="command-intro-text">Estimate the blast radius of one datasource directly from live Grafana, a local export tree, or reusable dashboard governance artifacts.</p>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">When to open this page</p>
-  <ul class="command-intro-list"><li>Use this when you are about to change, migrate, or troubleshoot one datasource and need to know which dashboards and alert resources depend on it before you touch the live system.</li></ul>
+  <ul class="command-intro-list"><li>Use this when you are about to change, migrate, or troubleshoot one datasource and need to know which dashboards and alert resources depend on it before you touch the live system. Prefer direct live or local inputs for the common path; keep governance artifacts for reuse.</li></ul>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">Who this page is for</p>
@@ -779,20 +779,28 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 </section>
 <h2 id="purpose">Purpose</h2>
-<p>Estimate the blast radius of one datasource from dashboard governance artifacts.</p>
+<p>Estimate the blast radius of one datasource directly from live Grafana, a local export tree, or reusable dashboard governance artifacts.</p>
 <h2 id="when-to-use">When to use</h2>
-<p>Use this when you are about to change, migrate, or troubleshoot one datasource and need to know which dashboards and alert resources depend on it before you touch the live system.</p>
+<p>Use this when you are about to change, migrate, or troubleshoot one datasource and need to know which dashboards and alert resources depend on it before you touch the live system. Prefer direct live or local inputs for the common path; keep governance artifacts for reuse.</p>
 <h2 id="before-after">Before / After</h2>
 <ul><li><strong>Before</strong>: datasource risk is inferred from memory, naming conventions, or manual Grafana searches.</li><li><strong>After</strong>: one <code>impact</code> run tells you which dashboards and alert-linked resources are downstream of a datasource UID.</li></ul>
 <h2 id="key-flags">Key flags</h2>
-<ul><li><code>--governance</code>: dashboard governance JSON input.</li><li><code>--datasource-uid</code>: datasource UID to trace.</li><li><code>--alert-contract</code>: optional alert contract JSON input.</li><li><code>--output-format</code>: render <code>text</code> or <code>json</code>.</li><li><code>--interactive</code>: open the interactive terminal browser.</li></ul>
+<ul><li><code>--url</code>: analyze live Grafana directly.</li><li><code>--input-dir</code>: analyze a local export tree directly.</li><li><code>--input-format</code>: choose <code>raw</code> or <code>provisioning</code> when analyzing local exports.</li><li><code>--governance</code>: dashboard governance JSON input (<code>governance-json</code> artifact).</li><li><code>--datasource-uid</code>: datasource UID to trace.</li><li><code>--alert-contract</code>: optional alert contract JSON input.</li><li><code>--output-format</code>: render <code>text</code> or <code>json</code>.</li><li><code>--interactive</code>: open the interactive terminal browser.</li></ul>
 <h2 id="examples">Examples</h2>
-<pre><code># Purpose: Estimate the blast radius of one datasource from dashboard governance artifacts.
+<pre><code># Purpose: Estimate the blast radius of one datasource directly from live Grafana.
 grafana-util dashboard impact \
-  --governance ./governance.json \
+  --url http://localhost:3000 \
+  --basic-user admin \
+  --basic-password admin \
   --datasource-uid prom-main \
   --output-format text</code></pre>
-<pre><code># Purpose: Estimate the blast radius of one datasource from dashboard governance artifacts.
+<pre><code># Purpose: Estimate the blast radius of one datasource from a local export tree.
+grafana-util dashboard impact \
+  --input-dir ./dashboards/raw \
+  --input-format raw \
+  --datasource-uid prom-main \
+  --output-format json</code></pre>
+<pre><code># Purpose: Estimate the blast radius of one datasource from reusable dashboard governance artifacts.
 grafana-util dashboard impact \
   --governance ./governance.json \
   --datasource-uid prom-main \
@@ -803,7 +811,7 @@ grafana-util dashboard impact \
 <h2 id="failure-checks">Failure checks</h2>
 <ul><li>if the result is empty, confirm the datasource UID matches the governance artifact instead of the display name you remember from Grafana</li><li>if alert-linked resources are missing, check whether you supplied <code>--alert-contract</code></li><li>if the JSON is going into CI or an external tool, validate the top-level shape before you assume a zero-impact result is real</li></ul>
 <h2 id="related-commands">Related commands</h2>
-<ul><li><a href="dashboard-inspect-export.html">dashboard inspect-export</a></li><li><a href="dashboard-topology.html">dashboard topology</a></li><li><a href="dashboard-governance-gate.html">dashboard governance-gate</a></li></ul>
+<ul><li><a href="dashboard-analyze-export.html">dashboard analyze (local)</a></li><li><a href="dashboard-topology.html">dashboard topology</a></li><li><a href="dashboard-governance-gate.html">dashboard governance-gate</a></li></ul>
     
   </article>
   <aside class="sidebar">

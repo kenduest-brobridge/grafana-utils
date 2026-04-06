@@ -10,6 +10,11 @@ Export alerting resources into raw/ JSON files.
 Capture alert rules, contact points, mute timings, templates, and policies from Grafana.
 .IP \(bu 2
 Build a local bundle before review or import.
+.SH BEFORE / AFTER
+.IP \(bu 2
+Before: capture alert rules, contact points, mute timings, templates, and policies by hand from Grafana.
+.IP \(bu 2
+After: export one reproducible raw/ bundle that you can review, diff, or feed into import.
 .SH COMMON OPTIONS
 .IP \(bu 2
 \-\-output\-dir writes the export bundle, defaulting to alerts.
@@ -19,6 +24,20 @@ Build a local bundle before review or import.
 \-\-overwrite replaces existing export files.
 .IP \(bu 2
 Uses the shared connection flags from grafana\-util alert.
+.SH SUCCESS CRITERIA
+.IP \(bu 2
+The output directory contains the expected raw/ resource files.
+.IP \(bu 2
+The bundle covers the resource kinds you expected for that org or profile.
+.IP \(bu 2
+You can hand the bundle to alert diff or alert import without editing its shape first.
+.SH FAILURE CHECKS
+.IP \(bu 2
+Check that the connection flags point at the right Grafana instance and org scope.
+.IP \(bu 2
+Use \-\-overwrite only when you really intend to replace the existing export tree.
+.IP \(bu 2
+If the bundle looks incomplete, verify token scope or switch to a profile with broader access.
 .SH EXAMPLES
 .PP
 Export alerting resources into raw/ JSON files.

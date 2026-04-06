@@ -17,6 +17,34 @@ pub(crate) struct ProfileShowDocument {
     pub(crate) profile: ConnectionProfile,
 }
 
+#[derive(Debug, Clone, Serialize)]
+pub(crate) struct ProfileCurrentDocument {
+    pub(crate) config_path: PathBuf,
+    pub(crate) config_exists: bool,
+    pub(crate) selected_profile: Option<String>,
+    pub(crate) auth_mode: String,
+    pub(crate) secret_mode: String,
+    pub(crate) profile: Option<ConnectionProfile>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub(crate) struct ProfileValidateCheck {
+    pub(crate) name: String,
+    pub(crate) status: String,
+    pub(crate) message: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub(crate) struct ProfileValidateDocument {
+    pub(crate) config_path: PathBuf,
+    pub(crate) profile: String,
+    pub(crate) valid: bool,
+    pub(crate) live_checked: bool,
+    pub(crate) auth_mode: String,
+    pub(crate) secret_mode: String,
+    pub(crate) checks: Vec<ProfileValidateCheck>,
+}
+
 fn mask_secret_value(value: &str, show_secrets: bool) -> String {
     if show_secrets {
         value.to_string()
@@ -80,6 +108,182 @@ pub(crate) fn build_display_profile(
         });
     }
     Ok(profile)
+}
+
+pub(crate) fn detect_profile_auth_mode(profile: &ConnectionProfile) -> &'static str {
+    if profile.token.is_some() || profile.token_env.is_some() || profile.token_store.is_some() {
+        "token"
+    } else if profile.username.is_some()
+        || profile.username_env.is_some()
+        || profile.password.is_some()
+        || profile.password_env.is_some()
+        || profile.password_store.is_some()
+    {
+        "basic"
+    } else {
+        "none"
+    }
+}
+
+pub(crate) fn detect_profile_secret_mode(profile: &ConnectionProfile) -> &'static str {
+    let normalize_secret_mode = |provider: &str| match provider {
+        "file" => "file",
+        "os" => "os",
+        "encrypted-file" => "encrypted-file",
+        _ => "unknown",
+    };
+    let token_mode = profile
+        .token_store
+        .as_ref()
+        .map(|store| normalize_secret_mode(store.provider.as_str()))
+        .or_else(|| profile.token.as_ref().map(|_| "file"))
+        .or_else(|| profile.token_env.as_ref().map(|_| "env"));
+    let password_mode = profile
+        .password_store
+        .as_ref()
+        .map(|store| normalize_secret_mode(store.provider.as_str()))
+        .or_else(|| profile.password.as_ref().map(|_| "file"))
+        .or_else(|| profile.password_env.as_ref().map(|_| "env"));
+    match (token_mode, password_mode) {
+        (None, None) => "none",
+        (Some(left), None) | (None, Some(left)) => left,
+        (Some(left), Some(right)) if left == right => left,
+        _ => "mixed",
+    }
+}
+
+pub(crate) fn render_profile_current_text(document: &ProfileCurrentDocument) -> String {
+    let mut output = String::new();
+    let _ = writeln!(output, "config_path: {}", document.config_path.display());
+    let _ = writeln!(output, "config_exists: {}", document.config_exists);
+    let _ = writeln!(
+        output,
+        "selected_profile: {}",
+        document.selected_profile.as_deref().unwrap_or("none")
+    );
+    let _ = writeln!(output, "auth_mode: {}", document.auth_mode);
+    let _ = writeln!(output, "secret_mode: {}", document.secret_mode);
+    if let Some(profile) = document.profile.as_ref() {
+        append_profile_fields_text(&mut output, profile);
+    }
+    output.trim_end().to_string()
+}
+
+pub(crate) fn render_profile_current_table(document: &ProfileCurrentDocument) -> Vec<String> {
+    let mut rows = vec![
+        ("config_path", document.config_path.display().to_string()),
+        ("config_exists", document.config_exists.to_string()),
+        (
+            "selected_profile",
+            document
+                .selected_profile
+                .as_deref()
+                .unwrap_or("none")
+                .to_string(),
+        ),
+        ("auth_mode", document.auth_mode.clone()),
+        ("secret_mode", document.secret_mode.clone()),
+    ];
+    if let Some(profile) = document.profile.as_ref() {
+        rows.extend(render_profile_summary_rows(
+            document.selected_profile.as_deref().unwrap_or("none"),
+            &document.config_path,
+            profile,
+        ));
+    }
+    render_summary_table(&rows)
+}
+
+pub(crate) fn render_profile_current_csv(document: &ProfileCurrentDocument) -> Vec<String> {
+    let mut rows = vec![
+        ("config_path", document.config_path.display().to_string()),
+        ("config_exists", document.config_exists.to_string()),
+        (
+            "selected_profile",
+            document
+                .selected_profile
+                .as_deref()
+                .unwrap_or("none")
+                .to_string(),
+        ),
+        ("auth_mode", document.auth_mode.clone()),
+        ("secret_mode", document.secret_mode.clone()),
+    ];
+    if let Some(profile) = document.profile.as_ref() {
+        rows.extend(render_profile_summary_rows(
+            document.selected_profile.as_deref().unwrap_or("none"),
+            &document.config_path,
+            profile,
+        ));
+    }
+    render_summary_csv(&rows)
+}
+
+pub(crate) fn render_profile_current_json(document: &ProfileCurrentDocument) -> Result<String> {
+    render_json_value(document)
+}
+
+pub(crate) fn render_profile_current_yaml(document: &ProfileCurrentDocument) -> Result<String> {
+    Ok(format!("{}\n", render_yaml(document)?))
+}
+
+pub(crate) fn render_profile_validate_text(document: &ProfileValidateDocument) -> String {
+    let mut output = String::new();
+    let _ = writeln!(output, "config_path: {}", document.config_path.display());
+    let _ = writeln!(output, "profile: {}", document.profile);
+    let _ = writeln!(output, "valid: {}", document.valid);
+    let _ = writeln!(output, "live_checked: {}", document.live_checked);
+    let _ = writeln!(output, "auth_mode: {}", document.auth_mode);
+    let _ = writeln!(output, "secret_mode: {}", document.secret_mode);
+    let _ = writeln!(output, "checks:");
+    for check in &document.checks {
+        let _ = writeln!(
+            output,
+            "  - {} [{}] {}",
+            check.name, check.status, check.message
+        );
+    }
+    output.trim_end().to_string()
+}
+
+pub(crate) fn render_profile_validate_table(document: &ProfileValidateDocument) -> Vec<String> {
+    let mut rows = vec![
+        ("config_path", document.config_path.display().to_string()),
+        ("profile", document.profile.clone()),
+        ("valid", document.valid.to_string()),
+        ("live_checked", document.live_checked.to_string()),
+        ("auth_mode", document.auth_mode.clone()),
+        ("secret_mode", document.secret_mode.clone()),
+    ];
+    for check in &document.checks {
+        let key = format!("check.{}.{}", check.name, check.status);
+        rows.push((Box::leak(key.into_boxed_str()), check.message.clone()));
+    }
+    render_summary_table(&rows)
+}
+
+pub(crate) fn render_profile_validate_csv(document: &ProfileValidateDocument) -> Vec<String> {
+    let mut rows = vec![
+        ("config_path", document.config_path.display().to_string()),
+        ("profile", document.profile.clone()),
+        ("valid", document.valid.to_string()),
+        ("live_checked", document.live_checked.to_string()),
+        ("auth_mode", document.auth_mode.clone()),
+        ("secret_mode", document.secret_mode.clone()),
+    ];
+    for check in &document.checks {
+        let key = format!("check.{}.{}", check.name, check.status);
+        rows.push((Box::leak(key.into_boxed_str()), check.message.clone()));
+    }
+    render_summary_csv(&rows)
+}
+
+pub(crate) fn render_profile_validate_json(document: &ProfileValidateDocument) -> Result<String> {
+    render_json_value(document)
+}
+
+pub(crate) fn render_profile_validate_yaml(document: &ProfileValidateDocument) -> Result<String> {
+    Ok(format!("{}\n", render_yaml(document)?))
 }
 
 pub(crate) fn render_profile_text(

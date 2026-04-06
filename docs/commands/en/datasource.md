@@ -1,19 +1,19 @@
 # datasource
 
 ## Purpose
-`grafana-util datasource` is the namespace for catalog lookup, live browsing, export/import, diff, and live create/modify/delete workflows. The same namespace is also available as `grafana-util ds`.
+`grafana-util datasource` is the namespace for catalog lookup, inventory reads, export/import, diff, and live create/modify/delete workflows. The same namespace is also available as `grafana-util ds`.
 
 ## When to use
-Use this namespace when you want to inspect supported datasource types, browse live inventory, export a datasource bundle, compare a local bundle with Grafana, or create and maintain live datasources.
+Use this namespace when you want to inspect supported datasource types, read inventory from live Grafana or a local bundle, export a datasource bundle, compare a local bundle with Grafana, or create and maintain live datasources.
 
 ## Description
-Open this page when your task is about the full data source lifecycle rather than one single mutation. The `datasource` namespace groups the work operators usually do together: checking supported types, reading live inventory, exporting and diffing bundles, and repairing or updating live Grafana data source objects.
+Open this page when your task is about the full data source lifecycle rather than one single mutation. The `datasource` namespace groups the work operators usually do together: checking supported types, reading inventory from live Grafana or local export bundles, exporting and diffing bundles, and repairing or updating live Grafana data source objects.
 
 This page is especially useful when you need to decide whether the next step is inventory, export/import, diff, or a live add/modify/delete action.
 
 ## Workflow lanes
 
-- **Inspect**: types, browse, list, and inspect-export paths.
+- **Inspect**: types, browse, and list paths for live or local inventory.
 - **Move**: export, import, and diff paths when you are carrying datasource state between environments.
 - **Review Before Mutate**: add, modify, and delete flows before a live datasource changes.
 
@@ -75,7 +75,6 @@ grafana-util datasource browse --url http://localhost:3000 --basic-user admin --
 - [datasource types](./datasource-types.md)
 - [datasource list](./datasource-list.md)
 - [datasource browse](./datasource-browse.md)
-- [datasource inspect-export](./datasource-inspect-export.md)
 
 ### Move
 

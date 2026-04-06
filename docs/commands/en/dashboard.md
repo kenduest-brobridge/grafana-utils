@@ -13,10 +13,23 @@ If you are an SRE, Grafana operator, or responder, this page should help you dec
 
 ## Workflow lanes
 
-- **Inspect**: browse, list, get, inspect-live, inspect-export, inspect-vars, and topology checks.
+- **Browse and inventory**: browse, list, and fetch-live.
+- **Analyze dashboards and build reports**: analyze, list-vars, and topology checks.
 - **Move**: export, import, clone-live, raw-to-prompt, diff, and publish paths.
+- **Author**: fetch-live, clone-live, serve, patch-file, edit-live, review, and publish around one dashboard draft.
 - **Review Before Mutate**: review, governance-gate, and impact analysis.
+- **History**: list, restore, and export revision history before you recover or promote a dashboard.
 - **Capture**: screenshot flows for reproducible visual proof.
+
+For single-dashboard authoring, the local draft path is:
+- `fetch-live` or `clone-live` to start from one live dashboard
+- `serve` to keep one or more drafts open in a local preview browser while you edit, optionally opening the browser for you
+- `review` to verify one draft
+- `patch-file` to rewrite local metadata
+- `edit-live` to fetch one live dashboard into an editor with a safe local-draft default and a review-aware apply gate
+- `publish` to replay that draft back through the import pipeline
+
+`review`, `patch-file`, and `publish` also accept `--input -` for one wrapped or bare dashboard JSON document from standard input. Use that when an external generator already writes the dashboard JSON to stdout. `patch-file --input -` requires `--output`, and `publish --watch` is the local-file variant for repeated save-and-preview loops and does not support `--input -`.
 
 Choose this page when the task is dashboard work but you are still deciding whether the next step is to inspect, move, review, or capture.
 
@@ -71,25 +84,45 @@ grafana-util dashboard raw-to-prompt --input-file ./legacy/cpu-main.json --profi
 ```
 
 ```bash
-# Purpose: Inspect live dashboard governance data for downstream review.
-grafana-util dashboard inspect-live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format governance-json
+# Purpose: Review one generated dashboard from standard input before mutation.
+jsonnet dashboards/cpu.jsonnet | grafana-util dashboard review --input - --output-format json
 ```
 
 ```bash
-# Purpose: Open the interactive inspector for a live dashboard.
-grafana-util dashboard inspect-live --url http://localhost:3000 --basic-user admin --basic-password admin --interactive
+# Purpose: Watch one local draft file and rerun publish dry-run after each save.
+grafana-util dashboard publish --url http://localhost:3000 --basic-user admin --basic-password admin --input ./drafts/cpu-main.json --dry-run --watch
+```
+
+```bash
+# Purpose: Open one local dashboard draft in the local preview server.
+grafana-util dashboard serve --input ./drafts/cpu-main.json --port 18080 --open-browser
+```
+
+```bash
+# Purpose: Pull one live dashboard into an external editor and keep the result as a local draft by default.
+grafana-util dashboard edit-live --profile prod --dashboard-uid cpu-main --output ./drafts/cpu-main.edited.json
+```
+
+```bash
+# Purpose: Analyze live dashboard governance data for downstream review.
+grafana-util dashboard analyze --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format governance
+```
+
+```bash
+# Purpose: Open the interactive analysis workbench for a live dashboard.
+grafana-util dashboard analyze --url http://localhost:3000 --basic-user admin --basic-password admin --interactive
 ```
 
 ## Related commands
 
-### Inspect
+### Browse and Inventory
 
 - [dashboard browse](./dashboard-browse.md)
 - [dashboard list](./dashboard-list.md)
-- [dashboard get](./dashboard-get.md)
-- [dashboard inspect-live](./dashboard-inspect-live.md)
-- [dashboard inspect-export](./dashboard-inspect-export.md)
-- [dashboard inspect-vars](./dashboard-inspect-vars.md)
+- [dashboard fetch-live](./dashboard-fetch-live.md)
+- [dashboard analyze (live)](./dashboard-analyze-live.md)
+- [dashboard analyze (local)](./dashboard-analyze-export.md)
+- [dashboard list-vars](./dashboard-list-vars.md)
 
 ### Move
 
@@ -98,6 +131,11 @@ grafana-util dashboard inspect-live --url http://localhost:3000 --basic-user adm
 - [dashboard import](./dashboard-import.md)
 - [dashboard raw-to-prompt](./dashboard-raw-to-prompt.md)
 - [dashboard patch-file](./dashboard-patch-file.md)
+
+### Author
+
+- [dashboard serve](./dashboard-serve.md)
+- [dashboard edit-live](./dashboard-edit-live.md)
 
 ### Review Before Mutate
 
@@ -108,6 +146,10 @@ grafana-util dashboard inspect-live --url http://localhost:3000 --basic-user adm
 - [dashboard governance-gate](./dashboard-governance-gate.md)
 - [dashboard topology](./dashboard-topology.md)
 - [dashboard impact](./dashboard-impact.md)
+
+### History
+
+- [dashboard history](./dashboard-history.md)
 
 ### Capture
 

@@ -12,7 +12,7 @@
 
 - 先把連線設定收斂成可重複的 profile
 - 先用 JSON 或 table 類輸出讓腳本穩定判讀
-- 先在 `status staged` 與 `change preflight` 擋掉有問題的變更
+- 先在 `status staged` 與 `change check` 擋掉有問題的變更
 - 只在確定 scope 合理時才用 token 或 service account token
 
 ## 採用前後對照
@@ -65,7 +65,7 @@ grafana-util status staged --desired-file ./desired.json --output-format json
 
 ```bash
 # 用途：建議先跑的 5 個指令。
-grafana-util change preflight --desired-file ./desired.json --fetch-live --output-format json
+grafana-util change check --desired-file ./desired.json --fetch-live --output-format json
 ```
 
 ```bash

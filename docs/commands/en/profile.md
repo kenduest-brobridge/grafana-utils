@@ -59,7 +59,7 @@ grafana-util profile example --mode full
 grafana-util profile init --overwrite
 ```
 
-Related commands: `grafana-util status live`, `grafana-util overview live`, `grafana-util change plan`.
+Related commands: `grafana-util status live`, `grafana-util overview live`, `grafana-util change preview`.
 
 ## `list`
 
@@ -146,6 +146,7 @@ Notes:
 - Default config path: `grafana-util.yaml`
 - Default encrypted secret file: `.grafana-util.secrets.yaml`
 - Default local key file for encrypted-file without a passphrase: `.grafana-util.secrets.key`
+- `profile add --store-secret encrypted-file` updates the config-directory `.gitignore` with those helper files when they live under the same directory tree.
 - These default secret paths are resolved relative to the config file directory, not a temporary process cwd.
 - `file` is the default storage mode.
 - `os` and `encrypted-file` are explicit opt-in modes.

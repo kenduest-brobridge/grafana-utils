@@ -1,48 +1,43 @@
 # grafana-util
 ### 專為 Grafana 維運與管理設計的 Rust CLI
 
-[![CI](https://img.shields.io/github/actions/workflow/status/kenduest-brobridge/grafana-utils/ci.yml?branch=main)](https://github.com/kenduest-brobridge/grafana-utils/actions)
-[![License](https://img.shields.io/github/license/kenduest-brobridge/grafana-utils)](LICENSE)
-[![Version](https://img.shields.io/github/v/tag/kenduest-brobridge/grafana-utils)](https://github.com/kenduest-brobridge/grafana-utils/tags)
+[![CI](https://img.shields.io/github/actions/workflow/status/kenduest-brobridge/grafana-util/ci.yml?branch=main)](https://github.com/kenduest-brobridge/grafana-util/actions)
+[![License](https://img.shields.io/github/license/kenduest-brobridge/grafana-util)](LICENSE)
+[![Version](https://img.shields.io/github/v/tag/kenduest-brobridge/grafana-util)](https://github.com/kenduest-brobridge/grafana-util/tags)
 
 [English](./README.md) | 繁體中文
 
-**提供 dashboard、alert、datasource、access control 與維運審查所需的可重複操作流程。**
+**標準化 Grafana 維運流程：包含儀表板、告警、資料源、存取控制與操作審查。**
 
-`grafana-util` 是我長期維護的一個 Rust 個人工具，出發點是處理自己在 Grafana 維運上反覆遇到的痛點。它把 dashboard、alert、datasource、access control 與整體狀態檢查這些日常工作，整理成比較可審查、帶治理意識、也更容易重複執行的流程。它主要面向 SRE、平台工程師、sysadmin 與維護者，適合那些不想只靠零散 API 呼叫、純 UI 點選或一次性腳本的人。
+`grafana-util` 是一款專為 Grafana 日常維運設計的 Rust CLI 工具。它把盤點、匯出/匯入、比對、回放、profile 管理與 secret 處理整理在一起，讓 SRE 與平台工程師可以先看清楚，再決定要不要變更。
 
-它不是要變成完整的 Grafana 平台，也不是要取代所有其他 CLI。這個工具比較明確的設計重心是維運流程本身：先 inspect，再 review，變更前先看清楚，secret 要有意識地處理，盡量把操作收斂成可重複的路徑。
-
-如果你也知道 `grafanactl` 或 `grizzly`，這裡比較適合把差異理解成「設計取向不同」：
-
-- `grafanactl` 比較接近通用的 Grafana 資源/API 操作 CLI。
-- `grizzly` 比較接近宣告式的 Grafana-as-code 管理流程。
-- `grafana-util` 目前更偏向可審查操作、inspection/governance 流程，以及較安全的搬移或回放路徑。
+它的重點是先審查再動手、把儀表板匯入/匯出的不同路徑分清楚，以及用可重複的 profile 讓日常操作保持簡短、穩定。
 
 ---
 
-## 為什麼選擇 `grafana-util`？
+## 支援的工作流
 
-| 能力面向 | 一般 CLI / curl | **grafana-util** |
-| :--- | :---: | :--- |
-| **多組織掃描** | 需手動切換組織 | ✅ 一個指令自動掃描所有組織 |
-| **依賴性審查** | 能力有限 | ✅ 匯入前檢查失效的資料來源相依性 |
-| **告警變更流程** | 直接修改 | ✅ 可審查的 **計畫 / 套用 (Plan/Apply)** 流程 |
-| **機密資料管理** | 容易處理失當 | ✅ **遮蔽式恢復 (Masked Recovery)** 與 profile secret 模式 |
-| **審查介面** | 只有原始 JSON | ✅ 互動式 TUI 與結構化表格/報表輸出 |
+- **儀表板 (Dashboards)**：瀏覽、列表、匯出/匯入、比對 (diff)、審查、發佈與分析。支援 `raw` (API 直接匯入)、`prompt` (UI 匯入) 與 `provisioning` (檔案配置用) 三種路徑。
+- **資料來源 (Datasources)**：匯出時可先遮蔽敏感資訊，匯入時再補回認證，也能對應檔案配置用的輸出。
+- **告警 (Alerts)**：匯出/匯入、比對 (diff)、計畫與套用 (`plan`/`apply`) 以及路由預覽。
+- **存取控制 (Access)**：使用者、團隊、組織、服務帳號 (Service Account) 與 Token 管理。
+- **變更管理 (Change)**：先審查再變更的流程 (`inspect`、`check`、`preview`)，讓正式套用前的狀態更清楚。
+- **狀態與總覽 (Status / Overview)**：針對即時環境與暫存資源的就緒檢查。
+- **設定檔 (Profiles)**：集中管理連線資訊，支援 `file`、`os` (Keyring) 與 `encrypted-file` 等秘密資訊儲存模式。
+- **快照 (Snapshot)**：資源套件的匯出與審查。
+- **資源 (Resource)**：針對 Grafana 資源的唯讀式 `inspect`/`get`/`list`/`describe` 操作。
 
 ---
 
-## 採用前後對照
+## 維運模式轉變
 
-| 原本常見做法 | 改用 `grafana-util` 後 |
-| :--- | :--- |
-| 想看 Grafana 全貌時，只能一直切 UI 或自己拼 API。 | 先跑 `overview live` 或 `status live`，快速知道下一步該看哪裡。 |
-| 匯出/匯入像一次性動作，缺少中間檢查點。 | 先匯出、再盤點依賴、再 dry-run，最後才決定要不要回放。 |
-| 告警變更很難在套用前說清楚會改到什麼。 | 先看 `change summary`、`change preflight`、`alert plan`，再決定要不要套用。 |
-| 認證資訊容易散落在 shell history 或平面檔案裡。 | 改用 prompt、環境變數或 profile secret 模式整理起來。 |
-
-重點不是多幾個 command，而是把維運順序收斂成比較安全、可審查的流程。
+| 功能項 | 傳統作法 | 使用 `grafana-util` |
+| :--- | :--- | :--- |
+| **環境盤點** | 需手動切換 UI 或自行組合 API 呼叫以暸解現況。 | 使用 `overview live` 或 `status live` 快速取得環境統一視圖。 |
+| **儀表板路徑** | 難以區分 API 直接匯入與 UI 匯入所需的格式。 | 提供明確的 `raw`、`prompt` 與 `provisioning` 路徑，並具備 `raw-to-prompt` 轉換工具。 |
+| **資料來源** | 匯出後的憑證資訊不容易安全保存，也不容易直接對應檔案配置。 | 匯出時先遮蔽敏感資訊，匯入時再補回認證，並保留和檔案配置對應的內容。 |
+| **審查機制** | 直接套用變更，缺乏中間審查層。 | 使用 `change inspect`、`check` 與 `preview`，在變動正式伺服器前先完成審查。 |
+| **安全性** | 認證資訊容易散落在 Shell 歷史紀錄或明文檔案中。 | 透過 `profile` 搭配作業系統 Keyring 或加密儲存空間管理憑證。 |
 
 ---
 
@@ -51,17 +46,17 @@
 ### 安裝
 
 ```bash
-# 1. 一鍵安裝 (全域 Binary)
-curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
+# 使用一鍵安裝腳本
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh
 ```
 
 ```bash
-# 2. 確認安裝版本
+# 確認安裝版本
 grafana-util --version
 ```
 
 ```bash
-# 3. 檢視目前 Grafana 狀態
+# 檢視目前 Grafana 狀態
 grafana-util overview live --url http://my-grafana:3000 --basic-user admin --prompt-password --output-format interactive
 ```
 
@@ -72,7 +67,7 @@ grafana-util overview live --url http://my-grafana:3000 --basic-user admin --pro
 ```bash
 # 用途：安裝固定版本。
 VERSION=0.8.0 \
-  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
+  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh
 ```
 
 指定安裝目錄：
@@ -80,7 +75,7 @@ VERSION=0.8.0 \
 ```bash
 # 用途：安裝到指定的 binary 目錄。
 BIN_DIR="$HOME/.local/bin" \
-  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
+  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh
 ```
 
 先看安裝腳本說明：
@@ -89,155 +84,119 @@ BIN_DIR="$HOME/.local/bin" \
 sh ./scripts/install.sh --help
 ```
 
-- Release 下載頁：<https://github.com/kenduest-brobridge/grafana-utils/releases>
-- 已發布 binary：目前提供 `linux-amd64` 與 `macos-arm64` 的標準版。若需要支援瀏覽器截圖的版本，請到同一個 release 下載 `*-browser-*` 壓縮檔。
-- 預設安裝位置：若有設定 `BIN_DIR` 就優先使用；否則會先嘗試可寫入的 `/usr/local/bin`，再退回 `$HOME/.local/bin`。
-- PATH 設定提醒：如果安裝目錄還沒在 `PATH` 內，安裝腳本會印出對應 `zsh` / `bash` 可直接使用的設定方式。
+- **發佈頁面**：<https://github.com/kenduest-brobridge/grafana-util/releases>
+- **執行檔**：提供 `linux-amd64` 與 `macos-arm64` 標準版。若需截圖功能，請下載 `*-browser-*` 版本。
+- **預設路徑**：優先使用 `/usr/local/bin`；若無權限則退回至 `$HOME/.local/bin`。
+- **PATH 設定提醒**：如果安裝目錄還沒在 `PATH` 內，安裝腳本會印出對應 `zsh` / `bash` 可直接使用的設定方式。
 
 ---
 
 ## 實用範例
 
-這裡放的是大多數人第一次真的會用到的例子：先看 live 狀況、再匯出成可審查的目錄、匯入前先檢查、告警先看計畫、最後再處理 datasource 的 secret 恢復。
-
-以下範例重點放在工作流程本身，所以後面不會每次都重複把連線參數寫滿。實際操作時，你可以用 `--url`、`--basic-user`、`--basic-password`、`--prompt-password`、`--token` 或 `--profile` 提供 Grafana 連線資訊；部分命令也支援 `GRAFANA_USERNAME`、`GRAFANA_PASSWORD`、`GRAFANA_API_TOKEN` 等環境變數。如果你要先把連線與認證方式弄清楚，請先看 [開始使用](./docs/user-guide/zh-TW/getting-started.md)。
-
-### 1. 變更前先看 live 環境全貌
+以下範例展示核心維運流程。連線方式可以直接帶 `--basic-password`，也可以用 `--prompt-password` 互動輸入，或改成 token、用 `bash` / `zsh` 的 `export` 設定環境變數，再搭配 `profile` 設定檔管理。若需完整的連線設定指南，請參考 [開始使用](./docs/user-guide/zh-TW/getting-started.md)。
 
 ```bash
-# 在終端機中打開目前 Grafana 環境的互動式總覽。
-grafana-util overview live \
+# bash / zsh
+export GRAFANA_USERNAME=admin
+export GRAFANA_PASSWORD=admin
+```
+
+如果你想把這些設定放進 profile，也可以直接用 `profile add` 分開存：
+
+```bash
+grafana-util profile add prod \
   --url http://my-grafana:3000 \
   --basic-user admin \
   --prompt-password \
+  --store-secret os
+
+grafana-util profile add ci \
+  --url http://my-grafana:3000 \
+  --token-env GRAFANA_CI_TOKEN \
+  --store-secret encrypted-file
+```
+
+從第二個例子開始，我們先省略連線資訊，讓畫面更簡潔。你還是可以直接帶 `--url`、`--basic-user`、`--basic-password` 或 `--token`，也可以先用 `export` 設好環境變數，或者放進 `profile`，分別管理 username、password、token。
+
+### 1. 檢視環境維運總覽
+```bash
+grafana-util overview live \
+  --url http://my-grafana:3000 \
+  --basic-user admin \
+  --basic-password admin \
   --output-format interactive
 ```
 
-當你只是想先知道「現在這套 Grafana 到底長什麼樣」時，這通常是最好的起點。
-
-預期你會先看到類似：
-
-```text
-Live status: ready
-Dashboards: ...
-Alerts: ...
-Datasources: ...
-```
-
-### 2. 把 dashboards 匯出成可審查的目錄樹
-
+### 2. 先列出儀表板
 ```bash
-# 跨組織匯出 dashboard，建立本地備份與審查基礎。
-grafana-util dashboard export --all-orgs --export-dir ./backup --progress
+# 先看看現有內容，再決定要不要匯出或修改。
+grafana-util dashboard list --all-orgs --table
 ```
 
-這是做備份、搬移、審查和 CI 檢查的起點。
-
-### 3. 匯入前先檢查 export tree 是否安全
-
+### 3. 匯出儀表板以供審查
 ```bash
-# 盤點匯出目錄中的 datasource 相依性與結構問題。
-grafana-util dashboard inspect-export \
-  --import-dir ./backup/raw \
-  --output-format report-table
+# 跨組織匯出所有儀表板，建立本地審查目錄樹。
+grafana-util dashboard export --all-orgs --output-dir ./backup --progress
 ```
 
-如果你想先抓出失效的 datasource 參照或可疑結構，這一步很有用。
-
-預期你會先看到像：
-
-```text
-Sources
-  prometheus-main
-  loki-prod
-```
-
-### 4. 正式匯入前先預覽會發生什麼事
-
+### 4. 分析儀表板相依性
 ```bash
-# 先 dry-run dashboard 匯入，表格化顯示預計變更。
+# 在匯入前檢查資料源參照是否失效或結構是否異常。
+grafana-util dashboard analyze \
+  --input-dir ./backup/raw \
+  --input-format raw \
+  --output-format tree-table
+```
+
+### 5. 開啟儀表板互動式工作台
+```bash
+# 開啟互動式的儀表板分析工作台。
+grafana-util dashboard analyze \
+  --input-dir ./backup/raw \
+  --input-format raw \
+  --interactive
+```
+
+### 6. 預覽儀表板匯入變更
+```bash
 grafana-util dashboard import \
-  --import-dir ./backup/raw \
+  --input-dir ./backup/raw \
   --replace-existing \
   --dry-run \
   --table
 ```
 
-適合在真正碰 live Grafana 之前，先看會新增、覆蓋或變動哪些項目。
-
-### 5. 告警變更先審查，再套用
-
+### 7. 儀表板快速反覆編修
 ```bash
-# 依 desired state 與 live server 建立可審查的 alert 計畫。
-grafana-util alert plan \
-  --desired-dir ./alerts/desired \
-  --prune \
-  --output-format json
+# 直接把本機產生的 dashboard JSON 送進 review，Grafana 不會被改到。
+cat cpu.json | grafana-util dashboard review --input - --output-format json
 ```
 
+### 8. 先看告警會怎麼變
 ```bash
-# 在 apply 前先預覽某組 critical 告警實際會怎麼路由。
+# 先看看這次改動會影響哪些告警。
+grafana-util alert plan --desired-dir ./alerts/desired --prune
+
+# 先預覽告警最後會送到哪裡。
 grafana-util alert preview-route \
   --desired-dir ./alerts/desired \
-  --label team=sre \
-  --severity critical
+  --label team=sre --severity critical
 ```
 
-這兩步適合用在你不想直接改 live 告警，而是想先有 review surface 的情境。
-
-### 6. 匯出 datasource，之後再恢復 secret 匯回
-
+### 9. 資料源匯出與還原
 ```bash
-# 匯出 data source，secret 會遮蔽，方便審查或納入版本控制。
-grafana-util datasource export --export-dir ./datasources --overwrite
+# 匯出時先遮蔽敏感資訊，匯入時再把連線資訊補回去。
+grafana-util datasource export --output-dir ./datasources
+grafana-util datasource import --input-dir ./datasources --prompt-password
 ```
-
-```bash
-# 匯回時再互動式補回必要 secret。
-grafana-util datasource import \
-  --import-dir ./datasources \
-  --replace-existing \
-  --prompt-password
-```
-
-這是把 datasource 設定在環境間搬移，又不想把原始憑證直接寫進檔案時最實用的流程。
-
----
-
-## 第一條實用工作流
-
-如果你現在只想知道這工具到底怎麼幫忙，先照這條順序走：
-
-1. 用 `overview live` 確認目標 Grafana 真的連得到
-2. 用 `dashboard export` 匯出成可審查的目錄樹
-3. 用 `dashboard inspect-export` 先抓出缺少的 datasource 依賴
-4. 用 `dashboard import --dry-run` 預覽回放結果，再決定要不要動 live
-
-這是最短、也最能感受到工具價值的一條公開工作流。
-
----
-
-## 快速掌握
-
-*   **先看清楚，再決定要不要動**：`overview`、`status`、匯出檢查與 governance 檢查，讓你先知道環境現況與風險。
-*   **把 Grafana 資產安全搬移與回放**：針對 dashboard、alert、data source、access 資源提供可審查的匯出/匯入流程。
-*   **讓維運流程可重複、可自動化**：提供表格/JSON 導向輸出、非互動操作路徑與較安全的 secret 處理方式。
 
 ---
 
 ## 文件入口
 
-手冊負責說明工作流程與維運脈絡，指令頁則負責提供目前 CLI 的精確語法。這裡只做快速導引，不再把 README 寫成第二份完整手冊。
+請參考手冊瞭解維運情境，或參考指令頁面取得精確語法說明。
 
-如果直接讀 Markdown 不方便，請先產生本機 HTML 文件站，再開啟入口頁：
-
-```bash
-# 用途：產生本機 HTML 文件站並開啟主入口頁。
-make html
-open ./docs/html/index.html
-```
-
-在 Linux 上請把 `open` 換成 `xdg-open`。如果要直接用瀏覽器看公開版，請使用 <https://kenduest-brobridge.github.io/grafana-utils/>。
+如果您偏好瀏覽器介面，請開啟本地 HTML 文件 [docs/html/index.html](./docs/html/index.html)，或造訪官方文件站：<https://kenduest-brobridge.github.io/grafana-utils/>。
 
 依需求進入：
 
@@ -256,14 +215,8 @@ open ./docs/html/index.html
 
 ---
 
-## 專案說明
-*   **Rust 為主體**：主要實作位於 `rust/src/`。
-*   **驗證環境**：在 Docker 環境下針對 **Grafana 12.4.1** 進行驗證。
-*   **自動化友善**：提供可預測的 exit code 與結構化輸出，便於 CI/CD 與批次流程整合。
-
----
+## 持續開發中
+本專案目前由社群持續維護。指令介面與文件仍會持續演進，精確語法請以指令說明頁面為準。
 
 ## 參與貢獻
-我們歡迎任何形式的貢獻！請參閱 [開發者指南](./docs/DEVELOPER.md) 了解設定步驟。
-
----
+我們歡迎任何形式的貢獻！請參閱 [開發者指南](./docs/DEVELOPER.md) 瞭解設定步驟。

@@ -1,10 +1,10 @@
 # dashboard impact
 
 ## 用途
-根據 dashboard governance 成品，評估單一 datasource 的影響範圍。
+直接從 live Grafana、本地匯出樹，或可重用的 dashboard governance 成品評估單一 datasource 的影響範圍。
 
 ## 何時使用
-當你準備調整、搬移或排查某個 datasource，想先知道有哪些 dashboard 與 alert 相關資產會被牽動，再動到 live 系統時，就該用這個指令。
+當你準備調整、搬移或排查某個 datasource，想先知道有哪些 dashboard 與 alert 相關資產會被牽動，再動到 live 系統時，就該用這個指令。常見流程請優先用 live 或 local 輸入；只有重用治理成品時才保留 artifact 路徑。
 
 ## 採用前後對照
 
@@ -12,7 +12,10 @@
 - **採用後**：跑一次 `impact`，就能知道某個 datasource UID 往下會影響哪些 dashboard 與 alert 資產。
 
 ## 重點旗標
-- `--governance`：dashboard governance JSON 輸入。
+- `--url`：直接分析線上 Grafana。
+- `--input-dir`：直接分析本地匯出樹。
+- `--input-format`：分析本地匯出時選擇 `raw` 或 `provisioning`。
+- `--governance`：dashboard governance JSON 輸入（`governance-json` 成品）。
 - `--datasource-uid`：要追蹤的 datasource UID。
 - `--alert-contract`：可選的 alert contract JSON 輸入。
 - `--output-format`：輸出 `text` 或 `json`。
@@ -20,15 +23,26 @@
 
 ## 範例
 ```bash
-# 用途：根據 dashboard governance 成品，評估單一 datasource 的影響範圍。
+# 用途：直接從 live Grafana 評估單一 datasource 的影響範圍。
 grafana-util dashboard impact \
-  --governance ./governance.json \
+  --url http://localhost:3000 \
+  --basic-user admin \
+  --basic-password admin \
   --datasource-uid prom-main \
   --output-format text
 ```
 
 ```bash
-# 用途：根據 dashboard governance 成品，評估單一 datasource 的影響範圍。
+# 用途：從本地匯出樹評估單一 datasource 的影響範圍。
+grafana-util dashboard impact \
+  --input-dir ./dashboards/raw \
+  --input-format raw \
+  --datasource-uid prom-main \
+  --output-format json
+```
+
+```bash
+# 用途：從可重用的治理成品（`governance-json`）評估單一 datasource 的影響範圍。
 grafana-util dashboard impact \
   --governance ./governance.json \
   --datasource-uid prom-main \
@@ -49,6 +63,6 @@ grafana-util dashboard impact \
 - 如果 JSON 要交給 CI 或外部工具，先驗證 top-level shape，再判斷「零影響」是否可信
 
 ## 相關指令
-- [dashboard inspect-export](./dashboard-inspect-export.md)
+- [dashboard analyze（本地）](./dashboard-analyze-export.md)
 - [dashboard topology](./dashboard-topology.md)
 - [dashboard governance-gate](./dashboard-governance-gate.md)

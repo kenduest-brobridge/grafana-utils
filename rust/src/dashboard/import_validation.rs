@@ -7,6 +7,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::common::{message, string_field, value_as_object, Result};
+use crate::grafana_api::DashboardResourceClient;
 use crate::sync::preflight::build_sync_preflight_document;
 
 use super::import_lookup::{
@@ -51,14 +52,14 @@ pub(crate) fn build_import_auth_context(
 }
 
 fn load_export_org_ids(
-    import_dir: &Path,
+    input_dir: &Path,
     metadata: Option<&ExportMetadata>,
 ) -> Result<BTreeSet<String>> {
     let mut org_ids = BTreeSet::new();
     let index_file = metadata
         .map(|item| item.index_file.clone())
         .unwrap_or_else(|| "index.json".to_string());
-    let index_path = import_dir.join(&index_file);
+    let index_path = input_dir.join(&index_file);
     if index_path.is_file() {
         let raw = fs::read_to_string(&index_path)?;
         let entries: Vec<super::VariantIndexEntry> = serde_json::from_str(&raw)?;
@@ -70,13 +71,13 @@ fn load_export_org_ids(
         }
     }
 
-    for folder in load_folder_inventory(import_dir, metadata)? {
+    for folder in load_folder_inventory(input_dir, metadata)? {
         let org_id = folder.org_id.trim();
         if !org_id.is_empty() {
             org_ids.insert(org_id.to_string());
         }
     }
-    for datasource in load_datasource_inventory(import_dir, metadata)? {
+    for datasource in load_datasource_inventory(input_dir, metadata)? {
         let org_id = datasource.org_id.trim();
         if !org_id.is_empty() {
             org_ids.insert(org_id.to_string());
@@ -86,14 +87,14 @@ fn load_export_org_ids(
 }
 
 fn load_export_org_names(
-    import_dir: &Path,
+    input_dir: &Path,
     metadata: Option<&ExportMetadata>,
 ) -> Result<BTreeSet<String>> {
     let mut org_names = BTreeSet::new();
     let index_file = metadata
         .map(|item| item.index_file.clone())
         .unwrap_or_else(|| "index.json".to_string());
-    let index_path = import_dir.join(&index_file);
+    let index_path = input_dir.join(&index_file);
     if index_path.is_file() {
         let raw = fs::read_to_string(&index_path)?;
         let entries: Vec<super::VariantIndexEntry> = serde_json::from_str(&raw)?;
@@ -105,13 +106,13 @@ fn load_export_org_names(
         }
     }
 
-    for folder in load_folder_inventory(import_dir, metadata)? {
+    for folder in load_folder_inventory(input_dir, metadata)? {
         let org_name = folder.org.trim();
         if !org_name.is_empty() {
             org_names.insert(org_name.to_string());
         }
     }
-    for datasource in load_datasource_inventory(import_dir, metadata)? {
+    for datasource in load_datasource_inventory(input_dir, metadata)? {
         let org_name = datasource.org.trim();
         if !org_name.is_empty() {
             org_names.insert(org_name.to_string());
@@ -124,7 +125,7 @@ fn load_export_org_names(
 pub(crate) struct ExportOrgImportScope {
     pub source_org_id: i64,
     pub source_org_name: String,
-    pub import_dir: PathBuf,
+    pub input_dir: PathBuf,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -133,7 +134,7 @@ pub(crate) struct ExportOrgTargetPlan {
     pub source_org_name: String,
     pub target_org_id: Option<i64>,
     pub org_action: &'static str,
-    pub import_dir: PathBuf,
+    pub input_dir: PathBuf,
 }
 
 fn org_id_string_from_value(value: Option<&Value>) -> String {
@@ -204,7 +205,7 @@ fn parse_export_org_scope_for_variant(
     Ok(ExportOrgImportScope {
         source_org_id,
         source_org_name,
-        import_dir: variant_dir.to_path_buf(),
+        input_dir: variant_dir.to_path_buf(),
     })
 }
 
@@ -217,7 +218,7 @@ pub(crate) fn discover_export_org_import_scopes(
     let variant_dir_name = use_export_org_variant_dir(args.input_format);
     let selected_org_ids: BTreeSet<i64> = args.only_org_id.iter().copied().collect();
     let mut scopes = Vec::new();
-    for entry in fs::read_dir(&args.import_dir)? {
+    for entry in fs::read_dir(&args.input_dir)? {
         let entry = entry?;
         let path = entry.path();
         if !path.is_dir() {
@@ -245,7 +246,7 @@ pub(crate) fn discover_export_org_import_scopes(
     }
     scopes.sort_by(|left, right| left.source_org_id.cmp(&right.source_org_id));
     if scopes.is_empty() {
-        if let Some(metadata) = load_export_metadata(&args.import_dir, None)? {
+        if let Some(metadata) = load_export_metadata(&args.input_dir, None)? {
             if metadata.variant != "root" {
                 return Err(message(format!(
                     "Dashboard import with --use-export-org expects the combined export root, not one {variant_dir_name}/ export directory."
@@ -255,7 +256,7 @@ pub(crate) fn discover_export_org_import_scopes(
         if selected_org_ids.is_empty() {
             return Err(message(format!(
                 "Dashboard import with --use-export-org did not find any org-specific {variant_dir_name} exports under {}.",
-                args.import_dir.display(),
+                args.input_dir.display(),
             )));
         }
         return Err(message(format!(
@@ -265,7 +266,7 @@ pub(crate) fn discover_export_org_import_scopes(
                 .map(|id| id.to_string())
                 .collect::<Vec<String>>()
                 .join(", "),
-            args.import_dir.display()
+            args.input_dir.display()
         )));
     }
     let found_org_ids: BTreeSet<i64> = scopes.iter().map(|scope| scope.source_org_id).collect();
@@ -286,7 +287,7 @@ pub(crate) fn validate_matching_export_org_with_request<F>(
     request_json: &mut F,
     cache: &mut ImportLookupCache,
     args: &super::ImportArgs,
-    import_dir: &Path,
+    input_dir: &Path,
     metadata: Option<&ExportMetadata>,
     target_org_id_override: Option<i64>,
 ) -> Result<()>
@@ -296,7 +297,7 @@ where
     if !args.require_matching_export_org {
         return Ok(());
     }
-    let export_org_ids = load_export_org_ids(import_dir, metadata)?;
+    let export_org_ids = load_export_org_ids(input_dir, metadata)?;
     if export_org_ids.is_empty() {
         return Err(message(
             "Cannot verify exported org for import: export orgId metadata was not found in index.json, folders.json, or datasources.json.",
@@ -324,6 +325,49 @@ where
     Ok(())
 }
 
+fn current_org_id_with_client(client: &DashboardResourceClient<'_>) -> Result<String> {
+    let org = client.fetch_current_org()?;
+    super::list::org_id_value(&org).map(|value| value.to_string())
+}
+
+pub(crate) fn validate_matching_export_org_with_client(
+    client: &DashboardResourceClient<'_>,
+    args: &super::ImportArgs,
+    input_dir: &Path,
+    metadata: Option<&ExportMetadata>,
+    target_org_id_override: Option<i64>,
+) -> Result<()> {
+    if !args.require_matching_export_org {
+        return Ok(());
+    }
+    let export_org_ids = load_export_org_ids(input_dir, metadata)?;
+    if export_org_ids.is_empty() {
+        return Err(message(
+            "Cannot verify exported org for import: export orgId metadata was not found in index.json, folders.json, or datasources.json.",
+        ));
+    }
+    if export_org_ids.len() > 1 {
+        return Err(message(format!(
+            "Cannot verify exported org for import: found multiple export orgIds ({}).",
+            export_org_ids
+                .into_iter()
+                .collect::<Vec<String>>()
+                .join(", ")
+        )));
+    }
+    let export_org_id = export_org_ids.into_iter().next().unwrap_or_default();
+    let target_org_id = match target_org_id_override {
+        Some(org_id) => org_id.to_string(),
+        None => current_org_id_with_client(client)?,
+    };
+    if export_org_id != target_org_id {
+        return Err(message(format!(
+            "Dashboard import export org mismatch: export orgId {export_org_id} does not match target org {target_org_id}. Use matching credentials/org selection or omit --require-matching-export-org."
+        )));
+    }
+    Ok(())
+}
+
 pub(crate) fn resolve_target_org_plan_for_export_scope_with_request<F>(
     request_json: &mut F,
     cache: &mut ImportLookupCache,
@@ -342,7 +386,7 @@ where
                 source_org_name: scope.source_org_name.clone(),
                 target_org_id: Some(scope.source_org_id),
                 org_action: "exists",
-                import_dir: scope.import_dir.clone(),
+                input_dir: scope.input_dir.clone(),
             });
         }
     }
@@ -352,7 +396,7 @@ where
             source_org_name: scope.source_org_name.clone(),
             target_org_id: None,
             org_action: "missing",
-            import_dir: scope.import_dir.clone(),
+            input_dir: scope.input_dir.clone(),
         });
     }
     if !args.create_missing_orgs {
@@ -373,7 +417,7 @@ where
             source_org_name: scope.source_org_name.clone(),
             target_org_id: None,
             org_action: "would-create",
-            import_dir: scope.import_dir.clone(),
+            input_dir: scope.input_dir.clone(),
         });
     }
     let created = create_org_with_request(&mut *request_json, &scope.source_org_name)?;
@@ -396,7 +440,7 @@ where
         source_org_name: scope.source_org_name.clone(),
         target_org_id: Some(parsed_org_id),
         org_action: "created",
-        import_dir: scope.import_dir.clone(),
+        input_dir: scope.input_dir.clone(),
     })
 }
 
@@ -436,9 +480,9 @@ fn collect_dashboard_panel_types(panels: &[Value], panel_types: &mut BTreeSet<St
 }
 
 fn dashboard_import_dependency_availability_requirements(
-    import_dir: &Path,
+    input_dir: &Path,
 ) -> Result<(bool, bool)> {
-    let mut dashboard_files = discover_dashboard_files(import_dir)?;
+    let mut dashboard_files = discover_dashboard_files(input_dir)?;
     dashboard_files.retain(|path| {
         path.file_name().and_then(|name| name.to_str()) != Some(FOLDER_INVENTORY_FILENAME)
     });
@@ -556,13 +600,49 @@ where
     Ok(availability)
 }
 
+fn build_dashboard_import_availability_with_client(
+    client: &DashboardResourceClient<'_>,
+    datasources: &[Map<String, Value>],
+    fetch_plugins: bool,
+) -> Result<Map<String, Value>> {
+    let mut availability = build_dashboard_import_availability_from_datasources(datasources);
+    if !fetch_plugins {
+        return Ok(availability);
+    }
+    match client.request_json(Method::GET, "/api/plugins", &[], None)? {
+        Some(Value::Array(plugins)) => {
+            let plugin_ids = plugins
+                .iter()
+                .filter_map(Value::as_object)
+                .filter_map(|plugin| plugin.get("id").and_then(Value::as_str))
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .map(str::to_string)
+                .collect::<BTreeSet<String>>();
+            availability.insert(
+                "pluginIds".to_string(),
+                Value::Array(
+                    plugin_ids
+                        .into_iter()
+                        .map(Value::String)
+                        .collect::<Vec<_>>(),
+                ),
+            );
+        }
+        Some(_) => return Err(message("Unexpected plugin list response from Grafana.")),
+        None => {}
+    }
+
+    Ok(availability)
+}
+
 fn build_dashboard_import_dependency_specs(
-    import_dir: &Path,
+    input_dir: &Path,
     datasource_catalog: &super::prompt::DatasourceCatalog,
     strict_schema: bool,
     target_schema_version: Option<i64>,
 ) -> Result<Vec<Value>> {
-    let mut dashboard_files = discover_dashboard_files(import_dir)?;
+    let mut dashboard_files = discover_dashboard_files(input_dir)?;
     dashboard_files.retain(|path| {
         path.file_name().and_then(|name| name.to_str()) != Some(FOLDER_INVENTORY_FILENAME)
     });
@@ -603,7 +683,7 @@ fn build_dashboard_import_dependency_specs(
 
 pub(crate) fn validate_dashboard_import_dependencies_with_request<F>(
     mut request_json: F,
-    import_dir: &Path,
+    input_dir: &Path,
     strict_schema: bool,
     target_schema_version: Option<i64>,
 ) -> Result<()>
@@ -611,7 +691,7 @@ where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
     let (needs_datasource_availability, needs_plugin_availability) =
-        dashboard_import_dependency_availability_requirements(import_dir)?;
+        dashboard_import_dependency_availability_requirements(input_dir)?;
     let datasources = if needs_datasource_availability {
         crate::dashboard::list_datasources_with_request(&mut request_json)?
     } else {
@@ -619,13 +699,54 @@ where
     };
     let datasource_catalog = build_datasource_catalog(&datasources);
     let desired_specs = build_dashboard_import_dependency_specs(
-        import_dir,
+        input_dir,
         &datasource_catalog,
         strict_schema,
         target_schema_version,
     )?;
     let availability = build_dashboard_import_availability_with_request(
         &mut request_json,
+        &datasources,
+        needs_plugin_availability,
+    )?;
+    let document =
+        build_sync_preflight_document(&desired_specs, Some(&Value::Object(availability)))?;
+    let blocking = document
+        .get("summary")
+        .and_then(Value::as_object)
+        .and_then(|summary| summary.get("blockingCount"))
+        .and_then(Value::as_i64)
+        .unwrap_or(0);
+    if blocking > 0 {
+        return Err(message(format!(
+            "Refusing dashboard import because preflight reports {blocking} blocking checks."
+        )));
+    }
+    Ok(())
+}
+
+pub(crate) fn validate_dashboard_import_dependencies_with_client(
+    client: &DashboardResourceClient<'_>,
+    input_dir: &Path,
+    strict_schema: bool,
+    target_schema_version: Option<i64>,
+) -> Result<()> {
+    let (needs_datasource_availability, needs_plugin_availability) =
+        dashboard_import_dependency_availability_requirements(input_dir)?;
+    let datasources = if needs_datasource_availability {
+        client.list_datasources()?
+    } else {
+        Vec::new()
+    };
+    let datasource_catalog = build_datasource_catalog(&datasources);
+    let desired_specs = build_dashboard_import_dependency_specs(
+        input_dir,
+        &datasource_catalog,
+        strict_schema,
+        target_schema_version,
+    )?;
+    let availability = build_dashboard_import_availability_with_client(
+        client,
         &datasources,
         needs_plugin_availability,
     )?;

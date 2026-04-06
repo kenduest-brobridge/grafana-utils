@@ -7,14 +7,49 @@ grafana\-util\-snapshot \- export and review Grafana snapshot inventory bundles
 .SH DESCRIPTION
 export and review Grafana snapshot inventory bundles.
 .PP
-when you want a local snapshot root that captures dashboard and datasource inventory for later inspection.
+when you want a local snapshot root that captures dashboard, datasource, and access inventory for later inspection.
+.SH BEFORE / AFTER
+.IP \(bu 2
+Before: snapshot\-style review usually means re\-querying Grafana or opening a pile of dashboards, datasources, and access records one by one.
+.IP \(bu 2
+After: export first, then review the local bundle as a repeatable artifact without touching the live server again.
 .SH SUBCOMMANDS
 .TP
 .B export
-export dashboard and datasource inventory into a local snapshot bundle. Use when: Need a local snapshot root that can be reviewed without Grafana access.
+export dashboard, datasource, and access inventory into a local snapshot bundle. Use when: Need a local snapshot root that can be reviewed without Grafana access.
 .TP
 .B review
 review a local snapshot inventory without touching Grafana. Use when: Want to inspect an exported snapshot root as table, csv, text, json, yaml, or interactive output.
+.SH SUCCESS CRITERIA
+.IP \(bu 2
+you can hand off a snapshot root and another operator can inspect it without asking for live access
+.IP \(bu 2
+export output is a durable artifact instead of a temporary UI session
+.IP \(bu 2
+the snapshot root includes lane metadata that later analysis can resolve without rescanning the whole tree
+.IP \(bu 2
+review output is clear enough to feed into a follow\-up analysis or incident note
+.SH FAILURE CHECKS
+.PP
+\- if a snapshot export looks empty, verify the auth profile or live connection before assuming the source system is blank
+.PP
+\- if review output looks surprising, confirm that you are pointing at the intended snapshot directory
+.PP
+\- if automation reads the output, keep the chosen \-\-output\-format explicit so the downstream parser knows the contract
+.PP
+Key flags: the root command is a namespace; the operational flags live on export and review. The shared root flag is \-\-color.
+.PP
+Examples:
+.PP
+# Purpose: Export a local snapshot bundle from live Grafana.
+.PP
+grafana\-util snapshot export \-\-url http://localhost:3000 \-\-basic\-user admin \-\-basic\-password admin \-\-output\-dir ./snapshot
+.PP
+# Purpose: Review the exported snapshot bundle as JSON.
+.PP
+grafana\-util snapshot review \-\-input\-dir ./snapshot \-\-output\-format json
+.PP
+Related commands: grafana\-util overview, grafana\-util status staged, grafana\-util change bundle.
 .SH SEE ALSO
 \fBgrafana-util\fR(1),
 \fBgrafana-util-status\fR(1),

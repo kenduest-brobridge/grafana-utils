@@ -5,7 +5,6 @@
 //! - Aggregate live findings across orgs and score combined freshness/severity.
 //! - Emit a stable status document for `project-status` reporting.
 
-use reqwest::Method;
 use serde_json::{Map, Value};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fs::Metadata;
@@ -13,11 +12,8 @@ use std::path::PathBuf;
 
 use crate::access::build_access_live_domain_status;
 use crate::alert::{build_alert_live_project_status_domain, AlertLiveProjectStatusInputs};
-use crate::common::{load_json_object_file, message, value_as_object, Result};
-use crate::dashboard::{
-    build_live_dashboard_domain_status_from_inputs,
-    collect_live_dashboard_project_status_inputs_with_request,
-};
+use crate::common::{load_json_object_file, message, Result};
+use crate::dashboard::{build_live_dashboard_domain_status_from_inputs, DEFAULT_PAGE_SIZE};
 use crate::datasource_live_project_status::{
     build_datasource_live_project_status_from_inputs,
     collect_live_datasource_project_status_inputs_with_request,
@@ -33,7 +29,8 @@ use crate::project_status_freshness::{
     build_live_project_status_freshness_from_source_count, ProjectStatusFreshnessSample,
 };
 use crate::project_status_support::{
-    build_live_project_status_client, build_live_project_status_client_for_org,
+    build_live_project_status_api_client, build_live_project_status_client_from_api,
+    project_status_live,
 };
 use crate::sync::{
     build_live_promotion_domain_status_transport, build_live_promotion_project_status,
@@ -45,35 +42,6 @@ const PROJECT_STATUS_LIVE_SCOPE: &str = "live";
 const PROJECT_STATUS_LIVE_ALL_ORGS_MODE_SUFFIX: &str = "-all-orgs";
 const PROJECT_STATUS_LIVE_READ_FAILED: &str = "live-read-failed";
 const PROJECT_STATUS_LIVE_ALL_ORGS_AGGREGATE: &str = "multi-org-aggregate";
-const PROJECT_STATUS_TIMESTAMP_FIELDS: &[&str] =
-    &["updated", "updatedAt", "modified", "createdAt", "created"];
-
-fn request_json_best_effort(
-    client: &JsonHttpClient,
-    path: &str,
-    params: &[(String, String)],
-) -> Option<Value> {
-    client
-        .request_json(Method::GET, path, params, None)
-        .ok()
-        .flatten()
-}
-
-fn request_object_list(
-    client: &JsonHttpClient,
-    path: &str,
-    params: &[(String, String)],
-    error_message: &str,
-) -> Result<Vec<Map<String, Value>>> {
-    match client.request_json(Method::GET, path, params, None)? {
-        Some(Value::Array(items)) => items
-            .iter()
-            .map(|item| Ok(value_as_object(item, error_message)?.clone()))
-            .collect(),
-        Some(_) => Err(message(error_message)),
-        None => Ok(Vec::new()),
-    }
-}
 
 fn build_live_read_failed_domain_status(
     id: &str,
@@ -117,95 +85,6 @@ fn load_optional_project_status_document_with_metadata(
     .transpose()
 }
 
-fn project_status_timestamp_from_object(object: &Map<String, Value>) -> Option<&str> {
-    for key in PROJECT_STATUS_TIMESTAMP_FIELDS {
-        if let Some(observed_at) = object.get(*key).and_then(Value::as_str) {
-            let observed_at = observed_at.trim();
-            if !observed_at.is_empty() {
-                return Some(observed_at);
-            }
-        }
-    }
-    None
-}
-
-fn project_status_freshness_samples_from_value<'a>(
-    source: &'static str,
-    value: &'a Value,
-) -> Vec<ProjectStatusFreshnessSample<'a>> {
-    match value {
-        Value::Array(items) => items
-            .iter()
-            .flat_map(|item| project_status_freshness_samples_from_value(source, item))
-            .collect(),
-        Value::Object(object) => project_status_timestamp_from_object(object)
-            .map(|observed_at| {
-                vec![ProjectStatusFreshnessSample::ObservedAtRfc3339 {
-                    source,
-                    observed_at,
-                }]
-            })
-            .unwrap_or_default(),
-        _ => Vec::new(),
-    }
-}
-
-fn project_status_freshness_samples_from_records<'a>(
-    source: &'static str,
-    records: &'a [Map<String, Value>],
-) -> Vec<ProjectStatusFreshnessSample<'a>> {
-    records
-        .iter()
-        .filter_map(|record| {
-            project_status_timestamp_from_object(record).map(|observed_at| {
-                ProjectStatusFreshnessSample::ObservedAtRfc3339 {
-                    source,
-                    observed_at,
-                }
-            })
-        })
-        .collect()
-}
-
-fn first_dashboard_uid(dashboard_summaries: &[Map<String, Value>]) -> Option<&str> {
-    dashboard_summaries.iter().find_map(|summary| {
-        summary
-            .get("uid")
-            .and_then(Value::as_str)
-            .map(str::trim)
-            .filter(|value| !value.is_empty())
-    })
-}
-
-fn latest_dashboard_version_timestamp<F>(
-    request_json: &mut F,
-    dashboard_summaries: &[Map<String, Value>],
-) -> Option<String>
-where
-    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
-{
-    let uid = first_dashboard_uid(dashboard_summaries)?;
-    let path = format!("/api/dashboards/uid/{uid}/versions");
-    let params = vec![("limit".to_string(), "1".to_string())];
-    let response = request_json(Method::GET, &path, &params, None)
-        .ok()
-        .flatten()?;
-    let versions = match response {
-        Value::Array(items) => items,
-        Value::Object(object) => object
-            .get("versions")
-            .and_then(Value::as_array)
-            .cloned()
-            .unwrap_or_default(),
-        _ => Vec::new(),
-    };
-    versions
-        .first()
-        .and_then(Value::as_object)
-        .and_then(project_status_timestamp_from_object)
-        .map(str::to_string)
-}
-
 fn stamp_live_domain_freshness(
     mut domain: ProjectDomainStatus,
     samples: &[ProjectStatusFreshnessSample<'_>],
@@ -233,23 +112,20 @@ fn build_live_overall_freshness(domains: &[ProjectDomainStatus]) -> ProjectStatu
     build_live_project_status_freshness(source_count, &ages)
 }
 
-fn build_live_dashboard_status_with_request<F>(mut request_json: F) -> ProjectDomainStatus
-where
-    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
-{
-    match collect_live_dashboard_project_status_inputs_with_request(&mut request_json) {
+fn build_live_dashboard_status(client: &JsonHttpClient) -> ProjectDomainStatus {
+    match project_status_live::collect_live_dashboard_project_status_inputs(
+        client,
+        DEFAULT_PAGE_SIZE,
+    ) {
         Ok(inputs) => {
             let status = build_live_dashboard_domain_status_from_inputs(&inputs);
-            let mut freshness_samples = project_status_freshness_samples_from_records(
-                "dashboard-search",
-                &inputs.dashboard_summaries,
-            );
-            freshness_samples.extend(project_status_freshness_samples_from_records(
-                "datasource-list",
-                &inputs.datasources,
-            ));
+            let mut freshness_samples =
+                project_status_live::dashboard_project_status_freshness_samples(&inputs);
             let dashboard_version_timestamp = if freshness_samples.is_empty() {
-                latest_dashboard_version_timestamp(&mut request_json, &inputs.dashboard_summaries)
+                project_status_live::latest_dashboard_version_timestamp(
+                    client,
+                    &inputs.dashboard_summaries,
+                )
             } else {
                 None
             };
@@ -269,12 +145,6 @@ where
             "restore dashboard search access, then re-run live status",
         ),
     }
-}
-
-fn build_live_dashboard_status(client: &JsonHttpClient) -> ProjectDomainStatus {
-    build_live_dashboard_status_with_request(|method, path, params, payload| {
-        client.request_json(method, path, params, payload)
-    })
 }
 
 fn build_live_datasource_status(client: &JsonHttpClient) -> ProjectDomainStatus {
@@ -304,20 +174,13 @@ fn build_live_datasource_status(client: &JsonHttpClient) -> ProjectDomainStatus 
 }
 
 fn build_live_alert_status(client: &JsonHttpClient) -> ProjectDomainStatus {
-    let rules_document = request_json_best_effort(client, "/api/v1/provisioning/alert-rules", &[]);
-    let contact_points_document =
-        request_json_best_effort(client, "/api/v1/provisioning/contact-points", &[]);
-    let mute_timings_document =
-        request_json_best_effort(client, "/api/v1/provisioning/mute-timings", &[]);
-    let policies_document = request_json_best_effort(client, "/api/v1/provisioning/policies", &[]);
-    let templates_document =
-        request_json_best_effort(client, "/api/v1/provisioning/templates", &[]);
+    let documents = project_status_live::load_alert_surface_documents(client);
     let status = build_alert_live_project_status_domain(AlertLiveProjectStatusInputs {
-        rules_document: rules_document.as_ref(),
-        contact_points_document: contact_points_document.as_ref(),
-        mute_timings_document: mute_timings_document.as_ref(),
-        policies_document: policies_document.as_ref(),
-        templates_document: templates_document.as_ref(),
+        rules_document: documents.rules.as_ref(),
+        contact_points_document: documents.contact_points.as_ref(),
+        mute_timings_document: documents.mute_timings.as_ref(),
+        policies_document: documents.policies.as_ref(),
+        templates_document: documents.templates.as_ref(),
     })
     .unwrap_or_else(|| {
         build_live_read_failed_domain_status(
@@ -328,37 +191,7 @@ fn build_live_alert_status(client: &JsonHttpClient) -> ProjectDomainStatus {
             "restore alert read access, then re-run live status",
         )
     });
-    let mut freshness_samples = Vec::new();
-    if let Some(document) = rules_document.as_ref() {
-        freshness_samples.extend(project_status_freshness_samples_from_value(
-            "alert-rules",
-            document,
-        ));
-    }
-    if let Some(document) = contact_points_document.as_ref() {
-        freshness_samples.extend(project_status_freshness_samples_from_value(
-            "alert-contact-points",
-            document,
-        ));
-    }
-    if let Some(document) = mute_timings_document.as_ref() {
-        freshness_samples.extend(project_status_freshness_samples_from_value(
-            "alert-mute-timings",
-            document,
-        ));
-    }
-    if let Some(document) = policies_document.as_ref() {
-        freshness_samples.extend(project_status_freshness_samples_from_value(
-            "alert-policies",
-            document,
-        ));
-    }
-    if let Some(document) = templates_document.as_ref() {
-        freshness_samples.extend(project_status_freshness_samples_from_value(
-            "alert-templates",
-            document,
-        ));
-    }
+    let freshness_samples = project_status_live::alert_project_status_freshness_samples(&documents);
     stamp_live_domain_freshness(status, &freshness_samples)
 }
 
@@ -369,15 +202,6 @@ fn project_status_severity_rank(status: &str) -> usize {
         PROJECT_STATUS_READY => 2,
         _ => 3,
     }
-}
-
-fn list_visible_orgs(client: &JsonHttpClient) -> Result<Vec<Map<String, Value>>> {
-    request_object_list(
-        client,
-        "/api/orgs",
-        &[],
-        "Unexpected /api/orgs payload from Grafana.",
-    )
 }
 
 fn org_id_from_record(org: &Map<String, Value>) -> Result<i64> {
@@ -498,7 +322,7 @@ where
 }
 
 fn build_live_multi_org_domain_status<F>(
-    args: &ProjectStatusLiveArgs,
+    api: &crate::grafana_api::GrafanaApiClient,
     orgs: &[Map<String, Value>],
     mut build_status: F,
 ) -> Result<ProjectDomainStatus>
@@ -506,7 +330,7 @@ where
     F: FnMut(&JsonHttpClient) -> ProjectDomainStatus,
 {
     build_live_multi_org_domain_status_with_orgs(orgs, |org_id| {
-        let client = build_live_project_status_client_for_org(args, Some(org_id))?;
+        let client = build_live_project_status_client_from_api(api, Some(org_id))?;
         Ok(build_status(&client))
     })
 }
@@ -588,7 +412,8 @@ fn build_live_promotion_status(
 }
 
 pub(crate) fn build_live_project_status(args: &ProjectStatusLiveArgs) -> Result<ProjectStatus> {
-    let client = build_live_project_status_client(args)?;
+    let api = build_live_project_status_api_client(args)?;
+    let client = api.http_client().clone();
     let sync_summary_document = load_optional_project_status_document_with_metadata(
         args.sync_summary_file.as_ref(),
         "Project status sync summary input",
@@ -610,14 +435,14 @@ pub(crate) fn build_live_project_status(args: &ProjectStatusLiveArgs) -> Result<
         "Project status availability input",
     )?;
     let all_org_domain_statuses = if args.all_orgs {
-        Some(list_visible_orgs(&client))
+        Some(project_status_live::list_visible_orgs(&client))
     } else {
         None
     };
     let dashboard_status = if let Some(orgs_result) = all_org_domain_statuses.as_ref() {
         match orgs_result {
             Ok(orgs) if !orgs.is_empty() => {
-                build_live_multi_org_domain_status(args, orgs, build_live_dashboard_status)
+                build_live_multi_org_domain_status(&api, orgs, build_live_dashboard_status)
                     .unwrap_or_else(|_| {
                         build_live_read_failed_domain_status(
                             "dashboard",
@@ -643,7 +468,7 @@ pub(crate) fn build_live_project_status(args: &ProjectStatusLiveArgs) -> Result<
     let datasource_status = if let Some(orgs_result) = all_org_domain_statuses.as_ref() {
         match orgs_result {
             Ok(orgs) if !orgs.is_empty() => {
-                build_live_multi_org_domain_status(args, orgs, build_live_datasource_status)
+                build_live_multi_org_domain_status(&api, orgs, build_live_datasource_status)
                     .unwrap_or_else(|_| {
                         build_live_read_failed_domain_status(
                     "datasource",
@@ -669,7 +494,7 @@ pub(crate) fn build_live_project_status(args: &ProjectStatusLiveArgs) -> Result<
     let alert_status = if let Some(orgs_result) = all_org_domain_statuses.as_ref() {
         match orgs_result {
             Ok(orgs) if !orgs.is_empty() => {
-                build_live_multi_org_domain_status(args, orgs, build_live_alert_status)
+                build_live_multi_org_domain_status(&api, orgs, build_live_alert_status)
                     .unwrap_or_else(|_| {
                         build_live_read_failed_domain_status(
                             "alert",
@@ -695,7 +520,7 @@ pub(crate) fn build_live_project_status(args: &ProjectStatusLiveArgs) -> Result<
     let access_status = if let Some(orgs_result) = all_org_domain_statuses.as_ref() {
         match orgs_result {
             Ok(orgs) if !orgs.is_empty() => {
-                build_live_multi_org_domain_status(args, orgs, build_live_access_status)
+                build_live_multi_org_domain_status(&api, orgs, build_live_access_status)
                     .unwrap_or_else(|_| {
                         build_live_read_failed_domain_status(
                             "access",
@@ -762,15 +587,15 @@ pub(crate) fn build_live_project_status(args: &ProjectStatusLiveArgs) -> Result<
 #[cfg(test)]
 mod tests {
     use super::{
-        build_live_dashboard_status_with_request, build_live_multi_org_domain_status_with_orgs,
-        build_live_promotion_status, build_live_sync_status,
-        project_status_freshness_samples_from_value,
+        build_live_multi_org_domain_status_with_orgs, build_live_promotion_status,
+        build_live_sync_status,
     };
     use crate::project_status::{
         status_finding, ProjectDomainStatus, ProjectStatusFreshness, PROJECT_STATUS_BLOCKED,
         PROJECT_STATUS_PARTIAL, PROJECT_STATUS_READY, PROJECT_STATUS_UNKNOWN,
     };
     use crate::project_status_freshness::build_live_project_status_freshness_from_samples;
+    use crate::project_status_support::project_status_live;
     use chrono::{DateTime, Utc};
     use reqwest::Method;
     use serde_json::json;
@@ -849,8 +674,8 @@ mod tests {
     fn build_live_dashboard_status_uses_dashboard_version_history_for_freshness() {
         let created =
             DateTime::<Utc>::from(SystemTime::now() - Duration::from_secs(60)).to_rfc3339();
-        let status = build_live_dashboard_status_with_request(|method, path, params, _payload| {
-            match (method, path) {
+        let status = project_status_live::build_live_dashboard_status_with_request(
+            |method, path, params: &[(String, String)], _payload| match (method, path) {
                 (Method::GET, "/api/search") => {
                     assert!(params
                         .iter()
@@ -886,8 +711,8 @@ mod tests {
                     ])))
                 }
                 _ => Err(crate::common::message(format!("unexpected request {path}"))),
-            }
-        });
+            },
+        );
 
         assert_eq!(status.status, "ready");
         assert_eq!(status.freshness.status, "current");
@@ -912,7 +737,10 @@ mod tests {
             }
         ]);
 
-        let samples = project_status_freshness_samples_from_value("alert-rules", &document);
+        let samples = project_status_live::project_status_freshness_samples_from_value(
+            "alert-rules",
+            &document,
+        );
         let freshness = build_live_project_status_freshness_from_samples(&samples);
 
         assert_eq!(samples.len(), 2);

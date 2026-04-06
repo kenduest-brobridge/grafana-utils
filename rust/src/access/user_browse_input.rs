@@ -13,7 +13,9 @@ use crate::access::user::{
     list_org_users_with_request, list_user_teams_with_request, modify_user_with_request,
     validate_user_scope_auth,
 };
-use crate::access::{build_auth_context, Scope, UserDeleteArgs, UserModifyArgs};
+use crate::access::{
+    build_auth_context, Scope, UserDeleteArgs, UserModifyArgs, ACCESS_EXPORT_KIND_USERS,
+};
 use crate::common::{message, Result};
 
 use super::user_browse_dialog::{EditDialogAction, EditDialogState};
@@ -21,6 +23,7 @@ use super::user_browse_state::{
     row_kind, row_matches_args, BrowserState, DisplayMode, PaneFocus, SearchDirection, SearchState,
 };
 use super::UserBrowseArgs;
+use crate::access::user::load_access_import_records;
 use std::collections::{BTreeMap, BTreeSet};
 
 type RawOrgUsers = (String, String, Vec<Map<String, Value>>);
@@ -151,7 +154,11 @@ where
         KeyCode::Char('?') => state.start_search(SearchDirection::Backward),
         KeyCode::Char('n') => repeat_search(state),
         KeyCode::Char('v') => {
-            if args.scope != Scope::Global {
+            if args.input_dir.is_some() {
+                state.status =
+                    "Local user browse keeps the account view only. Reopen a live browse for org-grouped memberships."
+                        .to_string();
+            } else if args.scope != Scope::Global {
                 state.status =
                     "Display mode toggle is available only in global/all-org browse.".to_string();
             } else {
@@ -181,7 +188,15 @@ where
                 };
             }
         }
-        KeyCode::Char('g') => return Ok(BrowseAction::JumpToTeam),
+        KeyCode::Char('g') => {
+            if args.input_dir.is_some() {
+                state.status =
+                    "Jumping from local user browse to team browse is unavailable. Open the team bundle directly with access team browse --input-dir ..."
+                        .to_string();
+            } else {
+                return Ok(BrowseAction::JumpToTeam);
+            }
+        }
         KeyCode::Char('i') => {
             state.show_numbers = !state.show_numbers;
             state.status = if state.show_numbers {
@@ -192,9 +207,19 @@ where
         }
         KeyCode::Char('l') => {
             state.replace_rows(load_rows(request_json, args, state.display_mode)?);
-            state.status = "Refreshed user browser from live Grafana.".to_string();
+            state.status = if args.input_dir.is_some() {
+                "Reloaded user browser from local bundle.".to_string()
+            } else {
+                "Refreshed user browser from live Grafana.".to_string()
+            };
         }
         KeyCode::Char('e') => {
+            if args.input_dir.is_some() {
+                state.status =
+                    "Local user browse is read-only. Use access user import or live browse to apply changes."
+                        .to_string();
+                return Ok(BrowseAction::Continue);
+            }
             if state.display_mode == DisplayMode::OrgMemberships {
                 state.status =
                     "Org-grouped membership view is browse-only for now. Press v for global accounts."
@@ -218,7 +243,11 @@ where
             state.status = format!("Editing user {}.", login);
         }
         KeyCode::Char('d') => {
-            if state.display_mode == DisplayMode::OrgMemberships {
+            if args.input_dir.is_some() {
+                state.status =
+                    "Local user browse is read-only. Use access user delete against live Grafana instead."
+                        .to_string();
+            } else if state.display_mode == DisplayMode::OrgMemberships {
                 state.status =
                     "Org-grouped membership view is browse-only for now. Press v for global accounts."
                         .to_string();
@@ -247,6 +276,9 @@ pub(super) fn load_rows<F>(
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
+    if args.input_dir.is_some() {
+        return load_rows_from_input_dir(args);
+    }
     let auth_mode = build_auth_context(&args.common)?.auth_mode;
     validate_user_scope_auth(&args.scope, true, &auth_mode)?;
     let mut rows = match (args.scope.clone(), display_mode) {
@@ -285,6 +317,31 @@ where
             annotate_user_account_scope(std::slice::from_mut(row));
         }
     }
+    rows.retain(|row| row_matches_args(row, args));
+    Ok(paginate_rows(&rows, args.page, args.per_page))
+}
+
+fn local_user_scope(row: &Map<String, Value>, args: &UserBrowseArgs) -> Scope {
+    match scalar_text(row.get("scope")).to_ascii_lowercase().as_str() {
+        "global" => Scope::Global,
+        "org" => Scope::Org,
+        _ => args.scope.clone(),
+    }
+}
+
+fn load_rows_from_input_dir(args: &UserBrowseArgs) -> Result<Vec<Map<String, Value>>> {
+    let input_dir = args
+        .input_dir
+        .as_ref()
+        .ok_or_else(|| message("User browse local mode requires --input-dir."))?;
+    let mut rows = load_access_import_records(input_dir, ACCESS_EXPORT_KIND_USERS)?
+        .into_iter()
+        .map(|item| {
+            let scope = local_user_scope(&item, args);
+            normalize_user_row(&item, &scope)
+        })
+        .collect::<Vec<Map<String, Value>>>();
+    annotate_user_account_scope(&mut rows);
     rows.retain(|row| row_matches_args(row, args));
     Ok(paginate_rows(&rows, args.page, args.per_page))
 }
@@ -645,6 +702,9 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::access::CommonCliArgs;
+    use std::fs;
+    use tempfile::tempdir;
 
     #[test]
     fn search_prompt_treats_q_as_query_text() {
@@ -663,5 +723,63 @@ mod tests {
                 .map(|search| search.query.as_str()),
             Some("q")
         );
+    }
+
+    #[test]
+    fn load_rows_reads_local_user_bundle_without_live_requests() {
+        let temp = tempdir().unwrap();
+        fs::write(
+            temp.path().join("users.json"),
+            r#"{
+                "kind":"grafana-utils-access-user-export-index",
+                "version":1,
+                "records":[
+                    {"login":"alice","email":"alice@example.com","name":"Alice","orgRole":"Editor","scope":"org","teams":["ops","sre"]},
+                    {"login":"bob","email":"bob@example.com","name":"Bob","scope":"global","teams":["platform"]}
+                ]
+            }"#,
+        )
+        .unwrap();
+        let args = UserBrowseArgs {
+            common: CommonCliArgs {
+                profile: None,
+                url: "http://127.0.0.1:3000".to_string(),
+                api_token: None,
+                username: None,
+                password: None,
+                prompt_password: false,
+                prompt_token: false,
+                org_id: None,
+                timeout: 30,
+                verify_ssl: false,
+                insecure: false,
+                ca_cert: None,
+            },
+            input_dir: Some(temp.path().to_path_buf()),
+            scope: Scope::Org,
+            all_orgs: false,
+            current_org: false,
+            query: None,
+            login: Some("alice".to_string()),
+            email: None,
+            org_role: None,
+            grafana_admin: None,
+            with_teams: false,
+            page: 1,
+            per_page: 100,
+        };
+
+        let rows = load_rows(
+            |_method, _path, _params, _payload| {
+                panic!("local user browse should not hit the request layer")
+            },
+            &args,
+            DisplayMode::GlobalAccounts,
+        )
+        .unwrap();
+
+        assert_eq!(rows.len(), 1);
+        assert_eq!(map_get_text(&rows[0], "login"), "alice");
+        assert_eq!(map_get_text(&rows[0], "teams"), "ops,sre");
     }
 }

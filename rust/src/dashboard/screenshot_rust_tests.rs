@@ -175,7 +175,7 @@ fn parse_cli_screenshot_defaults_match_browser_capture_defaults() {
 fn screenshot_help_mentions_capture_options() {
     let root_help = render_dashboard_help();
     assert!(root_help.contains("screenshot"));
-    assert!(root_help.contains("inspect-vars"));
+    assert!(root_help.contains("list-vars"));
 
     let help = render_dashboard_subcommand_help("screenshot");
     assert!(help.contains("--dashboard-uid"));

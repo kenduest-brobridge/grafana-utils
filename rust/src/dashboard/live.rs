@@ -4,6 +4,7 @@ use reqwest::Method;
 use serde_json::{Map, Value};
 
 use crate::common::{message, string_field, value_as_object, Result};
+use crate::grafana_api::{DashboardResourceClient, DatasourceResourceClient};
 use crate::http::JsonHttpClient;
 
 use super::{
@@ -64,10 +65,7 @@ pub fn list_dashboard_summaries(
     client: &JsonHttpClient,
     page_size: usize,
 ) -> Result<Vec<Map<String, Value>>> {
-    list_dashboard_summaries_with_request(
-        |method, path, params, payload| client.request_json(method, path, params, payload),
-        page_size,
-    )
+    DashboardResourceClient::new(client).list_dashboard_summaries(page_size)
 }
 
 pub(crate) fn fetch_folder_if_exists_with_request<F>(
@@ -86,6 +84,44 @@ where
         Ok(None) => Ok(None),
         Err(error) if error.status_code() == Some(404) => Ok(None),
         Err(error) => Err(error),
+    }
+}
+
+pub(crate) fn create_folder_entry_with_request<F>(
+    mut request_json: F,
+    title: &str,
+    uid: &str,
+    parent_uid: Option<&str>,
+) -> Result<Map<String, Value>>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    let mut payload = Map::new();
+    payload.insert("uid".to_string(), Value::String(uid.to_string()));
+    payload.insert("title".to_string(), Value::String(title.to_string()));
+    if let Some(parent_uid) = parent_uid.filter(|value| !value.is_empty()) {
+        payload.insert(
+            "parentUid".to_string(),
+            Value::String(parent_uid.to_string()),
+        );
+    }
+
+    match request_json(
+        Method::POST,
+        "/api/folders",
+        &[],
+        Some(&Value::Object(payload)),
+    )? {
+        Some(value) => {
+            let object = value_as_object(
+                &value,
+                &format!("Unexpected folder create response for UID {uid}."),
+            )?;
+            Ok(object.clone())
+        }
+        None => Err(message(format!(
+            "Unexpected empty folder create response for UID {uid}."
+        ))),
     }
 }
 
@@ -373,10 +409,7 @@ where
 }
 
 pub fn fetch_dashboard(client: &JsonHttpClient, uid: &str) -> Result<Value> {
-    fetch_dashboard_with_request(
-        |method, path, params, payload| client.request_json(method, path, params, payload),
-        uid,
-    )
+    DashboardResourceClient::new(client).fetch_dashboard(uid)
 }
 
 pub(crate) fn fetch_dashboard_permissions_with_request<F>(
@@ -464,12 +497,7 @@ where
 }
 
 pub fn import_dashboard_request(client: &JsonHttpClient, payload: &Value) -> Result<Value> {
-    import_dashboard_request_with_request(
-        |method, path, params, request_payload| {
-            client.request_json(method, path, params, request_payload)
-        },
-        payload,
-    )
+    DashboardResourceClient::new(client).import_dashboard_request(payload)
 }
 
 pub(crate) fn delete_dashboard_request_with_request<F>(
@@ -495,10 +523,7 @@ where
 }
 
 pub fn delete_dashboard_request(client: &JsonHttpClient, uid: &str) -> Result<Map<String, Value>> {
-    delete_dashboard_request_with_request(
-        |method, path, params, payload| client.request_json(method, path, params, payload),
-        uid,
-    )
+    DashboardResourceClient::new(client).delete_dashboard_request(uid)
 }
 
 pub(crate) fn delete_folder_request_with_request<F>(
@@ -524,10 +549,7 @@ where
 }
 
 pub fn delete_folder_request(client: &JsonHttpClient, uid: &str) -> Result<Map<String, Value>> {
-    delete_folder_request_with_request(
-        |method, path, params, payload| client.request_json(method, path, params, payload),
-        uid,
-    )
+    DashboardResourceClient::new(client).delete_folder_request(uid)
 }
 
 pub(crate) fn list_datasources_with_request<F>(
@@ -549,7 +571,5 @@ where
 }
 
 pub fn list_datasources(client: &JsonHttpClient) -> Result<Vec<Map<String, Value>>> {
-    list_datasources_with_request(|method, path, params, payload| {
-        client.request_json(method, path, params, payload)
-    })
+    DatasourceResourceClient::new(client).list_datasources()
 }

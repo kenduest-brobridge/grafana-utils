@@ -2,48 +2,40 @@
 
 ## Root
 
-Purpose: review-first sync workflows with optional live Grafana fetch and apply paths.
+Purpose: task-first staged change workflow with optional live Grafana preview and apply paths.
 
-When to use: when you need to summarize desired resources, plan against live state, review a plan, apply a reviewed plan, audit drift, or build bundle and promotion preflight documents.
+When to use: when you need to inspect a staged package, check whether it looks safe to continue, preview what would change, apply an approved preview, or drop into lower-level advanced review contracts.
 
-Description: start here when your team follows a review-first change workflow and you need the whole path in one place. The `change` namespace is the control surface for summary, preflight, planning, review, audit, and apply, so operators can see how those steps fit together before they run one exact subcommand.
+Description: start here when you want the normal operator lane first. The default `change` surface is now `inspect -> check -> preview -> apply`. Lower-level steps such as `summary`, `plan`, `review`, `preflight`, `audit`, and bundle/promotion workflows still exist under `change advanced` when you need explicit staged contracts.
 
 Before / After:
 
 - **Before**: a change package is just a pile of files and a risky apply path.
-- **After**: the same package moves through summary, preflight, plan, review, and apply with explicit checkpoints.
+- **After**: the same package moves through inspect, check, preview, and apply with explicit checkpoints, while advanced contracts stay available behind `change advanced`.
 
-Key flags: the root command is a namespace; the main operational flags live on the subcommands. Common workflow inputs include `--desired-file`, `--plan-file`, `--live-file`, `--fetch-live`, `--approve`, `--execute-live`, `--source-bundle`, `--target-inventory`, `--availability-file`, `--mapping-file`, and `--output-format`.
+Key flags: the root command is a namespace; the main operational flags live on the subcommands. Common workflow inputs include `--workspace`, `--desired-file`, `--dashboard-export-dir`, `--dashboard-provisioning-dir`, `--alert-export-dir`, `--source-bundle`, `--target-inventory`, `--availability-file`, `--mapping-file`, `--fetch-live`, `--live-file`, `--preview-file`, `--approve`, `--execute-live`, and `--output-format`.
 
-### JSON contracts for CI and scripts
+### First-run path
 
-If you want to automate around `change` outputs, treat `kind` plus `schemaVersion` as the contract guard before you inspect the rest of the payload.
+If you are starting fresh, use this order first:
 
-Quick lookups from the CLI:
+1. `change inspect` to see what the staged package contains
+2. `change check` to confirm it is structurally ready
+3. `change preview` to see what would change
+4. `change apply` only after the preview is reviewed and approved
 
-- `grafana-util change --help-schema`
-- `grafana-util change summary --help-schema`
-- `grafana-util change plan --help-schema`
-- `grafana-util change apply --help-schema`
+### What `--workspace` tries to discover
 
-| Command | Output kind | Top-level fields to expect |
-| --- | --- | --- |
-| `change summary --output-format json` | `grafana-utils-sync-summary` | `kind`, `schemaVersion`, `toolVersion`, `summary`, `resources` |
-| `change plan --output-format json` | `grafana-utils-sync-plan` | `kind`, `schemaVersion`, `toolVersion`, `dryRun`, `reviewRequired`, `reviewed`, `allowPrune`, `summary`, `alertAssessment`, `operations`, `traceId`, `stage`, `stepIndex`, `parentTraceId` |
-| `change review --output-format json` | `grafana-utils-sync-plan` | same plan shape, plus `reviewedBy`, `reviewedAt`, `reviewNote`, and lineage moved to `stage=review` |
-| `change apply --output-format json` | `grafana-utils-sync-apply-intent` | `kind`, `schemaVersion`, `toolVersion`, `mode`, `reviewed`, `reviewRequired`, `allowPrune`, `approved`, `summary`, `alertAssessment`, `operations`, optional `preflightSummary`, optional `bundlePreflightSummary`, `appliedBy`, `appliedAt`, `approvalReason`, `applyNote`, `traceId`, `stage`, `stepIndex`, `parentTraceId` |
-| `change apply --execute-live --output-format json` | live apply result | `mode`, `appliedCount`, `results` |
-| `change audit --output-format json` | `grafana-utils-sync-audit` | `kind`, `schemaVersion`, `toolVersion`, `summary`, `currentLock`, `baselineLock`, `drifts` |
-| `change preflight --output-format json` | `grafana-utils-sync-preflight` | `kind`, `schemaVersion`, `toolVersion`, `summary`, `checks` |
-| `change assess-alerts --output-format json` | `grafana-utils-alert-sync-plan` | `kind`, `schemaVersion`, `toolVersion`, `summary`, `alerts` |
-| `change bundle-preflight --output-format json` | `grafana-utils-sync-bundle-preflight` | `kind`, `schemaVersion`, `summary`, `syncPreflight`, `alertArtifactAssessment`, `secretPlaceholderAssessment`, `providerAssessment` |
-| `change promotion-preflight --output-format json` | `grafana-utils-sync-promotion-preflight` | `kind`, `schemaVersion`, `toolVersion`, `summary`, `bundlePreflight`, `mappingSummary`, `checkSummary`, `handoffSummary`, `continuationSummary`, `checks`, `resolvedChecks`, `blockingChecks` |
+When you pass `--workspace .`, `change` looks for the common staged inputs it can assemble into one review lane:
 
-Notes:
+- dashboard export trees
+- dashboard provisioning trees
+- datasource provisioning files
+- alert export trees
+- staged desired change files
+- source bundles, target inventory files, and promotion mapping files
 
-- `change apply` has two JSON shapes. Without `--execute-live`, it emits a staged apply-intent document. With `--execute-live`, it emits the live execution result instead.
-- `change summary`, `change plan`, `change review`, and `change apply` all keep `summary` as the main aggregate block, but the nested fields differ by stage.
-- `change bundle` does not use `--output-format`; it writes the bundle contract with `--output-file`.
+If discovery finds nothing usable, stop and switch to explicit flags such as `--desired-file`, `--dashboard-export-dir`, `--alert-export-dir`, `--source-bundle`, or `--target-inventory`.
 
 What success looks like:
 
@@ -60,28 +52,87 @@ Failure checks:
 Examples:
 
 ```bash
-# Purpose: Summarize desired sync resources before planning.
-grafana-util change summary --desired-file ./desired.json
+# Purpose: Inspect the staged package from common repo-local inputs.
+grafana-util change inspect --workspace .
 ```
 
 ```bash
-# Purpose: Build a reviewed plan from desired and live state.
-grafana-util change plan \
-  --desired-file ./desired.json \
-  --fetch-live \
-  --profile prod
+# Purpose: Check whether the staged package is safe to continue.
+grafana-util change check --workspace . --fetch-live --output-format json
 ```
 
 ```bash
-# Purpose: Apply a reviewed plan to live Grafana after explicit approval.
+# Purpose: Preview what would change from discovered or explicit staged inputs.
+grafana-util change preview --workspace . --fetch-live --profile prod
+```
+
+```bash
+# Purpose: Apply a reviewed preview to live Grafana after explicit approval.
 grafana-util change apply \
-  --plan-file ./sync-plan-reviewed.json \
+  --preview-file ./change-preview.json \
   --approve \
   --execute-live \
   --profile prod
 ```
 
 Related commands: `grafana-util overview`, `grafana-util status`, `grafana-util snapshot`.
+
+## Primary Subcommands
+
+Use the root page to understand the overall lane, then open the subcommand page that matches the step you are actually performing:
+
+- [change inspect](./change-inspect.md): identify what the staged package contains
+- [change check](./change-check.md): confirm that the staged package is structurally ready
+- [change preview](./change-preview.md): build the reviewable change preview
+- [change apply](./change-apply.md): turn a reviewed preview into an apply intent or a live apply
+
+This split is intentional. `change` is a namespace with one primary lane plus a set of advanced contracts; the step-by-step operator manual lives on the individual subcommand pages.
+
+## `advanced`
+
+Purpose: expose lower-level staged contracts and specialized sync workflows.
+
+When to use: when you need explicit `summary`, `plan`, `review`, `preflight`, `audit`, `bundle`, or promotion handoff documents instead of the task-first lane.
+
+Examples:
+
+```bash
+# Purpose: Enter lower-level staged contracts or specialized sync workflows only when the primary lane is not enough.
+grafana-util change advanced bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json --output-format json
+```
+
+### For CI and scripts only
+
+If you are reading this page as an operator, stop here and use the primary `inspect -> check -> preview -> apply` lane unless you know you need one of the lower-level contracts below.
+
+If you are automating around `change` outputs, treat `kind` plus `schemaVersion` as the contract guard before you inspect the rest of the payload.
+
+Quick lookups from the CLI:
+
+- `grafana-util change --help-schema`
+- `grafana-util change inspect --help`
+- `grafana-util change preview --help-schema`
+- `grafana-util change apply --help-schema`
+
+| Command | Output kind | Top-level fields to expect |
+| --- | --- | --- |
+| `change inspect --output-format json` | overview/status-style staged summary | command-specific staged summary and discovered-input output |
+| `change check --output-format json` | project-status staged status | staged readiness/status output plus blockers or warnings |
+| `change preview --output-format json` | `grafana-utils-sync-plan` or bundle/promotion preflight kinds | preview uses the existing staged plan/bundle-preflight/promotion-preflight contracts under a task-first entrypoint; sync-plan previews also carry `ordering.mode`, `operations[].orderIndex`, `operations[].orderGroup`, `operations[].kindOrder`, and `summary.blocked_reasons` |
+| `change apply --output-format json` | `grafana-utils-sync-apply-intent` | `kind`, `schemaVersion`, `toolVersion`, `mode`, `reviewed`, `reviewRequired`, `allowPrune`, `approved`, `summary`, `alertAssessment`, `operations`, optional `preflightSummary`, optional `bundlePreflightSummary`, `appliedBy`, `appliedAt`, `approvalReason`, `applyNote`, `traceId`, `stage`, `stepIndex`, `parentTraceId`; ordering metadata stays on the reviewed preview |
+| `change apply --execute-live --output-format json` | live apply result | `mode`, `appliedCount`, `results` |
+| `change advanced audit --output-format json` | `grafana-utils-sync-audit` | `kind`, `schemaVersion`, `toolVersion`, `summary`, `currentLock`, `baselineLock`, `drifts` |
+| `change advanced preflight --output-format json` | `grafana-utils-sync-preflight` | `kind`, `schemaVersion`, `toolVersion`, `summary`, `checks` |
+| `change advanced assess-alerts --output-format json` | `grafana-utils-alert-sync-plan` | `kind`, `schemaVersion`, `toolVersion`, `summary`, `alerts` |
+| `change advanced bundle-preflight --output-format json` | `grafana-utils-sync-bundle-preflight` | `kind`, `schemaVersion`, `summary`, `syncPreflight`, `alertArtifactAssessment`, `secretPlaceholderAssessment`, `providerAssessment` |
+| `change advanced promotion-preflight --output-format json` | `grafana-utils-sync-promotion-preflight` | `kind`, `schemaVersion`, `toolVersion`, `summary`, `bundlePreflight`, `mappingSummary`, `checkSummary`, `handoffSummary`, `continuationSummary`, `checks`, `resolvedChecks`, `blockingChecks` |
+
+Notes:
+
+- `change apply` has two JSON shapes. Without `--execute-live`, it emits a staged apply-intent document. With `--execute-live`, it emits the live execution result instead.
+- `change preview` is task-first. It may emit the existing staged plan kind or the bundle/promotion preflight kinds depending on which staged inputs you provide.
+- `change apply` accepts `--preview-file` and still accepts `--plan-file` as an alias for compatibility.
+- `change advanced bundle` does not use `--output-format`; it writes the bundle contract with `--output-file`.
 
 ## `summary`
 
@@ -112,6 +163,20 @@ grafana-util change summary --desired-file ./desired.json
 # Purpose: summary.
 grafana-util change summary --desired-file ./desired.json --output-format json
 ```
+
+**Expected Output:**
+```json
+{
+  "kind": "grafana-utils-sync-summary",
+  "summary": {
+    "resourceCount": 8,
+    "dashboardCount": 5,
+    "datasourceCount": 1
+  },
+  "resources": []
+}
+```
+Use this as the quickest “how big is this change package?” artifact before you spend time on preflight or plan work.
 
 Related commands: `change plan`, `change preflight`.
 
@@ -158,6 +223,21 @@ grafana-util change plan \
   --output-format json
 ```
 
+**Expected Output:**
+```json
+{
+  "kind": "grafana-utils-sync-plan",
+  "reviewed": false,
+  "summary": {
+    "would_create": 1,
+    "would_update": 4,
+    "would_delete": 0
+  },
+  "operations": []
+}
+```
+This is the review artifact most teams actually pass around. The key signals are the `summary` counts and whether the plan is still unreviewed.
+
 Related commands: `change review`, `change apply`, `change summary`.
 
 ## `review`
@@ -197,6 +277,18 @@ grafana-util change review --plan-file ./sync-plan.json
 grafana-util change review --plan-file ./sync-plan.json --review-note 'peer-reviewed' --output-format json
 ```
 
+**Expected Output:**
+```json
+{
+  "kind": "grafana-utils-sync-plan",
+  "reviewed": true,
+  "stage": "review",
+  "stepIndex": 2,
+  "reviewNote": "peer-reviewed"
+}
+```
+Once review succeeds, downstream apply steps should no longer need to infer approval from filenames or operator memory.
+
 What success looks like:
 
 - the reviewed plan is a distinct artifact, not just a verbal approval
@@ -210,68 +302,6 @@ Failure checks:
 - if a later step rejects the reviewed plan, inspect the `stage`, `stepIndex`, and review fields before assuming apply is broken
 
 Related commands: `change plan`, `change apply`.
-
-## `apply`
-
-Purpose: build a gated apply intent from a reviewed sync plan, and optionally execute it live.
-
-When to use: when a plan is already reviewed and you are ready to emit or execute the apply step.
-
-Before / After:
-
-- **Before**: the last mile between a reviewed plan and a live mutation is often a vague operator step.
-- **After**: apply turns that step into either a staged intent document or an explicit live execution with approval evidence attached.
-
-Key flags: `--plan-file`, `--preflight-file`, `--bundle-preflight-file`, `--approve`, `--execute-live`, `--allow-folder-delete`, `--allow-policy-reset`, `--org-id`, `--output-format`, `--applied-by`, `--applied-at`, `--approval-reason`, `--apply-note`.
-
-JSON shape:
-
-- default `change apply --output-format json`
-  - `kind`: `grafana-utils-sync-apply-intent`
-  - `schemaVersion`, `toolVersion`
-  - `mode: apply`
-  - `reviewed`, `reviewRequired`, `allowPrune`, `approved`
-  - `summary`, `alertAssessment`, `operations`
-  - optional `preflightSummary`
-  - optional `bundlePreflightSummary`
-  - `appliedBy`, `appliedAt`, `approvalReason`, `applyNote`
-  - `traceId`, `stage`, `stepIndex`, `parentTraceId`
-- `change apply --execute-live --output-format json`
-  - `mode: live-apply`
-  - `appliedCount`
-  - `results`
-    - each row includes `kind`, `identity`, `action`, `response`
-
-Examples:
-
-```bash
-# Purpose: apply.
-grafana-util change apply --plan-file ./sync-plan-reviewed.json --approve
-```
-
-```bash
-# Purpose: apply.
-grafana-util change apply \
-  --plan-file ./sync-plan-reviewed.json \
-  --approve \
-  --execute-live \
-  --allow-folder-delete \
-  --profile prod
-```
-
-What success looks like:
-
-- a reviewed plan can move into a gated apply step without losing the review lineage
-- staged apply intent JSON is explicit enough for approval workflows or change tickets
-- live apply output shows exactly how many operations ran and what each result was
-
-Failure checks:
-
-- if apply refuses to proceed, confirm the input plan was reviewed and that approval flags such as `--approve` are present
-- if live execution behaves differently from the staged intent, compare the plan, optional preflight, and live target before retrying
-- if automation reads apply JSON, distinguish staged `grafana-utils-sync-apply-intent` from live `mode: live-apply` output before parsing fields
-
-Related commands: `change review`, `change preflight`, `change bundle-preflight`.
 
 ## `audit`
 
@@ -307,6 +337,19 @@ grafana-util change audit --managed-file ./desired.json --live-file ./live.json 
 # Purpose: audit.
 grafana-util change audit --lock-file ./sync-lock.json --fetch-live --profile prod --fail-on-drift --output-format json
 ```
+
+**Expected Output:**
+```json
+{
+  "kind": "grafana-utils-sync-audit",
+  "summary": {
+    "inSyncCount": 12,
+    "driftCount": 1
+  },
+  "drifts": []
+}
+```
+Treat `driftCount > 0` as the top-level signal that your managed state and live Grafana have separated.
 
 Related commands: `change preflight`, `change plan`, `status live`.
 
@@ -347,6 +390,20 @@ grafana-util change preflight \
   --profile prod \
   --output-format json
 ```
+
+**Expected Output:**
+```json
+{
+  "kind": "grafana-utils-sync-preflight",
+  "summary": {
+    "checkCount": 6,
+    "okCount": 6,
+    "blockingCount": 0
+  },
+  "checks": []
+}
+```
+This is the structural gate. If `blockingCount` is not zero, stop here and fix the inputs before you build or approve a plan.
 
 What success looks like:
 
@@ -391,6 +448,20 @@ grafana-util change assess-alerts --alerts-file ./alerts.json
 grafana-util change assess-alerts --alerts-file ./alerts.json --output-format json
 ```
 
+**Expected Output:**
+```json
+{
+  "kind": "grafana-utils-alert-sync-plan",
+  "summary": {
+    "alertCount": 3,
+    "candidateCount": 2,
+    "blockedCount": 1
+  },
+  "alerts": []
+}
+```
+This is useful when alert resources need a narrower explanation than the wider sync plan gives you.
+
 Related commands: `change bundle`, `change bundle-preflight`, `overview`.
 
 ## `bundle`
@@ -424,6 +495,21 @@ grafana-util change bundle --dashboard-export-dir ./dashboards/raw --alert-expor
 # Purpose: bundle.
 grafana-util change bundle --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json
 ```
+
+**Expected Output:**
+```json
+{
+  "kind": "grafana-utils-sync-source-bundle",
+  "summary": {
+    "dashboardCount": 5,
+    "datasourceCount": 1,
+    "alertCount": 3
+  },
+  "dashboards": [],
+  "alerts": []
+}
+```
+Whether it is written to disk or printed to stdout, this bundle is the packaging artifact used by later bundle and promotion checks.
 
 Related commands: `change bundle-preflight`, `change promotion-preflight`, `snapshot export`.
 
@@ -463,6 +549,20 @@ grafana-util change bundle-preflight --source-bundle ./sync-source-bundle.json -
 # Purpose: bundle-preflight.
 grafana-util change bundle-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --availability-file ./availability.json --output-format json
 ```
+
+**Expected Output:**
+```json
+{
+  "kind": "grafana-utils-sync-bundle-preflight",
+  "summary": {
+    "resourceCount": 9,
+    "syncBlockingCount": 0,
+    "providerBlockingCount": 0
+  },
+  "syncPreflight": {}
+}
+```
+This is the right artifact when you want one bundle-level go/no-go result before any promotion or apply handoff.
 
 Related commands: `change bundle`, `change promotion-preflight`, `status staged`.
 
@@ -504,5 +604,21 @@ grafana-util change promotion-preflight --source-bundle ./sync-source-bundle.jso
 # Purpose: promotion-preflight.
 grafana-util change promotion-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --mapping-file ./promotion-map.json --availability-file ./availability.json --output-format json
 ```
+
+**Expected Output:**
+```json
+{
+  "kind": "grafana-utils-sync-promotion-preflight",
+  "summary": {
+    "resourceCount": 9,
+    "directMatchCount": 6,
+    "mappedCount": 3,
+    "blockingCount": 0
+  },
+  "mappingSummary": {},
+  "blockingChecks": []
+}
+```
+Use this when the hard question is not “what will change?” but “is this source bundle promotable into that target environment with the current mappings?”.
 
 Related commands: `change bundle-preflight`, `change apply`, `status live`.

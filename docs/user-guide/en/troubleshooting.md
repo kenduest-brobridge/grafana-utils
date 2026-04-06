@@ -92,9 +92,9 @@ This is one of the most common operator mistakes.
 
 | Symptom | What is really happening | Fix |
 | :--- | :--- | :--- |
-| `status staged` looks healthy but live apply still fails | staged files are structurally valid, but live state or permissions differ | run `status live`, then `change preflight` or command-specific dry-run paths |
-| `overview live` looks good so you skip plan/preflight | live readability is not the same as staged correctness | run the staged gate and review path before apply |
-| import or apply changes more than expected | the staged package was never summarized or planned first | use `change summary`, `change plan`, and `--dry-run` before execution |
+| `status staged` looks healthy but live apply still fails | staged files are structurally valid, but live state or permissions differ | run `status live`, then `change check`, `change preview`, or command-specific dry-run paths |
+| `overview live` looks good so you skip change review | live readability is not the same as staged correctness | run the staged gate and preview path before apply |
+| import or apply changes more than expected | the staged package was never inspected or previewed first | use `change inspect`, `change preview`, and `--dry-run` before execution |
 
 ### 5. Secret and profile problems
 
@@ -130,7 +130,7 @@ This is one of the most common operator mistakes.
 ## 🆘 Getting More Help
 
 - **Check the version**: always run `grafana-util --version` when reporting issues.
-- **Project repository**: report bugs or request features on the [GitHub Issues](https://github.com/kendlee/grafana-utils/issues) page.
+- **Project repository**: report bugs or request features on the [GitHub Issues](https://github.com/kenduest-brobridge/grafana-util/issues) page.
 
 When escalating an issue, include:
 

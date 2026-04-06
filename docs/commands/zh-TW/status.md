@@ -22,7 +22,7 @@ grafana-util status staged --dashboard-export-dir ./dashboards/raw --desired-fil
 grafana-util status live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format yaml
 ```
 
-相關指令：`grafana-util overview`、`grafana-util change preflight`、`grafana-util change apply`。
+相關指令：`grafana-util overview`、`grafana-util change check`、`grafana-util change apply`。
 
 ## `staged`
 
@@ -44,7 +44,7 @@ grafana-util status staged --dashboard-export-dir ./dashboards/raw --desired-fil
 grafana-util status staged --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts --output-format interactive
 ```
 
-相關指令：`grafana-util overview`、`grafana-util change summary`、`grafana-util change preflight`。
+相關指令：`grafana-util overview`、`grafana-util change inspect`、`grafana-util change check`。
 
 ## `live`
 

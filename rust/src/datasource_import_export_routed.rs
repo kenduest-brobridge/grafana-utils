@@ -7,10 +7,10 @@ use crate::common::{message, render_json_value, Result};
 use crate::http::JsonHttpClient;
 
 use super::{
-    build_datasource_import_dry_run_json_value, build_http_client, build_http_client_for_org,
-    collect_datasource_import_dry_run_report, create_org, describe_datasource_import_mode,
-    list_orgs, load_import_records, org_id_string_from_value, DatasourceExportOrgScope,
-    DatasourceExportOrgTargetPlan, DatasourceImportArgs,
+    build_api_client, build_datasource_import_dry_run_json_value,
+    build_http_client_for_org_from_api, collect_datasource_import_dry_run_report, create_org,
+    describe_datasource_import_mode, list_orgs, load_import_records, org_id_string_from_value,
+    DatasourceExportOrgScope, DatasourceExportOrgTargetPlan, DatasourceImportArgs,
 };
 
 pub(crate) fn resolve_export_org_target_plan(
@@ -27,7 +27,7 @@ pub(crate) fn resolve_export_org_target_plan(
                 source_org_name: scope.source_org_name.clone(),
                 target_org_id: Some(scope.source_org_id),
                 org_action: "exists",
-                import_dir: scope.import_dir.clone(),
+                input_dir: scope.input_dir.clone(),
             });
         }
     }
@@ -37,7 +37,7 @@ pub(crate) fn resolve_export_org_target_plan(
             source_org_name: scope.source_org_name.clone(),
             target_org_id: None,
             org_action: "missing",
-            import_dir: scope.import_dir.clone(),
+            input_dir: scope.input_dir.clone(),
         });
     }
     if args.dry_run && args.create_missing_orgs {
@@ -46,7 +46,7 @@ pub(crate) fn resolve_export_org_target_plan(
             source_org_name: scope.source_org_name.clone(),
             target_org_id: None,
             org_action: "would-create",
-            import_dir: scope.import_dir.clone(),
+            input_dir: scope.input_dir.clone(),
         });
     }
     if !args.create_missing_orgs {
@@ -81,7 +81,7 @@ pub(crate) fn resolve_export_org_target_plan(
         source_org_name: scope.source_org_name.clone(),
         target_org_id: Some(parsed_org_id),
         org_action: "created",
-        import_dir: scope.import_dir.clone(),
+        input_dir: scope.input_dir.clone(),
     })
 }
 
@@ -96,7 +96,7 @@ pub(crate) fn format_routed_datasource_scope_summary_fields(
     source_org_name: &str,
     org_action: &str,
     target_org_id: Option<i64>,
-    import_dir: &Path,
+    input_dir: &Path,
 ) -> String {
     let source_org_name = if source_org_name.is_empty() {
         "-".to_string()
@@ -110,7 +110,7 @@ pub(crate) fn format_routed_datasource_scope_summary_fields(
         source_org_name,
         org_action,
         target_org_id,
-        import_dir.display()
+        input_dir.display()
     )
 }
 
@@ -156,13 +156,14 @@ pub(crate) fn render_routed_datasource_import_org_table(
 pub(crate) fn build_routed_datasource_import_dry_run_json(
     args: &DatasourceImportArgs,
 ) -> Result<String> {
-    let admin_client = build_http_client(&args.common)?;
+    let admin_api = build_api_client(&args.common)?;
+    let admin_client = admin_api.http_client();
     let scopes = super::discover_export_org_import_scopes(args)?;
     let mut orgs = Vec::new();
     let mut imports = Vec::new();
     for scope in scopes {
         let plan = resolve_export_org_target_plan(&admin_client, args, &scope)?;
-        let datasource_count = load_import_records(&plan.import_dir, args.input_format)?
+        let datasource_count = load_import_records(&plan.input_dir, args.input_format)?
             .1
             .len();
         orgs.push(json!({
@@ -171,7 +172,7 @@ pub(crate) fn build_routed_datasource_import_dry_run_json(
             "orgAction": plan.org_action,
             "targetOrgId": plan.target_org_id,
             "datasourceCount": datasource_count,
-            "importDir": plan.import_dir.display().to_string(),
+            "importDir": plan.input_dir.display().to_string(),
         }));
         let preview = if let Some(target_org_id) = plan.target_org_id {
             let mut scoped_args = args.clone();
@@ -179,8 +180,8 @@ pub(crate) fn build_routed_datasource_import_dry_run_json(
             scoped_args.use_export_org = false;
             scoped_args.only_org_id = Vec::new();
             scoped_args.create_missing_orgs = false;
-            scoped_args.import_dir = plan.import_dir.clone();
-            let scoped_client = build_http_client_for_org(&args.common, target_org_id)?;
+            scoped_args.input_dir = plan.input_dir.clone();
+            let scoped_client = build_http_client_for_org_from_api(&admin_api, target_org_id)?;
             build_datasource_import_dry_run_json_value(&collect_datasource_import_dry_run_report(
                 &scoped_client,
                 &scoped_args,

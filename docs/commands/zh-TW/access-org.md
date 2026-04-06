@@ -2,11 +2,12 @@
 
 ## 目的
 
-列出、建立、修改、匯出、匯入、比對或刪除 Grafana 組織。
+列出 live 或本機的 Grafana 組織、建立、修改、匯出、匯入、比對或刪除 Grafana 組織。
 
 ## 使用時機
 
 - 檢視組織清單與 org 使用者。
+- 從 live Grafana 或本機匯出套件中檢視組織。
 - 建立新組織或重新命名既有組織。
 - 在環境之間匯出或匯入 org 套件。
 - 以 id 或精確名稱刪除組織。
@@ -30,11 +31,11 @@
 
 ## 主要旗標
 
-- `list`: `--org-id`, `--name`, `--query`, `--with-users`, `--table`, `--csv`, `--json`, `--yaml`, `--output-format`
+- `list`: `--input-dir`, `--org-id`, `--name`, `--query`, `--with-users`, `--table`, `--csv`, `--json`, `--yaml`, `--output-format`
 - `add`: `--name`, `--json`
 - `modify`: `--org-id`, `--name`, `--set-name`, `--json`
-- `export` 與 `diff`: `--org-id`, `--name`, `--export-dir` 或 `--diff-dir`, `--overwrite`, `--dry-run`, `--with-users`
-- `import`: `--import-dir`, `--replace-existing`, `--dry-run`, `--yes`
+- `export` 與 `diff`: `--org-id`, `--name`, `--output-dir` 或 `--diff-dir`, `--overwrite`, `--dry-run`, `--with-users`
+- `import`: `--input-dir`, `--replace-existing`, `--dry-run`, `--yes`
 - `delete`: `--org-id`, `--name`, `--yes`, `--json`
 
 ## 說明
@@ -47,6 +48,11 @@
 ```bash
 # 用途：在重新命名或搬移前，先確認 org inventory。
 grafana-util access org list --profile prod --output-format text
+```
+
+```bash
+# 用途：先看本機存好的 org 套件。
+grafana-util access org list --input-dir ./access-orgs --output-format table
 ```
 
 ```bash

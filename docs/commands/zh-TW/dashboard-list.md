@@ -10,8 +10,8 @@
 - `--page-size`：儀表板搜尋的每頁筆數。
 - `--org-id`：列出指定的 Grafana org。
 - `--all-orgs`：彙整所有可見 org 的結果。建議使用 Basic auth。
-- `--with-sources`：在表格或 CSV 輸出中加入解析後的 datasource 名稱。
-- `--output-columns`：選擇顯示欄位。
+- `--show-sources`：在清單輸出中加入解析後的 datasource 名稱。`--with-sources` 仍接受為相容別名。
+- `--output-columns`：選擇顯示欄位。若選到 `sources` 或 `source_uids`，也會一併解析 datasource 名稱。
 - `--output-format`、`--json`、`--yaml`、`--csv`、`--table`、`--text`：輸出模式控制。
 - `--no-header`：隱藏表格標頭。
 
@@ -33,6 +33,11 @@ grafana-util dashboard list --url http://localhost:3000 --basic-user admin --bas
 ```bash
 # 用途：列出儀表板摘要，不寫入匯出檔案。
 grafana-util dashboard list --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --json
+```
+
+```bash
+# 用途：列出儀表板摘要，並在表格中顯示解析後的來源名稱。
+grafana-util dashboard list --url http://localhost:3000 --basic-user admin --basic-password admin --show-sources --table
 ```
 
 ## 相關指令

@@ -4,7 +4,7 @@
 use super::super::test_support;
 use super::super::test_support::{
     export_dashboards_with_request, ExportArgs, InspectExportArgs, InspectExportReportFormat,
-    InspectLiveArgs,
+    InspectLiveArgs, InspectOutputFormat,
 };
 use super::super::{
     assert_governance_documents_match, assert_json_query_report_row_parity,
@@ -223,7 +223,7 @@ fn inspect_live_dashboards_with_request_matches_export_output_files_for_core_fam
 
     let export_report_output = temp.path().join("export-report.json");
     let export_report_args = InspectExportArgs {
-        import_dir: export_root.clone(),
+        input_dir: export_root.clone(),
         input_type: None,
         input_format: crate::dashboard::DashboardImportInputFormat::Raw,
         text: false,
@@ -231,8 +231,7 @@ fn inspect_live_dashboards_with_request_matches_export_output_files_for_core_fam
         json: false,
         table: false,
         yaml: false,
-        report: Some(InspectExportReportFormat::Json),
-        output_format: None,
+        output_format: Some(InspectOutputFormat::QueriesJson),
         report_columns: Vec::new(),
         report_filter_datasource: None,
         report_filter_panel_id: None,
@@ -257,8 +256,7 @@ fn inspect_live_dashboards_with_request_matches_export_output_files_for_core_fam
         json: false,
         table: false,
         yaml: false,
-        report: Some(InspectExportReportFormat::Json),
-        output_format: None,
+        output_format: Some(InspectOutputFormat::QueriesJson),
         report_columns: Vec::new(),
         report_filter_datasource: None,
         report_filter_panel_id: None,
@@ -302,7 +300,7 @@ fn inspect_live_dashboards_with_request_matches_export_output_files_for_core_fam
 
     let export_governance_output = temp.path().join("export-governance.json");
     let export_governance_args = InspectExportArgs {
-        import_dir: export_root.clone(),
+        input_dir: export_root.clone(),
         input_type: None,
         input_format: crate::dashboard::DashboardImportInputFormat::Raw,
         text: false,
@@ -310,8 +308,7 @@ fn inspect_live_dashboards_with_request_matches_export_output_files_for_core_fam
         json: false,
         table: false,
         yaml: false,
-        report: Some(InspectExportReportFormat::GovernanceJson),
-        output_format: None,
+        output_format: Some(InspectOutputFormat::GovernanceJson),
         report_columns: Vec::new(),
         report_filter_datasource: None,
         report_filter_panel_id: None,
@@ -337,8 +334,7 @@ fn inspect_live_dashboards_with_request_matches_export_output_files_for_core_fam
         json: false,
         table: false,
         yaml: false,
-        report: Some(InspectExportReportFormat::GovernanceJson),
-        output_format: None,
+        output_format: Some(InspectOutputFormat::GovernanceJson),
         report_columns: Vec::new(),
         report_filter_datasource: None,
         report_filter_panel_id: None,
@@ -361,7 +357,7 @@ fn inspect_live_dashboards_with_request_matches_export_output_files_for_core_fam
 
     let export_dependency_output = temp.path().join("export-dependency.json");
     let export_dependency_args = InspectExportArgs {
-        import_dir: export_root.clone(),
+        input_dir: export_root.clone(),
         input_type: None,
         input_format: crate::dashboard::DashboardImportInputFormat::Raw,
         text: false,
@@ -369,8 +365,7 @@ fn inspect_live_dashboards_with_request_matches_export_output_files_for_core_fam
         json: false,
         table: false,
         yaml: false,
-        report: Some(InspectExportReportFormat::DependencyJson),
-        output_format: None,
+        output_format: Some(InspectOutputFormat::DependencyJson),
         report_columns: Vec::new(),
         report_filter_datasource: None,
         report_filter_panel_id: None,
@@ -396,8 +391,7 @@ fn inspect_live_dashboards_with_request_matches_export_output_files_for_core_fam
         json: false,
         table: false,
         yaml: false,
-        report: Some(InspectExportReportFormat::DependencyJson),
-        output_format: None,
+        output_format: Some(InspectOutputFormat::DependencyJson),
         report_columns: Vec::new(),
         report_filter_datasource: None,
         report_filter_panel_id: None,

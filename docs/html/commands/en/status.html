@@ -788,7 +788,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 grafana-util status staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output-format json</code></pre>
 <pre><code># Purpose: Render live status from a reusable profile.
 grafana-util status live --profile prod --output-format yaml</code></pre>
-<p>Related commands: <code>grafana-util overview</code>, <code>grafana-util change preflight</code>, <code>grafana-util change apply</code>.</p>
+<p>Related commands: <code>grafana-util overview</code>, <code>grafana-util change check</code>, <code>grafana-util change apply</code>.</p>
 <h2 id="staged"><code>staged</code></h2>
 <p>Purpose: render project status from staged artifacts.</p>
 <p>When to use: when you need the machine-readable readiness gate for exported files before apply.</p>
@@ -798,7 +798,7 @@ grafana-util status live --profile prod --output-format yaml</code></pre>
 grafana-util status staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output-format table</code></pre>
 <pre><code># Purpose: staged.
 grafana-util status staged --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts --output-format interactive</code></pre>
-<p>Related commands: <code>grafana-util overview</code>, <code>grafana-util change summary</code>, <code>grafana-util change preflight</code>.</p>
+<p>Related commands: <code>grafana-util overview</code>, <code>grafana-util change inspect</code>, <code>grafana-util change check</code>.</p>
 <h2 id="live"><code>live</code></h2>
 <p>Purpose: render project status from live Grafana read surfaces.</p>
 <p>When to use: when you need current Grafana status, optionally deepened with staged context files.</p>

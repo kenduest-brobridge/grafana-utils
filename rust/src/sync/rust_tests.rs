@@ -4,6 +4,7 @@ use super::preflight::{
     build_sync_preflight_document, render_sync_preflight_text, SyncPreflightSummary,
     SYNC_PREFLIGHT_KIND,
 };
+use super::render_sync_plan_text;
 use super::workbench::{
     build_sync_apply_intent_document, build_sync_plan_document, build_sync_summary_document,
     normalize_resource_spec, summarize_resource_specs, SYNC_APPLY_INTENT_KIND,
@@ -426,4 +427,77 @@ fn build_sync_plan_document_prunes_non_rule_alert_delete_when_supported() {
         plan["operations"][0]["reason"],
         json!("missing-from-desired-state")
     );
+}
+
+#[test]
+fn build_sync_plan_document_adds_dependency_ordering_metadata() {
+    let plan = build_sync_plan_document(
+        &[
+            json!({
+                "kind": "dashboard",
+                "uid": "cpu-main",
+                "title": "CPU Main",
+                "body": {"title": "CPU Main"},
+            }),
+            json!({
+                "kind": "folder",
+                "uid": "infra",
+                "title": "Infra",
+                "body": {"title": "Infra"},
+            }),
+            json!({
+                "kind": "datasource",
+                "uid": "prom-main",
+                "name": "prom-main",
+                "title": "prom-main",
+                "body": {"type": "prometheus"},
+            }),
+        ],
+        &[],
+        false,
+    )
+    .unwrap();
+
+    assert_eq!(plan["ordering"]["mode"], json!("dependency-aware"));
+    let operations = plan["operations"].as_array().unwrap();
+    assert_eq!(operations[0]["kind"], json!("folder"));
+    assert_eq!(operations[0]["orderIndex"], json!(1));
+    assert_eq!(operations[0]["kindOrder"], json!(0));
+    assert_eq!(operations[1]["kind"], json!("datasource"));
+    assert_eq!(operations[1]["kindOrder"], json!(1));
+    assert_eq!(operations[2]["kind"], json!("dashboard"));
+    assert_eq!(operations[2]["orderGroup"], json!("create-update"));
+    assert_eq!(operations[2]["kindOrder"], json!(2));
+    assert_eq!(plan["summary"]["blocked_reasons"], json!([]));
+}
+
+#[test]
+fn render_sync_plan_text_shows_ordering_and_blocked_reasons() {
+    let plan = build_sync_plan_document(
+        &[json!({
+            "kind": "folder",
+            "uid": "infra",
+            "title": "Infra",
+            "body": {"title": "Infra"},
+        })],
+        &[json!({
+            "kind": "datasource",
+            "uid": "prom-main",
+            "name": "prom-main",
+            "title": "prom-main",
+            "body": {"type": "prometheus"},
+        })],
+        false,
+    )
+    .unwrap();
+
+    let lines = render_sync_plan_text(&plan).unwrap();
+
+    assert!(lines
+        .iter()
+        .any(|line| line == "Ordering: dependency-aware"));
+    assert!(lines
+        .iter()
+        .any(|line| line
+            == "Blocked reason: kind=datasource identity=prom-main reason=prune-disabled"));
 }

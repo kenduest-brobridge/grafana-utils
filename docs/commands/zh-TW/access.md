@@ -10,14 +10,15 @@
 
 ## 從這裡開始
 
-- 先看現況：`access user list`、`access org list`、`access team list`
+- 先看現況：`access user list`、`access org list`、`access team list`、`access service-account list`
+- 想看本機套件：把 `--input-dir ./access-*` 加到對應的 `list`
 - 要處理 service account：直接進 `access service-account`
 - 要追 token：直接進 `access service-account token`
 - 要先確認範圍：先看對應的 list，再做新增、修改或刪除
 
 ## 說明
 
-`grafana-util access` 把身分與存取工作收在同一個入口：`user`、`org`、`team`、`service account` 和 `service-account token` 的生命週期都在這裡處理。這頁適合先判斷自己應該往哪個操作面走，而不是直接猜一個命令名。
+`grafana-util access` 把身分與存取工作收在同一個入口：`user`、`org`、`team`、`service account` 和 `service-account token` 的生命週期都在這裡處理。`list` 可以直接讀 live Grafana 或本機 bundle；這頁適合先判斷自己應該往哪個操作面走，而不是直接猜一個命令名。
 
 ## 主要旗標
 
@@ -47,6 +48,11 @@
 ```bash
 # 先盤點目前有哪些 user。
 grafana-util access user list --profile prod --json
+```
+
+```bash
+# 先看本機存好的 org 套件。
+grafana-util access org list --input-dir ./access-orgs --output-format table
 ```
 
 ```bash

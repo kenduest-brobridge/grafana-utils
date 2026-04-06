@@ -5,7 +5,7 @@
 ## 適用對象
 
 - 要先看 live / staged 狀態再決定下一步的人
-- 負責變更審查、preflight 或 apply gate 的人
+- 負責變更審查、check 或 apply gate 的人
 - 需要把 status / overview / change 串成固定流程的人
 
 ## 主要目標
@@ -33,24 +33,24 @@
 
 ## 🔗 指令詳細頁面
 
-如果你現在要查的是指令細節，而不是整段工作流程，直接跳到下面這些指令頁就可以：
+如果你現在要查的是指令細節，而不是整段工作流程，先看這兩組：
+
+Primary lane：
 
 - [change](../../commands/zh-TW/change.md)
-- [change summary](../../commands/zh-TW/change.md#summary)
-- [change plan](../../commands/zh-TW/change.md#plan)
-- [change review](../../commands/zh-TW/change.md#review)
-- [change apply](../../commands/zh-TW/change.md#apply)
-- [change audit](../../commands/zh-TW/change.md#audit)
-- [change preflight](../../commands/zh-TW/change.md#preflight)
-- [change assess-alerts](../../commands/zh-TW/change.md#assess-alerts)
-- [change bundle](../../commands/zh-TW/change.md#bundle)
-- [change bundle-preflight](../../commands/zh-TW/change.md#bundle-preflight)
-- [change promotion-preflight](../../commands/zh-TW/change.md#promotion-preflight)
+- [change inspect](../../commands/zh-TW/change-inspect.md)
+- [change check](../../commands/zh-TW/change-check.md)
+- [change preview](../../commands/zh-TW/change-preview.md)
+- [change apply](../../commands/zh-TW/change-apply.md)
 - [status](../../commands/zh-TW/status.md)
 - [status staged](../../commands/zh-TW/status.md#staged)
 - [status live](../../commands/zh-TW/status.md#live)
 - [overview](../../commands/zh-TW/overview.md)
 - [overview live](../../commands/zh-TW/overview.md#live)
+
+Advanced workflows：
+
+- 如果你需要較低階 staged contract，或要看 bundle / promotion handoff 文件，從 [change advanced](../../commands/zh-TW/change.md#advanced) 或 [指令詳細總索引](../../commands/zh-TW/index.md) 開始。
 - [snapshot](../../commands/zh-TW/snapshot.md)
 - [snapshot export](../../commands/zh-TW/snapshot.md#export)
 - [snapshot review](../../commands/zh-TW/snapshot.md#review)
@@ -60,7 +60,6 @@
 - [profile add](../../commands/zh-TW/profile.md#add)
 - [profile example](../../commands/zh-TW/profile.md#example)
 - [profile init](../../commands/zh-TW/profile.md#init)
-- [指令詳細總索引](../../commands/zh-TW/index.md)
 
 ---
 
@@ -116,16 +115,27 @@ grafana-util status staged --dashboard-export-dir ./dashboards/raw --alert-expor
 
 管理從 Git 到正式 Grafana 環境的過渡。
 
-### 1. 變更摘要 (Change Summary)
-獲取目前變更包的高階摘要。
+### 第一次使用，先走這條最短路徑
+
+如果你還不確定要從哪裡開始，先照這個順序走：
+
+1. `change inspect --workspace .`
+2. `change check --workspace .`
+3. `change preview --workspace . --fetch-live --profile <profile>`
+4. `change apply --preview-file ./change-preview.json --approve --execute-live --profile <profile>`
+
+`--workspace` 是最短路徑，因為 `change` 會先嘗試在目前 repo 或工作目錄裡找常見 staged inputs。若這不符合你的目錄布局，再改用 `--desired-file`、`--dashboard-export-dir`、`--alert-export-dir`、`--source-bundle`、`--target-inventory` 這些明確旗標。
+
+### 1. 變更檢視 (Change Inspect)
+先看目前變更包的高階摘要與輸入形狀。
 ```bash
-# 用途：獲取目前變更包的高階摘要。
-grafana-util change summary --desired-file ./desired.json
+# 用途：先從目前 workspace 自動發現常見 staged inputs。
+grafana-util change inspect --workspace .
 ```
 
 ```bash
-# 用途：獲取目前變更包的高階摘要。
-grafana-util change summary --desired-file ./desired.json --output-format json
+# 用途：用明確 staged 匯出目錄建立 inspection 輸出。
+grafana-util change inspect --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-format json
 ```
 **預期輸出：**
 ```text
@@ -135,18 +145,18 @@ CHANGE PACKAGE SUMMARY:
 - access: 1 added
 - total impact: 11 operations
 ```
-先用 summary 看整個變更包的規模，再往下看 plan。若總數異常偏大，應先停下來檢查 staged 輸入。
+先用 inspect 看整個變更包的規模與輸入形狀，再往下看 preview。若總數異常偏大，應先停下來檢查 staged 輸入。
 
-### 2. 預檢驗證 (Preflight Validation)
-驗證匯出 / 匯入目錄結構的完整性。
+### 2. 變更檢查 (Change Check)
+驗證匯出 / 匯入目錄結構與 staged readiness。
 ```bash
-# 用途：驗證匯出 / 匯入目錄結構的完整性。
-grafana-util change preflight --desired-file ./desired.json --availability-file ./availability.json
+# 用途：先檢查目前 workspace 自動發現到的 staged package。
+grafana-util change check --workspace . --availability-file ./availability.json
 ```
 
 ```bash
-# 用途：驗證匯出 / 匯入目錄結構的完整性。
-grafana-util change preflight --desired-file ./desired.json --fetch-live --output-format json
+# 用途：把 live availability hints 併進 staged 檢查。
+grafana-util change check --workspace . --fetch-live --output-format json
 ```
 **預期輸出：**
 ```text
@@ -155,7 +165,22 @@ PREFLIGHT CHECK:
 - datasources: valid (1 inventory found)
 - result: 0 errors, 0 blockers
 ```
-preflight 適合放在規劃或套用前，做結構層的檢查。通過只代表輸入形狀合理，不代表 live 狀態已經完全吻合。
+check 適合放在 preview 或 apply 前，做 staged readiness 與結構層檢查。通過只代表輸入形狀合理，不代表 live 狀態已經完全吻合。
+
+### 3. 變更預覽 (Change Preview)
+先建立可操作的 preview，確認這次真的會改到哪些東西。
+```bash
+# 用途：預覽目前 staged package 對 live Grafana 的影響。
+grafana-util change preview --workspace . --fetch-live --profile prod
+```
+
+```bash
+# 用途：用明確 desired/live 輸入產出 JSON preview。
+grafana-util change preview --desired-file ./desired.json --live-file ./live.json --output-format json
+```
+
+preview 是現在 task-first 路徑裡對應舊 `plan` 的入口。底層 contract 還是同一套，但對使用者來說，先想「這次會改到什麼」比先想「我要 build 哪種 plan 文件」更自然。
+這份 preview contract 也是排序契約的公開面：`ordering.mode`、每筆 operation 的 `orderIndex` / `orderGroup` / `kindOrder`，以及 `summary.blocked_reasons` 會讓審查者看出 plan 的執行順序與尚未解除的受阻工作。
 
 ---
 

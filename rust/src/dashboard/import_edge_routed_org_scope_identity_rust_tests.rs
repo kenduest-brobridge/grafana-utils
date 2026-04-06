@@ -78,7 +78,7 @@ fn build_routed_import_dry_run_json_and_live_failure_share_org_scope_identity() 
             |_target_org_id, scoped_args| {
                 Ok(test_support::import::ImportDryRunReport {
                     mode: "create-only".to_string(),
-                    import_dir: scoped_args.import_dir.clone(),
+                    input_dir: scoped_args.input_dir.clone(),
                     folder_statuses: Vec::new(),
                     dashboard_records: Vec::new(),
                     skipped_missing_count: 0,

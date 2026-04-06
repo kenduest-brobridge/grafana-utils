@@ -766,11 +766,11 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
     <section class="command-intro">
   <div class="command-intro-grid"><div class="command-intro-block">
   <p class="command-intro-label">這頁在說什麼</p>
-  <p class="command-intro-text">將儀表板匯出成 raw/、prompt/ 與 provisioning/ 檔案。</p>
+  <p class="command-intro-text">將儀表板匯出成 raw/、prompt/ 與 provisioning/ 檔案，必要時也可附帶 history/ 成品。</p>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">什麼時候看這頁</p>
-  <ul class="command-intro-list"><li>當您需要一個本地匯出樹，供後續匯入、檢視、比對或檔案 provisioning 工作流程使用時，使用這個指令。prompt/ 路徑是給 Grafana UI 匯入用，不是給 dashboard API 匯入用；如果您只有一般或 raw 的 dashboard JSON，需要先轉成 prompt JSON，請使用 dashboard raw-to-prompt。</li></ul>
+  <ul class="command-intro-list"><li>當您需要一個本地匯出樹，供後續匯入、檢視、比對或檔案 provisioning 工作流程使用時，使用這個指令。若您也需要每個匯出 org 範圍各自的版本歷史成品，請加上 --include-history。prompt/ 路徑是給 Grafana UI 匯入用，不是給 dashboard API 匯入用；如果您只有一般或 raw 的 dashboard JSON，需要先轉成 prompt JSON，請使用 dashboard raw-to-prompt。</li></ul>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">適合誰</p>
@@ -779,28 +779,30 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 </section>
 <h2 id="用途">用途</h2>
-<p>將儀表板匯出成 <code>raw/</code>、<code>prompt/</code> 與 <code>provisioning/</code> 檔案。</p>
+<p>將儀表板匯出成 <code>raw/</code>、<code>prompt/</code> 與 <code>provisioning/</code> 檔案，必要時也可附帶 <code>history/</code> 成品。</p>
 <h2 id="何時使用">何時使用</h2>
-<p>當您需要一個本地匯出樹，供後續匯入、檢視、比對或檔案 provisioning 工作流程使用時，使用這個指令。<code>prompt/</code> 路徑是給 Grafana UI 匯入用，不是給 dashboard API 匯入用；如果您只有一般或 raw 的 dashboard JSON，需要先轉成 prompt JSON，請使用 <code>dashboard raw-to-prompt</code>。</p>
+<p>當您需要一個本地匯出樹，供後續匯入、檢視、比對或檔案 provisioning 工作流程使用時，使用這個指令。若您也需要每個匯出 org 範圍各自的版本歷史成品，請加上 <code>--include-history</code>。<code>prompt/</code> 路徑是給 Grafana UI 匯入用，不是給 dashboard API 匯入用；如果您只有一般或 raw 的 dashboard JSON，需要先轉成 prompt JSON，請使用 <code>dashboard raw-to-prompt</code>。</p>
 <h2 id="採用前後對照">採用前後對照</h2>
 <ul><li><strong>採用前</strong>：匯出比較像一次性的備份動作，之後能不能 review、inspect 或 replay，通常要走到下一步才知道。</li><li><strong>採用後</strong>：匯出會變成整條工作流的第一份 artifact，後面可以接 inspect、diff、dry-run import 與 Git review。</li></ul>
 <h2 id="重點旗標">重點旗標</h2>
-<ul><li><code>--export-dir</code>：匯出樹的目標目錄。</li><li><code>--org-id</code>：匯出指定的 Grafana org。</li><li><code>--all-orgs</code>：把每個可見 org 匯出到各自的子目錄。建議使用 Basic auth。</li><li><code>--flat</code>：直接把檔案寫入各個匯出變體目錄。</li><li><code>--overwrite</code>：取代既有的匯出檔案。</li><li><code>--without-dashboard-raw</code>、<code>--without-dashboard-prompt</code>、<code>--without-dashboard-provisioning</code>：略過某個變體。</li><li><code>--provisioning-provider-name</code>、<code>--provisioning-provider-org-id</code>、<code>--provisioning-provider-path</code>：自訂產生的 provisioning provider 檔案。</li><li><code>--provisioning-provider-disable-deletion</code>、<code>--provisioning-provider-allow-ui-updates</code>、<code>--provisioning-provider-update-interval-seconds</code>：調整 provisioning 行為。</li><li><code>--dry-run</code>：預覽會寫出哪些內容。</li></ul>
+<ul><li><code>--output-dir</code>：匯出樹的目標目錄。</li><li><code>--org-id</code>：匯出指定的 Grafana org。</li><li><code>--all-orgs</code>：把每個可見 org 匯出到各自的子目錄。建議使用 Basic auth。</li><li><code>--flat</code>：直接把檔案寫入各個匯出變體目錄。</li><li><code>--overwrite</code>：取代既有的匯出檔案。</li><li><code>--without-dashboard-raw</code>、<code>--without-dashboard-prompt</code>、<code>--without-dashboard-provisioning</code>：略過某個變體。</li><li><code>--include-history</code>：把 dashboard 版本歷史成品寫到每個匯出 org 範圍下的 <code>history/</code> 子目錄。</li><li><code>--provisioning-provider-name</code>、<code>--provisioning-provider-org-id</code>、<code>--provisioning-provider-path</code>：自訂產生的 provisioning provider 檔案。</li><li><code>--provisioning-provider-disable-deletion</code>、<code>--provisioning-provider-allow-ui-updates</code>、<code>--provisioning-provider-update-interval-seconds</code>：調整 provisioning 行為。</li><li><code>--dry-run</code>：預覽會寫出哪些內容。</li></ul>
 <h2 id="說明">說明</h2>
-<ul><li>一般單一 org 匯出可優先用 <code>--profile</code>。</li><li><code>--all-orgs</code> 最好搭配管理員憑證支援的 <code>--profile</code> 或直接 Basic auth，因為 token 的可見範圍可能不足以涵蓋所有 org。</li></ul>
+<ul><li>一般單一 org 匯出可優先用 <code>--profile</code>。</li><li><code>--all-orgs</code> 最好搭配管理員憑證支援的 <code>--profile</code> 或直接 Basic auth，因為 token 的可見範圍可能不足以涵蓋所有 org。</li><li>當 <code>--all-orgs</code> 搭配 <code>--include-history</code> 時，每個匯出 org 範圍都會各自產生 <code>org_&lt;id&gt;_&lt;name&gt;/history/</code> 子樹。</li></ul>
 <h2 id="成功判準">成功判準</h2>
-<ul><li>產生出可供 API replay 與進一步 inspect 的 <code>raw/</code> 樹</li><li>如果需要較乾淨的 handoff，也有對應的 <code>prompt/</code> 樹</li><li>匯出結果足夠穩定，可直接拿去比對、審查或納入版本控制</li></ul>
+<ul><li>產生出可供 API replay 與進一步 inspect 的 <code>raw/</code> 樹</li><li>如果需要較乾淨的 handoff，也有對應的 <code>prompt/</code> 樹</li><li>如果有加 <code>--include-history</code>，每個匯出 org 範圍下都會有對應的 <code>history/</code> 樹</li><li>匯出結果足夠穩定，可直接拿去比對、審查或納入版本控制</li></ul>
 <h2 id="失敗時先檢查">失敗時先檢查</h2>
-<ul><li>如果 dashboard 數量不對，先檢查 org 範圍，不要先懷疑 exporter</li><li>如果 <code>--all-orgs</code> 的輸出看起來不完整，先確認憑證是否真的看得到所有 org</li><li>如果下一步是匯入，先確認這次該沿用 <code>raw/</code> 還是 <code>prompt/</code></li></ul>
+<ul><li>如果 dashboard 數量不對，先檢查 org 範圍，不要先懷疑 exporter</li><li>如果 <code>--all-orgs</code> 的輸出看起來不完整，先確認憑證是否真的看得到所有 org</li><li>如果預期中的 history 成品沒出現，先確認是否有加上 <code>--include-history</code>，也要確認是不是看錯了 org 範圍</li><li>如果下一步是匯入，先確認這次該沿用 <code>raw/</code> 還是 <code>prompt/</code></li></ul>
 <h2 id="範例">範例</h2>
 <pre><code># 用途：將儀表板匯出成 `raw/`、`prompt/` 與 `provisioning/` 檔案。
-grafana-util dashboard export --profile prod --export-dir ./dashboards --overwrite</code></pre>
+grafana-util dashboard export --profile prod --output-dir ./dashboards --overwrite</code></pre>
 <pre><code># 用途：將儀表板匯出成 `raw/`、`prompt/` 與 `provisioning/` 檔案。
-grafana-util dashboard export --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --export-dir ./dashboards --overwrite</code></pre>
+grafana-util dashboard export --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --output-dir ./dashboards --overwrite</code></pre>
 <pre><code># 用途：將儀表板匯出成 `raw/`、`prompt/` 與 `provisioning/` 檔案。
-grafana-util dashboard export --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --export-dir ./dashboards --overwrite</code></pre>
+grafana-util dashboard export --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output-dir ./dashboards --overwrite</code></pre>
+<pre><code># 用途：匯出 dashboard，並把每個 org 的版本歷史成品一併寫入可重用的目錄樹。
+grafana-util dashboard export --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --include-history --output-dir ./dashboards --overwrite</code></pre>
 <h2 id="相關指令">相關指令</h2>
-<ul><li><a href="dashboard-inspect-export.html">dashboard inspect-export</a></li><li><a href="dashboard-import.html">dashboard import</a></li><li><a href="dashboard-diff.html">dashboard diff</a></li><li><a href="dashboard-raw-to-prompt.html">dashboard raw-to-prompt</a></li></ul>
+<ul><li><a href="dashboard-analyze-export.html">dashboard analyze（本地）</a></li><li><a href="dashboard-import.html">dashboard import</a></li><li><a href="dashboard-diff.html">dashboard diff</a></li><li><a href="dashboard-raw-to-prompt.html">dashboard raw-to-prompt</a></li><li><a href="dashboard-history.html">dashboard history</a></li></ul>
     
   </article>
   <aside class="sidebar">

@@ -131,7 +131,7 @@ grafana-util alert apply \
 | 指令 | 帶有參數的完整範例 |
 | :--- | :--- |
 | **列出規則 (List)** | `grafana-util alert list-rules --all-orgs --table` |
-| **匯出 (Export)** | `grafana-util alert export --export-dir ./alerts --overwrite` |
+| **匯出 (Export)** | `grafana-util alert export --output-dir ./alerts --overwrite` |
 | **計畫 (Plan)** | `grafana-util alert plan --desired-dir ./alerts/desired --prune --output-format json` |
 | **套用 (Apply)** | `grafana-util alert apply --plan-file ./plan.json --approve` |
 | **設定路由 (Set Route)** | `grafana-util alert set-route --desired-dir ./alerts/desired --receiver pagerduty` |

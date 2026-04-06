@@ -57,6 +57,11 @@ pub use access_user_cli::{
 pub struct TeamListArgs {
     #[command(flatten)]
     pub common: CommonCliArgs,
+    #[arg(
+        long,
+        help = "List teams from a local export bundle directory instead of live Grafana."
+    )]
+    pub input_dir: Option<PathBuf>,
     #[arg(long, help = "Filter teams by a free-text search.")]
     pub query: Option<String>,
     #[arg(long, help = "Filter teams by exact team name.")]
@@ -97,6 +102,11 @@ pub struct TeamListArgs {
 pub struct TeamBrowseArgs {
     #[command(flatten)]
     pub common: CommonCliArgs,
+    #[arg(
+        long,
+        help = "Browse teams from a local export bundle directory instead of live Grafana."
+    )]
+    pub input_dir: Option<PathBuf>,
     #[arg(long, help = "Filter teams by a free-text search.")]
     pub query: Option<String>,
     #[arg(long, help = "Filter teams by exact team name.")]
@@ -150,11 +160,11 @@ pub struct TeamExportArgs {
     #[command(flatten)]
     pub common: CommonCliArgs,
     #[arg(
-        long,
+        long = "output-dir",
         default_value = DEFAULT_ACCESS_TEAM_EXPORT_DIR,
         help = "Directory to write teams.json and export-metadata.json."
     )]
-    pub export_dir: PathBuf,
+    pub output_dir: PathBuf,
     #[arg(
         long,
         default_value_t = false,
@@ -181,10 +191,10 @@ pub struct TeamImportArgs {
     #[command(flatten)]
     pub common: CommonCliArgs,
     #[arg(
-        long,
+        long = "input-dir",
         help = "Import directory that contains teams.json and export-metadata.json."
     )]
-    pub import_dir: PathBuf,
+    pub input_dir: PathBuf,
     #[arg(
         long,
         default_value_t = false,
@@ -290,6 +300,11 @@ pub struct TeamModifyArgs {
 pub struct OrgListArgs {
     #[command(flatten)]
     pub common: CommonCliArgsNoOrgId,
+    #[arg(
+        long,
+        help = "List organizations from a local export bundle directory instead of live Grafana."
+    )]
+    pub input_dir: Option<PathBuf>,
     #[arg(long = "org-id", help = "Filter to one exact organization id.")]
     pub org_id: Option<i64>,
     #[arg(long, help = "Filter organizations by exact name.")]
@@ -400,11 +415,11 @@ pub struct OrgExportArgs {
     #[arg(long = "org-id", help = "Filter export to one exact organization id.")]
     pub org_id: Option<i64>,
     #[arg(
-        long,
+        long = "output-dir",
         default_value = DEFAULT_ACCESS_ORG_EXPORT_DIR,
         help = "Directory to write orgs.json and export-metadata.json."
     )]
-    pub export_dir: PathBuf,
+    pub output_dir: PathBuf,
     #[arg(
         long,
         default_value_t = false,
@@ -433,10 +448,10 @@ pub struct OrgImportArgs {
     #[command(flatten)]
     pub common: CommonCliArgsNoOrgId,
     #[arg(
-        long,
+        long = "input-dir",
         help = "Import directory that contains orgs.json and export-metadata.json."
     )]
-    pub import_dir: PathBuf,
+    pub input_dir: PathBuf,
     #[arg(
         long,
         default_value_t = false,

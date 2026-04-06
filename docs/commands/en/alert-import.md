@@ -12,7 +12,7 @@ Import alerting resource JSON files through the Grafana API.
 
 ## Key flags
 
-- `--import-dir` points at the `raw/` export directory.
+- `--input-dir` points at the `raw/` export directory.
 - `--replace-existing` updates resources with matching identities.
 - `--dry-run` previews the import.
 - `--json` renders dry-run output as structured JSON.
@@ -31,7 +31,7 @@ Import alerting resource JSON files through the Grafana API.
 
 ## Failure checks
 
-- Make sure `--import-dir` points at the `raw/` directory, not the parent export folder.
+- Make sure `--input-dir` points at the `raw/` directory, not the parent export folder.
 - If dashboard-linked rules move, supply the dashboard and panel mapping flags before importing.
 - Use `--replace-existing` only when you expect to overwrite matching live resources.
 
@@ -39,12 +39,12 @@ Import alerting resource JSON files through the Grafana API.
 
 ```bash
 # Purpose: Import alerting resource JSON files through the Grafana API.
-grafana-util alert import --url http://localhost:3000 --import-dir ./alerts/raw --replace-existing
+grafana-util alert import --url http://localhost:3000 --input-dir ./alerts/raw --replace-existing
 ```
 
 ```bash
 # Purpose: Import alerting resource JSON files through the Grafana API.
-grafana-util alert import --url http://localhost:3000 --import-dir ./alerts/raw --replace-existing --dry-run --json
+grafana-util alert import --url http://localhost:3000 --input-dir ./alerts/raw --replace-existing --dry-run --json
 ```
 
 ## Related commands

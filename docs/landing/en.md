@@ -126,9 +126,9 @@ Full command docs by namespace, subcommand, and flag.
 
 Go here when you want the repository, release history, or issue tracker.
 
-- [Browse GitHub repository](https://github.com/kenduest-brobridge/grafana-utils)
-- [View releases](https://github.com/kenduest-brobridge/grafana-utils/releases)
-- [Report an issue](https://github.com/kenduest-brobridge/grafana-utils/issues)
+- [Browse GitHub repository](https://github.com/kenduest-brobridge/grafana-util)
+- [View releases](https://github.com/kenduest-brobridge/grafana-util/releases)
+- [Report an issue](https://github.com/kenduest-brobridge/grafana-util/issues)
 
 ## Maintainer
 

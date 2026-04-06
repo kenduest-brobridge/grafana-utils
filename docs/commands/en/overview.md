@@ -22,7 +22,7 @@ grafana-util overview --dashboard-export-dir ./dashboards/raw --alert-export-dir
 grafana-util overview --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --availability-file ./availability.json --mapping-file ./mapping.json --output-format text
 ```
 
-Related commands: `grafana-util status staged`, `grafana-util change summary`, `grafana-util snapshot review`.
+Related commands: `grafana-util status staged`, `grafana-util change inspect`, `grafana-util snapshot review`.
 
 ## `live`
 

@@ -49,14 +49,14 @@
 
 - 需要 gate、結構化輸出，或明確 pass/fail 判斷時，用 `status`
 - 需要從人的角度先看整個 estate、決定接下來往哪裡鑽時，用 `overview`
-- 已經知道有變更意圖，要做 summary、preflight、plan、review、apply 時，用 `change`
+- 已經知道有變更意圖，要做 inspect、check、preview、apply 時，用 `change`
 
 常見判斷：
 
 - 「我現在能不能放心往下做？」 -> `status live`
 - 「整個 Grafana 環境現在長什麼樣？」 -> `overview live`
-- 「我的 staged 套件結構和檢查結果是否合理？」 -> `status staged` + `change preflight`
-- 「到底會改到什麼？」 -> `change summary`、`change plan`、`change review`
+- 「我的 staged 套件結構和檢查結果是否合理？」 -> `status staged` + `change check`
+- 「到底會改到什麼？」 -> `change inspect`、`change preview`、`change apply`
 
 ### 為什麼這個切分很重要
 

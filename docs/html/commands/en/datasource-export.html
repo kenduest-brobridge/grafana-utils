@@ -783,12 +783,12 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="when-to-use">When to use</h2>
 <p>Use this when you need a local datasource bundle for later inspection, diff, or import.</p>
 <h2 id="key-flags">Key flags</h2>
-<ul><li><code>--export-dir</code>: target directory for the export tree.</li><li><code>--org-id</code>: export one explicit Grafana org.</li><li><code>--all-orgs</code>: export each visible org into per-org subdirectories. Requires Basic auth.</li><li><code>--overwrite</code>: replace existing files.</li><li><code>--without-datasource-provisioning</code>: skip the provisioning variant.</li><li><code>--dry-run</code>: preview what would be written.</li></ul>
+<ul><li><code>--output-dir</code>: target directory for the export tree.</li><li><code>--org-id</code>: export one explicit Grafana org.</li><li><code>--all-orgs</code>: export each visible org into per-org subdirectories. Requires Basic auth.</li><li><code>--overwrite</code>: replace existing files.</li><li><code>--without-datasource-provisioning</code>: skip the provisioning variant.</li><li><code>--dry-run</code>: preview what would be written.</li></ul>
 <h2 id="examples">Examples</h2>
 <pre><code># Purpose: Export live Grafana datasource inventory as normalized JSON plus provisioning files.
-grafana-util datasource export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./datasources --overwrite</code></pre>
+grafana-util datasource export --url http://localhost:3000 --basic-user admin --basic-password admin --output-dir ./datasources --overwrite</code></pre>
 <pre><code># Purpose: Export live Grafana datasource inventory as normalized JSON plus provisioning files.
-grafana-util datasource export --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --export-dir ./datasources --overwrite</code></pre>
+grafana-util datasource export --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --output-dir ./datasources --overwrite</code></pre>
 <h2 id="before-after">Before / After</h2>
 <ul><li><strong>Before</strong>: live datasource state was easy to lose because the export shape was not normalized or easy to reuse later.</li><li><strong>After</strong>: one export gives you a local bundle that is stable enough for inspection, diff, and import.</li></ul>
 <h2 id="what-success-looks-like">What success looks like</h2>
@@ -796,7 +796,7 @@ grafana-util datasource export --url http://localhost:3000 --basic-user admin --
 <h2 id="failure-checks">Failure checks</h2>
 <ul><li>if the export tree is missing org data, confirm the org scope and whether the credentials can see it</li><li>if <code>--all-orgs</code> fails, use Basic auth and verify that the account can see each target org</li><li>if the bundle looks stale, verify the export directory and whether <code>--overwrite</code> was used intentionally</li></ul>
 <h2 id="related-commands">Related commands</h2>
-<ul><li><a href="datasource-inspect-export.html">datasource inspect-export</a></li><li><a href="datasource-import.html">datasource import</a></li><li><a href="datasource-diff.html">datasource diff</a></li></ul>
+<ul><li><a href="datasource-list.html">datasource list</a></li><li><a href="datasource-import.html">datasource import</a></li><li><a href="datasource-diff.html">datasource diff</a></li></ul>
     
   </article>
   <aside class="sidebar">

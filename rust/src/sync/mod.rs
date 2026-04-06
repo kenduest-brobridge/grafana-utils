@@ -24,6 +24,7 @@ mod bundle_builder;
 mod bundle_inputs;
 pub mod bundle_preflight;
 pub mod cli;
+mod guided;
 mod json;
 pub mod live;
 mod live_project_status;
@@ -47,6 +48,9 @@ use self::audit_tui::run_sync_audit_interactive;
 use self::bundle_preflight::{
     build_sync_bundle_preflight_document, render_sync_bundle_preflight_text,
 };
+pub(crate) use self::guided::{
+    discover_change_staged_inputs, run_sync_check, run_sync_inspect, run_sync_preview,
+};
 use self::preflight::{build_sync_preflight_document, render_sync_preflight_text};
 pub(crate) use self::project_status::{build_sync_domain_status, SyncDomainStatusInputs};
 pub(crate) use self::project_status_promotion::build_promotion_domain_status;
@@ -62,23 +66,110 @@ use crate::common::{message, Result};
 use crate::dashboard::CommonCliArgs;
 /// Constant for default review token.
 pub const DEFAULT_REVIEW_TOKEN: &str = "reviewed-change-plan";
-const SYNC_ROOT_HELP_TEXT: &str = "Examples:\n\n  Summarize desired resources:\n    grafana-util change summary --desired-file ./desired.json\n\n  Audit managed resources against a staged checksum lock:\n    grafana-util change audit --lock-file ./sync-lock.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --fail-on-drift --output-format json\n\n  Package local exports into one source bundle:\n    grafana-util change bundle --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json\n\n  Compare a source bundle against target inventory before apply:\n    grafana-util change bundle-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --output-format json\n\n  Assess staged promotion review handoff:\n    grafana-util change promotion-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --mapping-file ./promotion-map.json --output-format json\n\n  Build a live-backed change plan:\n    grafana-util change plan --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"\n\n  Apply a reviewed plan back to Grafana:\n    grafana-util change apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"";
-const SYNC_SUMMARY_HELP_TEXT: &str = "Examples:\n\n  grafana-util change summary --desired-file ./desired.json\n  grafana-util change summary --desired-file ./desired.json --output-format json";
-const SYNC_PLAN_HELP_TEXT: &str = "Examples:\n\n  grafana-util change plan --desired-file ./desired.json --live-file ./live.json\n  grafana-util change plan --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --allow-prune --output-format json";
-const SYNC_REVIEW_HELP_TEXT: &str = "Examples:\n\n  grafana-util change review --plan-file ./sync-plan.json\n  grafana-util change review --plan-file ./sync-plan.json --review-note 'peer-reviewed' --output-format json";
-const SYNC_APPLY_HELP_TEXT: &str = "Examples:\n\n  grafana-util change apply --plan-file ./sync-plan-reviewed.json --approve\n  grafana-util change apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --allow-folder-delete --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"\n  grafana-util change apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --allow-policy-reset --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"";
-const SYNC_AUDIT_HELP_TEXT: &str = "Examples:\n\n  grafana-util change audit --managed-file ./desired.json --live-file ./live.json --write-lock ./sync-lock.json\n  grafana-util change audit --lock-file ./sync-lock.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --fail-on-drift --output-format json";
-const SYNC_PREFLIGHT_HELP_TEXT: &str = "Examples:\n\n  grafana-util change preflight --desired-file ./desired.json --availability-file ./availability.json\n  grafana-util change preflight --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-format json";
-const SYNC_ASSESS_ALERTS_HELP_TEXT: &str = "Examples:\n\n  grafana-util change assess-alerts --alerts-file ./alerts.json\n  grafana-util change assess-alerts --alerts-file ./alerts.json --output-format json";
-const SYNC_BUNDLE_PREFLIGHT_HELP_TEXT: &str = "Examples:\n\n  grafana-util change bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json\n  grafana-util change bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json --availability-file ./availability.json --output-format json\n\n  Example availability file:\n    {\n      \"providerNames\": [\"vault\"],\n      \"secretPlaceholderNames\": [\"prom-basic-auth\"]\n    }";
-const SYNC_PROMOTION_PREFLIGHT_HELP_TEXT: &str = "This command is a staged review handoff for promotion; it stays read-only and does not apply live changes.\n\nExamples:\n\n  grafana-util change promotion-preflight --source-bundle ./bundle.json --target-inventory ./target.json\n  grafana-util change promotion-preflight --source-bundle ./bundle.json --target-inventory ./target.json --mapping-file ./promotion-mapping.json --availability-file ./availability.json --output-format json\n\n  Minimal promotion mapping file:\n    {\n      \"kind\": \"grafana-utils-sync-promotion-mapping\",\n      \"schemaVersion\": 1,\n      \"metadata\": {\n        \"sourceEnvironment\": \"staging\",\n        \"targetEnvironment\": \"prod\"\n      },\n      \"folders\": {\n        \"ops-src\": \"ops-prod\"\n      },\n      \"datasources\": {\n        \"uids\": {\n          \"prom-src\": \"prom-prod\"\n        },\n        \"names\": {\n          \"Prometheus Source\": \"Prometheus Prod\"\n        }\n      }\n    }\n\n  Example availability file:\n    {\n      \"providerNames\": [\"vault\"],\n      \"secretPlaceholderNames\": [\"prom-basic-auth\"]\n    }";
-const SYNC_BUNDLE_HELP_TEXT: &str = "Examples:\n\n  grafana-util change bundle --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json\n  grafana-util change bundle --dashboard-export-dir ./dashboards/raw --datasource-export-file ./datasources/datasources.json --output-format json\n  grafana-util change bundle --dashboard-export-dir ./dashboards/raw --datasource-provisioning-file ./datasources/provisioning/datasources.yaml --output-format json\n  grafana-util change bundle --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json";
+const SYNC_ROOT_HELP_TEXT: &str = "Examples:\n\n  Inspect the staged change package from common repo-local inputs:\n    grafana-util change inspect --output-format table\n\n  Check whether the staged package looks safe to continue:\n    grafana-util change check --output-format json\n\n  Preview what would change against live Grafana:\n    grafana-util change preview --fetch-live --profile prod --output-format json\n\n  Apply a reviewed change back to Grafana:\n    grafana-util change apply --approve --execute-live --profile prod\n\nAdvanced workflows:\n\n  Package local exports into one source bundle:\n    grafana-util change advanced bundle --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json\n\n  Compare a source bundle against target inventory before apply:\n    grafana-util change advanced bundle-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --output-format json\n\n  Assess staged promotion review handoff:\n    grafana-util change advanced promotion-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --mapping-file ./promotion-map.json --output-format json";
+const SYNC_INSPECT_HELP_TEXT: &str = "Examples:\n\n  grafana-util change inspect --output-format table\n  grafana-util change inspect --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-format json";
+const SYNC_CHECK_HELP_TEXT: &str = "Examples:\n\n  grafana-util change check --output-format json\n  grafana-util change check --dashboard-provisioning-dir ./dashboards/provisioning --output-format table";
+const SYNC_PREVIEW_HELP_TEXT: &str = "Examples:\n\n  grafana-util change preview --fetch-live --profile prod --output-format json\n  grafana-util change preview --desired-file ./desired.json --live-file ./live.json\n  grafana-util change preview --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --fetch-live --profile prod --output-file ./change-preview.json";
+const SYNC_SUMMARY_HELP_TEXT: &str = "Examples:\n\n  grafana-util change advanced summary --desired-file ./desired.json\n  grafana-util change advanced summary --desired-file ./desired.json --output-format json";
+const SYNC_PLAN_HELP_TEXT: &str = "Examples:\n\n  grafana-util change advanced plan --desired-file ./desired.json --live-file ./live.json\n  grafana-util change advanced plan --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --allow-prune --output-format json";
+const SYNC_REVIEW_HELP_TEXT: &str = "Examples:\n\n  grafana-util change advanced review --plan-file ./sync-plan.json\n  grafana-util change advanced review --plan-file ./sync-plan.json --review-note 'peer-reviewed' --output-format json";
+const SYNC_APPLY_HELP_TEXT: &str = "Examples:\n\n  grafana-util change apply --preview-file ./change-preview.json --approve\n  grafana-util change apply --preview-file ./change-preview.json --approve --execute-live --allow-folder-delete --profile prod\n  grafana-util change apply --preview-file ./change-preview.json --approve --execute-live --allow-policy-reset --profile prod";
+const SYNC_AUDIT_HELP_TEXT: &str = "Examples:\n\n  grafana-util change advanced audit --managed-file ./desired.json --live-file ./live.json --write-lock ./sync-lock.json\n  grafana-util change advanced audit --lock-file ./sync-lock.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --fail-on-drift --output-format json";
+const SYNC_PREFLIGHT_HELP_TEXT: &str = "Examples:\n\n  grafana-util change advanced preflight --desired-file ./desired.json --availability-file ./availability.json\n  grafana-util change advanced preflight --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-format json";
+const SYNC_ASSESS_ALERTS_HELP_TEXT: &str = "Examples:\n\n  grafana-util change advanced assess-alerts --alerts-file ./alerts.json\n  grafana-util change advanced assess-alerts --alerts-file ./alerts.json --output-format json";
+const SYNC_BUNDLE_PREFLIGHT_HELP_TEXT: &str = "Examples:\n\n  grafana-util change advanced bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json\n  grafana-util change advanced bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json --availability-file ./availability.json --output-format json\n\n  Example availability file:\n    {\n      \"providerNames\": [\"vault\"],\n      \"secretPlaceholderNames\": [\"prom-basic-auth\"]\n    }";
+const SYNC_PROMOTION_PREFLIGHT_HELP_TEXT: &str = "This command is a staged review handoff for promotion; it stays read-only and does not apply live changes.\n\nExamples:\n\n  grafana-util change advanced promotion-preflight --source-bundle ./bundle.json --target-inventory ./target.json\n  grafana-util change advanced promotion-preflight --source-bundle ./bundle.json --target-inventory ./target.json --mapping-file ./promotion-mapping.json --availability-file ./availability.json --output-format json\n\n  Minimal promotion mapping file:\n    {\n      \"kind\": \"grafana-utils-sync-promotion-mapping\",\n      \"schemaVersion\": 1,\n      \"metadata\": {\n        \"sourceEnvironment\": \"staging\",\n        \"targetEnvironment\": \"prod\"\n      },\n      \"folders\": {\n        \"ops-src\": \"ops-prod\"\n      },\n      \"datasources\": {\n        \"uids\": {\n          \"prom-src\": \"prom-prod\"\n        },\n        \"names\": {\n          \"Prometheus Source\": \"Prometheus Prod\"\n        }\n      }\n    }\n\n  Example availability file:\n    {\n      \"providerNames\": [\"vault\"],\n      \"secretPlaceholderNames\": [\"prom-basic-auth\"]\n    }";
+const SYNC_BUNDLE_HELP_TEXT: &str = "Examples:\n\n  grafana-util change advanced bundle --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json\n  grafana-util change advanced bundle --dashboard-export-dir ./dashboards/raw --datasource-export-file ./datasources/datasources.json --output-format json\n  grafana-util change advanced bundle --dashboard-export-dir ./dashboards/raw --datasource-provisioning-file ./datasources/provisioning/datasources.yaml --output-format json\n  grafana-util change advanced bundle --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json";
+const SYNC_ADVANCED_HELP_TEXT: &str = "Examples:\n\n  grafana-util change advanced summary --desired-file ./desired.json\n  grafana-util change advanced review --plan-file ./sync-plan.json --review-note 'peer-reviewed'\n  grafana-util change advanced bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json --output-format json";
 
 /// Output formats shared by staged sync document commands.
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
 pub enum SyncOutputFormat {
     Text,
     Json,
+}
+
+#[derive(Debug, Clone, Args)]
+pub struct ChangeStagedInputsArgs {
+    #[arg(
+        long,
+        default_value = ".",
+        help = "Workspace root used for auto-discovery when explicit staged inputs are omitted.",
+        help_heading = "Input Options"
+    )]
+    pub workspace: PathBuf,
+    #[arg(
+        long,
+        help = "Explicit JSON file containing the desired sync resource list.",
+        help_heading = "Input Options"
+    )]
+    pub desired_file: Option<PathBuf>,
+    #[arg(
+        long,
+        help = "Existing staged source bundle JSON file to use instead of per-surface export discovery.",
+        help_heading = "Input Options"
+    )]
+    pub source_bundle: Option<PathBuf>,
+    #[arg(
+        long,
+        conflicts_with = "dashboard_provisioning_dir",
+        help = "Path to one existing dashboard raw export directory such as ./dashboards/raw.",
+        help_heading = "Input Options"
+    )]
+    pub dashboard_export_dir: Option<PathBuf>,
+    #[arg(
+        long,
+        conflicts_with = "dashboard_export_dir",
+        help = "Path to one existing dashboard provisioning root or dashboards/ directory such as ./dashboards/provisioning.",
+        help_heading = "Input Options"
+    )]
+    pub dashboard_provisioning_dir: Option<PathBuf>,
+    #[arg(
+        long,
+        help = "Path to one existing alert raw export directory such as ./alerts/raw.",
+        help_heading = "Input Options"
+    )]
+    pub alert_export_dir: Option<PathBuf>,
+    #[arg(
+        long,
+        conflicts_with = "datasource_provisioning_file",
+        help = "Standalone datasource inventory JSON file to include or prefer over dashboards/raw/datasources.json.",
+        help_heading = "Input Options"
+    )]
+    pub datasource_export_file: Option<PathBuf>,
+    #[arg(
+        long,
+        conflicts_with = "datasource_export_file",
+        help = "Datasource provisioning YAML file to include instead of dashboards/raw/datasources.json.",
+        help_heading = "Input Options"
+    )]
+    pub datasource_provisioning_file: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, Args)]
+pub struct ChangeOutputArgs {
+    #[arg(
+        long = "output-format",
+        value_enum,
+        default_value_t = SyncOutputFormat::Text,
+        help = "Render the document as text or json.",
+        help_heading = "Output Options"
+    )]
+    pub output_format: SyncOutputFormat,
+    #[arg(
+        long,
+        help = "Optional file path to write the rendered artifact.",
+        help_heading = "Output Options"
+    )]
+    pub output_file: Option<PathBuf>,
+    #[arg(
+        long,
+        default_value_t = false,
+        requires = "output_file",
+        help = "When --output-file is set, also print the rendered artifact to stdout.",
+        help_heading = "Output Options"
+    )]
+    pub also_stdout: bool,
 }
 
 /// Reusable sync execution output for JSON/text consumers such as the web workbench.
@@ -88,10 +179,23 @@ pub struct SyncCommandOutput {
     pub text_lines: Vec<String>,
 }
 
+/// Advanced expert workflow namespace under `grafana-util change advanced`.
+#[derive(Debug, Clone, Args)]
+#[command(
+    name = "grafana-util change advanced",
+    about = "Advanced staged change workflows and lower-level review contracts.",
+    after_help = SYNC_ADVANCED_HELP_TEXT,
+    styles = crate::help_styles::CLI_HELP_STYLES
+)]
+pub struct SyncAdvancedCliArgs {
+    #[command(subcommand)]
+    pub command: SyncAdvancedCommand,
+}
+
 #[derive(Debug, Clone, Parser)]
 #[command(
     name = "grafana-util change",
-    about = "Reviewable sync workflows with optional live Grafana fetch/apply paths.",
+    about = "Task-first staged change workflow with optional live Grafana preview and apply paths.",
     after_help = SYNC_ROOT_HELP_TEXT,
     styles = crate::help_styles::CLI_HELP_STYLES
 )]
@@ -103,6 +207,162 @@ pub struct SyncCliArgs {
 
 #[cfg(test)]
 pub(crate) use audit_tui::{build_sync_audit_tui_groups, build_sync_audit_tui_rows};
+
+#[derive(Debug, Clone, Args)]
+pub struct ChangeInspectArgs {
+    #[command(flatten)]
+    pub inputs: ChangeStagedInputsArgs,
+    #[command(flatten)]
+    pub output: ChangeOutputArgs,
+}
+
+#[derive(Debug, Clone, Args)]
+pub struct ChangeCheckArgs {
+    #[command(flatten)]
+    pub inputs: ChangeStagedInputsArgs,
+    #[arg(
+        long,
+        help = "Optional JSON object file containing staged availability hints.",
+        help_heading = "Input Options"
+    )]
+    pub availability_file: Option<PathBuf>,
+    #[arg(
+        long,
+        help = "Optional JSON file containing the target inventory snapshot for bundle or promotion checks.",
+        help_heading = "Input Options"
+    )]
+    pub target_inventory: Option<PathBuf>,
+    #[arg(
+        long,
+        help = "Optional JSON object file containing explicit promotion mappings.",
+        help_heading = "Input Options"
+    )]
+    pub mapping_file: Option<PathBuf>,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Fetch availability hints from Grafana instead of relying only on --availability-file.",
+        help_heading = "Live Options"
+    )]
+    pub fetch_live: bool,
+    #[command(flatten)]
+    pub common: CommonCliArgs,
+    #[arg(
+        long,
+        help = "Optional Grafana org id used when --fetch-live is active.",
+        help_heading = "Live Options"
+    )]
+    pub org_id: Option<i64>,
+    #[command(flatten)]
+    pub output: ChangeOutputArgs,
+}
+
+#[derive(Debug, Clone, Args)]
+pub struct ChangePreviewArgs {
+    #[command(flatten)]
+    pub inputs: ChangeStagedInputsArgs,
+    #[arg(
+        long,
+        help = "Optional staged target inventory JSON used by bundle or promotion preview.",
+        help_heading = "Input Options"
+    )]
+    pub target_inventory: Option<PathBuf>,
+    #[arg(
+        long,
+        help = "Optional staged promotion mapping JSON for promotion preview.",
+        help_heading = "Input Options"
+    )]
+    pub mapping_file: Option<PathBuf>,
+    #[arg(
+        long,
+        help = "Optional staged availability JSON reused by preview builders.",
+        help_heading = "Input Options"
+    )]
+    pub availability_file: Option<PathBuf>,
+    #[arg(
+        long,
+        help = "JSON file containing the live sync resource list.",
+        help_heading = "Input Options"
+    )]
+    pub live_file: Option<PathBuf>,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Read the current live state directly from Grafana instead of --live-file.",
+        help_heading = "Live Options"
+    )]
+    pub fetch_live: bool,
+    #[command(flatten)]
+    pub common: CommonCliArgs,
+    #[arg(
+        long,
+        help = "Optional Grafana org id used when --fetch-live is active.",
+        help_heading = "Live Options"
+    )]
+    pub org_id: Option<i64>,
+    #[arg(
+        long,
+        default_value_t = 500usize,
+        help = "Dashboard search page size when --fetch-live is active.",
+        help_heading = "Live Options"
+    )]
+    pub page_size: usize,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Mark live-only resources as would-delete instead of unmanaged.",
+        help_heading = "Planning Options"
+    )]
+    pub allow_prune: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Stamp the preview artifact as reviewed so it can flow directly into change apply.",
+        help_heading = "Review Options"
+    )]
+    pub mark_reviewed: bool,
+    #[arg(
+        long,
+        default_value = DEFAULT_REVIEW_TOKEN,
+        help = "Review token recorded when --mark-reviewed is used.",
+        help_heading = "Review Options"
+    )]
+    pub review_token: String,
+    #[arg(
+        long,
+        help = "Optional reviewer identity to record when --mark-reviewed is used.",
+        help_heading = "Review Options"
+    )]
+    pub reviewed_by: Option<String>,
+    #[arg(
+        long,
+        help = "Optional staged reviewed-at value to record when --mark-reviewed is used.",
+        help_heading = "Review Options"
+    )]
+    pub reviewed_at: Option<String>,
+    #[arg(
+        long,
+        help = "Optional review note to record when --mark-reviewed is used.",
+        help_heading = "Review Options"
+    )]
+    pub review_note: Option<String>,
+    #[arg(
+        long,
+        default_value_t = false,
+        requires = "mark_reviewed",
+        help = "Open an interactive terminal review before stamping the preview reviewed.",
+        help_heading = "Review Options"
+    )]
+    pub interactive_review: bool,
+    #[arg(
+        long,
+        help = "Optional stable trace id to carry through preview and apply files.",
+        help_heading = "Planning Options"
+    )]
+    pub trace_id: Option<String>,
+    #[command(flatten)]
+    pub output: ChangeOutputArgs,
+}
 
 /// Arguments for summarizing local desired sync resources.
 #[derive(Debug, Clone, Args)]
@@ -230,11 +490,12 @@ pub struct SyncReviewArgs {
 #[derive(Debug, Clone, Args)]
 pub struct SyncApplyArgs {
     #[arg(
-        long,
-        help = "JSON file containing the reviewed sync plan document.",
+        long = "preview-file",
+        alias = "plan-file",
+        help = "Optional JSON file containing the staged preview/plan document. When omitted, change apply looks for a common preview path such as ./change-preview.json or ./sync-plan-reviewed.json.",
         help_heading = "Input Options"
     )]
-    pub plan_file: PathBuf,
+    pub plan_file: Option<PathBuf>,
     #[arg(
         long,
         help = "Optional JSON file containing a staged sync preflight document."
@@ -581,32 +842,67 @@ pub struct SyncBundleArgs {
     pub output_format: SyncOutputFormat,
 }
 
-/// Top-level sync subcommands exposed under `grafana-util change`.
+/// Advanced expert subcommands under `grafana-util change advanced`.
 #[derive(Debug, Clone, Subcommand)]
-pub enum SyncGroupCommand {
+pub enum SyncAdvancedCommand {
+    #[command(about = "Summarize local desired sync resources from JSON.", after_help = SYNC_SUMMARY_HELP_TEXT)]
+    Summary(SyncSummaryArgs),
     #[command(about = "Build a staged sync plan from local desired and live JSON files.", after_help = SYNC_PLAN_HELP_TEXT)]
     Plan(SyncPlanArgs),
     #[command(about = "Mark a staged sync plan JSON document reviewed.", after_help = SYNC_REVIEW_HELP_TEXT)]
     Review(SyncReviewArgs),
-    #[command(about = "Build a gated local apply intent from a reviewed sync plan.", after_help = SYNC_APPLY_HELP_TEXT)]
-    Apply(SyncApplyArgs),
-    #[command(about = "Audit managed Grafana resources against a checksum lock and current live state.", after_help = SYNC_AUDIT_HELP_TEXT)]
-    Audit(SyncAuditArgs),
-    #[command(about = "Summarize local desired sync resources from JSON.", after_help = SYNC_SUMMARY_HELP_TEXT)]
-    Summary(SyncSummaryArgs),
     #[command(about = "Build a staged sync preflight document from local JSON.", after_help = SYNC_PREFLIGHT_HELP_TEXT)]
     Preflight(SyncPreflightArgs),
+    #[command(about = "Audit managed Grafana resources against a checksum lock and current live state.", after_help = SYNC_AUDIT_HELP_TEXT)]
+    Audit(SyncAuditArgs),
     #[command(about = "Assess alert sync specs for candidate, plan-only, and blocked states.", after_help = SYNC_ASSESS_ALERTS_HELP_TEXT)]
     AssessAlerts(SyncAssessAlertsArgs),
-    #[command(about = "Build a staged bundle-level sync preflight document from local JSON.", after_help = SYNC_BUNDLE_PREFLIGHT_HELP_TEXT)]
-    BundlePreflight(SyncBundlePreflightArgs),
-    #[command(about = "Build a staged promotion review handoff from a source bundle and target inventory.", after_help = SYNC_PROMOTION_PREFLIGHT_HELP_TEXT)]
-    PromotionPreflight(SyncPromotionPreflightArgs),
     #[command(
         about = "Package exported dashboards, alerting resources, datasource inventory, and metadata into one local source bundle.",
         after_help = SYNC_BUNDLE_HELP_TEXT
     )]
     Bundle(SyncBundleArgs),
+    #[command(about = "Build a staged bundle-level sync preflight document from local JSON.", after_help = SYNC_BUNDLE_PREFLIGHT_HELP_TEXT)]
+    BundlePreflight(SyncBundlePreflightArgs),
+    #[command(about = "Build a staged promotion review handoff from a source bundle and target inventory.", after_help = SYNC_PROMOTION_PREFLIGHT_HELP_TEXT)]
+    PromotionPreflight(SyncPromotionPreflightArgs),
+}
+
+/// Top-level sync subcommands exposed under `grafana-util change`.
+#[derive(Debug, Clone, Subcommand)]
+pub enum SyncGroupCommand {
+    #[command(about = "Inspect the staged change package from discovered or explicit inputs.", after_help = SYNC_INSPECT_HELP_TEXT)]
+    Inspect(ChangeInspectArgs),
+    #[command(about = "Check whether the staged package looks structurally safe to continue.", after_help = SYNC_CHECK_HELP_TEXT)]
+    Check(ChangeCheckArgs),
+    #[command(about = "Preview what would change from discovered or explicit staged inputs.", after_help = SYNC_PREVIEW_HELP_TEXT)]
+    Preview(ChangePreviewArgs),
+    #[command(about = "Apply a reviewed staged change with explicit approval.", after_help = SYNC_APPLY_HELP_TEXT)]
+    Apply(SyncApplyArgs),
+    #[command(about = "Open advanced staged change workflows and lower-level review contracts.")]
+    Advanced(SyncAdvancedCliArgs),
+    #[command(hide = true, about = "Summarize local desired sync resources from JSON.", after_help = SYNC_SUMMARY_HELP_TEXT)]
+    Summary(SyncSummaryArgs),
+    #[command(hide = true, about = "Build a staged sync plan from local desired and live JSON files.", after_help = SYNC_PLAN_HELP_TEXT)]
+    Plan(SyncPlanArgs),
+    #[command(hide = true, about = "Mark a staged sync plan JSON document reviewed.", after_help = SYNC_REVIEW_HELP_TEXT)]
+    Review(SyncReviewArgs),
+    #[command(hide = true, about = "Build a staged sync preflight document from local JSON.", after_help = SYNC_PREFLIGHT_HELP_TEXT)]
+    Preflight(SyncPreflightArgs),
+    #[command(hide = true, about = "Audit managed Grafana resources against a checksum lock and current live state.", after_help = SYNC_AUDIT_HELP_TEXT)]
+    Audit(SyncAuditArgs),
+    #[command(hide = true, about = "Assess alert sync specs for candidate, plan-only, and blocked states.", after_help = SYNC_ASSESS_ALERTS_HELP_TEXT)]
+    AssessAlerts(SyncAssessAlertsArgs),
+    #[command(
+        hide = true,
+        about = "Package exported dashboards, alerting resources, datasource inventory, and metadata into one local source bundle.",
+        after_help = SYNC_BUNDLE_HELP_TEXT
+    )]
+    Bundle(SyncBundleArgs),
+    #[command(hide = true, about = "Build a staged bundle-level sync preflight document from local JSON.", after_help = SYNC_BUNDLE_PREFLIGHT_HELP_TEXT)]
+    BundlePreflight(SyncBundlePreflightArgs),
+    #[command(hide = true, about = "Build a staged promotion review handoff from a source bundle and target inventory.", after_help = SYNC_PROMOTION_PREFLIGHT_HELP_TEXT)]
+    PromotionPreflight(SyncPromotionPreflightArgs),
 }
 
 pub(crate) use bundle_inputs::{
@@ -689,6 +985,10 @@ mod cli_audit_preflight_rust_tests;
 #[cfg(test)]
 #[path = "cli_help_rust_tests.rs"]
 mod cli_help_rust_tests;
+
+#[cfg(test)]
+#[path = "cli_task_first_smoke_rust_tests.rs"]
+mod cli_task_first_smoke_rust_tests;
 
 #[cfg(test)]
 #[path = "live_rust_tests.rs"]

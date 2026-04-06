@@ -48,11 +48,11 @@ fn render_orphan_row(
 }
 
 pub(super) fn render_export_inspection_dependency_table_report(
-    import_dir: &str,
+    input_dir: &str,
     document: &OfflineDependencyReportDocument,
 ) -> Vec<String> {
     let mut lines = vec![
-        format!("Export inspection dependency: {}", import_dir),
+        format!("Export inspection dependency: {}", input_dir),
         String::new(),
     ];
 

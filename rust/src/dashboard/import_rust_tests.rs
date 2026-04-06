@@ -30,12 +30,12 @@ mod import_routed_reporting_rust_tests;
 #[test]
 fn discover_export_org_import_scopes_reports_json_error_for_invalid_index_file() {
     let temp = tempdir().unwrap();
-    let import_dir = temp.path().join("imports");
-    let raw_dir = import_dir.join("org_1").join("raw");
+    let input_dir = temp.path().join("imports");
+    let raw_dir = input_dir.join("org_1").join("raw");
     fs::create_dir_all(&raw_dir).unwrap();
     fs::write(raw_dir.join("index.json"), "[").unwrap();
 
-    let mut args = super::dashboard_rust_tests::make_import_args(import_dir);
+    let mut args = super::dashboard_rust_tests::make_import_args(input_dir);
     args.use_export_org = true;
 
     let error = discover_export_org_import_scopes(&args).unwrap_err();
@@ -45,15 +45,15 @@ fn discover_export_org_import_scopes_reports_json_error_for_invalid_index_file()
 #[test]
 fn resolve_source_dashboard_folder_path_reports_validation_error_for_unrelated_path() {
     let temp = tempdir().unwrap();
-    let import_dir = temp.path().join("imports");
-    fs::create_dir_all(&import_dir).unwrap();
+    let input_dir = temp.path().join("imports");
+    fs::create_dir_all(&input_dir).unwrap();
     let dashboard_file = temp.path().join("other").join("dash.json");
     let folders_by_uid = std::collections::BTreeMap::new();
 
     let error = resolve_source_dashboard_folder_path(
         &json!({}),
         &dashboard_file,
-        &import_dir,
+        &input_dir,
         &folders_by_uid,
     )
     .unwrap_err();

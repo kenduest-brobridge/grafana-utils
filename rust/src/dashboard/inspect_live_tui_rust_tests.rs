@@ -10,7 +10,7 @@ fn make_inspect_live_tui_fixture() -> (
     test_support::ExportInspectionQueryReport,
 ) {
     let summary = test_support::ExportInspectionSummary {
-        import_dir: "/tmp/raw".to_string(),
+        input_dir: "/tmp/raw".to_string(),
         export_org: Some("Main Org.".to_string()),
         export_org_id: Some("1".to_string()),
         dashboard_count: 1,
@@ -38,7 +38,7 @@ fn make_inspect_live_tui_fixture() -> (
         &[],
     );
     let report = test_support::ExportInspectionQueryReport {
-        import_dir: "/tmp/raw".to_string(),
+        input_dir: "/tmp/raw".to_string(),
         summary: test_support::QueryReportSummary {
             dashboard_count: 1,
             panel_count: 1,

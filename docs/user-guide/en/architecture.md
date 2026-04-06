@@ -51,14 +51,14 @@ For the command surface behind these ideas, see [status](../../commands/en/statu
 
 - Use `status` when you need a gate, a machine-readable result, or a clean pass/fail readout.
 - Use `overview` when you need to look across the estate as a human and decide where to drill in next.
-- Use `change` when you already know there is intended work and need to summarize, preflight, plan, review, or apply it.
+- Use `change` when you already know there is intended work and need to inspect, check, preview, or apply it.
 
 Typical operator decisions:
 
 - "Can I trust the current state enough to proceed?" -> `status live`
 - "What does this Grafana estate look like right now?" -> `overview live`
-- "Is my staged package structurally and operationally sane?" -> `status staged` plus `change preflight`
-- "What exactly will change?" -> `change summary`, `change plan`, then `change review`
+- "Is my staged package structurally and operationally sane?" -> `status staged` plus `change check`
+- "What exactly will change?" -> `change inspect`, `change preview`, then `change apply`
 
 ### Why the split matters
 

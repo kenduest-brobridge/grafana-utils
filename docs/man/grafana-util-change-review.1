@@ -8,6 +8,13 @@ grafana\-util\-change\-review \- mark a staged sync plan as reviewed.
 mark a staged sync plan as reviewed.
 .PP
 when a plan has been inspected and should carry an explicit review token before apply.
+.SH SUCCESS CRITERIA
+.IP \(bu 2
+the reviewed plan is a distinct artifact, not just a verbal approval
+.IP \(bu 2
+downstream apply steps can tell that review already happened
+.IP \(bu 2
+the review note or reviewer identity is preserved for later audit or handoff
 .SH SEE ALSO
 \fBgrafana-util\fR(1),
 \fBgrafana-util-change\fR(1)

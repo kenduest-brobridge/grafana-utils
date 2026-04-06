@@ -2171,6 +2171,110 @@ run_dashboard_smoke() {
     || fail "routed dashboard import did not restore the org-two dashboard"
 }
 
+run_dashboard_authoring_smoke() {
+  local stdin_review_json="${WORK_DIR}/dashboard-authoring-review.json"
+  local stdin_patch_output="${WORK_DIR}/dashboard-authoring-patched.json"
+  local stdin_publish_uid="authoring-stdin-smoke"
+  local stdin_publish_title="Dashboard Authoring STDIN Smoke"
+  local stdin_publish_log="${WORK_DIR}/dashboard-authoring-publish.log"
+  local watch_input="${WORK_DIR}/dashboard-authoring-watch.json"
+  local watch_log="${WORK_DIR}/dashboard-authoring-watch.log"
+  local watch_pid=""
+
+  printf '%s\n' \
+    '{"uid":"authoring-review-smoke","title":"Dashboard Authoring Review","schemaVersion":38,"panels":[]}' \
+    | "$(dashboard_bin)" dashboard review \
+        --input - \
+        --output-format json >"${stdin_review_json}"
+  jq -e '
+    (.summary.inputFile == "<stdin>")
+    and (.summary.documentKind == "bare")
+    and (.summary.title == "Dashboard Authoring Review")
+    and (.blockingIssues | length == 0)
+  ' "${stdin_review_json}" >/dev/null \
+    || fail "dashboard review --input - did not emit the expected stdin summary"
+
+  printf '%s\n' \
+    '{"uid":"authoring-patch-smoke","title":"Dashboard Patch","schemaVersion":38,"panels":[]}' \
+    | "$(dashboard_bin)" dashboard patch-file \
+        --input - \
+        --output "${stdin_patch_output}" \
+        --folder-uid general >/dev/null
+  [[ -f "${stdin_patch_output}" ]] || fail "dashboard patch-file --input - did not write an output file"
+  jq -e '
+    .uid == "authoring-patch-smoke"
+    and .title == "Dashboard Patch"
+    and .meta.folderUid == "general"
+  ' "${stdin_patch_output}" >/dev/null \
+    || fail "dashboard patch-file --input - did not retain the authored draft content"
+
+  if printf '%s\n' \
+    '{"uid":"authoring-patch-smoke","title":"Dashboard Patch","schemaVersion":38,"panels":[]}' \
+    | "$(dashboard_bin)" dashboard patch-file --input - --folder-uid general >/dev/null 2>"${WORK_DIR}/dashboard-authoring-patch-error.log"; then
+    fail "dashboard patch-file --input - should reject in-place stdin patching"
+  fi
+  grep -q 'patch-file --input - requires --output' "${WORK_DIR}/dashboard-authoring-patch-error.log" \
+    || fail "dashboard patch-file stdin guardrail did not print the expected error"
+
+  if printf '%s\n' \
+    '{"uid":"authoring-watch-stdin","title":"Dashboard Watch STDIN","schemaVersion":38,"panels":[]}' \
+    | "$(dashboard_bin)" dashboard publish \
+        --url "${GRAFANA_URL}" \
+        --token "${GRAFANA_API_TOKEN}" \
+        --input - \
+        --dry-run \
+        --watch >/dev/null 2>"${WORK_DIR}/dashboard-authoring-watch-stdin-error.log"; then
+    fail "dashboard publish --watch should reject stdin input"
+  fi
+  grep -q -- '--watch cannot be combined with --input -' "${WORK_DIR}/dashboard-authoring-watch-stdin-error.log" \
+    || fail "dashboard publish --watch stdin guardrail did not print the expected error"
+
+  printf '%s\n' \
+    "{\"uid\":\"${stdin_publish_uid}\",\"title\":\"${stdin_publish_title}\",\"schemaVersion\":38,\"panels\":[]}" \
+    | "$(dashboard_bin)" dashboard publish \
+        --url "${GRAFANA_URL}" \
+        --token "${GRAFANA_API_TOKEN}" \
+        --input - \
+        --replace-existing >"${stdin_publish_log}"
+  grep -q 'Import mode: create-or-update' "${stdin_publish_log}" \
+    || fail "dashboard publish --input - did not run through the import pipeline"
+  api GET "/api/dashboards/uid/${stdin_publish_uid}" | jq -e --arg uid "${stdin_publish_uid}" --arg title "${stdin_publish_title}" '
+    .dashboard.uid == $uid and .dashboard.title == $title and .meta.folderTitle == "General"
+  ' >/dev/null \
+    || fail "dashboard publish --input - did not create the live dashboard in General"
+
+  printf '%s\n' \
+    '{"uid":"authoring-watch-smoke","title":"Dashboard Watch 1","schemaVersion":38,"panels":[]}' >"${watch_input}"
+  ("$(dashboard_bin)" dashboard publish \
+      --url "${GRAFANA_URL}" \
+      --token "${GRAFANA_API_TOKEN}" \
+      --input "${watch_input}" \
+      --dry-run \
+      --watch >"${watch_log}" 2>&1) &
+  watch_pid=$!
+  sleep 2
+
+  printf '%s\n' '{"uid":"authoring-watch-smoke","title":"BROKEN"' >"${watch_input}"
+  sleep 2
+  printf '%s\n' \
+    '{"uid":"authoring-watch-smoke","title":"Dashboard Watch 2","schemaVersion":38,"panels":[]}' >"${watch_input}"
+  sleep 3
+
+  grep -q 'Press Ctrl-C to stop' "${watch_log}" \
+    || fail "dashboard publish --watch did not advertise how to stop the watcher"
+  grep -q 'Detected dashboard input change' "${watch_log}" \
+    || fail "dashboard publish --watch did not report file change detection"
+  grep -q 'Dashboard publish failed for ' "${watch_log}" \
+    || fail "dashboard publish --watch did not surface the transient JSON failure"
+  grep -q 'Re-ran dashboard publish for ' "${watch_log}" \
+    || fail "dashboard publish --watch did not recover after the file was fixed"
+
+  kill "${watch_pid}" >/dev/null 2>&1 || true
+  wait "${watch_pid}" >/dev/null 2>&1 || true
+
+  api DELETE "/api/dashboards/uid/${stdin_publish_uid}" >/dev/null
+}
+
 run_dashboard_inspection_smoke() {
   local inspect_export_report_json="${WORK_DIR}/dashboard-inspect-export-report.json"
   local inspect_export_governance_json="${WORK_DIR}/dashboard-inspect-export-governance.json"
@@ -2460,7 +2564,7 @@ run_alert_authoring_smoke() {
     --url "${GRAFANA_URL}" \
     --token "${GRAFANA_API_TOKEN}" \
     --desired-dir "${desired_dir}" \
-    --output json >"${plan_create_json}"
+    --output-format json >"${plan_create_json}"
   jq -e --arg cp "${authoring_contact_name}" --arg rule "${authoring_rule_name}" '
     (.rows | any(.kind == "grafana-contact-point" and .identity == $cp and .action == "create"))
     and (.rows | any(.kind == "grafana-alert-rule" and .identity == $rule and .action == "create"))
@@ -2474,7 +2578,7 @@ run_alert_authoring_smoke() {
     --token "${GRAFANA_API_TOKEN}" \
     --plan-file "${plan_create_json}" \
     --approve \
-    --output json >"${apply_create_json}"
+    --output-format json >"${apply_create_json}"
   jq -e --arg cp "${authoring_contact_name}" --arg rule "${authoring_rule_name}" '
     (.appliedCount >= 3)
     and (.results | any(.kind == "grafana-contact-point" and .identity == $cp and .action == "create"))
@@ -2493,7 +2597,7 @@ run_alert_authoring_smoke() {
     --url "${GRAFANA_URL}" \
     --token "${GRAFANA_API_TOKEN}" \
     --desired-dir "${desired_dir}" \
-    --output json >"${plan_post_apply_json}"
+    --output-format json >"${plan_post_apply_json}"
   jq -e --arg cp "${authoring_contact_name}" --arg rule "${authoring_rule_name}" '
     (.rows | any(.kind == "grafana-contact-point" and .identity == $cp and .action == "noop"))
     and (.rows | any(.kind == "grafana-notification-policies" and .identity == $cp and .action == "noop"))
@@ -2509,7 +2613,7 @@ run_alert_authoring_smoke() {
     --token "${GRAFANA_API_TOKEN}" \
     --desired-dir "${desired_dir}" \
     --prune \
-    --output json >"${plan_delete_json}"
+    --output-format json >"${plan_delete_json}"
   jq -e --arg rule "${authoring_rule_name}" '
     (.rows | any(.kind == "grafana-alert-rule" and .identity == $rule and .action == "delete" and .reason == "missing-from-desired-state"))
   ' "${plan_delete_json}" >/dev/null \
@@ -2521,7 +2625,7 @@ run_alert_authoring_smoke() {
     --token "${GRAFANA_API_TOKEN}" \
     --plan-file "${plan_delete_json}" \
     --approve \
-    --output json >"${apply_delete_json}"
+    --output-format json >"${apply_delete_json}"
   jq -e --arg rule "${authoring_rule_name}" '
     (.results | any(.kind == "grafana-alert-rule" and .identity == $rule and .action == "delete"))
   ' "${apply_delete_json}" >/dev/null \
@@ -2558,11 +2662,13 @@ prepare_sync_smoke_fixture() {
 run_sync_smoke() {
   prepare_sync_smoke_fixture
 
-  "$(sync_bin)" sync bundle \
+  local change_preview_fetch_live_json="${WORK_DIR}/change-preview-fetch-live.json"
+
+  "$(sync_bin)" change advanced bundle \
     --dashboard-export-dir "${DASHBOARD_EXPORT_DIR}/raw" \
     --alert-export-dir "${ALERT_EXPORT_DIR}/raw" \
     --output-file "${SYNC_BUNDLE_FILE}" \
-    --output json >/dev/null
+    --output-format json >/dev/null
 
   [[ -f "${SYNC_BUNDLE_FILE}" ]] || fail "sync bundle did not write source bundle output"
   jq -e '.kind == "grafana-utils-sync-source-bundle"' "${SYNC_BUNDLE_FILE}" >/dev/null \
@@ -2574,15 +2680,32 @@ run_sync_smoke() {
 
   printf '{}\n' >"${SYNC_TARGET_INVENTORY_FILE}"
 
-  "$(sync_bin)" sync bundle-preflight \
+  "$(sync_bin)" change advanced bundle-preflight \
     --source-bundle "${SYNC_BUNDLE_FILE}" \
     --target-inventory "${SYNC_TARGET_INVENTORY_FILE}" \
-    --output json >"${SYNC_BUNDLE_PREFLIGHT_FILE}"
+    --output-format json >"${SYNC_BUNDLE_PREFLIGHT_FILE}"
 
   jq -e '.kind == "grafana-utils-sync-bundle-preflight"' "${SYNC_BUNDLE_PREFLIGHT_FILE}" >/dev/null \
     || fail "sync bundle-preflight did not emit the expected document kind"
   jq -e '.summary.resourceCount >= 2' "${SYNC_BUNDLE_PREFLIGHT_FILE}" >/dev/null \
     || fail "sync bundle-preflight did not count the bundled dashboard and datasource specs"
+
+  "$(sync_bin)" change preview \
+    --workspace "${WORK_DIR}" \
+    --fetch-live \
+    --url "${GRAFANA_URL}" \
+    --token "${GRAFANA_API_TOKEN}" \
+    --output-format json \
+    --output-file "${change_preview_fetch_live_json}" >/dev/null
+
+  [[ -f "${change_preview_fetch_live_json}" ]] || fail "change preview did not write a live preview artifact"
+  jq -e '
+    (.kind == "grafana-utils-sync-plan")
+    and (.reviewed == false)
+    and (.ordering.mode == "dependency-aware")
+    and ((.operations | length) >= 1)
+  ' "${change_preview_fetch_live_json}" >/dev/null \
+    || fail "change preview --fetch-live did not emit the expected sync plan contract"
 }
 
 main() {
@@ -2623,6 +2746,7 @@ main() {
   seed_dashboard "Smoke Dashboard"
   run_access_smoke
   run_dashboard_smoke
+  run_dashboard_authoring_smoke
   run_dashboard_inspection_smoke
   run_alert_smoke
   run_sync_smoke

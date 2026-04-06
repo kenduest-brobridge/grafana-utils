@@ -81,8 +81,8 @@ where
         }
     }
 
-    let teams_path = args.export_dir.join(ACCESS_TEAM_EXPORT_FILENAME);
-    let metadata_path = args.export_dir.join(ACCESS_EXPORT_METADATA_FILENAME);
+    let teams_path = args.output_dir.join(ACCESS_TEAM_EXPORT_FILENAME);
+    let metadata_path = args.output_dir.join(ACCESS_EXPORT_METADATA_FILENAME);
     assert_not_overwrite(&teams_path, args.dry_run, args.overwrite)?;
     assert_not_overwrite(&metadata_path, args.dry_run, args.overwrite)?;
 
@@ -106,8 +106,10 @@ where
             &metadata_path,
             &Value::Object(build_team_access_export_metadata(
                 &args.common.url,
-                &args.export_dir,
+                args.common.profile.as_deref(),
+                &args.output_dir,
                 records.len(),
+                args.with_members,
             )),
             args.overwrite,
         )?;
@@ -138,7 +140,7 @@ where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
     validate_team_import_dry_run_output(args)?;
-    let records = load_team_import_records(&args.import_dir, ACCESS_EXPORT_KIND_TEAMS)?;
+    let records = load_team_import_records(&args.input_dir, ACCESS_EXPORT_KIND_TEAMS)?;
     let mut created = 0usize;
     let mut updated = 0usize;
     let mut skipped = 0usize;
@@ -153,7 +155,7 @@ where
             return Err(message(format!(
                 "Access team import record {} in {} is missing name.",
                 index + 1,
-                args.import_dir.display()
+                args.input_dir.display()
             )));
         }
 
@@ -398,7 +400,7 @@ where
                     created,
                     updated,
                     skipped,
-                    &args.import_dir,
+                    &args.input_dir,
                 ))?
             );
             return Ok(0);
@@ -419,7 +421,7 @@ where
         created,
         updated,
         skipped,
-        args.import_dir.display()
+        args.input_dir.display()
     );
     Ok(processed)
 }

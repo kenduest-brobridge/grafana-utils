@@ -18,7 +18,8 @@
 use crate::common::{
     message, render_json_value, sanitize_path_component, string_field, write_json_file, Result,
 };
-use crate::http::{JsonHttpClient, JsonHttpClientConfig};
+use crate::grafana_api::{GrafanaApiClient, GrafanaConnection};
+use crate::http::JsonHttpClient;
 use serde_json::{json, Map, Value};
 use std::path::{Path, PathBuf};
 
@@ -45,6 +46,13 @@ mod alert_runtime_support;
 #[path = "alert_support.rs"]
 mod alert_support;
 
+#[cfg(test)]
+pub(crate) use crate::grafana_api::alert_live::{
+    determine_import_action_with_request, fetch_live_compare_document_with_request,
+    import_resource_document_with_request,
+};
+#[cfg(test)]
+pub(crate) use crate::grafana_api::{expect_object_list, parse_template_list_response};
 pub use alert_cli_defs::{
     build_auth_context, cli_args_from_common, normalize_alert_group_command,
     normalize_alert_namespace_args, parse_cli_from, root_command, AlertAuthContext,
@@ -53,7 +61,6 @@ pub use alert_cli_defs::{
     AlertLegacyArgs, AlertListArgs, AlertListKind, AlertNamespaceArgs, AlertResourceKind,
 };
 pub(crate) use alert_client::GrafanaAlertClient;
-pub(crate) use alert_client::{expect_object_list, parse_template_list_response};
 #[allow(unused_imports)]
 pub(crate) use alert_compare_support::{
     append_root_index_item, build_compare_diff_text, build_compare_document,
@@ -78,11 +85,6 @@ pub use alert_runtime_support::{
     ALERT_PLAN_KIND,
 };
 pub use alert_runtime_support::{build_alert_diff_document, build_alert_import_dry_run_document};
-#[cfg(test)]
-pub(crate) use alert_runtime_support::{
-    determine_import_action_with_request, fetch_live_compare_document_with_request,
-    import_resource_document_with_request,
-};
 pub use alert_support::{
     build_contact_point_export_document, build_contact_point_import_payload,
     build_contact_point_output_path, build_empty_root_index, build_import_operation,
@@ -137,16 +139,19 @@ pub const TOOL_SCHEMA_VERSION: i64 = 1;
 pub const ROOT_INDEX_KIND: &str = "grafana-util-alert-export-index";
 
 /// Constant for alert help text.
-pub const ALERT_HELP_TEXT: &str = "Examples:\n\n  Export alerting resources with an API token:\n    export GRAFANA_API_TOKEN='your-token'\n    grafana-util alert export --url https://grafana.example.com --output-dir ./alerts --overwrite\n\n  Import back into Grafana and update existing resources:\n    grafana-util alert import --url https://grafana.example.com --import-dir ./alerts/raw --replace-existing\n\n  Preview alert import as structured JSON before execution:\n    grafana-util alert import --url https://grafana.example.com --import-dir ./alerts/raw --replace-existing --dry-run --json\n\n  Compare a local alert export against Grafana as structured JSON:\n    grafana-util alert diff --url https://grafana.example.com --diff-dir ./alerts/raw --json\n\n  Import linked alert rules with dashboard and panel remapping:\n    grafana-util alert import --url https://grafana.example.com --import-dir ./alerts/raw --replace-existing --dashboard-uid-map ./dashboard-map.json --panel-id-map ./panel-map.json";
+pub const ALERT_HELP_TEXT: &str = "Examples:\n\n  Export alerting resources with an API token:\n    export GRAFANA_API_TOKEN='your-token'\n    grafana-util alert export --url https://grafana.example.com --output-dir ./alerts --overwrite\n\n  Import back into Grafana and update existing resources:\n    grafana-util alert import --url https://grafana.example.com --input-dir ./alerts/raw --replace-existing\n\n  Preview alert import as structured JSON before execution:\n    grafana-util alert import --url https://grafana.example.com --input-dir ./alerts/raw --replace-existing --dry-run --json\n\n  Compare a local alert export against Grafana as structured JSON:\n    grafana-util alert diff --url https://grafana.example.com --diff-dir ./alerts/raw --json\n\n  Import linked alert rules with dashboard and panel remapping:\n    grafana-util alert import --url https://grafana.example.com --input-dir ./alerts/raw --replace-existing --dashboard-uid-map ./dashboard-map.json --panel-id-map ./panel-map.json";
 
 fn build_alert_http_client(args: &AlertCliArgs) -> Result<JsonHttpClient> {
     let context = build_auth_context(args)?;
-    JsonHttpClient::new(JsonHttpClientConfig {
-        base_url: context.url,
-        headers: context.headers,
-        timeout_secs: context.timeout,
-        verify_ssl: context.verify_ssl,
-    })
+    Ok(GrafanaApiClient::from_connection(GrafanaConnection::new(
+        context.url,
+        context.headers,
+        context.timeout,
+        context.verify_ssl,
+        None,
+        "unknown".to_string(),
+    ))?
+    .into_http_client())
 }
 
 fn render_alert_action_text(title: &str, document: &Value) -> Vec<String> {
@@ -982,7 +987,7 @@ pub fn run_alert_cli(args: AlertCliArgs) -> Result<()> {
     if args.list_kind.is_some() {
         return alert_list::list_alert_resources(&args);
     }
-    if args.import_dir.is_some() {
+    if args.input_dir.is_some() {
         return alert_import_diff::import_alerting_resources(&args);
     }
     if args.diff_dir.is_some() {

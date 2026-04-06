@@ -187,7 +187,7 @@ fn parse_datasource_import_preserves_requested_path() {
     let args = DatasourceCliArgs::parse_normalized_from([
         "grafana-util",
         "import",
-        "--import-dir",
+        "--input-dir",
         "./datasources",
         "--org-id",
         "7",
@@ -197,7 +197,7 @@ fn parse_datasource_import_preserves_requested_path() {
 
     match args.command {
         super::DatasourceGroupCommand::Import(inner) => {
-            assert_eq!(inner.import_dir, Path::new("./datasources"));
+            assert_eq!(inner.input_dir, Path::new("./datasources"));
             assert_eq!(inner.input_format, DatasourceImportInputFormat::Inventory);
             assert_eq!(inner.org_id, Some(7));
             assert!(inner.dry_run);
@@ -212,7 +212,7 @@ fn parse_datasource_import_supports_provisioning_input_format() {
     let args = DatasourceCliArgs::parse_normalized_from([
         "grafana-util",
         "import",
-        "--import-dir",
+        "--input-dir",
         "./datasources/provisioning",
         "--input-format",
         "provisioning",
@@ -225,7 +225,7 @@ fn parse_datasource_import_supports_provisioning_input_format() {
                 inner.input_format,
                 DatasourceImportInputFormat::Provisioning
             );
-            assert_eq!(inner.import_dir, Path::new("./datasources/provisioning"));
+            assert_eq!(inner.input_dir, Path::new("./datasources/provisioning"));
             assert!(inner.dry_run);
         }
         _ => panic!("expected datasource import"),
@@ -237,7 +237,7 @@ fn parse_datasource_import_supports_output_format_table() {
     let args = DatasourceCliArgs::parse_normalized_from([
         "grafana-util",
         "import",
-        "--import-dir",
+        "--input-dir",
         "./datasources",
         "--dry-run",
         "--output-format",
@@ -259,7 +259,7 @@ fn parse_datasource_import_supports_output_columns() {
     let args = DatasourceCliArgs::parse_normalized_from([
         "grafana-util",
         "import",
-        "--import-dir",
+        "--input-dir",
         "./datasources",
         "--dry-run",
         "--output-format",
@@ -285,7 +285,7 @@ fn parse_datasource_export_supports_org_scope_flags() {
     let args = DatasourceCliArgs::parse_normalized_from([
         "grafana-util",
         "export",
-        "--export-dir",
+        "--output-dir",
         "./datasources",
         "--org-id",
         "7",
@@ -293,7 +293,7 @@ fn parse_datasource_export_supports_org_scope_flags() {
 
     match args.command {
         super::DatasourceGroupCommand::Export(inner) => {
-            assert_eq!(inner.export_dir, Path::new("./datasources"));
+            assert_eq!(inner.output_dir, Path::new("./datasources"));
             assert_eq!(inner.org_id, Some(7));
             assert!(!inner.all_orgs);
         }
@@ -335,7 +335,7 @@ fn parse_datasource_import_supports_use_export_org_flags() {
     let args = DatasourceCliArgs::parse_normalized_from([
         "grafana-util",
         "import",
-        "--import-dir",
+        "--input-dir",
         "./datasources",
         "--use-export-org",
         "--only-org-id",
@@ -361,7 +361,7 @@ fn parse_datasource_import_supports_secret_values_argument() {
     let args = DatasourceCliArgs::parse_normalized_from([
         "grafana-util",
         "import",
-        "--import-dir",
+        "--input-dir",
         "./datasources",
         "--secret-values",
         r#"{"loki-basic-auth":"secret-value"}"#,
@@ -383,7 +383,7 @@ fn parse_datasource_import_rejects_org_id_with_use_export_org() {
     let error = DatasourceCliArgs::try_parse_from([
         "grafana-util",
         "import",
-        "--import-dir",
+        "--input-dir",
         "./datasources",
         "--org-id",
         "7",
@@ -764,14 +764,14 @@ fn build_datasource_import_dry_run_json_value_includes_secret_visibility() {
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let import_dir = std::env::temp_dir().join(format!(
+    let input_dir = std::env::temp_dir().join(format!(
         "grafana-utils-datasource-secret-{}-{}",
         std::process::id(),
         unique_suffix
     ));
-    std::fs::create_dir_all(&import_dir).unwrap();
+    std::fs::create_dir_all(&input_dir).unwrap();
     std::fs::write(
-        import_dir.join(super::EXPORT_METADATA_FILENAME),
+        input_dir.join(super::EXPORT_METADATA_FILENAME),
         format!(
             "{{\n  \"schemaVersion\": {},\n  \"kind\": \"{}\",\n  \"variant\": \"root\",\n  \"resource\": \"datasource\",\n  \"datasourceCount\": 1,\n  \"datasourcesFile\": \"{}\",\n  \"indexFile\": \"index.json\",\n  \"format\": \"grafana-datasource-inventory-v1\"\n}}\n",
             1,
@@ -781,7 +781,7 @@ fn build_datasource_import_dry_run_json_value_includes_secret_visibility() {
     )
     .unwrap();
     std::fs::write(
-        import_dir.join(super::DATASOURCE_EXPORT_FILENAME),
+        input_dir.join(super::DATASOURCE_EXPORT_FILENAME),
         r#"[
   {
     "uid": "loki-main",
@@ -803,7 +803,7 @@ fn build_datasource_import_dry_run_json_value_includes_secret_visibility() {
 
     let report = super::DatasourceImportDryRunReport {
         mode: "create-or-update".to_string(),
-        import_dir: import_dir.clone(),
+        input_dir: input_dir.clone(),
         input_format: DatasourceImportInputFormat::Inventory,
         source_org_id: "1".to_string(),
         target_org_id: "7".to_string(),

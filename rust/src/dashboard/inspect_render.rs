@@ -106,7 +106,7 @@ pub(crate) fn render_grouped_query_report(report: &ExportInspectionQueryReport) 
     let mut lines = Vec::new();
     lines.push(format!(
         "Export inspection report: {}",
-        normalized.import_dir
+        normalized.input_dir
     ));
     lines.push(String::new());
     lines.push("# Summary".to_string());
@@ -267,7 +267,7 @@ pub(crate) fn render_grouped_query_table_report(
     let mut lines = Vec::new();
     lines.push(format!(
         "Export inspection tree-table report: {}",
-        normalized.import_dir
+        normalized.input_dir
     ));
     lines.push(String::new());
     lines.push("# Summary".to_string());

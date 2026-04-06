@@ -44,6 +44,6 @@ grafana-util datasource diff --url http://localhost:3000 --token "$GRAFANA_API_T
 - 如果 diff 很吵，先確認你比對的是預期中的 inventory bundle，而不是舊 provisioning 樹
 
 ## 相關指令
+- [datasource list](./datasource-list.md)
 - [datasource export](./datasource-export.md)
 - [datasource import](./datasource-import.md)
-- [datasource inspect-export](./datasource-inspect-export.md)

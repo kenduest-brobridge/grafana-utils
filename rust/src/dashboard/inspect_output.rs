@@ -70,11 +70,11 @@ pub(crate) fn render_export_inspection_summary_output(
             return Ok(output);
         }
         InspectOutputFormat::Table => {
-            if !summary.import_dir.is_empty() {
+            if !summary.input_dir.is_empty() {
                 output.push_str(&format!(
-                    "Dashboard inspect-export {}: {}\n\n",
+                    "Dashboard analyze-export {}: {}\n\n",
                     dashboard_inspect_export_summary_layer(requested_output_format),
-                    summary.import_dir
+                    summary.input_dir
                 ));
             }
             output.push_str(&format!(
@@ -91,9 +91,9 @@ pub(crate) fn render_export_inspection_summary_output(
         }
         InspectOutputFormat::Text => {
             output.push_str(&format!(
-                "Dashboard inspect-export {}: {}\n",
+                "Dashboard analyze-export {}: {}\n",
                 dashboard_inspect_export_summary_layer(requested_output_format),
-                summary.import_dir
+                summary.input_dir
             ));
             output.push_str(&format!(
                 "Layer: {}\n\n",
@@ -281,7 +281,7 @@ mod tests {
 
     fn make_summary() -> ExportInspectionSummary {
         ExportInspectionSummary {
-            import_dir: "/tmp/demo".to_string(),
+            input_dir: "/tmp/demo".to_string(),
             export_org: Some("Main Org.".to_string()),
             export_org_id: Some("1".to_string()),
             dashboard_count: 2,
@@ -337,7 +337,7 @@ mod tests {
     #[test]
     fn render_export_inspection_summary_output_renders_inventory_orphans_and_mixed_dashboards() {
         let args = InspectExportArgs {
-            import_dir: PathBuf::from("/tmp/demo"),
+            input_dir: PathBuf::from("/tmp/demo"),
             input_type: None,
             input_format: crate::dashboard::DashboardImportInputFormat::Raw,
             text: false,
@@ -345,7 +345,6 @@ mod tests {
             json: false,
             table: false,
             yaml: false,
-            report: None,
             output_format: None,
             report_columns: Vec::new(),
             report_filter_datasource: None,
@@ -359,7 +358,7 @@ mod tests {
 
         let output = render_export_inspection_summary_output(&args, &make_summary()).unwrap();
 
-        assert!(output.starts_with("Dashboard inspect-export operator-summary: /tmp/demo"));
+        assert!(output.starts_with("Dashboard analyze-export operator-summary: /tmp/demo"));
         assert!(output.contains("Layer: operator-summary"));
         assert!(output.contains("# Datasource inventory"));
         assert!(output.contains("# Orphaned datasources"));
@@ -371,7 +370,7 @@ mod tests {
     #[test]
     fn render_export_inspection_summary_output_honors_table_mode() {
         let args = InspectExportArgs {
-            import_dir: PathBuf::from("/tmp/demo"),
+            input_dir: PathBuf::from("/tmp/demo"),
             input_type: None,
             input_format: crate::dashboard::DashboardImportInputFormat::Raw,
             text: false,
@@ -379,7 +378,6 @@ mod tests {
             json: false,
             table: false,
             yaml: false,
-            report: None,
             output_format: Some(InspectOutputFormat::Table),
             report_columns: Vec::new(),
             report_filter_datasource: None,
@@ -403,7 +401,7 @@ mod tests {
     #[test]
     fn render_export_inspection_summary_output_honors_csv_and_yaml_modes() {
         let csv_args = InspectExportArgs {
-            import_dir: PathBuf::from("/tmp/demo"),
+            input_dir: PathBuf::from("/tmp/demo"),
             input_type: None,
             input_format: crate::dashboard::DashboardImportInputFormat::Raw,
             text: false,
@@ -411,7 +409,6 @@ mod tests {
             json: false,
             table: false,
             yaml: false,
-            report: None,
             output_format: Some(InspectOutputFormat::Csv),
             report_columns: Vec::new(),
             report_filter_datasource: None,

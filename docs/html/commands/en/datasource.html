@@ -766,11 +766,11 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
     <section class="command-intro">
   <div class="command-intro-grid"><div class="command-intro-block">
   <p class="command-intro-label">What this page covers</p>
-  <p class="command-intro-text">grafana-util datasource is the namespace for catalog lookup, live browsing, export/import, diff, and live create/modify/delete workflows. The same namespace is also available as grafana-util ds.</p>
+  <p class="command-intro-text">grafana-util datasource is the namespace for catalog lookup, inventory reads, export/import, diff, and live create/modify/delete workflows. The same namespace is also available as grafana-util ds.</p>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">When to open this page</p>
-  <ul class="command-intro-list"><li>Use this namespace when you want to inspect supported datasource types, browse live inventory, export a datasource bundle, compare a local bundle with Grafana, or create and maintain live datasources.</li></ul>
+  <ul class="command-intro-list"><li>Use this namespace when you want to inspect supported datasource types, read inventory from live Grafana or a local bundle, export a datasource bundle, compare a local bundle with Grafana, or create and maintain live datasources.</li></ul>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">Who this page is for</p>
@@ -779,14 +779,14 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 </section>
 <h2 id="purpose">Purpose</h2>
-<p><code>grafana-util datasource</code> is the namespace for catalog lookup, live browsing, export/import, diff, and live create/modify/delete workflows. The same namespace is also available as <code>grafana-util ds</code>.</p>
+<p><code>grafana-util datasource</code> is the namespace for catalog lookup, inventory reads, export/import, diff, and live create/modify/delete workflows. The same namespace is also available as <code>grafana-util ds</code>.</p>
 <h2 id="when-to-use">When to use</h2>
-<p>Use this namespace when you want to inspect supported datasource types, browse live inventory, export a datasource bundle, compare a local bundle with Grafana, or create and maintain live datasources.</p>
+<p>Use this namespace when you want to inspect supported datasource types, read inventory from live Grafana or a local bundle, export a datasource bundle, compare a local bundle with Grafana, or create and maintain live datasources.</p>
 <h2 id="description">Description</h2>
-<p>Open this page when your task is about the full data source lifecycle rather than one single mutation. The <code>datasource</code> namespace groups the work operators usually do together: checking supported types, reading live inventory, exporting and diffing bundles, and repairing or updating live Grafana data source objects.</p>
+<p>Open this page when your task is about the full data source lifecycle rather than one single mutation. The <code>datasource</code> namespace groups the work operators usually do together: checking supported types, reading inventory from live Grafana or local export bundles, exporting and diffing bundles, and repairing or updating live Grafana data source objects.</p>
 <p>This page is especially useful when you need to decide whether the next step is inventory, export/import, diff, or a live add/modify/delete action.</p>
 <h2 id="workflow-lanes">Workflow lanes</h2>
-<ul><li><strong>Inspect</strong>: types, browse, list, and inspect-export paths.</li><li><strong>Move</strong>: export, import, and diff paths when you are carrying datasource state between environments.</li><li><strong>Review Before Mutate</strong>: add, modify, and delete flows before a live datasource changes.</li></ul>
+<ul><li><strong>Inspect</strong>: types, browse, and list paths for live or local inventory.</li><li><strong>Move</strong>: export, import, and diff paths when you are carrying datasource state between environments.</li><li><strong>Review Before Mutate</strong>: add, modify, and delete flows before a live datasource changes.</li></ul>
 <p>Choose this page when the work might turn into inventory, migration, or a reviewed datasource change and you want to decide the lane first.</p>
 <h2 id="before-after">Before / After</h2>
 <ul><li><strong>Before</strong>: data source work is split across Grafana UI edits, API calls, and one-off shell snippets that are hard to review later.</li><li><strong>After</strong>: the same lifecycle is grouped into one namespace, so browse, export, diff, and mutation flows can share the same auth and review habits.</li></ul>
@@ -809,7 +809,7 @@ grafana-util datasource browse --profile prod</code></pre>
 grafana-util datasource browse --url http://localhost:3000 --basic-user admin --basic-password admin</code></pre>
 <h2 id="related-commands">Related commands</h2>
 <h3 id="inspect">Inspect</h3>
-<ul><li><a href="datasource-types.html">datasource types</a></li><li><a href="datasource-list.html">datasource list</a></li><li><a href="datasource-browse.html">datasource browse</a></li><li><a href="datasource-inspect-export.html">datasource inspect-export</a></li></ul>
+<ul><li><a href="datasource-types.html">datasource types</a></li><li><a href="datasource-list.html">datasource list</a></li><li><a href="datasource-browse.html">datasource browse</a></li></ul>
 <h3 id="move">Move</h3>
 <ul><li><a href="datasource-export.html">datasource export</a></li><li><a href="datasource-import.html">datasource import</a></li><li><a href="datasource-diff.html">datasource diff</a></li></ul>
 <h3 id="review-before-mutate">Review Before Mutate</h3>

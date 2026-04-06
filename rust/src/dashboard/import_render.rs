@@ -13,7 +13,7 @@ use super::{FolderInventoryStatus, FolderInventoryStatusKind, DEFAULT_UNKNOWN_UI
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub(crate) struct ImportDryRunReport {
     pub mode: String,
-    pub import_dir: PathBuf,
+    pub input_dir: PathBuf,
     pub folder_statuses: Vec<FolderInventoryStatus>,
     pub dashboard_records: Vec<[String; 8]>,
     pub skipped_missing_count: usize,
@@ -238,7 +238,7 @@ pub(crate) fn format_routed_import_scope_summary_fields(
     source_org_name: &str,
     org_action: &str,
     target_org_id: Option<i64>,
-    import_dir: &Path,
+    input_dir: &Path,
 ) -> String {
     let source_org_name = if source_org_name.is_empty() {
         "-".to_string()
@@ -252,7 +252,7 @@ pub(crate) fn format_routed_import_scope_summary_fields(
         source_org_name,
         org_action,
         target_org_id,
-        import_dir.display()
+        input_dir.display()
     )
 }
 
@@ -403,7 +403,7 @@ pub(crate) fn build_import_dry_run_json_value(report: &ImportDryRunReport) -> Va
         "folders": folders,
         "dashboards": dashboards,
         "summary": {
-            "importDir": report.import_dir.display().to_string(),
+            "importDir": report.input_dir.display().to_string(),
             "folderCount": report.folder_statuses.len(),
             "missingFolders": report.folder_statuses.iter().filter(|status| status.kind == FolderInventoryStatusKind::Missing).count(),
             "mismatchedFolders": report.folder_statuses.iter().filter(|status| status.kind == FolderInventoryStatusKind::Mismatch).count(),
@@ -438,13 +438,13 @@ pub(crate) fn render_import_dry_run_json(
     mode: &str,
     folder_statuses: &[FolderInventoryStatus],
     dashboard_records: &[[String; 8]],
-    import_dir: &Path,
+    input_dir: &Path,
     skipped_missing_count: usize,
     skipped_folder_mismatch_count: usize,
 ) -> Result<String> {
     let report = ImportDryRunReport {
         mode: mode.to_string(),
-        import_dir: import_dir.to_path_buf(),
+        input_dir: input_dir.to_path_buf(),
         folder_statuses: folder_statuses.to_vec(),
         dashboard_records: dashboard_records.to_vec(),
         skipped_missing_count,

@@ -6,8 +6,8 @@ use serde_json::{Map, Value};
 use crate::common::Result;
 
 use super::super::super::render::{
-    format_table, map_get_text, normalize_service_account_row, render_csv, render_objects_json,
-    render_yaml, service_account_role_to_api, service_account_summary_line,
+    format_table, map_get_text, normalize_service_account_row, paginate_rows, render_csv,
+    render_objects_json, render_yaml, service_account_role_to_api, service_account_summary_line,
     service_account_table_rows,
 };
 use super::super::super::{
@@ -17,7 +17,10 @@ use super::super::{
     create_service_account_token_with_request, create_service_account_with_request,
     list_service_accounts_with_request, lookup_service_account_id_by_name,
 };
-use super::service_account_workflows_support::render_single_object_json;
+use super::service_account_workflows_support::{
+    load_service_account_import_records, render_single_object_json,
+};
+use crate::access::ACCESS_EXPORT_KIND_SERVICE_ACCOUNTS;
 
 /// Purpose: implementation note.
 pub(crate) fn list_service_accounts_command_with_request<F>(
@@ -82,6 +85,68 @@ where
             "Listed {} service account(s) at {}",
             rows.len(),
             args.common.url
+        );
+    }
+    Ok(rows.len())
+}
+
+pub(crate) fn list_service_accounts_from_input_dir(args: &ServiceAccountListArgs) -> Result<usize> {
+    let input_dir = args
+        .input_dir
+        .as_ref()
+        .expect("service-account local list requires input_dir");
+    let mut rows =
+        load_service_account_import_records(input_dir, ACCESS_EXPORT_KIND_SERVICE_ACCOUNTS)?
+            .into_iter()
+            .map(|item| normalize_service_account_row(&item))
+            .collect::<Vec<Map<String, Value>>>();
+    if let Some(query) = &args.query {
+        let query = query.to_ascii_lowercase();
+        rows.retain(|row| {
+            map_get_text(row, "name")
+                .to_ascii_lowercase()
+                .contains(&query)
+                || map_get_text(row, "login")
+                    .to_ascii_lowercase()
+                    .contains(&query)
+        });
+    }
+    let rows = paginate_rows(&rows, args.page, args.per_page);
+    if args.json {
+        println!("{}", render_objects_json(&rows)?);
+    } else if args.yaml {
+        println!("{}", render_yaml(&rows)?);
+    } else if args.csv {
+        for line in render_csv(
+            &["id", "name", "login", "role", "disabled", "tokens", "orgId"],
+            &service_account_table_rows(&rows),
+        ) {
+            println!("{line}");
+        }
+    } else if args.table {
+        for line in format_table(
+            &[
+                "ID", "NAME", "LOGIN", "ROLE", "DISABLED", "TOKENS", "ORG_ID",
+            ],
+            &service_account_table_rows(&rows),
+        ) {
+            println!("{line}");
+        }
+        println!();
+        println!(
+            "Listed {} service account(s) from local bundle at {}",
+            rows.len(),
+            input_dir.display()
+        );
+    } else {
+        for row in &rows {
+            println!("{}", service_account_summary_line(row));
+        }
+        println!();
+        println!(
+            "Listed {} service account(s) from local bundle at {}",
+            rows.len(),
+            input_dir.display()
         );
     }
     Ok(rows.len())

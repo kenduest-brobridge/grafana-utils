@@ -766,7 +766,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
     <section class="command-intro">
   <div class="command-intro-grid"><div class="command-intro-block">
   <p class="command-intro-label">這頁在說什麼</p>
-  <p class="command-intro-text">以先審核、再套用為主的同步工作流程，支援可選的 live Grafana 擷取與套用路徑。</p>
+  <p class="command-intro-text">以 task-first 的 staged change 工作流程為主，支援可選的 live Grafana preview 與 apply 路徑。</p>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">適合誰</p>
@@ -775,43 +775,57 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 </section>
 <h2 id="root">Root</h2>
-<p>用途：以先審核、再套用為主的同步工作流程，支援可選的 live Grafana 擷取與套用路徑。</p>
-<p>適用時機：當你需要整理 desired resources、比對 live state、檢視 plan、套用已審核的 plan、稽核 drift，或產生 bundle 與 promotion 的 preflight 文件時。</p>
-<p>說明：如果你的團隊走的是先審核、再套用的變更流程，先看這一頁最合適。<code>change</code> 指令群組把 summary、preflight、plan、review、audit 與 apply 都放在同一個控制面下，方便你先看懂整條流程，再決定要執行哪個精確子命令。</p>
+<p>用途：以 task-first 的 staged change 工作流程為主，支援可選的 live Grafana preview 與 apply 路徑。</p>
+<p>適用時機：當你需要 inspect staged package、check 它是否適合往下走、preview 會改到什麼、apply 已審核的 preview，或在必要時切進較低階的 advanced contract 時。</p>
+<p>說明：如果你要先從正常維運路徑開始，先看這一頁最合適。現在預設的 <code>change</code> 操作面是 <code>inspect -&gt; check -&gt; preview -&gt; apply</code>。較低階的 <code>summary</code>、<code>plan</code>、<code>review</code>、<code>preflight</code>、<code>audit</code>，以及 bundle / promotion 工作流，仍然保留在 <code>change advanced</code> 下面，給需要明確 staged contract 的情境使用。</p>
 <p>採用前後對照：</p>
-<ul><li><strong>採用前</strong>：變更包只是一堆檔案，真正風險通常要等到 apply 才開始浮現。</li><li><strong>採用後</strong>：同一份變更包會先走 summary、preflight、plan、review，再進入 apply，每一步都有明確檢查點。</li></ul>
-<p>主要旗標：root 指令本身只是指令群組；主要操作旗標都在子指令上。常見的工作流程輸入包含 <code>--desired-file</code>、<code>--plan-file</code>、<code>--live-file</code>、<code>--fetch-live</code>、<code>--approve</code>、<code>--execute-live</code>、<code>--source-bundle</code>、<code>--target-inventory</code>、<code>--availability-file</code>、<code>--mapping-file</code> 和 <code>--output-format</code>。</p>
-<h3 id="給-ci-腳本用的-json-contract">給 CI / 腳本用的 JSON contract</h3>
-<p>如果你要用 <code>change</code> 系列輸出給 CI、腳本或外部系統判斷，請先用 <code>kind</code> 與 <code>schemaVersion</code> 當成 contract 識別，再讀後面的欄位。</p>
-<p>CLI 內建快速查詢：</p>
-<ul><li><code>grafana-util change --help-schema</code></li><li><code>grafana-util change summary --help-schema</code></li><li><code>grafana-util change plan --help-schema</code></li><li><code>grafana-util change apply --help-schema</code></li></ul>
-<table><thead><tr><th>指令</th><th>輸出 kind</th><th>主要 top-level 欄位</th></tr></thead><tbody><tr><td><code>change summary --output-format json</code></td><td><code>grafana-utils-sync-summary</code></td><td><code>kind</code>、<code>schemaVersion</code>、<code>toolVersion</code>、<code>summary</code>、<code>resources</code></td></tr><tr><td><code>change plan --output-format json</code></td><td><code>grafana-utils-sync-plan</code></td><td><code>kind</code>、<code>schemaVersion</code>、<code>toolVersion</code>、<code>dryRun</code>、<code>reviewRequired</code>、<code>reviewed</code>、<code>allowPrune</code>、<code>summary</code>、<code>alertAssessment</code>、<code>operations</code>、<code>traceId</code>、<code>stage</code>、<code>stepIndex</code>、<code>parentTraceId</code></td></tr><tr><td><code>change review --output-format json</code></td><td><code>grafana-utils-sync-plan</code></td><td>和 plan 相同，但多了 <code>reviewedBy</code>、<code>reviewedAt</code>、<code>reviewNote</code>，而且 lineage 會改成 <code>stage=review</code></td></tr><tr><td><code>change apply --output-format json</code></td><td><code>grafana-utils-sync-apply-intent</code></td><td><code>kind</code>、<code>schemaVersion</code>、<code>toolVersion</code>、<code>mode</code>、<code>reviewed</code>、<code>reviewRequired</code>、<code>allowPrune</code>、<code>approved</code>、<code>summary</code>、<code>alertAssessment</code>、<code>operations</code>、可選 <code>preflightSummary</code>、可選 <code>bundlePreflightSummary</code>、<code>appliedBy</code>、<code>appliedAt</code>、<code>approvalReason</code>、<code>applyNote</code>、<code>traceId</code>、<code>stage</code>、<code>stepIndex</code>、<code>parentTraceId</code></td></tr><tr><td><code>change apply --execute-live --output-format json</code></td><td>live apply result</td><td><code>mode</code>、<code>appliedCount</code>、<code>results</code></td></tr><tr><td><code>change audit --output-format json</code></td><td><code>grafana-utils-sync-audit</code></td><td><code>kind</code>、<code>schemaVersion</code>、<code>toolVersion</code>、<code>summary</code>、<code>currentLock</code>、<code>baselineLock</code>、<code>drifts</code></td></tr><tr><td><code>change preflight --output-format json</code></td><td><code>grafana-utils-sync-preflight</code></td><td><code>kind</code>、<code>schemaVersion</code>、<code>toolVersion</code>、<code>summary</code>、<code>checks</code></td></tr><tr><td><code>change assess-alerts --output-format json</code></td><td><code>grafana-utils-alert-sync-plan</code></td><td><code>kind</code>、<code>schemaVersion</code>、<code>toolVersion</code>、<code>summary</code>、<code>alerts</code></td></tr><tr><td><code>change bundle-preflight --output-format json</code></td><td><code>grafana-utils-sync-bundle-preflight</code></td><td><code>kind</code>、<code>schemaVersion</code>、<code>summary</code>、<code>syncPreflight</code>、<code>alertArtifactAssessment</code>、<code>secretPlaceholderAssessment</code>、<code>providerAssessment</code></td></tr><tr><td><code>change promotion-preflight --output-format json</code></td><td><code>grafana-utils-sync-promotion-preflight</code></td><td><code>kind</code>、<code>schemaVersion</code>、<code>toolVersion</code>、<code>summary</code>、<code>bundlePreflight</code>、<code>mappingSummary</code>、<code>checkSummary</code>、<code>handoffSummary</code>、<code>continuationSummary</code>、<code>checks</code>、<code>resolvedChecks</code>、<code>blockingChecks</code></td></tr></tbody></table>
-<p>補充：</p>
-<ul><li><code>change apply</code> 有兩種 JSON shape。沒有 <code>--execute-live</code> 時，回的是 staged apply intent；有 <code>--execute-live</code> 時，回的是 live 執行結果。</li><li><code>change summary</code>、<code>change plan</code>、<code>change review</code>、<code>change apply</code> 都有 <code>summary</code>，但裡面的聚合欄位會隨 stage 不同而改變。</li><li><code>change bundle</code> 不用 <code>--output-format</code> 來挑格式；它是用 <code>--output-file</code> 把 source bundle 寫到檔案。</li></ul>
+<ul><li><strong>採用前</strong>：變更包只是一堆檔案，真正風險通常要等到 apply 才開始浮現。</li><li><strong>採用後</strong>：同一份變更包會先走 inspect、check、preview、apply，每一步都有明確檢查點；advanced contracts 則收在 <code>change advanced</code>。</li></ul>
+<p>主要旗標：root 指令本身只是指令群組；主要操作旗標都在子指令上。常見工作流程輸入包含 <code>--workspace</code>、<code>--desired-file</code>、<code>--dashboard-export-dir</code>、<code>--dashboard-provisioning-dir</code>、<code>--alert-export-dir</code>、<code>--source-bundle</code>、<code>--target-inventory</code>、<code>--availability-file</code>、<code>--mapping-file</code>、<code>--fetch-live</code>、<code>--live-file</code>、<code>--preview-file</code>、<code>--approve</code>、<code>--execute-live</code> 與 <code>--output-format</code>。</p>
+<h3 id="第一次使用時先走這條路">第一次使用時，先走這條路</h3>
+<p>如果你是第一次操作，先照這個順序走：</p>
+<ol><li><code>change inspect</code> 看 staged package 裡有什麼</li><li><code>change check</code> 確認輸入結構是否適合繼續往下走</li><li><code>change preview</code> 預覽這次會改到什麼</li><li><code>change apply</code> 只在 preview 已審核且核准後才執行</li></ol>
+<h3 id="-workspace-會幫你找什麼"><code>--workspace</code> 會幫你找什麼</h3>
+<p>當你帶 <code>--workspace .</code> 時，<code>change</code> 會嘗試在目前 repo 或工作目錄裡找常見的 staged inputs，並拼成同一條 review lane：</p>
+<ul><li>dashboard export trees</li><li>dashboard provisioning trees</li><li>datasource provisioning files</li><li>alert export trees</li><li>staged desired change files</li><li>source bundle、target inventory、promotion mapping files</li></ul>
+<p>如果自動發現沒有找到可用輸入，先停下來，改用明確旗標，例如 <code>--desired-file</code>、<code>--dashboard-export-dir</code>、<code>--alert-export-dir</code>、<code>--source-bundle</code> 或 <code>--target-inventory</code>。</p>
 <p>成功判準：</p>
-<ul><li>在 apply 之前，就能把變更規模與風險說清楚</li><li>staged 輸入先通過 preflight，再進 plan 或 apply</li><li>已審核的 plan 會留下明確審核證據，而不是只靠口頭確認</li></ul>
+<ul><li>在 apply 之前，就能把變更規模與風險說清楚</li><li>staged 輸入先通過 check，再進 preview 或 apply</li><li>已審核的 preview / plan 會留下明確證據，而不是只靠口頭確認</li></ul>
 <p>失敗時先檢查：</p>
-<ul><li>如果 summary 或 preflight 看起來不合理，先停下來，不要往 plan 或 apply 走</li><li>如果 live fetch 讓結果和預期差很多，先回頭比對 staged 輸入與 live 目標</li><li>如果 JSON 要交給自動化判斷，先驗 <code>kind</code> 和 <code>schemaVersion</code>，再解析其他欄位</li></ul>
+<ul><li>如果 inspect 或 check 看起來不合理，先停下來，不要往 preview 或 apply 走</li><li>如果 live fetch 讓結果和預期差很多，先回頭比對 staged 輸入與 live 目標</li><li>如果 JSON 要交給自動化判斷，先驗 <code>kind</code> 和 <code>schemaVersion</code>，再解析其他欄位</li></ul>
 <p>範例：</p>
-<pre><code># 用途：在規劃前先彙總 desired 同步資源。
-grafana-util change summary --desired-file ./desired.json</code></pre>
-<pre><code># 用途：根據 desired 與 live state 建立已審核的 plan。
-grafana-util change plan --desired-file ./desired.json --fetch-live --profile prod</code></pre>
-<pre><code># 用途：在明確核准後，把已審核的 plan 套用到 live Grafana。
+<pre><code># 用途：先從常見 repo-local 或明確輸入看 staged package 的形狀。
+grafana-util change inspect --workspace .</code></pre>
+<pre><code># 用途：先檢查 staged package 是否適合往下走。
+grafana-util change check --workspace . --fetch-live --output-format json</code></pre>
+<pre><code># 用途：先預覽這次會改到什麼，再決定是否套用。
+grafana-util change preview --workspace . --fetch-live --profile prod</code></pre>
+<pre><code># 用途：在明確核准後，把已審核的 preview 套用到 live Grafana。
 grafana-util change apply \
-  --plan-file ./sync-plan-reviewed.json \
+  --preview-file ./change-preview.json \
   --approve \
   --execute-live \
   --url http://localhost:3000 \
   --basic-user admin \
   --basic-password admin</code></pre>
-<pre><code># 用途：先把 plan 與 live 資料接起來，再看會產生什麼變更。
-grafana-util change plan \
-  --desired-file ./desired.json \
-  --fetch-live \
-  --url http://localhost:3000 \
-  --token &quot;$GRAFANA_API_TOKEN&quot;</code></pre>
 <p>相關指令：<code>grafana-util overview</code>、<code>grafana-util status</code>、<code>grafana-util snapshot</code>。</p>
+<h2 id="主要子指令">主要子指令</h2>
+<p>先用 root 頁了解整體 lane，再依你現在正在做的步驟打開對應的子頁：</p>
+<ul><li><a href="change-inspect.html">change inspect</a>：確認 staged package 裡到底有什麼</li><li><a href="change-check.html">change check</a>：確認 staged package 在結構上是否適合往下走</li><li><a href="change-preview.html">change preview</a>：建立可審查的變更預覽</li><li><a href="change-apply.html">change apply</a>：把已審核的 preview 轉成 apply intent，或真的套用到 live</li></ul>
+<p>這樣拆是刻意的。<code>change</code> 本身是 namespace，下面同時有一條 primary lane 和一組 advanced contracts；真正逐步操作的 manual，應該看各個子指令頁，而不是把所有細節都塞回 root。</p>
+<h2 id="advanced"><code>advanced</code></h2>
+<p>用途：暴露較低階的 staged contracts 與特殊 sync workflows。</p>
+<p>適用時機：當你需要明確的 <code>summary</code>、<code>plan</code>、<code>review</code>、<code>preflight</code>、<code>audit</code>、<code>bundle</code> 或 promotion handoff 文件，而不是 task-first lane。</p>
+<p>範例：</p>
+<pre><code># 用途：只有在 primary lane 不夠用時，才進入較低階 contract 或特殊 sync workflow。
+grafana-util change advanced bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json --output-format json</code></pre>
+<h3 id="給-ci-腳本用的區塊">給 CI / 腳本用的區塊</h3>
+<p>如果你是用這頁做一般維運操作，看到這裡就可以先停。除非你已經知道自己需要較低階 contract，否則先走 <code>inspect -&gt; check -&gt; preview -&gt; apply</code> 的 primary lane。</p>
+<p>如果你要用 <code>change</code> 系列輸出給 CI、腳本或外部系統判斷，請先用 <code>kind</code> 與 <code>schemaVersion</code> 當成 contract 識別，再讀後面的欄位。</p>
+<p>CLI 內建快速查詢：</p>
+<ul><li><code>grafana-util change --help-schema</code></li><li><code>grafana-util change inspect --help</code></li><li><code>grafana-util change preview --help-schema</code></li><li><code>grafana-util change apply --help-schema</code></li></ul>
+<table><thead><tr><th>指令</th><th>輸出 kind</th><th>主要 top-level 欄位</th></tr></thead><tbody><tr><td><code>change inspect --output-format json</code></td><td>staged summary 或 overview/status 風格的 inspection 輸出</td><td>依輸入類型輸出 staged 摘要與 discovered-input 資訊</td></tr><tr><td><code>change check --output-format json</code></td><td>project-status staged status</td><td>staged readiness/status 輸出，以及 blockers 或 warnings</td></tr><tr><td><code>change preview --output-format json</code></td><td><code>grafana-utils-sync-plan</code> 或 bundle/promotion preflight kinds</td><td>task-first 入口會沿用既有 staged plan/bundle-preflight/promotion-preflight contracts；sync-plan preview 還會帶 <code>ordering.mode</code>、<code>operations[].orderIndex</code>、<code>operations[].orderGroup</code>、<code>operations[].kindOrder</code> 與 <code>summary.blocked_reasons</code></td></tr><tr><td><code>change apply --output-format json</code></td><td><code>grafana-utils-sync-apply-intent</code></td><td><code>kind</code>、<code>schemaVersion</code>、<code>toolVersion</code>、<code>mode</code>、<code>reviewed</code>、<code>reviewRequired</code>、<code>allowPrune</code>、<code>approved</code>、<code>summary</code>、<code>alertAssessment</code>、<code>operations</code>、可選 <code>preflightSummary</code>、可選 <code>bundlePreflightSummary</code>、<code>appliedBy</code>、<code>appliedAt</code>、<code>approvalReason</code>、<code>applyNote</code>、<code>traceId</code>、<code>stage</code>、<code>stepIndex</code>、<code>parentTraceId</code>；排序資訊保留在 reviewed preview</td></tr><tr><td><code>change apply --execute-live --output-format json</code></td><td>live apply result</td><td><code>mode</code>、<code>appliedCount</code>、<code>results</code></td></tr><tr><td><code>change advanced audit --output-format json</code></td><td><code>grafana-utils-sync-audit</code></td><td><code>kind</code>、<code>schemaVersion</code>、<code>toolVersion</code>、<code>summary</code>、<code>currentLock</code>、<code>baselineLock</code>、<code>drifts</code></td></tr><tr><td><code>change advanced preflight --output-format json</code></td><td><code>grafana-utils-sync-preflight</code></td><td><code>kind</code>、<code>schemaVersion</code>、<code>toolVersion</code>、<code>summary</code>、<code>checks</code></td></tr><tr><td><code>change advanced assess-alerts --output-format json</code></td><td><code>grafana-utils-alert-sync-plan</code></td><td><code>kind</code>、<code>schemaVersion</code>、<code>toolVersion</code>、<code>summary</code>、<code>alerts</code></td></tr><tr><td><code>change advanced bundle-preflight --output-format json</code></td><td><code>grafana-utils-sync-bundle-preflight</code></td><td><code>kind</code>、<code>schemaVersion</code>、<code>summary</code>、<code>syncPreflight</code>、<code>alertArtifactAssessment</code>、<code>secretPlaceholderAssessment</code>、<code>providerAssessment</code></td></tr><tr><td><code>change advanced promotion-preflight --output-format json</code></td><td><code>grafana-utils-sync-promotion-preflight</code></td><td><code>kind</code>、<code>schemaVersion</code>、<code>toolVersion</code>、<code>summary</code>、<code>bundlePreflight</code>、<code>mappingSummary</code>、<code>checkSummary</code>、<code>handoffSummary</code>、<code>continuationSummary</code>、<code>checks</code>、<code>resolvedChecks</code>、<code>blockingChecks</code></td></tr></tbody></table>
+<p>補充：</p>
+<ul><li><code>change apply</code> 有兩種 JSON shape。沒有 <code>--execute-live</code> 時，回的是 staged apply intent；有 <code>--execute-live</code> 時，回的是 live 執行結果。</li><li><code>change preview</code> 是 task-first 入口。依你提供的 staged 輸入不同，可能輸出既有的 plan kind，或 bundle/promotion preflight kinds。</li><li><code>change apply</code> 現在優先使用 <code>--preview-file</code>，但仍保留 <code>--plan-file</code> 當 alias。</li><li><code>change advanced bundle</code> 不用 <code>--output-format</code> 來挑格式；它是用 <code>--output-file</code> 把 source bundle 寫到檔案。</li></ul>
 <h2 id="summary"><code>summary</code></h2>
 <p>用途：彙總本機 desired 同步資源。</p>
 <p>適用時機：當你想在規劃或套用前，先快速確認規模大小時。</p>
@@ -823,6 +837,17 @@ grafana-util change plan \
 grafana-util change summary --desired-file ./desired.json</code></pre>
 <pre><code># 用途：summary。
 grafana-util change summary --desired-file ./desired.json --output-format json</code></pre>
+<p><strong>預期輸出：</strong></p>
+<pre><code>{
+  &quot;kind&quot;: &quot;grafana-utils-sync-summary&quot;,
+  &quot;summary&quot;: {
+    &quot;resourceCount&quot;: 8,
+    &quot;dashboardCount&quot;: 5,
+    &quot;datasourceCount&quot;: 1
+  },
+  &quot;resources&quot;: []
+}</code></pre>
+<p>這是最快的「這包變更到底多大」摘要，適合在進 preflight 或 plan 前先看一眼。</p>
 <p>相關指令：<code>change plan</code>、<code>change preflight</code>。</p>
 <h2 id="plan"><code>plan</code></h2>
 <p>用途：根據 desired 與 live state 建立分階段的同步 plan。</p>
@@ -850,6 +875,18 @@ grafana-util change plan \
   --basic-password admin \
   --allow-prune \
   --output-format json</code></pre>
+<p><strong>預期輸出：</strong></p>
+<pre><code>{
+  &quot;kind&quot;: &quot;grafana-utils-sync-plan&quot;,
+  &quot;reviewed&quot;: false,
+  &quot;summary&quot;: {
+    &quot;would_create&quot;: 1,
+    &quot;would_update&quot;: 4,
+    &quot;would_delete&quot;: 0
+  },
+  &quot;operations&quot;: []
+}</code></pre>
+<p>這通常就是團隊真正拿來審查的主文件。先看 <code>summary</code> 的計數，再看這份 plan 是否仍然是未審核狀態。</p>
 <pre><code># 用途：plan。
 grafana-util change plan \
   --desired-file ./desired.json \
@@ -872,43 +909,20 @@ grafana-util change plan \
 grafana-util change review --plan-file ./sync-plan.json</code></pre>
 <pre><code># 用途：review。
 grafana-util change review --plan-file ./sync-plan.json --review-note &#x27;peer-reviewed&#x27; --output-format json</code></pre>
+<p><strong>預期輸出：</strong></p>
+<pre><code>{
+  &quot;kind&quot;: &quot;grafana-utils-sync-plan&quot;,
+  &quot;reviewed&quot;: true,
+  &quot;stage&quot;: &quot;review&quot;,
+  &quot;stepIndex&quot;: 2,
+  &quot;reviewNote&quot;: &quot;peer-reviewed&quot;
+}</code></pre>
+<p>review 成功後，apply 不需要再靠檔名或口頭交接去猜這份 plan 是否已經審核。</p>
 <p>成功判準：</p>
 <ul><li>已審核的 plan 會變成一份明確可交接的產物，而不是只靠口頭批准</li><li>後續 apply 可以看出這份 plan 已經走過 review</li><li>reviewer 身分與 review note 會留在結果裡，方便交接與稽核</li></ul>
 <p>失敗時先檢查：</p>
 <ul><li>如果 review 輸出仍顯示 <code>reviewed: false</code>，先確認你讀的是新的 reviewed 檔，而不是原本的 plan</li><li>如果審核資訊不完整，先檢查是否有提供 <code>--reviewed-by</code>、<code>--reviewed-at</code>、<code>--review-note</code></li><li>如果後續步驟拒收 reviewed plan，先看 <code>stage</code>、<code>stepIndex</code> 和 review 欄位，不要先假設 apply 壞掉</li></ul>
 <p>相關指令：<code>change plan</code>、<code>change apply</code>。</p>
-<h2 id="apply"><code>apply</code></h2>
-<p>用途：根據已審核的同步 plan 產生受控的 apply intent，並可選擇直接執行到 live。</p>
-<p>適用時機：當 plan 已經審核完成，而你準備輸出或執行 apply 步驟時。</p>
-<p>採用前後對照：</p>
-<ul><li><strong>採用前</strong>：review 完到真正動手套用之間，常常還是模糊的一步，只知道「接下來要 apply」。</li><li><strong>採用後</strong>：apply 會把這一步拆成可保存的 staged intent，或明確的 live 執行結果，並留下核准證據。</li></ul>
-<p>主要旗標：<code>--plan-file</code>、<code>--preflight-file</code>、<code>--bundle-preflight-file</code>、<code>--approve</code>、<code>--execute-live</code>、<code>--allow-folder-delete</code>、<code>--allow-policy-reset</code>、<code>--org-id</code>、<code>--output-format</code>、<code>--applied-by</code>、<code>--applied-at</code>、<code>--approval-reason</code>、<code>--apply-note</code>。</p>
-<p>JSON shape：</p>
-<ul><li>預設 <code>change apply --output-format json</code></li><li><code>kind</code>：<code>grafana-utils-sync-apply-intent</code></li><li><code>schemaVersion</code>、<code>toolVersion</code></li><li><code>mode: apply</code></li><li><code>reviewed</code>、<code>reviewRequired</code>、<code>allowPrune</code>、<code>approved</code></li><li><code>summary</code>、<code>alertAssessment</code>、<code>operations</code></li><li>可選 <code>preflightSummary</code></li><li>可選 <code>bundlePreflightSummary</code></li><li><code>appliedBy</code>、<code>appliedAt</code>、<code>approvalReason</code>、<code>applyNote</code></li><li><code>traceId</code>、<code>stage</code>、<code>stepIndex</code>、<code>parentTraceId</code></li><li><code>change apply --execute-live --output-format json</code></li><li><code>mode: live-apply</code></li><li><code>appliedCount</code></li><li><code>results</code></li><li>每筆包含 <code>kind</code>、<code>identity</code>、<code>action</code>、<code>response</code></li></ul>
-<p>範例：</p>
-<pre><code># 用途：apply。
-grafana-util change apply --plan-file ./sync-plan-reviewed.json --approve</code></pre>
-<pre><code># 用途：apply。
-grafana-util change apply \
-  --plan-file ./sync-plan-reviewed.json \
-  --approve \
-  --execute-live \
-  --url http://localhost:3000 \
-  --basic-user admin \
-  --basic-password admin</code></pre>
-<pre><code># 用途：apply。
-grafana-util change apply \
-  --plan-file ./sync-plan-reviewed.json \
-  --approve \
-  --execute-live \
-  --allow-folder-delete \
-  --url http://localhost:3000 \
-  --token &quot;$GRAFANA_API_TOKEN&quot;</code></pre>
-<p>成功判準：</p>
-<ul><li>已審核的 plan 能順利進入受控 apply 步驟，不會在最後一段丟失 review lineage</li><li>staged apply intent JSON 足夠拿去跑核准流程或變更單</li><li>live apply 輸出會明確告訴你實際執行了幾筆操作，以及每筆結果</li></ul>
-<p>失敗時先檢查：</p>
-<ul><li>如果 apply 不讓你繼續，先確認輸入 plan 已經 reviewed，而且有帶 <code>--approve</code></li><li>如果 live 執行結果和 staged intent 差很多，先比對 plan、本次 preflight 與目標環境，再決定要不要重跑</li><li>如果自動化在吃 apply JSON，先分清楚這是 staged <code>grafana-utils-sync-apply-intent</code> 還是 live <code>mode: live-apply</code> 輸出，再去讀欄位</li></ul>
-<p>相關指令：<code>change review</code>、<code>change preflight</code>、<code>change bundle-preflight</code>。</p>
 <h2 id="audit"><code>audit</code></h2>
 <p>用途：比對受管 Grafana 資源的 checksum lock 與目前 live state，進行稽核。</p>
 <p>適用時機：當你需要做 drift 檢查，或想刷新 lock snapshot 時。</p>
@@ -933,6 +947,16 @@ grafana-util change audit \
   --basic-password admin \
   --fail-on-drift \
   --output-format json</code></pre>
+<p><strong>預期輸出：</strong></p>
+<pre><code>{
+  &quot;kind&quot;: &quot;grafana-utils-sync-audit&quot;,
+  &quot;summary&quot;: {
+    &quot;inSyncCount&quot;: 12,
+    &quot;driftCount&quot;: 1
+  },
+  &quot;drifts&quot;: []
+}</code></pre>
+<p>這裡最重要的頂層訊號是 <code>driftCount</code>。只要大於 0，就代表 managed state 和 live Grafana 已經開始分離。</p>
 <pre><code># 用途：audit。
 grafana-util change audit \
   --lock-file ./sync-lock.json \
@@ -959,6 +983,17 @@ grafana-util change preflight \
   --fetch-live \
   --profile prod \
   --output-format json</code></pre>
+<p><strong>預期輸出：</strong></p>
+<pre><code>{
+  &quot;kind&quot;: &quot;grafana-utils-sync-preflight&quot;,
+  &quot;summary&quot;: {
+    &quot;checkCount&quot;: 6,
+    &quot;okCount&quot;: 6,
+    &quot;blockingCount&quot;: 0
+  },
+  &quot;checks&quot;: []
+}</code></pre>
+<p>這是結構性 gate。只要 <code>blockingCount</code> 不是 0，就應該先停在這裡修輸入，而不是往下做 plan 或 apply。</p>
 <pre><code># 用途：preflight。
 grafana-util change preflight \
   --desired-file ./desired.json \
@@ -990,6 +1025,17 @@ grafana-util change preflight \
 grafana-util change assess-alerts --alerts-file ./alerts.json</code></pre>
 <pre><code># 用途：assess-alerts。
 grafana-util change assess-alerts --alerts-file ./alerts.json --output-format json</code></pre>
+<p><strong>預期輸出：</strong></p>
+<pre><code>{
+  &quot;kind&quot;: &quot;grafana-utils-alert-sync-plan&quot;,
+  &quot;summary&quot;: {
+    &quot;alertCount&quot;: 3,
+    &quot;candidateCount&quot;: 2,
+    &quot;blockedCount&quot;: 1
+  },
+  &quot;alerts&quot;: []
+}</code></pre>
+<p>如果你覺得整份 sync plan 對 alert 太寬，這個指令就是把 alert 那一塊單獨拉出來看。</p>
 <p>相關指令：<code>change bundle</code>、<code>change bundle-preflight</code>、<code>overview</code>。</p>
 <h2 id="bundle"><code>bundle</code></h2>
 <p>用途：將匯出的 dashboards、alerting 資源、datasource inventory 與 metadata 打包成單一的本機 source bundle。</p>
@@ -1002,6 +1048,18 @@ grafana-util change assess-alerts --alerts-file ./alerts.json --output-format js
 grafana-util change bundle --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json</code></pre>
 <pre><code># 用途：bundle。
 grafana-util change bundle --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json</code></pre>
+<p><strong>預期輸出：</strong></p>
+<pre><code>{
+  &quot;kind&quot;: &quot;grafana-utils-sync-source-bundle&quot;,
+  &quot;summary&quot;: {
+    &quot;dashboardCount&quot;: 5,
+    &quot;datasourceCount&quot;: 1,
+    &quot;alertCount&quot;: 3
+  },
+  &quot;dashboards&quot;: [],
+  &quot;alerts&quot;: []
+}</code></pre>
+<p>不管是寫到檔案還是印到 stdout，這都是後續 bundle / promotion 檢查會接手的 packaging artifact。</p>
 <p>相關指令：<code>change bundle-preflight</code>、<code>change promotion-preflight</code>、<code>snapshot export</code>。</p>
 <h2 id="bundle-preflight"><code>bundle-preflight</code></h2>
 <p>用途：根據 source bundle 與 target inventory 建立分階段的 bundle-level sync preflight 文件。</p>
@@ -1014,6 +1072,17 @@ grafana-util change bundle --dashboard-provisioning-dir ./dashboards/provisionin
 grafana-util change bundle-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --output-format json</code></pre>
 <pre><code># 用途：bundle-preflight。
 grafana-util change bundle-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --availability-file ./availability.json --output-format json</code></pre>
+<p><strong>預期輸出：</strong></p>
+<pre><code>{
+  &quot;kind&quot;: &quot;grafana-utils-sync-bundle-preflight&quot;,
+  &quot;summary&quot;: {
+    &quot;resourceCount&quot;: 9,
+    &quot;syncBlockingCount&quot;: 0,
+    &quot;providerBlockingCount&quot;: 0
+  },
+  &quot;syncPreflight&quot;: {}
+}</code></pre>
+<p>當你想先回答「這包東西整體能不能進下一步」時，bundle-preflight 比單純 plan 更貼近 promotion / handoff 場景。</p>
 <p>相關指令：<code>change bundle</code>、<code>change promotion-preflight</code>、<code>status staged</code>。</p>
 <h2 id="promotion-preflight"><code>promotion-preflight</code></h2>
 <p>用途：根據 source bundle 與 target inventory 建立分階段的 promotion review handoff。</p>
@@ -1026,13 +1095,26 @@ grafana-util change bundle-preflight --source-bundle ./sync-source-bundle.json -
 grafana-util change promotion-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --mapping-file ./promotion-map.json --output-format json</code></pre>
 <pre><code># 用途：promotion-preflight。
 grafana-util change promotion-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --mapping-file ./promotion-map.json --availability-file ./availability.json --output-format json</code></pre>
+<p><strong>預期輸出：</strong></p>
+<pre><code>{
+  &quot;kind&quot;: &quot;grafana-utils-sync-promotion-preflight&quot;,
+  &quot;summary&quot;: {
+    &quot;resourceCount&quot;: 9,
+    &quot;directMatchCount&quot;: 6,
+    &quot;mappedCount&quot;: 3,
+    &quot;blockingCount&quot;: 0
+  },
+  &quot;mappingSummary&quot;: {},
+  &quot;blockingChecks&quot;: []
+}</code></pre>
+<p>這份文件要回答的不是「會改什麼」，而是「在目前 mapping 下，這包 source bundle 能不能安全 promotion 到目標環境」。</p>
 <p>相關指令：<code>change bundle-preflight</code>、<code>change apply</code>、<code>status live</code>。</p>
     
   </article>
   <aside class="sidebar">
   <button class="sidebar-toggle sidebar-toggle-right" type="button" aria-expanded="true" aria-label="Toggle page sidebar">▶</button>
   <div class="sidebar-content">
-    <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#root"><span class="toc-label">Root</span></a></li><li class="toc-level-3"><a href="#給-ci-腳本用的-json-contract"><span class="toc-label">給 CI / 腳本用的 JSON contract</span></a></li><li class="toc-level-2"><a href="#summary"><span class="toc-label">summary`</span></a></li><li class="toc-level-2"><a href="#plan"><span class="toc-label">plan`</span></a></li><li class="toc-level-2"><a href="#review"><span class="toc-label">review`</span></a></li><li class="toc-level-2"><a href="#apply"><span class="toc-label">apply`</span></a></li><li class="toc-level-2"><a href="#audit"><span class="toc-label">audit`</span></a></li><li class="toc-level-2"><a href="#preflight"><span class="toc-label">preflight`</span></a></li><li class="toc-level-2"><a href="#assess-alerts"><span class="toc-label">assess-alerts`</span></a></li><li class="toc-level-2"><a href="#bundle"><span class="toc-label">bundle`</span></a></li><li class="toc-level-2"><a href="#bundle-preflight"><span class="toc-label">bundle-preflight`</span></a></li><li class="toc-level-2"><a href="#promotion-preflight"><span class="toc-label">promotion-preflight`</span></a></li></ul></section><section class="sidebar-section"><h2>Related</h2><ul class="sidebar-meta-list"><li><a href="../../handbook/zh-TW/change-overview-status.html" class="sidebar-meta-link">Matching handbook chapter</a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: 繁體中文</a></li><li><a href="../en/change.html" class="sidebar-meta-link">Switch to English</a></li></ul></section>
+    <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#root"><span class="toc-label">Root</span></a></li><li class="toc-level-3"><a href="#第一次使用時先走這條路"><span class="toc-label">第一次使用時，先走這條路</span></a></li><li class="toc-level-3"><a href="#-workspace-會幫你找什麼"><span class="toc-label">workspace` 會幫你找什麼</span></a></li><li class="toc-level-2"><a href="#主要子指令"><span class="toc-label">主要子指令</span></a></li><li class="toc-level-2"><a href="#advanced"><span class="toc-label">advanced`</span></a></li><li class="toc-level-3"><a href="#給-ci-腳本用的區塊"><span class="toc-label">給 CI / 腳本用的區塊</span></a></li><li class="toc-level-2"><a href="#summary"><span class="toc-label">summary`</span></a></li><li class="toc-level-2"><a href="#plan"><span class="toc-label">plan`</span></a></li><li class="toc-level-2"><a href="#review"><span class="toc-label">review`</span></a></li><li class="toc-level-2"><a href="#audit"><span class="toc-label">audit`</span></a></li><li class="toc-level-2"><a href="#preflight"><span class="toc-label">preflight`</span></a></li><li class="toc-level-2"><a href="#assess-alerts"><span class="toc-label">assess-alerts`</span></a></li><li class="toc-level-2"><a href="#bundle"><span class="toc-label">bundle`</span></a></li><li class="toc-level-2"><a href="#bundle-preflight"><span class="toc-label">bundle-preflight`</span></a></li><li class="toc-level-2"><a href="#promotion-preflight"><span class="toc-label">promotion-preflight`</span></a></li></ul></section><section class="sidebar-section"><h2>Related</h2><ul class="sidebar-meta-list"><li><a href="../../handbook/zh-TW/change-overview-status.html" class="sidebar-meta-link">Matching handbook chapter</a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: 繁體中文</a></li><li><a href="../en/change.html" class="sidebar-meta-link">Switch to English</a></li></ul></section>
   </div>
 </aside>
 

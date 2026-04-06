@@ -16,6 +16,20 @@ Build and apply a reviewed alert management plan.
 Author staged rules, contact points, routes, and templates.
 .IP \(bu 2
 List live alert rules, contact points, mute timings, and templates.
+.SH WORKFLOW LANES
+.PP
+\- Inspect: list\-rules, list\-contact\-points, list\-mute\-timings, and list\-templates.
+.PP
+\- Move: export, import, add\-rule, clone\-rule, add\-contact\-point, set\-route, new\-rule, new\-contact\-point, and new\-template.
+.PP
+\- Review Before Mutate: diff, plan, apply, and preview\-route.
+.PP
+Choose this page when alert work spans rules, routes, contact points, or templates and you want the workflow before the flags.
+.SH BEFORE / AFTER
+.IP \(bu 2
+Before: alert work is often scattered across rule editors, export scripts, and route tweaks without one grouped path from inventory to reviewed apply.
+.IP \(bu 2
+After: the alert namespace keeps inventory, authoring, diff, planning, and apply in one place so you can read first, then change.
 .SH SUBCOMMANDS
 .TP
 .B export
@@ -78,6 +92,20 @@ List live Grafana notification templates. Use when: Inspect template inventory f
 \-\-prompt\-password, \-\-prompt\-token, \-\-timeout, \-\-verify\-ssl
 .IP \(bu 2
 Use the nested subcommands for export, import, diff, plan, apply, delete, add\-rule, clone\-rule, add\-contact\-point, set\-route, preview\-route, new\-rule, new\-contact\-point, new\-template, list\-rules, list\-contact\-points, list\-mute\-timings, and list\-templates.
+.SH SUCCESS CRITERIA
+.IP \(bu 2
+you can tell whether the task belongs to inspect, move, or review\-before\-mutate before you open a subcommand
+.IP \(bu 2
+a plan or export can move through review without losing routing context
+.IP \(bu 2
+the same alert flow can be repeated in CI or during incident follow\-up
+.SH FAILURE CHECKS
+.IP \(bu 2
+if an inventory command returns less than expected, confirm whether the auth scope is wide enough for the org or folder you need
+.IP \(bu 2
+if a review or apply step behaves strangely, inspect the alert plan JSON before assuming the CLI is wrong
+.IP \(bu 2
+if the result is going to automation, set \-\-output\-format explicitly so the downstream step knows the contract
 .SH WORKFLOW NOTES
 .PP
 The safest alert workflow is: author or update desired files, inspect the delta with alert plan, then execute only reviewed changes with alert apply.
@@ -95,7 +123,7 @@ grafana-util alert export --url http://localhost:3000 --basic-user admin --basic
 .PP
 import: Import alerting resource JSON files through the Grafana API.
 .EX
-grafana-util alert import --url http://localhost:3000 --import-dir ./alerts/raw --replace-existing
+grafana-util alert import --url http://localhost:3000 --input-dir ./alerts/raw --replace-existing
 .EE
 .PP
 diff: Compare local alerting export files against live Grafana resources.

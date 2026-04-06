@@ -181,7 +181,7 @@ fn run_sync_cli_apply_rejects_missing_trace_id() {
     .unwrap();
 
     let error = run_sync_cli(SyncGroupCommand::Apply(SyncApplyArgs {
-        plan_file,
+        plan_file: Some(plan_file),
         preflight_file: None,
         bundle_preflight_file: None,
         approve: true,
@@ -235,7 +235,7 @@ fn run_sync_cli_apply_rejects_plan_with_non_review_lineage() {
     .unwrap();
 
     let error = run_sync_cli(SyncGroupCommand::Apply(SyncApplyArgs {
-        plan_file,
+        plan_file: Some(plan_file),
         preflight_file: None,
         bundle_preflight_file: None,
         approve: true,
@@ -253,7 +253,7 @@ fn run_sync_cli_apply_rejects_plan_with_non_review_lineage() {
     .unwrap_err()
     .to_string();
 
-    assert!(error.contains("unexpected lineage stage"));
+    assert!(error.contains("unexpected lineage parentTraceId"));
 }
 
 #[test]

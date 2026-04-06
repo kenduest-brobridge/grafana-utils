@@ -783,14 +783,16 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="何時使用">何時使用</h2>
 <p>當您要在檢視或發佈之前先在本地重寫儀表板中繼資料，而且不需要連到 Grafana 時，使用這個指令。</p>
 <h2 id="重點旗標">重點旗標</h2>
-<ul><li><code>--input</code>：要修補的儀表板 JSON 檔。</li><li><code>--output</code>：寫到不同路徑，而不是覆蓋輸入檔。</li><li><code>--name</code>：替換儀表板標題。</li><li><code>--uid</code>：替換儀表板 UID。</li><li><code>--folder-uid</code>：設定保留的資料夾 UID。</li><li><code>--message</code>：在修補後的檔案中存放備註。</li><li><code>--tag</code>：替換儀表板標籤；可重複使用多次。</li></ul>
+<ul><li><code>--input</code>：要修補的儀表板 JSON 檔。可用 <code>-</code> 從標準輸入讀入一份 wrapped 或 bare 的儀表板 JSON。</li><li><code>--output</code>：寫到不同路徑，而不是覆蓋輸入檔。當使用 <code>--input -</code> 時必須指定。</li><li><code>--name</code>：替換儀表板標題。</li><li><code>--uid</code>：替換儀表板 UID。</li><li><code>--folder-uid</code>：設定保留的資料夾 UID。</li><li><code>--message</code>：在修補後的檔案中存放備註。</li><li><code>--tag</code>：替換儀表板標籤；可重複使用多次。</li></ul>
 <h2 id="範例">範例</h2>
 <pre><code># 用途：原地修補一個本地儀表板 JSON 檔，或將其寫到新路徑。
 grafana-util dashboard patch-file --input ./dashboards/raw/cpu-main.json --name &#x27;CPU Overview&#x27; --folder-uid infra --tag prod --tag sre</code></pre>
 <pre><code># 用途：原地修補一個本地儀表板 JSON 檔，或將其寫到新路徑。
 grafana-util dashboard patch-file --input ./drafts/cpu-main.json --output ./drafts/cpu-main-patched.json --uid cpu-main --message &#x27;Add folder metadata before publish&#x27;</code></pre>
+<pre><code># 用途：把標準輸入中的生成儀表板修補後寫到明確輸出路徑。
+jsonnet dashboards/cpu.jsonnet | grafana-util dashboard patch-file --input - --output ./drafts/cpu-main.json --folder-uid infra</code></pre>
 <h2 id="相關指令">相關指令</h2>
-<ul><li><a href="dashboard-review.html">dashboard review</a></li><li><a href="dashboard-publish.html">dashboard publish</a></li><li><a href="dashboard-get.html">dashboard get</a></li></ul>
+<ul><li><a href="dashboard-review.html">dashboard review</a></li><li><a href="dashboard-publish.html">dashboard publish</a></li><li><a href="dashboard-fetch-live.html">dashboard fetch-live</a></li></ul>
     
   </article>
   <aside class="sidebar">

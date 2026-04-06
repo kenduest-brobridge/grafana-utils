@@ -10,11 +10,26 @@ Create a low\-level staged alert contact point scaffold.
 Seed a new contact point file in a desired\-state tree.
 .IP \(bu 2
 Start from a scaffold before filling in receiver details.
+.SH BEFORE / AFTER
+.IP \(bu 2
+Before: start from an empty file and remember every alert contact point field yourself.
+.IP \(bu 2
+After: generate a scaffold with the right file name and place to fill in receiver details.
 .SH COMMON OPTIONS
 .IP \(bu 2
 \-\-desired\-dir points to the staged alert tree.
 .IP \(bu 2
 \-\-name seeds the scaffold name.
+.SH SUCCESS CRITERIA
+.IP \(bu 2
+The scaffold file exists where you expected it in the desired\-state tree.
+.IP \(bu 2
+The generated file is a clean starting point for adding receiver details.
+.SH FAILURE CHECKS
+.IP \(bu 2
+Check \-\-desired\-dir if the scaffold does not land in the tree you expect.
+.IP \(bu 2
+Verify the name if the scaffold collides with an existing contact point.
 .SH EXAMPLES
 .PP
 Create a low\-level staged alert contact point scaffold.

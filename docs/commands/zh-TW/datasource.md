@@ -4,21 +4,20 @@
 
 | 工作流 | 常用子命令 |
 | --- | --- |
-| 盤點與瀏覽 data source | `types`、`list`、`browse`、`inspect-export` |
+| 盤點與瀏覽 data source | `types`、`list`、`browse` |
 | 匯出 / 匯入 / 比對 | `export`、`import`、`diff` |
 | 新增 / 修改 / 刪除 | `add`、`modify`、`delete` |
 
 ## 從這裡開始
 
 - 新環境先看支援類型：`datasource types`
-- 要盤點線上現況：`datasource list`、`datasource browse`
+- 要盤點線上現況，或看本地匯出內容：`datasource list`、`datasource browse`
 - 要先做草稿或搬移：`datasource export`、`datasource diff`
 - 要直接改 live data source：`datasource add`、`datasource modify`、`datasource delete`
-- 要看匯出結果裡的細節：`datasource inspect-export`
 
 ## 說明
 
-`grafana-util datasource` 把 data source 的生命週期收在同一個入口：從類型查找、瀏覽、匯出、匯入、比對，到 live add / modify / delete 都在這裡處理。這頁適合先判斷下一步該走 inventory、bundle、diff，還是 live mutation。
+`grafana-util datasource` 把 data source 的生命週期收在同一個入口：從類型查找、瀏覽、讀取 live 或本地 inventory、匯出、匯入、比對，到 live add / modify / delete 都在這裡處理。這頁適合先判斷下一步該走 inventory、bundle、diff，還是 live mutation。
 
 ## 重點旗標
 
@@ -61,11 +60,6 @@ grafana-util datasource browse --profile prod
 grafana-util datasource export --profile prod --output-dir ./datasources
 ```
 
-```bash
-# 先看匯出內容，再決定要不要進一步改 live data source。
-grafana-util datasource inspect-export --input-dir ./datasources
-```
-
 ## 相關命令
 
 ### 盤點
@@ -76,7 +70,6 @@ grafana-util datasource inspect-export --input-dir ./datasources
 
 ### 搬移
 
-- [datasource inspect-export](./datasource-inspect-export.md)
 - [datasource export](./datasource-export.md)
 - [datasource import](./datasource-import.md)
 - [datasource diff](./datasource-diff.md)

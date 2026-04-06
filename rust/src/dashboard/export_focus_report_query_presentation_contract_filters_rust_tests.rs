@@ -26,7 +26,7 @@ fn apply_query_report_filters_matches_core_family_aliases() {
         )
     };
     let report = test_support::ExportInspectionQueryReport {
-        import_dir: "/tmp/raw".to_string(),
+        input_dir: "/tmp/raw".to_string(),
         summary: test_support::QueryReportSummary {
             dashboard_count: 6,
             panel_count: 6,
@@ -170,7 +170,7 @@ fn dispatch_query_analysis_matches_shared_analyzer_fixture_cases() {
 #[test]
 fn apply_query_report_filters_keep_matching_rows_only() {
     let report = test_support::ExportInspectionQueryReport {
-        import_dir: "/tmp/raw".to_string(),
+        input_dir: "/tmp/raw".to_string(),
         summary: test_support::QueryReportSummary {
             dashboard_count: 2,
             panel_count: 2,
@@ -277,7 +277,7 @@ fn apply_query_report_filters_keep_matching_rows_only() {
 #[test]
 fn apply_query_report_filters_match_datasource_uid_type_and_family() {
     let report = test_support::ExportInspectionQueryReport {
-        import_dir: "/tmp/raw".to_string(),
+        input_dir: "/tmp/raw".to_string(),
         summary: test_support::QueryReportSummary {
             dashboard_count: 2,
             panel_count: 2,
@@ -389,7 +389,7 @@ fn apply_query_report_filters_match_datasource_uid_type_and_family() {
 #[test]
 fn apply_query_report_filters_matches_normalized_search_family() {
     let report = test_support::ExportInspectionQueryReport {
-        import_dir: "/tmp/raw".to_string(),
+        input_dir: "/tmp/raw".to_string(),
         summary: test_support::QueryReportSummary {
             dashboard_count: 1,
             panel_count: 1,
@@ -453,7 +453,7 @@ fn apply_query_report_filters_matches_normalized_search_family() {
 #[test]
 fn normalize_query_report_groups_rows_by_dashboard_then_panel() {
     let report = test_support::ExportInspectionQueryReport {
-        import_dir: "/tmp/raw".to_string(),
+        input_dir: "/tmp/raw".to_string(),
         summary: test_support::QueryReportSummary {
             dashboard_count: 2,
             panel_count: 3,
@@ -589,7 +589,7 @@ fn normalize_query_report_groups_rows_by_dashboard_then_panel() {
 
     let normalized = test_support::normalize_query_report(&report);
 
-    assert_eq!(normalized.import_dir, "/tmp/raw");
+    assert_eq!(normalized.input_dir, "/tmp/raw");
     assert_eq!(normalized.summary, report.summary);
     assert_eq!(normalized.dashboards.len(), 2);
     assert_eq!(normalized.dashboards[0].org, "Main Org.");

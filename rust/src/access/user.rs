@@ -25,11 +25,12 @@ pub(crate) use user_mutation::{
 };
 pub(crate) use user_read::{
     annotate_user_account_scope, iter_global_users_with_request, list_org_users_with_request,
-    list_user_teams_with_request, list_users_with_request, lookup_global_user_by_identity,
-    lookup_org_user_by_identity, validate_user_scope_auth,
+    list_user_teams_with_request, list_users_from_input_dir, list_users_with_request,
+    lookup_global_user_by_identity, lookup_org_user_by_identity, validate_user_scope_auth,
 };
 #[cfg(test)]
 pub(crate) use user_workflows::build_user_import_dry_run_document;
 pub(crate) use user_workflows::{
     diff_users_with_request, export_users_with_request, import_users_with_request,
+    load_access_import_records,
 };

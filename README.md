@@ -1,48 +1,42 @@
 # grafana-util
 ### A Rust CLI for Grafana Operations and Administration
 
-[![CI](https://img.shields.io/github/actions/workflow/status/kenduest-brobridge/grafana-utils/ci.yml?branch=main)](https://github.com/kenduest-brobridge/grafana-utils/actions)
-[![License](https://img.shields.io/github/license/kenduest-brobridge/grafana-utils)](LICENSE)
-[![Version](https://img.shields.io/github/v/tag/kenduest-brobridge/grafana-utils)](https://github.com/kenduest-brobridge/grafana-utils/tags)
+[![CI](https://img.shields.io/github/actions/workflow/status/kenduest-brobridge/grafana-util/ci.yml?branch=main)](https://github.com/kenduest-brobridge/grafana-util/actions)
+[![License](https://img.shields.io/github/license/kenduest-brobridge/grafana-util)](LICENSE)
+[![Version](https://img.shields.io/github/v/tag/kenduest-brobridge/grafana-util)](https://github.com/kenduest-brobridge/grafana-util/tags)
 
 English | [繁體中文](./README.zh-TW.md)
 
-**Repeatable Grafana workflows for dashboards, alerts, datasources, access control, and operational review.**
+**Standardized Grafana workflows for dashboards, alerts, datasources, access control, and operational review.**
 
-`grafana-util` is a personal long-term Rust tool built around real Grafana maintenance pain. I use it to make day-to-day workflows more reviewable, governance-aware, and repeatable across dashboards, alerts, datasources, access control, and estate-wide status checks. It is aimed at SREs, platform engineers, sysadmins, and maintainers who want safer operating paths and automation-friendly output instead of ad hoc API calls, UI-only changes, or one-off scripts.
+`grafana-util` is a Rust-based CLI designed for day-to-day Grafana operations. It focuses on reviewable inventory, export/import, diff, replay, profile management, and secret handling so SREs and platform engineers can inspect changes before they apply them.
 
-It is not trying to be a complete Grafana platform or a replacement for every other CLI. The design center here is operator workflow: inspect first, review changes before apply, keep secrets handled deliberately, and prefer repeatable paths over hand-built command sequences.
-
-If you already know tools such as `grafanactl` or `grizzly`, the difference here is mostly design orientation:
-
-- `grafanactl` is closer to a general resource and API-oriented Grafana CLI.
-- `grizzly` is closer to declarative Grafana-as-code management.
-- `grafana-util` is more focused on reviewable operations, inspection/governance flows, and safer migration or replay paths.
+Its main strengths are a review-first workflow, separate paths for dashboard import/export formats, and reusable connection profiles that keep repeatable operations short and predictable.
 
 ---
 
-## Why `grafana-util`?
+## Supported Workflows
 
-| Capability | Standard CLI / curl | **grafana-util** |
-| :--- | :---: | :--- |
-| **Multi-Org Discovery** | Manual per org | ✅ One command to scan all orgs |
-| **Dependency Audit** | Limited | ✅ Detect broken datasource dependencies before import |
-| **Alerting Lifecycle** | Direct mutation only | ✅ Reviewable **Plan/Apply** workflow |
-| **Secret Handling** | Easy to mishandle | ✅ **Masked Recovery** and profile secret modes |
-| **Review Surface** | Raw JSON | ✅ Interactive TUI and structured table/report output |
+- **Dashboards**: Browse, list, export/import, diff, review, publish, and analyze. Supports `raw` (API-driven import), `prompt` (UI import), and `provisioning` (file-based) paths.
+- **Datasources**: Masked recovery, secret-aware imports, and provisioning projection.
+- **Alerts**: Export/import, diffing, planning (`plan`/`apply`), and routing preview.
+- **Access**: Management of users, teams, organizations, service accounts, and tokens.
+- **Change Management**: Review-first workflows (`inspect`, `check`, `preview`) before live mutation.
+- **Status / Overview**: Readiness checks for live and staged environments.
+- **Profiles**: Centralized connection management with support for `file`, `os`, and `encrypted-file` secret storage.
+- **Snapshot**: Export and review of resource bundles.
+- **Resource**: Read-only `inspect`/`get`/`list`/`describe` for live Grafana resources.
 
 ---
 
-## Before / After
+## Operational Shift
 
-| Before | After with `grafana-util` |
-| :--- | :--- |
-| You click through Grafana UI screens or piece together raw API calls just to understand what exists. | Start with `overview live` or `status live`, then decide where to drill in. |
-| Export/import is a one-off action with weak review points. | Export to a reviewable tree, inspect dependencies, dry-run replay, then import. |
-| Alerting changes are hard to explain before apply. | Use `change summary`, `change preflight`, and `alert plan` before live mutation. |
-| Secrets get copied into shell history or flat files. | Keep auth in prompt flows, env variables, or repo-local profiles with explicit secret modes. |
-
-This is the main shift: the tool does not just give you commands. It gives you a safer operating sequence.
+| Feature | Legacy Approach | with `grafana-util` |
+| :--- | :--- | :--- |
+| **Discovery** | Manual UI navigation or ad-hoc API calls to understand current state. | Start with `overview live` or `status live` for a unified environment snapshot. |
+| **Dashboard Paths** | Ambiguity between API-driven import and UI import formats. | Dedicated paths for `raw`, `prompt`, and `provisioning` with conversion tools like `raw-to-prompt`. |
+| **Reviews** | Changes applied directly without an intermediate review surface. | Use `change inspect`, `check`, and `preview` to audit changes before they touch the live server. |
+| **Security** | Secrets often stored in shell history or plaintext files. | Centralized `profile` management with OS keyring or encrypted storage. |
 
 ---
 
@@ -51,193 +45,157 @@ This is the main shift: the tool does not just give you commands. It gives you a
 ### Install
 
 ```bash
-# 1. Install via one-liner
-curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
+# Install via one-liner
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh
 ```
 
 ```bash
-# 2. Confirm the installed version
+# Verify the installation
 grafana-util --version
 ```
 
 ```bash
-# 3. Inspect current Grafana status
+# Inspect current Grafana status
 grafana-util overview live --url http://my-grafana:3000 --basic-user admin --prompt-password --output-format interactive
 ```
 
-### Install options
+### Install Options
 
 Pinned release:
 
 ```bash
-# Install one pinned release.
+# Install a specific pinned release.
 VERSION=0.8.0 \
-  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
+  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh
 ```
 
 Custom install directory:
 
 ```bash
-# Install into one explicit binary directory.
+# Install into a specific binary directory.
 BIN_DIR="$HOME/.local/bin" \
-  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
+  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh
 ```
 
-Show installer help first:
+Show installer help:
 
 ```bash
 sh ./scripts/install.sh --help
 ```
 
-- Release downloads: <https://github.com/kenduest-brobridge/grafana-utils/releases>
-- Published binaries: standard release binaries are published for `linux-amd64` and `macos-arm64`. If you need the browser-enabled screenshot build, download the `*-browser-*` archive from the same release.
-- Default install location: the script uses `BIN_DIR` when you set it, otherwise `/usr/local/bin` if writable, and otherwise falls back to `$HOME/.local/bin`.
-- PATH setup: if the chosen install directory is not on `PATH`, the script prints the exact `zsh` / `bash` snippet to add it.
+- **Releases**: <https://github.com/kenduest-brobridge/grafana-util/releases>
+- **Binaries**: Standard builds for `linux-amd64` and `macos-arm64`. Browser-enabled versions (for screenshots) are labeled `*-browser-*`.
+- **Default path**: Uses `/usr/local/bin` if writable, otherwise falls back to `$HOME/.local/bin`.
+- **PATH setup**: If the chosen directory is not on `PATH`, the script provides the exact snippet for `zsh` or `bash`.
 
 ---
 
-## Useful Examples
+## Practical Examples
 
-These are the examples most people actually look for first: inspect the current environment, export a safe reviewable tree, preview changes before apply, and recover datasource secrets without hand-editing JSON.
-
-Most examples below focus on the workflow itself, so repeated connection flags are omitted after the first few samples. In practice you can supply Grafana connection details with `--url`, `--basic-user`, `--basic-password`, `--prompt-password`, `--token`, or `--profile`. Environment variables such as `GRAFANA_USERNAME`, `GRAFANA_PASSWORD`, and `GRAFANA_API_TOKEN` also work where supported. If you need the full connection setup first, start with [Getting Started](./docs/user-guide/en/getting-started.md).
-
-### 1. Get a live operational overview before changing anything
+The following examples demonstrate core operational workflows. You can connect with direct flags such as `--basic-password`, prompt-based input such as `--prompt-password`, token auth, `export`-based environment variables in `bash` or `zsh`, or centralized `profile` configurations. For a full connection setup guide, refer to [Getting Started](./docs/user-guide/en/getting-started.md).
 
 ```bash
-# Open the interactive overview for the current Grafana environment.
-grafana-util overview live \
+# bash / zsh
+export GRAFANA_USERNAME=admin
+export GRAFANA_PASSWORD=admin
+```
+
+If you want to keep those settings in a profile instead, `profile add` can store them separately:
+
+```bash
+grafana-util profile add prod \
   --url http://my-grafana:3000 \
   --basic-user admin \
   --prompt-password \
+  --store-secret os
+
+grafana-util profile add ci \
+  --url http://my-grafana:3000 \
+  --token-env GRAFANA_CI_TOKEN \
+  --store-secret encrypted-file
+```
+
+From example 2 onward, the connection details are omitted for brevity. You can still pass them directly with `--url`, `--basic-user`, `--basic-password`, or `--token`, or keep them in `export`ed environment variables or a shared `profile`.
+
+### 1. Get a live operational overview
+```bash
+grafana-util overview live \
+  --url http://my-grafana:3000 \
+  --basic-user admin \
+  --basic-password admin \
   --output-format interactive
 ```
 
-Use this first when you need to answer: "What does this Grafana look like right now?" without clicking through the UI.
-
-Expected result:
-
-```text
-Live status: ready
-Dashboards: ...
-Alerts: ...
-Datasources: ...
-```
-
-### 2. Export dashboards into a reviewable tree
-
+### 2. List dashboards first
 ```bash
-# Export dashboards across all organizations into a local backup tree.
-grafana-util dashboard export --all-orgs --export-dir ./backup --progress
+# See what is already there before exporting or changing anything.
+grafana-util dashboard list --all-orgs --table
 ```
 
-This is the starting point for backup, migration, review, and CI-style inspection.
-
-### 3. Check whether an export tree is safe to import
-
+### 3. Export dashboards for review
 ```bash
-# Audit datasource dependencies and structural issues in an exported dashboard tree.
-grafana-util dashboard inspect-export \
-  --import-dir ./backup/raw \
-  --output-format report-table
+# Export all dashboards into a reviewable local tree.
+grafana-util dashboard export --all-orgs --output-dir ./backup --progress
 ```
 
-Use this before import when you want to catch broken datasource references or suspicious structure early.
-
-Expected result:
-
-```text
-Sources
-  prometheus-main
-  loki-prod
-```
-
-### 4. Preview dashboard import behavior before applying it
-
+### 4. Analyze dashboard dependencies
 ```bash
-# Dry-run a dashboard import and render the result as a table.
+# Audit datasource references and structure before import.
+grafana-util dashboard analyze \
+  --input-dir ./backup/raw \
+  --input-format raw \
+  --output-format tree-table
+```
+
+### 5. Open the dashboard TUI
+```bash
+# Open the interactive dashboard analysis workbench.
+grafana-util dashboard analyze \
+  --input-dir ./backup/raw \
+  --input-format raw \
+  --interactive
+```
+
+### 6. Dry-run dashboard import
+```bash
 grafana-util dashboard import \
-  --import-dir ./backup/raw \
+  --input-dir ./backup/raw \
   --replace-existing \
   --dry-run \
   --table
 ```
 
-This is useful when you want to see what would change before touching the live server.
-
-### 5. Review alerting changes before apply
-
+### 7. Rapid dashboard iteration
 ```bash
-# Build a reviewable alert plan from desired state versus the live server.
-grafana-util alert plan \
-  --desired-dir ./alerts/desired \
-  --prune \
-  --output-format json
+# Review a locally generated dashboard JSON without touching Grafana.
+cat cpu.json | grafana-util dashboard review --input - --output-format json
 ```
 
+### 8. Review alerts before you change them
 ```bash
-# Preview where a critical alert would route before applying the change.
+# See what the alert changes would do before applying them.
+grafana-util alert plan --desired-dir ./alerts/desired --prune
+
+# Preview where an alert would go.
 grafana-util alert preview-route \
   --desired-dir ./alerts/desired \
-  --label team=sre \
-  --severity critical
+  --label team=sre --severity critical
 ```
 
-Use these together when you need a review surface instead of mutating Grafana alerting blindly.
-
-### 6. Export and re-import datasources with secret recovery
-
+### 9. Datasource export and restore
 ```bash
-# Export datasources with secrets masked for review or version control.
-grafana-util datasource export --export-dir ./datasources --overwrite
+# Export with secrets masked, then restore the connection details when you import.
+grafana-util datasource export --output-dir ./datasources
+grafana-util datasource import --input-dir ./datasources --prompt-password
 ```
-
-```bash
-# Re-import datasources and recover required secrets interactively.
-grafana-util datasource import \
-  --import-dir ./datasources \
-  --replace-existing \
-  --prompt-password
-```
-
-This is the practical path for moving datasource configuration between environments without committing raw credentials.
-
----
-
-## A First Operator Flow
-
-If you want one end-to-end path instead of isolated commands, use this sequence:
-
-1. `overview live` to confirm the target Grafana is reachable and worth inspecting
-2. `dashboard export` to create a reviewable tree
-3. `dashboard inspect-export` to find missing datasource dependencies before import
-4. `dashboard import --dry-run` to preview replay behavior before live mutation
-
-That sequence is the shortest public proof that the tool is doing more than wrapping a single endpoint.
-
----
-
-## At a Glance
-
-*   **Inspect before you change anything**: `overview`, `status`, export inspection, governance checks, and review surfaces for dashboards and alerts.
-*   **Move Grafana assets safely between environments**: reviewable export/import workflows for dashboards, alerts, datasources, and access resources.
-*   **Automate repeatable operations**: table/JSON-oriented output, non-interactive paths, and safer secret handling for CI/CD and batch jobs.
 
 ---
 
 ## Docs & Guides
 
-Use the handbook for workflow and operational context, and the command pages when you need exact CLI syntax. The goal here is quick routing, not a second full manual.
+Use the handbook for workflow context and the command reference for exact CLI syntax.
 
-If plain Markdown is awkward to read, generate the local HTML docs site and open the entrypoint:
-
-```bash
-# Purpose: Build the local HTML docs site and open the main entrypoint.
-make html
-open ./docs/html/index.html
-```
-
-On Linux, replace `open` with `xdg-open`. For a published browser-friendly copy, use <https://kenduest-brobridge.github.io/grafana-utils/>.
+If you prefer a browser view, open the local HTML docs at [docs/html/index.html](./docs/html/index.html) or visit the published site: <https://kenduest-brobridge.github.io/grafana-utils/>.
 
 Open by need:
 
@@ -256,14 +214,8 @@ Open by role:
 
 ---
 
-## Project Notes
-*   **Rust-first CLI**: the primary implementation lives under `rust/src/`.
-*   **Validated against Grafana 12.4.1** in Docker-based environments.
-*   **Automation-friendly**: predictable exit codes and structured output for CI/CD and batch workflows.
-
----
+## Active Development
+This repository is actively maintained. The CLI surface and documentation continue to evolve; please refer to the command reference for the latest syntax.
 
 ## Contributing
 We welcome contributions! Please see our [Developer Guide](./docs/DEVELOPER.md) for setup instructions.
-
----

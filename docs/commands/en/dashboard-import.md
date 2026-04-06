@@ -11,7 +11,7 @@ Use this when you have a local export tree or provisioning tree and need to push
 - **After**: import becomes a controlled replay step that can be previewed first with `--dry-run`, then executed with clearer intent.
 
 ## Key flags
-- `--import-dir`: source directory for raw or combined export input.
+- `--input-dir`: source directory for raw or combined export input.
 - `--input-format`: choose `raw` or `provisioning`.
 - `--org-id`, `--use-export-org`, `--only-org-id`, `--create-missing-orgs`: control cross-org routing.
 - `--import-folder-uid`: force a destination folder UID.
@@ -33,12 +33,12 @@ Use this when you have a local export tree or provisioning tree and need to push
 ## Examples
 ```bash
 # Purpose: Import dashboard JSON files through the Grafana API.
-grafana-util dashboard import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./dashboards/raw --replace-existing
+grafana-util dashboard import --url http://localhost:3000 --basic-user admin --basic-password admin --input-dir ./dashboards/raw --replace-existing
 ```
 
 ```bash
 # Purpose: Import dashboard JSON files through the Grafana API.
-grafana-util dashboard import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./dashboards/raw --dry-run --table
+grafana-util dashboard import --url http://localhost:3000 --basic-user admin --basic-password admin --input-dir ./dashboards/raw --dry-run --table
 ```
 
 ## Related commands

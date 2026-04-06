@@ -84,6 +84,7 @@ pub(crate) use inspect_paths::{
     resolve_export_folder_inventory_item, resolve_export_folder_path,
     resolve_export_identity_field, write_inspect_output,
 };
+#[cfg(any(feature = "tui", test))]
 pub(crate) use inspect_query_report::build_export_inspection_query_report;
 pub(crate) use inspect_query_report::build_export_inspection_query_report_for_variant;
 
@@ -147,18 +148,18 @@ fn summarize_datasource_inventory_usage(
 }
 
 fn build_export_inspection_summary_with_variant(
-    import_dir: &Path,
+    input_dir: &Path,
     expected_variant: Option<&str>,
 ) -> Result<ExportInspectionSummary> {
     // Summary aggregation must stay file-system driven and deterministic so export and
     // live inspection can converge on the same coverage counts after staging.
-    let metadata = load_export_metadata(import_dir, expected_variant)?;
-    let source_root = load_inspect_source_root(import_dir);
-    let export_org = resolve_export_identity_field(import_dir, metadata.as_ref(), "org")?;
-    let export_org_id = resolve_export_identity_field(import_dir, metadata.as_ref(), "orgId")?;
-    let dashboard_files = discover_dashboard_files(import_dir)?;
-    let folder_inventory = load_folder_inventory(import_dir, metadata.as_ref())?;
-    let datasource_inventory = load_datasource_inventory(import_dir, metadata.as_ref())?;
+    let metadata = load_export_metadata(input_dir, expected_variant)?;
+    let source_root = load_inspect_source_root(input_dir);
+    let export_org = resolve_export_identity_field(input_dir, metadata.as_ref(), "org")?;
+    let export_org_id = resolve_export_identity_field(input_dir, metadata.as_ref(), "orgId")?;
+    let dashboard_files = discover_dashboard_files(input_dir)?;
+    let folder_inventory = load_folder_inventory(input_dir, metadata.as_ref())?;
+    let datasource_inventory = load_datasource_inventory(input_dir, metadata.as_ref())?;
     let folders_by_uid = folder_inventory
         .clone()
         .into_iter()
@@ -201,7 +202,7 @@ fn build_export_inspection_summary_with_variant(
         let folder_path = resolve_export_folder_path(
             document_object,
             dashboard_file,
-            import_dir,
+            input_dir,
             &folders_by_uid,
         );
         if !folder_counts.contains_key(&folder_path) {
@@ -294,9 +295,9 @@ fn build_export_inspection_summary_with_variant(
     });
 
     Ok(ExportInspectionSummary {
-        import_dir: source_root
+        input_dir: source_root
             .as_ref()
-            .map_or(import_dir, |value| value.as_path())
+            .map_or(input_dir, |value| value.as_path())
             .display()
             .to_string(),
         export_org,
@@ -316,15 +317,16 @@ fn build_export_inspection_summary_with_variant(
     })
 }
 
+#[cfg_attr(not(feature = "tui"), allow(dead_code))]
 pub(crate) fn build_export_inspection_summary(
-    import_dir: &Path,
+    input_dir: &Path,
 ) -> Result<ExportInspectionSummary> {
-    build_export_inspection_summary_with_variant(import_dir, Some(RAW_EXPORT_SUBDIR))
+    build_export_inspection_summary_with_variant(input_dir, Some(RAW_EXPORT_SUBDIR))
 }
 
 pub(crate) fn build_export_inspection_summary_for_variant(
-    import_dir: &Path,
+    input_dir: &Path,
     expected_variant: &str,
 ) -> Result<ExportInspectionSummary> {
-    build_export_inspection_summary_with_variant(import_dir, Some(expected_variant))
+    build_export_inspection_summary_with_variant(input_dir, Some(expected_variant))
 }

@@ -108,7 +108,7 @@ fn import_dashboards_with_use_export_org_routes_combined_provisioning_exports() 
         |target_org_id, scoped_args| {
             imported_orgs.borrow_mut().push((
                 target_org_id,
-                scoped_args.import_dir.clone(),
+                scoped_args.input_dir.clone(),
                 scoped_args.org_id,
                 scoped_args.use_export_org,
                 scoped_args.input_format,

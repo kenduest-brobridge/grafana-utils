@@ -11,6 +11,7 @@ use std::path::Path;
 
 // Keep the dashboard surface area split by concern. This file should stay focused
 // on re-exports, shared constants, and top-level command dispatch.
+mod analysis_source;
 mod authoring;
 mod browse;
 mod browse_actions;
@@ -29,8 +30,10 @@ mod delete_render;
 mod delete_support;
 mod edit;
 mod edit_external;
+mod edit_live;
 mod edit_prompt;
 mod export;
+mod facade_support;
 mod files;
 mod governance_gate;
 mod governance_gate_rules;
@@ -78,7 +81,12 @@ mod project_status;
 mod prompt;
 mod prompt_helpers;
 mod raw_to_prompt;
+mod raw_to_prompt_output;
+mod raw_to_prompt_plan;
+mod raw_to_prompt_resolution;
+mod raw_to_prompt_types;
 mod screenshot;
+mod serve;
 mod topology;
 mod topology_tui;
 mod validate;
@@ -90,21 +98,25 @@ pub(crate) use authoring::{
     render_dashboard_review_json, render_dashboard_review_table, render_dashboard_review_text,
     render_dashboard_review_yaml, review_dashboard_file as build_dashboard_review,
 };
+pub(crate) use cli_defs::{build_api_client, build_http_client_for_org_from_api};
 pub use cli_defs::{
     build_auth_context, build_http_client, build_http_client_for_org, normalize_dashboard_cli_args,
-    parse_cli_from, BrowseArgs, CloneLiveArgs, CommonCliArgs, DashboardAuthContext,
-    DashboardCliArgs, DashboardCommand, DashboardImportInputFormat, DeleteArgs, DiffArgs,
+    parse_cli_from, AnalyzeArgs, BrowseArgs, CloneLiveArgs, CommonCliArgs, DashboardAuthContext,
+    DashboardCliArgs, DashboardCommand, DashboardHistoryArgs, DashboardHistorySubcommand,
+    DashboardImportInputFormat, DashboardServeScriptFormat, DeleteArgs, DiffArgs, EditLiveArgs,
     ExportArgs, GetArgs, GovernanceGateArgs, GovernanceGateOutputFormat, GovernancePolicySource,
-    ImpactArgs, ImpactOutputFormat, ImportArgs, InspectExportArgs, InspectExportReportFormat,
-    InspectLiveArgs, InspectOutputFormat, InspectVarsArgs, ListArgs, PatchFileArgs, PublishArgs,
-    RawToPromptArgs, RawToPromptLogFormat, RawToPromptOutputFormat, RawToPromptResolution,
-    ReviewArgs, ScreenshotArgs, ScreenshotFullPageOutput, ScreenshotOutputFormat, ScreenshotTheme,
+    HistoryExportArgs, HistoryListArgs, HistoryOutputFormat, HistoryRestoreArgs, ImpactArgs,
+    ImpactOutputFormat, ImportArgs, InspectExportArgs, InspectExportReportFormat, InspectLiveArgs,
+    InspectOutputFormat, InspectVarsArgs, ListArgs, PatchFileArgs, PublishArgs, RawToPromptArgs,
+    RawToPromptLogFormat, RawToPromptOutputFormat, RawToPromptResolution, ReviewArgs,
+    ScreenshotArgs, ScreenshotFullPageOutput, ScreenshotOutputFormat, ScreenshotTheme, ServeArgs,
     SimpleOutputFormat, TopologyArgs, TopologyOutputFormat, ValidateExportArgs,
     ValidationOutputFormat,
 };
 pub use export::{build_export_variant_dirs, build_output_path, export_dashboards_with_client};
 pub use help::{
-    maybe_render_dashboard_help_full_from_os_args, render_inspect_export_help_full,
+    maybe_render_dashboard_help_full_from_os_args,
+    maybe_render_dashboard_subcommand_help_from_os_args, render_inspect_export_help_full,
     render_inspect_live_help_full,
 };
 pub use import::{diff_dashboards_with_client, import_dashboards_with_client};
@@ -118,15 +130,93 @@ pub(crate) use raw_to_prompt::run_raw_to_prompt;
 
 use browse::browse_dashboards_with_org_client;
 use delete::delete_dashboards_with_org_clients;
+use edit_live::run_dashboard_edit_live;
 use export::export_dashboards_with_org_clients;
+use history::{
+    export_dashboard_history_with_request, run_dashboard_history_list,
+    run_dashboard_history_restore,
+};
 use inspect::analyze_export_dir;
 use inspect_live::inspect_live_dashboards_with_client;
 use list::list_dashboards_with_org_clients;
 use screenshot::capture_dashboard_screenshot;
+use serve::run_dashboard_serve;
 use topology::{run_dashboard_impact, run_dashboard_topology};
 use validate::run_dashboard_validate_export;
 use vars::inspect_dashboard_variables;
 
+fn analyze_args_to_export_args(args: AnalyzeArgs) -> Result<InspectExportArgs> {
+    let input_dir = args
+        .input_dir
+        .ok_or_else(|| message("dashboard analyze local mode requires --input-dir."))?;
+    Ok(InspectExportArgs {
+        input_dir,
+        input_type: args.input_type,
+        input_format: args.input_format,
+        text: args.text,
+        table: args.table,
+        csv: args.csv,
+        json: args.json,
+        yaml: args.yaml,
+        output_format: args.output_format,
+        report_columns: args.report_columns,
+        report_filter_datasource: args.report_filter_datasource,
+        report_filter_panel_id: args.report_filter_panel_id,
+        help_full: args.help_full,
+        no_header: args.no_header,
+        output_file: args.output_file,
+        also_stdout: args.also_stdout,
+        interactive: args.interactive,
+    })
+}
+
+fn analyze_args_to_live_args(args: AnalyzeArgs) -> InspectLiveArgs {
+    InspectLiveArgs {
+        common: args.common,
+        page_size: args.page_size,
+        concurrency: args.concurrency,
+        org_id: args.org_id,
+        all_orgs: args.all_orgs,
+        text: args.text,
+        table: args.table,
+        csv: args.csv,
+        json: args.json,
+        yaml: args.yaml,
+        output_format: args.output_format,
+        report_columns: args.report_columns,
+        report_filter_datasource: args.report_filter_datasource,
+        report_filter_panel_id: args.report_filter_panel_id,
+        progress: args.progress,
+        help_full: args.help_full,
+        no_header: args.no_header,
+        output_file: args.output_file,
+        also_stdout: args.also_stdout,
+        interactive: args.interactive,
+    }
+}
+
+fn request_json_with_client(
+    client: &JsonHttpClient,
+    method: reqwest::Method,
+    path: &str,
+    params: &[(String, String)],
+    payload: Option<&Value>,
+) -> Result<Option<Value>> {
+    client.request_json(method, path, params, payload)
+}
+
+#[allow(unused_imports)]
+pub(crate) use facade_support::{
+    build_datasource_inventory_record, build_folder_path, build_live_dashboard_domain_status,
+    build_live_dashboard_domain_status_from_inputs, collect_folder_inventory_with_request,
+    collect_live_dashboard_project_status_inputs_with_request,
+    fetch_dashboard_if_exists_with_request, fetch_dashboard_permissions_with_request,
+    fetch_dashboard_with_request, fetch_folder_if_exists_with_request,
+    fetch_folder_permissions_with_request, format_folder_inventory_status_line,
+    import_dashboard_request_with_request, list_dashboard_summaries_with_request,
+    list_datasources_with_request, load_builtin_governance_policy, load_governance_policy,
+    load_governance_policy_file, load_governance_policy_source, LiveDashboardProjectStatusInputs,
+};
 pub(crate) use files::{
     build_dashboard_index_item, build_export_metadata, build_import_payload,
     build_preserved_web_import_document, build_root_export_index, build_variant_index,
@@ -134,30 +224,11 @@ pub(crate) use files::{
     load_export_metadata, load_folder_inventory, load_json_file, resolve_dashboard_import_source,
     write_dashboard, write_json_document, ResolvedDashboardImportSource,
 };
-#[allow(unused_imports)]
-pub(crate) use governance_policy::{
-    load_builtin_governance_policy, load_governance_policy, load_governance_policy_file,
-    load_governance_policy_source,
-};
 pub(crate) use inspect::build_export_inspection_summary_for_variant;
 pub(crate) use inspect_live::TempInspectDir;
 pub(crate) use inspect_report::ExportInspectionQueryRow;
 pub(crate) use inspect_summary::{
     build_export_inspection_summary_document, ExportInspectionSummary,
-};
-#[allow(unused_imports)]
-pub(crate) use live::{
-    build_datasource_inventory_record, build_folder_path, collect_folder_inventory_with_request,
-    fetch_dashboard_if_exists_with_request, fetch_dashboard_permissions_with_request,
-    fetch_dashboard_with_request, fetch_folder_if_exists_with_request,
-    fetch_folder_permissions_with_request, format_folder_inventory_status_line,
-    import_dashboard_request_with_request, list_dashboard_summaries_with_request,
-    list_datasources_with_request,
-};
-#[allow(unused_imports)]
-pub(crate) use live_project_status::{
-    build_live_dashboard_domain_status, build_live_dashboard_domain_status_from_inputs,
-    collect_live_dashboard_project_status_inputs_with_request, LiveDashboardProjectStatusInputs,
 };
 pub(crate) use models::{
     DashboardExportRootManifest, DashboardExportRootScopeKind, DashboardIndexItem,
@@ -245,13 +316,14 @@ fn rendered_output_to_lines(output: String) -> Vec<String> {
 pub(crate) fn collect_dashboard_list_summaries(args: &ListArgs) -> Result<Vec<Map<String, Value>>> {
     let mut summaries = Vec::new();
     if args.all_orgs {
-        let admin_client = build_http_client(&args.common)?;
+        let admin_api = build_api_client(&args.common)?;
+        let admin_client = admin_api.http_client();
         let orgs = list::list_orgs_with_request(|method, path, params, payload| {
             admin_client.request_json(method, path, params, payload)
         })?;
         for org in orgs {
             let org_id = list::org_id_value(&org)?;
-            let org_client = build_http_client_for_org(&args.common, org_id)?;
+            let org_client = build_http_client_for_org_from_api(&admin_api, org_id)?;
             let mut scoped = list::collect_list_dashboards_with_request(
                 &mut |method, path, params, payload| {
                     org_client.request_json(method, path, params, payload)
@@ -320,14 +392,14 @@ pub fn execute_dashboard_list(args: &ListArgs) -> Result<DashboardWebRunOutput> 
 
 fn execute_dashboard_inspect_at_path(
     args: &InspectExportArgs,
-    import_dir: &Path,
+    input_dir: &Path,
     expected_variant: &str,
 ) -> Result<DashboardWebRunOutput> {
     inspect::validate_inspect_export_report_args(args)?;
     if let Some(report_format) = inspect::effective_inspect_report_format(args) {
         let report = inspect::apply_query_report_filters(
             inspect::build_export_inspection_query_report_for_variant(
-                import_dir,
+                input_dir,
                 expected_variant,
             )?,
             args.report_filter_datasource.as_deref(),
@@ -335,7 +407,7 @@ fn execute_dashboard_inspect_at_path(
         );
         let rendered = inspect::render_export_inspection_report_output(
             args,
-            import_dir,
+            input_dir,
             expected_variant,
             report_format,
             &report,
@@ -343,7 +415,7 @@ fn execute_dashboard_inspect_at_path(
         let document = match report_format {
             InspectExportReportFormat::Governance | InspectExportReportFormat::GovernanceJson => {
                 let summary = inspect::build_export_inspection_summary_for_variant(
-                    import_dir,
+                    input_dir,
                     expected_variant,
                 )?;
                 serde_json::to_value(
@@ -353,15 +425,15 @@ fn execute_dashboard_inspect_at_path(
                 )?
             }
             InspectExportReportFormat::Dependency | InspectExportReportFormat::DependencyJson => {
-                let metadata = load_export_metadata(import_dir, Some(expected_variant))?;
+                let metadata = load_export_metadata(input_dir, Some(expected_variant))?;
                 let datasource_inventory =
-                    load_datasource_inventory(import_dir, metadata.as_ref())?;
+                    load_datasource_inventory(input_dir, metadata.as_ref())?;
                 crate::dashboard_inspection_dependency_contract::build_offline_dependency_contract_from_report_rows(
                     &report.queries,
                     &datasource_inventory,
                 )
             }
-            InspectExportReportFormat::Json
+            InspectExportReportFormat::QueriesJson
             | InspectExportReportFormat::Tree
             | InspectExportReportFormat::TreeTable
             | InspectExportReportFormat::Csv
@@ -376,7 +448,7 @@ fn execute_dashboard_inspect_at_path(
     }
 
     let summary =
-        inspect::build_export_inspection_summary_for_variant(import_dir, expected_variant)?;
+        inspect::build_export_inspection_summary_for_variant(input_dir, expected_variant)?;
     let rendered = inspect::render_export_inspection_summary_output(args, &summary)?;
     Ok(DashboardWebRunOutput {
         document: serde_json::to_value(build_export_inspection_summary_document(&summary))?,
@@ -386,21 +458,21 @@ fn execute_dashboard_inspect_at_path(
 
 pub fn execute_dashboard_inspect_export(args: &InspectExportArgs) -> Result<DashboardWebRunOutput> {
     let temp_dir = inspect_live::TempInspectDir::new("inspect-export-web")?;
-    let import_dir = inspect::resolve_inspect_export_import_dir(
+    let input_dir = inspect::resolve_inspect_export_import_dir(
         &temp_dir.path,
-        &args.import_dir,
+        &args.input_dir,
         args.input_format,
         args.input_type,
         args.interactive,
     )?;
-    execute_dashboard_inspect_at_path(args, &import_dir.import_dir, import_dir.expected_variant)
+    execute_dashboard_inspect_at_path(args, &input_dir.input_dir, input_dir.expected_variant)
 }
 
 pub fn execute_dashboard_inspect_live(args: &InspectLiveArgs) -> Result<DashboardWebRunOutput> {
     let temp_dir = inspect_live::TempInspectDir::new("inspect-live-web")?;
     let export_args = ExportArgs {
         common: args.common.clone(),
-        export_dir: temp_dir.path.clone(),
+        output_dir: temp_dir.path.clone(),
         page_size: args.page_size,
         org_id: args.org_id,
         all_orgs: args.all_orgs,
@@ -409,6 +481,7 @@ pub fn execute_dashboard_inspect_live(args: &InspectLiveArgs) -> Result<Dashboar
         without_dashboard_raw: false,
         without_dashboard_prompt: true,
         without_dashboard_provisioning: true,
+        include_history: false,
         provisioning_provider_name: "grafana-utils-dashboards".to_string(),
         provisioning_provider_org_id: None,
         provisioning_provider_path: None,
@@ -422,7 +495,7 @@ pub fn execute_dashboard_inspect_live(args: &InspectLiveArgs) -> Result<Dashboar
     let _ = export_dashboards_with_org_clients(&export_args)?;
     let inspect_import_dir = inspect_live::prepare_inspect_live_import_dir(&temp_dir.path, args)?;
     let inspect_args = InspectExportArgs {
-        import_dir: inspect_import_dir,
+        input_dir: inspect_import_dir,
         input_type: None,
         input_format: DashboardImportInputFormat::Raw,
         text: args.text,
@@ -430,7 +503,6 @@ pub fn execute_dashboard_inspect_live(args: &InspectLiveArgs) -> Result<Dashboar
         json: args.json,
         table: args.table,
         yaml: args.yaml,
-        report: args.report,
         output_format: args.output_format,
         report_columns: args.report_columns.clone(),
         report_filter_datasource: args.report_filter_datasource.clone(),
@@ -441,7 +513,7 @@ pub fn execute_dashboard_inspect_live(args: &InspectLiveArgs) -> Result<Dashboar
         also_stdout: false,
         interactive: false,
     };
-    execute_dashboard_inspect_at_path(&inspect_args, &inspect_args.import_dir, RAW_EXPORT_SUBDIR)
+    execute_dashboard_inspect_at_path(&inspect_args, &inspect_args.input_dir, RAW_EXPORT_SUBDIR)
 }
 
 pub fn execute_dashboard_inspect_vars(args: &InspectVarsArgs) -> Result<DashboardWebRunOutput> {
@@ -522,6 +594,10 @@ pub fn run_dashboard_cli_with_client(
         DashboardCommand::CloneLive(clone_args) => {
             clone_live_dashboard_to_file_with_client(client, &clone_args)
         }
+        DashboardCommand::Serve(serve_args) => run_dashboard_serve(&serve_args),
+        DashboardCommand::EditLive(edit_live_args) => {
+            run_dashboard_edit_live(Some(client), &edit_live_args)
+        }
         DashboardCommand::Import(import_args) => {
             let _ = import_dashboards_with_client(client, &import_args)?;
             Ok(())
@@ -530,6 +606,25 @@ pub fn run_dashboard_cli_with_client(
         DashboardCommand::Review(review_args) => review_dashboard_file(&review_args),
         DashboardCommand::Publish(publish_args) => {
             publish_dashboard_with_client(client, &publish_args)
+        }
+        DashboardCommand::Analyze(analyze_args) => {
+            if analyze_args.input_dir.is_some() {
+                let inspect_args = analyze_args_to_export_args(analyze_args)?;
+                if inspect_args.help_full {
+                    print!("{}", render_inspect_export_help_full());
+                    return Ok(());
+                }
+                let _ = analyze_export_dir(&inspect_args)?;
+                Ok(())
+            } else {
+                let inspect_args = analyze_args_to_live_args(analyze_args);
+                if inspect_args.help_full {
+                    print!("{}", render_inspect_live_help_full());
+                    return Ok(());
+                }
+                let _ = inspect_live_dashboards_with_client(client, &inspect_args)?;
+                Ok(())
+            }
         }
         DashboardCommand::Delete(delete_args) => {
             let _ = delete::delete_dashboards_with_client(client, &delete_args)?;
@@ -573,6 +668,28 @@ pub fn run_dashboard_cli_with_client(
         }
         DashboardCommand::Topology(topology_args) => run_dashboard_topology(&topology_args),
         DashboardCommand::Impact(impact_args) => run_dashboard_impact(&impact_args),
+        DashboardCommand::History(history_args) => match history_args.command {
+            DashboardHistorySubcommand::List(list_args) => run_dashboard_history_list(
+                |method, path, params, payload| {
+                    request_json_with_client(client, method, path, params, payload)
+                },
+                &list_args,
+            ),
+            DashboardHistorySubcommand::Restore(restore_args) => run_dashboard_history_restore(
+                |method, path, params, payload| {
+                    request_json_with_client(client, method, path, params, payload)
+                },
+                &restore_args,
+            ),
+            DashboardHistorySubcommand::Export(export_args) => {
+                export_dashboard_history_with_request(
+                    |method, path, params, payload| {
+                        request_json_with_client(client, method, path, params, payload)
+                    },
+                    &export_args,
+                )
+            }
+        },
         DashboardCommand::ValidateExport(validate_args) => {
             run_dashboard_validate_export(&validate_args)
         }
@@ -624,6 +741,11 @@ pub fn run_dashboard_cli(args: DashboardCliArgs) -> Result<()> {
             let client = build_http_client(&clone_args.common)?;
             clone_live_dashboard_to_file_with_client(&client, &clone_args)
         }
+        DashboardCommand::Serve(serve_args) => run_dashboard_serve(&serve_args),
+        DashboardCommand::EditLive(edit_live_args) => {
+            let client = build_http_client(&edit_live_args.common)?;
+            run_dashboard_edit_live(Some(&client), &edit_live_args)
+        }
         DashboardCommand::Import(import_args) => {
             let _ = import::import_dashboards_with_org_clients(&import_args)?;
             Ok(())
@@ -633,6 +755,26 @@ pub fn run_dashboard_cli(args: DashboardCliArgs) -> Result<()> {
         DashboardCommand::Publish(publish_args) => {
             let client = build_http_client(&publish_args.common)?;
             publish_dashboard_with_client(&client, &publish_args)
+        }
+        DashboardCommand::Analyze(analyze_args) => {
+            if analyze_args.input_dir.is_some() {
+                let inspect_args = analyze_args_to_export_args(analyze_args)?;
+                if inspect_args.help_full {
+                    print!("{}", render_inspect_export_help_full());
+                    return Ok(());
+                }
+                let _ = analyze_export_dir(&inspect_args)?;
+                Ok(())
+            } else {
+                let inspect_args = analyze_args_to_live_args(analyze_args);
+                if inspect_args.help_full {
+                    print!("{}", render_inspect_live_help_full());
+                    return Ok(());
+                }
+                let client = build_http_client(&inspect_args.common)?;
+                let _ = inspect_live_dashboards_with_client(&client, &inspect_args)?;
+                Ok(())
+            }
         }
         DashboardCommand::Delete(delete_args) => {
             let _ = delete_dashboards_with_org_clients(&delete_args)?;
@@ -674,6 +816,46 @@ pub fn run_dashboard_cli(args: DashboardCliArgs) -> Result<()> {
         }
         DashboardCommand::Topology(topology_args) => run_dashboard_topology(&topology_args),
         DashboardCommand::Impact(impact_args) => run_dashboard_impact(&impact_args),
+        DashboardCommand::History(history_args) => match history_args.command {
+            DashboardHistorySubcommand::List(list_args) => {
+                if list_args.input.is_some() || list_args.input_dir.is_some() {
+                    run_dashboard_history_list(
+                        |_method, _path, _params, _payload| {
+                            Err(message(
+                                "dashboard history list local mode should not call Grafana",
+                            ))
+                        },
+                        &list_args,
+                    )
+                } else {
+                    let client = build_http_client(&list_args.common)?;
+                    run_dashboard_history_list(
+                        |method, path, params, payload| {
+                            request_json_with_client(&client, method, path, params, payload)
+                        },
+                        &list_args,
+                    )
+                }
+            }
+            DashboardHistorySubcommand::Restore(restore_args) => {
+                let client = build_http_client(&restore_args.common)?;
+                run_dashboard_history_restore(
+                    |method, path, params, payload| {
+                        request_json_with_client(&client, method, path, params, payload)
+                    },
+                    &restore_args,
+                )
+            }
+            DashboardHistorySubcommand::Export(export_args) => {
+                let client = build_http_client(&export_args.common)?;
+                export_dashboard_history_with_request(
+                    |method, path, params, payload| {
+                        request_json_with_client(&client, method, path, params, payload)
+                    },
+                    &export_args,
+                )
+            }
+        },
         DashboardCommand::ValidateExport(validate_args) => {
             run_dashboard_validate_export(&validate_args)
         }
@@ -692,6 +874,9 @@ mod dashboard_cli_rust_tests;
 #[cfg(test)]
 #[path = "rust_tests.rs"]
 mod dashboard_rust_tests;
+#[cfg(test)]
+#[path = "history_cli_rust_tests.rs"]
+mod history_cli_rust_tests;
 #[cfg(test)]
 #[path = "import_rust_tests.rs"]
 mod import_rust_tests;

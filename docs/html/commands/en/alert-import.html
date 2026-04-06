@@ -783,18 +783,18 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="when-to-use">When to use</h2>
 <ul><li>Recreate an exported alert bundle in Grafana.</li><li>Update existing alert resources with <code>--replace-existing</code>.</li><li>Preview import actions before making changes.</li></ul>
 <h2 id="key-flags">Key flags</h2>
-<ul><li><code>--import-dir</code> points at the <code>raw/</code> export directory.</li><li><code>--replace-existing</code> updates resources with matching identities.</li><li><code>--dry-run</code> previews the import.</li><li><code>--json</code> renders dry-run output as structured JSON.</li><li><code>--dashboard-uid-map</code> and <code>--panel-id-map</code> repair linked alert rules during import.</li></ul>
+<ul><li><code>--input-dir</code> points at the <code>raw/</code> export directory.</li><li><code>--replace-existing</code> updates resources with matching identities.</li><li><code>--dry-run</code> previews the import.</li><li><code>--json</code> renders dry-run output as structured JSON.</li><li><code>--dashboard-uid-map</code> and <code>--panel-id-map</code> repair linked alert rules during import.</li></ul>
 <h2 id="before-after">Before / After</h2>
 <ul><li>Before: recreate alert resources manually or paste JSON back into Grafana one object at a time.</li><li>After: import one export bundle and let the command handle the resource set as a unit.</li></ul>
 <h2 id="what-success-looks-like">What success looks like</h2>
 <ul><li>Dry-run output matches the resources you intended to import.</li><li>Live import restores the expected rules, contact points, mute timings, templates, and policies.</li><li>Dashboard-linked alert rules still point at the right dashboards or panels after mapping.</li></ul>
 <h2 id="failure-checks">Failure checks</h2>
-<ul><li>Make sure <code>--import-dir</code> points at the <code>raw/</code> directory, not the parent export folder.</li><li>If dashboard-linked rules move, supply the dashboard and panel mapping flags before importing.</li><li>Use <code>--replace-existing</code> only when you expect to overwrite matching live resources.</li></ul>
+<ul><li>Make sure <code>--input-dir</code> points at the <code>raw/</code> directory, not the parent export folder.</li><li>If dashboard-linked rules move, supply the dashboard and panel mapping flags before importing.</li><li>Use <code>--replace-existing</code> only when you expect to overwrite matching live resources.</li></ul>
 <h2 id="examples">Examples</h2>
 <pre><code># Purpose: Import alerting resource JSON files through the Grafana API.
-grafana-util alert import --url http://localhost:3000 --import-dir ./alerts/raw --replace-existing</code></pre>
+grafana-util alert import --url http://localhost:3000 --input-dir ./alerts/raw --replace-existing</code></pre>
 <pre><code># Purpose: Import alerting resource JSON files through the Grafana API.
-grafana-util alert import --url http://localhost:3000 --import-dir ./alerts/raw --replace-existing --dry-run --json</code></pre>
+grafana-util alert import --url http://localhost:3000 --input-dir ./alerts/raw --replace-existing --dry-run --json</code></pre>
 <h2 id="related-commands">Related commands</h2>
 <ul><li><a href="alert.html">alert</a></li><li><a href="alert-export.html">alert export</a></li><li><a href="alert-diff.html">alert diff</a></li></ul>
     

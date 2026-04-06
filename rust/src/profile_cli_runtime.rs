@@ -2,11 +2,15 @@ use rpassword::prompt_password;
 use std::fs;
 use std::path::Path;
 
-use crate::common::{env_value, message, set_json_color_choice, validation, Result};
+use crate::common::{
+    env_value, message, resolve_auth_headers, set_json_color_choice, validation, Result,
+};
+use crate::dashboard::{SimpleOutputFormat, DEFAULT_TIMEOUT, DEFAULT_URL};
+use crate::http::{JsonHttpClient, JsonHttpClientConfig};
 use crate::profile_config::{
     default_profile_config_path, load_profile_config_file, render_profile_init_template,
-    resolve_profile_config_path, save_profile_config_file, select_profile, ConnectionProfile,
-    ProfileConfigFile, SelectedProfile,
+    resolve_connection_settings, resolve_profile_config_path, save_profile_config_file,
+    select_profile, ConnectionMergeInput, ConnectionProfile, ProfileConfigFile, SelectedProfile,
 };
 use crate::profile_secret_store::{
     ensure_owner_only_permissions, normalize_secret_ref_path, resolve_secret_file_path,
@@ -15,12 +19,17 @@ use crate::profile_secret_store::{
 };
 
 use super::profile_cli_defs::{
-    ProfileAddArgs, ProfileCliArgs, ProfileCommand, ProfileExampleArgs, ProfileInitArgs,
-    ProfileSecretStorageMode, ProfileShowArgs,
+    ProfileAddArgs, ProfileCliArgs, ProfileCommand, ProfileCurrentArgs, ProfileExampleArgs,
+    ProfileInitArgs, ProfileSecretStorageMode, ProfileShowArgs, ProfileValidateArgs,
 };
 use super::profile_cli_render::{
-    build_display_profile, render_profile_csv, render_profile_example, render_profile_json,
-    render_profile_table, render_profile_text, render_profile_yaml,
+    build_display_profile, detect_profile_auth_mode, detect_profile_secret_mode,
+    render_profile_csv, render_profile_current_csv, render_profile_current_json,
+    render_profile_current_table, render_profile_current_text, render_profile_current_yaml,
+    render_profile_example, render_profile_json, render_profile_table, render_profile_text,
+    render_profile_validate_csv, render_profile_validate_json, render_profile_validate_table,
+    render_profile_validate_text, render_profile_validate_yaml, render_profile_yaml,
+    ProfileCurrentDocument, ProfileValidateCheck, ProfileValidateDocument,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -34,6 +43,7 @@ pub(crate) struct ProfileAddOutcome {
     pub(crate) action: ProfileAddAction,
     pub(crate) default_set: bool,
     pub(crate) local_key_warning: bool,
+    pub(crate) gitignore_updated: bool,
 }
 
 fn load_profile_config_at_resolved_path() -> Result<(std::path::PathBuf, ProfileConfigFile)> {
@@ -103,6 +113,76 @@ fn resolve_add_secret_value(
 
 fn build_profile_store_key(profile_name: &str, field_name: &str) -> String {
     format!("grafana-util/profile/{profile_name}/{field_name}")
+}
+
+fn relative_gitignore_entry(base_dir: &Path, path: &Path) -> Option<String> {
+    let relative = path.strip_prefix(base_dir).ok()?;
+    let rendered = relative.to_string_lossy().replace('\\', "/");
+    if rendered.is_empty() {
+        None
+    } else {
+        Some(rendered)
+    }
+}
+
+fn ensure_secret_paths_gitignored(config_path: &Path, secret_file_path: &Path) -> Result<bool> {
+    let base_dir = config_path.parent().unwrap_or_else(|| Path::new("."));
+    let mut entries = Vec::new();
+    if let Some(secret_entry) = relative_gitignore_entry(base_dir, secret_file_path) {
+        entries.push(secret_entry);
+    }
+    let key_path = resolve_secret_key_path(secret_file_path);
+    if let Some(key_entry) = relative_gitignore_entry(base_dir, &key_path) {
+        entries.push(key_entry);
+    }
+    entries.sort();
+    entries.dedup();
+    if entries.is_empty() {
+        return Ok(false);
+    }
+
+    let gitignore_path = base_dir.join(".gitignore");
+    let existing = if gitignore_path.exists() {
+        fs::read_to_string(&gitignore_path).map_err(|error| {
+            message(format!(
+                "Failed to read {}: {error}",
+                gitignore_path.display()
+            ))
+        })?
+    } else {
+        String::new()
+    };
+    let existing_lines: Vec<&str> = existing.lines().collect();
+    let missing_entries: Vec<String> = entries
+        .into_iter()
+        .filter(|entry| !existing_lines.iter().any(|line| *line == entry))
+        .collect();
+    if missing_entries.is_empty() {
+        return Ok(false);
+    }
+    if let Some(parent) = gitignore_path.parent() {
+        fs::create_dir_all(parent).map_err(|error| {
+            message(format!(
+                "Failed to create .gitignore directory {}: {error}",
+                parent.display()
+            ))
+        })?;
+    }
+    let mut rendered = existing;
+    if !rendered.is_empty() && !rendered.ends_with('\n') {
+        rendered.push('\n');
+    }
+    for entry in missing_entries {
+        rendered.push_str(&entry);
+        rendered.push('\n');
+    }
+    fs::write(&gitignore_path, rendered).map_err(|error| {
+        message(format!(
+            "Failed to update {}: {error}",
+            gitignore_path.display()
+        ))
+    })?;
+    Ok(true)
 }
 
 fn validate_profile_add_args(args: &ProfileAddArgs) -> Result<()> {
@@ -354,6 +434,11 @@ pub(crate) fn apply_profile_add_with_store<S: OsSecretStore>(
         args.set_default,
     )?;
     save_profile_config_file(config_path, &config)?;
+    let gitignore_updated = if let Some(secret_file_path) = effective_secret_file_path.as_deref() {
+        ensure_secret_paths_gitignored(config_path, secret_file_path)?
+    } else {
+        false
+    };
     Ok(ProfileAddOutcome {
         action: if existed {
             ProfileAddAction::Updated
@@ -362,6 +447,7 @@ pub(crate) fn apply_profile_add_with_store<S: OsSecretStore>(
         },
         default_set: config.default_profile.as_deref() == Some(args.name.as_str()),
         local_key_warning,
+        gitignore_updated,
     })
 }
 
@@ -421,6 +507,185 @@ fn run_profile_show(args: ProfileShowArgs) -> Result<()> {
     Ok(())
 }
 
+fn render_profile_current(
+    document: &ProfileCurrentDocument,
+    output_format: SimpleOutputFormat,
+) -> Result<()> {
+    match output_format {
+        SimpleOutputFormat::Text => println!("{}", render_profile_current_text(document)),
+        SimpleOutputFormat::Table => {
+            for line in render_profile_current_table(document) {
+                println!("{line}");
+            }
+        }
+        SimpleOutputFormat::Csv => {
+            for line in render_profile_current_csv(document) {
+                println!("{line}");
+            }
+        }
+        SimpleOutputFormat::Json => println!("{}", render_profile_current_json(document)?),
+        SimpleOutputFormat::Yaml => println!("{}", render_profile_current_yaml(document)?),
+    }
+    Ok(())
+}
+
+fn run_profile_current(args: ProfileCurrentArgs) -> Result<()> {
+    let config_path = resolve_profile_config_path();
+    let document = if config_path.exists() {
+        let config = load_profile_config_file(&config_path)?;
+        if let Some(selected) = select_profile(&config, args.profile.as_deref(), &config_path)? {
+            ProfileCurrentDocument {
+                config_path,
+                config_exists: true,
+                selected_profile: Some(selected.name.clone()),
+                auth_mode: detect_profile_auth_mode(&selected.profile).to_string(),
+                secret_mode: detect_profile_secret_mode(&selected.profile).to_string(),
+                profile: Some(selected.profile),
+            }
+        } else {
+            ProfileCurrentDocument {
+                config_path,
+                config_exists: true,
+                selected_profile: None,
+                auth_mode: "none".to_string(),
+                secret_mode: "none".to_string(),
+                profile: None,
+            }
+        }
+    } else {
+        ProfileCurrentDocument {
+            config_path,
+            config_exists: false,
+            selected_profile: None,
+            auth_mode: "none".to_string(),
+            secret_mode: "none".to_string(),
+            profile: None,
+        }
+    };
+    render_profile_current(&document, args.output_format)
+}
+
+fn render_profile_validate(
+    document: &ProfileValidateDocument,
+    output_format: SimpleOutputFormat,
+) -> Result<()> {
+    match output_format {
+        SimpleOutputFormat::Text => println!("{}", render_profile_validate_text(document)),
+        SimpleOutputFormat::Table => {
+            for line in render_profile_validate_table(document) {
+                println!("{line}");
+            }
+        }
+        SimpleOutputFormat::Csv => {
+            for line in render_profile_validate_csv(document) {
+                println!("{line}");
+            }
+        }
+        SimpleOutputFormat::Json => println!("{}", render_profile_validate_json(document)?),
+        SimpleOutputFormat::Yaml => println!("{}", render_profile_validate_yaml(document)?),
+    }
+    Ok(())
+}
+
+fn run_profile_validate(args: ProfileValidateArgs) -> Result<()> {
+    let (config_path, config) = load_profile_config_at_resolved_path()?;
+    let selected = select_profile_or_error(&config, args.profile.as_deref(), &config_path)?;
+    let auth_mode = detect_profile_auth_mode(&selected.profile).to_string();
+    let secret_mode = detect_profile_secret_mode(&selected.profile).to_string();
+    let resolved = resolve_connection_settings(
+        ConnectionMergeInput {
+            url: DEFAULT_URL,
+            url_default: DEFAULT_URL,
+            api_token: None,
+            username: None,
+            password: None,
+            org_id: None,
+            timeout: DEFAULT_TIMEOUT,
+            timeout_default: DEFAULT_TIMEOUT,
+            verify_ssl: false,
+            insecure: false,
+            ca_cert: None,
+        },
+        Some(&selected),
+    )?;
+
+    let mut checks = vec![
+        ProfileValidateCheck {
+            name: "selection".to_string(),
+            status: "ok".to_string(),
+            message: format!(
+                "Selected profile `{}` from {}.",
+                selected.name,
+                config_path.display()
+            ),
+        },
+        ProfileValidateCheck {
+            name: "auth".to_string(),
+            status: "ok".to_string(),
+            message: format!(
+                "Resolved {} authentication for {}.",
+                auth_mode, resolved.url
+            ),
+        },
+        ProfileValidateCheck {
+            name: "secrets".to_string(),
+            status: "ok".to_string(),
+            message: format!("Resolved secret mode `{secret_mode}`."),
+        },
+    ];
+
+    if args.live {
+        let headers = resolve_auth_headers(
+            resolved.api_token.as_deref(),
+            resolved.username.as_deref(),
+            resolved.password.as_deref(),
+            false,
+            false,
+        )?;
+        let client = if let Some(ca_cert) = resolved.ca_cert.as_deref() {
+            JsonHttpClient::new_with_ca_cert(
+                JsonHttpClientConfig {
+                    base_url: resolved.url.clone(),
+                    headers,
+                    timeout_secs: resolved.timeout,
+                    verify_ssl: resolved.verify_ssl,
+                },
+                Some(ca_cert),
+            )?
+        } else {
+            JsonHttpClient::new(JsonHttpClientConfig {
+                base_url: resolved.url.clone(),
+                headers,
+                timeout_secs: resolved.timeout,
+                verify_ssl: resolved.verify_ssl,
+            })?
+        };
+        let health = client.request_json(reqwest::Method::GET, "/api/health", &[], None)?;
+        let message = health
+            .as_ref()
+            .and_then(|value| value.get("database"))
+            .and_then(serde_json::Value::as_str)
+            .map(|database| format!("Grafana /api/health succeeded; database={database}."))
+            .unwrap_or_else(|| "Grafana /api/health succeeded.".to_string());
+        checks.push(ProfileValidateCheck {
+            name: "live".to_string(),
+            status: "ok".to_string(),
+            message,
+        });
+    }
+
+    let document = ProfileValidateDocument {
+        config_path,
+        profile: selected.name,
+        valid: true,
+        live_checked: args.live,
+        auth_mode,
+        secret_mode,
+        checks,
+    };
+    render_profile_validate(&document, args.output_format)
+}
+
 fn run_profile_add(args: ProfileAddArgs) -> Result<()> {
     let config_path = resolve_profile_config_path();
     let outcome = apply_profile_add_with_store(&args, &config_path, &SystemOsSecretStore)?;
@@ -443,6 +708,14 @@ fn run_profile_add(args: ProfileAddArgs) -> Result<()> {
     if outcome.local_key_warning {
         println!(
             "Stored secrets in encrypted-file mode without a passphrase. This protects against casual disclosure, not local account compromise."
+        );
+        println!(
+            "Prefer --prompt-secret-passphrase or --secret-passphrase-env when the secret should stay portable or resist local key-file exposure."
+        );
+    }
+    if outcome.gitignore_updated {
+        println!(
+            "Updated .gitignore to ignore encrypted secret helper files in the profile config directory."
         );
     }
     println!(
@@ -484,6 +757,8 @@ pub fn run_profile_cli(args: ProfileCliArgs) -> Result<()> {
     match args.command {
         ProfileCommand::List(_) => run_profile_list(),
         ProfileCommand::Show(show_args) => run_profile_show(show_args),
+        ProfileCommand::Current(current_args) => run_profile_current(current_args),
+        ProfileCommand::Validate(validate_args) => run_profile_validate(validate_args),
         ProfileCommand::Add(add_args) => run_profile_add(add_args.as_ref().clone()),
         ProfileCommand::Init(init_args) => run_profile_init(init_args),
         ProfileCommand::Example(example_args) => run_profile_example(example_args),

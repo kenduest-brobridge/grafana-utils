@@ -35,7 +35,7 @@ This page is for on-call operators and SREs who need a repeatable way to check r
 
 - Run a live readiness check before a maintenance window.
 - Inspect dashboards or datasources across visible orgs.
-- Build staged summaries and preflight documents before an apply path.
+- Inspect, check, and preview staged changes before an apply path.
 - Export or review assets during backup, drift review, or break-glass recovery.
 
 ## Recommended connection and secret handling
@@ -60,17 +60,22 @@ grafana-util overview live --profile prod --output-format interactive
 
 ```bash
 # Purpose: First commands to run.
-grafana-util change summary --desired-file ./desired.json
+grafana-util change inspect --workspace .
 ```
 
 ```bash
 # Purpose: First commands to run.
-grafana-util change preflight --desired-file ./desired.json --fetch-live --output-format json
+grafana-util change check --workspace . --fetch-live --output-format json
 ```
 
 ```bash
 # Purpose: First commands to run.
-grafana-util dashboard export --export-dir ./backups --overwrite --progress
+grafana-util change preview --workspace . --fetch-live --output-format json
+```
+
+```bash
+# Purpose: First commands to run.
+grafana-util dashboard export --output-dir ./backups --overwrite --progress
 ```
 
 If you need to start from the access layer instead, swap the last line for:
@@ -129,7 +134,7 @@ You are in a good operator posture when:
 - Do not paste `--basic-password` into shared shell history unless you are deliberately in a throwaway session.
 - Do not use `--show-secrets` outside a local, controlled inspection step.
 - Do not treat a successful read-only check as proof that write or admin workflows will also work.
-- Do not skip `change preflight`, `change plan`, or command-specific `--dry-run` paths before high-impact changes.
+- Do not skip `change check`, `change preview`, or command-specific `--dry-run` paths before high-impact changes.
 
 ## When to switch to deeper docs
 

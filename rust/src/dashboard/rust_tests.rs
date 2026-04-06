@@ -183,14 +183,14 @@ where
     }
 }
 
-pub(crate) fn make_import_args(import_dir: PathBuf) -> ImportArgs {
+pub(crate) fn make_import_args(input_dir: PathBuf) -> ImportArgs {
     ImportArgs {
         common: make_common_args("http://127.0.0.1:3000".to_string()),
         org_id: None,
         use_export_org: false,
         only_org_id: Vec::new(),
         create_missing_orgs: false,
-        import_dir,
+        input_dir,
         input_format: DashboardImportInputFormat::Raw,
         import_folder_uid: None,
         ensure_folders: false,
@@ -225,6 +225,12 @@ fn dashboard_export_root_manifest_classifies_root_scopes() {
         Some("Main Org."),
         Some("1"),
         None,
+        "live",
+        Some("http://127.0.0.1:3000"),
+        None,
+        None,
+        std::path::Path::new("/tmp/dashboard-root"),
+        std::path::Path::new("/tmp/dashboard-root/export-metadata.json"),
     ));
     assert_eq!(org_root.scope_kind, DashboardExportRootScopeKind::OrgRoot);
 
@@ -244,8 +250,14 @@ fn dashboard_export_root_manifest_classifies_root_scopes() {
             datasource_count: None,
             used_datasource_count: None,
             used_datasources: None,
-            export_dir: None,
+            output_dir: None,
         }]),
+        "live",
+        Some("http://127.0.0.1:3000"),
+        None,
+        None,
+        std::path::Path::new("/tmp/dashboard-root"),
+        std::path::Path::new("/tmp/dashboard-root/export-metadata.json"),
     ));
     assert_eq!(
         all_orgs_root.scope_kind,
@@ -297,10 +309,11 @@ fn resolve_dashboard_export_root_detects_workspace_wrapper_root() {
     let temp = tempdir().unwrap();
     let workspace_root = temp.path().join("workspace");
     let dashboard_root = workspace_root.join("dashboards");
+    let metadata_path = dashboard_root.join(EXPORT_METADATA_FILENAME);
     fs::create_dir_all(workspace_root.join("datasources")).unwrap();
     fs::create_dir_all(dashboard_root.join("org_1_Main_Org").join("raw")).unwrap();
     fs::write(
-        dashboard_root.join(EXPORT_METADATA_FILENAME),
+        &metadata_path,
         serde_json::to_string_pretty(&build_export_metadata(
             "root",
             1,
@@ -317,8 +330,14 @@ fn resolve_dashboard_export_root_detects_workspace_wrapper_root() {
                 datasource_count: None,
                 used_datasource_count: None,
                 used_datasources: None,
-                export_dir: None,
+                output_dir: None,
             }]),
+            "local",
+            None,
+            Some(std::path::Path::new("/tmp/workspace")),
+            None,
+            std::path::Path::new("/tmp/workspace/dashboards"),
+            &metadata_path,
         ))
         .unwrap(),
     )
@@ -515,12 +534,12 @@ pub(crate) fn write_combined_export_root_metadata(export_root: &Path, orgs: &[(&
     fs::create_dir_all(export_root).unwrap();
     let org_entries: Vec<Value> = orgs
         .iter()
-        .map(|(org_id, org_name, export_dir)| {
+        .map(|(org_id, org_name, output_dir)| {
             json!({
                 "org": org_name,
                 "orgId": org_id,
                 "dashboardCount": 1,
-                "exportDir": export_dir
+                "exportDir": output_dir
             })
         })
         .collect();
@@ -1050,7 +1069,7 @@ fn list_dashboards_with_request_all_orgs_aggregates_results() {
         page_size: 500,
         org_id: None,
         all_orgs: true,
-        with_sources: false,
+        show_sources: false,
         output_columns: Vec::new(),
         text: false,
         table: false,

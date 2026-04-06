@@ -21,7 +21,7 @@ This guide is for operators who need to inventory dashboards, export or import t
 
 ## What success looks like
 
-- You know whether the current task belongs in list, export, inspect, topology, screenshot, or import.
+- You know whether the current task belongs in inventory, single-dashboard authoring, export/import replay, inspect, topology, or screenshot.
 - You can explain which lane you are using before mutating anything.
 - You can prove the dashboard is ready to replay or publish before you touch live state.
 
@@ -31,6 +31,61 @@ This guide is for operators who need to inventory dashboards, export or import t
 - If inspect output shows missing queries or variables, stop and resolve that before import.
 - If you cannot explain what a screenshot or topology output is proving, you are probably in the wrong workflow lane.
 
+## Draft authoring workflow
+
+Use the authoring lane when the work starts from one dashboard draft instead of a full export tree.
+
+- Start from a live draft with `dashboard fetch-live` or `dashboard clone-live` when Grafana already has the closest source dashboard.
+- Use `dashboard serve` when you want a lightweight local preview browser for one draft file, one draft directory, or one generator script output while you edit.
+- Use `dashboard review` before mutation to confirm title, UID, tags, folder UID, and any blocking validation issues.
+- Use `dashboard patch-file` when you need to rewrite one local draft in place or write a new patched file.
+- Use `dashboard edit-live` when you want to fetch one live dashboard into an external editor, get a review summary with validation blockers, and keep a safe local-draft default instead of immediately mutating Grafana.
+- Use `dashboard publish` when the draft is ready to go back through the same import pipeline used by the broader replay path.
+
+Generator-driven teams do not need to stop at an intermediate temp file for every review or publish step.
+
+```bash
+# Purpose: Review one generated dashboard from standard input.
+jsonnet dashboards/cpu.jsonnet | grafana-util dashboard review --input - --output-format json
+```
+
+```bash
+# Purpose: Publish one generated dashboard from standard input.
+jsonnet dashboards/cpu.jsonnet | grafana-util dashboard publish --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --input - --replace-existing
+```
+
+If you are editing one local draft repeatedly, use `dashboard publish --watch` with a file path instead of `--input -`. Watch mode reruns publish or dry-run after each stabilized save and keeps watching even if one iteration fails validation or the API call.
+
+```bash
+# Purpose: Re-run dry-run publish after each save while editing one local draft.
+grafana-util dashboard publish --url http://localhost:3000 --basic-user admin --basic-password admin --input ./drafts/cpu-main.json --dry-run --watch
+```
+
+```bash
+# Purpose: Keep one draft open in a lightweight local preview browser while you edit.
+grafana-util dashboard serve --input ./drafts/cpu-main.json --port 18080 --open-browser
+```
+
+```bash
+# Purpose: Fetch one live dashboard into an external editor and keep the result as a local draft by default.
+grafana-util dashboard edit-live --profile prod --dashboard-uid cpu-main --output ./drafts/cpu-main.edited.json
+```
+
+`dashboard patch-file --input -` requires `--output` because standard input cannot be overwritten in place.
+If you target Grafana's built-in General folder, `dashboard publish` normalizes that back to the default root publish path instead of sending a literal `general` folder UID.
+`dashboard serve` is intentionally a lightweight preview/document-inspection surface, not a full embedded Grafana renderer.
+
+## History and recovery
+
+When you are trying to recover a known-good dashboard version, use the history lane instead of rebuilding JSON by hand.
+
+- [dashboard history](../../commands/en/dashboard-history.md)
+- `dashboard history list` shows the recent revisions for one dashboard UID.
+- `dashboard history restore` copies one historical version forward as a new latest Grafana revision entry.
+- `dashboard history export` writes a reusable revision-history artifact for review or CI.
+
+Restore is not a destructive overwrite. The selected historical version stays in history, and the restored copy becomes the new current revision.
+
 > **Operator-First Design**: This tool treats dashboards as version-controlled assets. The goal is to move and govern dashboard state safely, with enough visibility to decide whether a file is ready to replay, patch, or promote.
 
 ## 🔗 Command Pages
@@ -39,20 +94,23 @@ Need the command-by-command surface instead of the workflow guide?
 
 - [dashboard command overview](../../commands/en/dashboard.md)
 - [dashboard browse](../../commands/en/dashboard-browse.md)
-- [dashboard get](../../commands/en/dashboard-get.md)
+- [dashboard fetch-live](../../commands/en/dashboard-fetch-live.md)
 - [dashboard clone-live](../../commands/en/dashboard-clone-live.md)
 - [dashboard list](../../commands/en/dashboard-list.md)
 - [dashboard export](../../commands/en/dashboard-export.md)
 - [dashboard import](../../commands/en/dashboard-import.md)
 - [dashboard raw-to-prompt](../../commands/en/dashboard-raw-to-prompt.md)
 - [dashboard patch-file](../../commands/en/dashboard-patch-file.md)
+- [dashboard serve](../../commands/en/dashboard-serve.md)
+- [dashboard edit-live](../../commands/en/dashboard-edit-live.md)
 - [dashboard review](../../commands/en/dashboard-review.md)
 - [dashboard publish](../../commands/en/dashboard-publish.md)
 - [dashboard delete](../../commands/en/dashboard-delete.md)
 - [dashboard diff](../../commands/en/dashboard-diff.md)
-- [dashboard inspect-export](../../commands/en/dashboard-inspect-export.md)
-- [dashboard inspect-live](../../commands/en/dashboard-inspect-live.md)
-- [dashboard inspect-vars](../../commands/en/dashboard-inspect-vars.md)
+- [dashboard analyze (local)](../../commands/en/dashboard-analyze-export.md)
+- [dashboard analyze (live)](../../commands/en/dashboard-analyze-live.md)
+- [dashboard list-vars](../../commands/en/dashboard-list-vars.md)
+- [dashboard history](../../commands/en/dashboard-history.md)
 - [dashboard governance-gate](../../commands/en/dashboard-governance-gate.md)
 - [dashboard topology](../../commands/en/dashboard-topology.md)
 - [dashboard screenshot](../../commands/en/dashboard-screenshot.md)
@@ -76,9 +134,9 @@ Use the dashboard area for estate-level governance:
 
 If your goal is not export or import, but understanding what a dashboard currently looks like, which dependencies it carries, and how variables resolve, start here.
 
-- `dashboard inspect-live`: inspect one live dashboard's structure, queries, and dependencies.
-- `dashboard inspect-export`: inspect an exported dashboard file offline.
-- `dashboard inspect-vars`: verify variables, datasource choices, and URL-scoped inputs.
+- `dashboard analyze (live)`: analyze one live dashboard's structure, queries, and dependencies.
+- `dashboard analyze (local)`: analyze an exported dashboard tree offline.
+- `dashboard list-vars`: verify variables, datasource choices, and URL-scoped inputs.
 - `dashboard screenshot`: generate a reproducible dashboard or panel capture with a headless browser.
 - `dashboard topology`: trace the dashboard's upstream relationships at a glance.
 
@@ -101,6 +159,10 @@ Dashboard export intentionally produces three different "lanes" because each ser
 | `prompt/` | **UI Import** | Compatible with the Grafana UI "Upload JSON" feature. If you only have ordinary or raw dashboard JSON, convert it first with `grafana-util dashboard raw-to-prompt`. |
 | `provisioning/` | **File Provisioning** | When Grafana should read dashboards from disk via its internal provisioning system. |
 
+If you add `--include-history` to `dashboard export`, the export tree also gains a `history/` subdirectory for each org scope. In `--all-orgs` mode, that becomes one history tree per exported org root.
+
+Use `dashboard history export` when you need a standalone JSON artifact for one dashboard UID. Use `dashboard export --include-history` when you want history artifacts bundled alongside the export tree.
+
 ---
 
 ## 🔤 Prompt Placeholder Notes
@@ -118,7 +180,7 @@ Dashboard export intentionally produces three different "lanes" because each ser
 - **Staged Work**: Local export trees, validation, offline inspection, and dry-run reviews.
 - **Live Work**: Grafana-backed inventory, live diffs, imports, and deletions.
 
-**The Golden Rule**: Start with `list` or `browse` to discover, `export` to a staged tree, `inspect` and `diff` to verify, and only then `import` or `delete` after a matching dry-run.
+**The Golden Rule**: Start with `list` or `browse` to discover, `export` to a staged tree, `analyze` and `diff` to verify, and only then `import` or `delete` after a matching dry-run.
 
 ---
 
@@ -155,16 +217,17 @@ spring-jmx-node-unified  Spring JMX + Node Unified Dashboard (VM)  Demo    ffhrm
 | Command | Full Example with Arguments |
 | :--- | :--- |
 | **List** | `grafana-util dashboard list --all-orgs --with-sources --table` |
-| **Export** | `grafana-util dashboard export --export-dir ./dashboards --overwrite --progress` |
+| **Export** | `grafana-util dashboard export --output-dir ./dashboards --overwrite --progress` |
+| **Export + History** | `grafana-util dashboard export --output-dir ./dashboards --include-history --overwrite --progress` |
 | **Raw to Prompt** | `grafana-util dashboard raw-to-prompt --input-dir ./dashboards/raw --output-dir ./dashboards/prompt --overwrite --progress` |
-| **Import** | `grafana-util dashboard import --import-dir ./dashboards/raw --replace-existing --dry-run --table` |
-| **Diff** | `grafana-util dashboard diff --import-dir ./dashboards/raw --input-format raw` |
-| **Inspect** | `grafana-util dashboard inspect-export --import-dir ./dashboards/raw --output-format report-table` |
+| **Import** | `grafana-util dashboard import --input-dir ./dashboards/raw --replace-existing --dry-run --table` |
+| **Diff** | `grafana-util dashboard diff --input-dir ./dashboards/raw --input-format raw` |
+| **Analyze** | `grafana-util dashboard analyze --input-dir ./dashboards/raw --input-format raw --output-format dependency` |
 | **Delete** | `grafana-util dashboard delete --uid <UID> --url <URL> --basic-user admin --basic-password admin` |
-| **Inspect Vars** | `grafana-util dashboard inspect-vars --uid <UID> --url <URL> --table` |
-| **Patch File** | `grafana-util dashboard patch-file --input <FILE> --title "New Title" --output <FILE>` |
+| **List Vars** | `grafana-util dashboard list-vars --uid <UID> --url <URL> --table` |
+| **Patch File** | `grafana-util dashboard patch-file --input <FILE> --name "New Title" --output <FILE>` |
 | **Publish** | `grafana-util dashboard publish --input <FILE> --url <URL> --basic-user admin --basic-password admin` |
-| **Clone Live** | `grafana-util dashboard clone-live --uid <UID> --output <FILE> --url <URL>` |
+| **Clone Live** | `grafana-util dashboard clone-live --source-uid <UID> --output <FILE> --url <URL>` |
 
 ---
 
@@ -174,7 +237,7 @@ spring-jmx-node-unified  Spring JMX + Node Unified Dashboard (VM)  Demo    ffhrm
 Use `--progress` for a clean log during large estate exports.
 ```bash
 # Purpose: Use --progress for a clean log during large estate exports.
-grafana-util dashboard export --export-dir ./dashboards --overwrite --progress
+grafana-util dashboard export --output-dir ./dashboards --overwrite --progress
 ```
 **Output Excerpt:**
 ```text
@@ -188,7 +251,7 @@ Exporting dashboard 7/7: two-prom-query-smoke
 Always confirm the destination action before mutation.
 ```bash
 # Purpose: Always confirm the destination action before mutation.
-grafana-util dashboard import --import-dir ./dashboards/raw --dry-run --table
+grafana-util dashboard import --input-dir ./dashboards/raw --dry-run --table
 ```
 **Output Excerpt:**
 ```text
@@ -206,7 +269,7 @@ subfolder-chain-smoke  missing      create  Platform / Team / Apps / Prod  ./das
 Compare your local provisioning files against live state.
 ```bash
 # Purpose: Compare your local provisioning files against live state.
-grafana-util dashboard diff --import-dir ./dashboards/provisioning --input-format provisioning
+grafana-util dashboard diff --input-dir ./dashboards/provisioning --input-format provisioning
 ```
 **Output Excerpt:**
 ```text

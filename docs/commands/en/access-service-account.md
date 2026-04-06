@@ -2,11 +2,12 @@
 
 ## Purpose
 
-List, create, export, import, diff, or delete Grafana service accounts, and manage their tokens.
+List live or local Grafana service accounts, create, export, import, diff, or delete Grafana service accounts, and manage their tokens.
 
 ## When to use
 
 - Inspect service-account inventory.
+- Inspect service accounts from a live Grafana server or from a local export bundle.
 - Create or update service-account bundles.
 - Generate or delete service-account tokens.
 
@@ -29,10 +30,10 @@ List, create, export, import, diff, or delete Grafana service accounts, and mana
 
 ## Key flags
 
-- `list`: `--query`, `--page`, `--per-page`, `--table`, `--csv`, `--json`, `--yaml`, `--output-format`
+- `list`: `--input-dir`, `--query`, `--page`, `--per-page`, `--table`, `--csv`, `--json`, `--yaml`, `--output-format`
 - `add`: `--name`, `--role`, `--disabled`, `--json`
-- `export` and `diff`: `--export-dir` or `--diff-dir`, `--overwrite`, `--dry-run`
-- `import`: `--import-dir`, `--replace-existing`, `--dry-run`, `--table`, `--json`, `--output-format`, `--yes`
+- `export` and `diff`: `--output-dir` or `--diff-dir`, `--overwrite`, `--dry-run`
+- `import`: `--input-dir`, `--replace-existing`, `--dry-run`, `--table`, `--json`, `--output-format`, `--yes`
 - `delete`: `--name`, `--yes`, `--json`
 - `token add`: `--service-account-id` or `--name`, `--token-name`, `--seconds-to-live`, `--json`
 - `token delete`: `--service-account-id` or `--name`, `--token-name`, `--yes`, `--json`
@@ -42,6 +43,11 @@ List, create, export, import, diff, or delete Grafana service accounts, and mana
 ```bash
 # Purpose: Inspect service accounts before creating or deleting a token.
 grafana-util access service-account list --url http://localhost:3000 --basic-user admin --basic-password admin --output-format text
+```
+
+```bash
+# Purpose: Review a saved service-account bundle before replaying it.
+grafana-util access service-account list --input-dir ./access-service-accounts --output-format table
 ```
 
 ```bash

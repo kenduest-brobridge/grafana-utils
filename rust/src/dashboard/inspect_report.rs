@@ -99,7 +99,7 @@ pub(crate) struct ExportInspectionQueryRow {
 /// Struct definition for ExportInspectionQueryReport.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub(crate) struct ExportInspectionQueryReport {
-    pub(crate) import_dir: String,
+    pub(crate) input_dir: String,
     pub(crate) summary: QueryReportSummary,
     pub(crate) queries: Vec<ExportInspectionQueryRow>,
 }
@@ -153,7 +153,7 @@ pub(crate) struct GroupedQueryDashboard {
 /// Struct definition for NormalizedQueryReport.
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct NormalizedQueryReport {
-    pub(crate) import_dir: String,
+    pub(crate) input_dir: String,
     pub(crate) summary: QueryReportSummary,
     pub(crate) dashboards: Vec<GroupedQueryDashboard>,
 }
@@ -280,14 +280,14 @@ fn normalize_report_column_id(value: &str) -> &str {
 
 /// Purpose: implementation note.
 pub(crate) fn build_query_report(
-    import_dir: String,
+    input_dir: String,
     dashboard_count: usize,
     panel_count: usize,
     query_count: usize,
     queries: Vec<ExportInspectionQueryRow>,
 ) -> ExportInspectionQueryReport {
     ExportInspectionQueryReport {
-        import_dir,
+        input_dir,
         summary: QueryReportSummary {
             dashboard_count,
             panel_count,
@@ -617,7 +617,7 @@ pub(crate) fn normalize_query_report(
         panels[panel_index].queries.push(row.clone());
     }
     NormalizedQueryReport {
-        import_dir: report.import_dir.clone(),
+        input_dir: report.input_dir.clone(),
         summary: report.summary.clone(),
         dashboards,
     }

@@ -126,9 +126,9 @@
 
 想看原始碼、版本發布或回報問題時，直接從這裡進去。
 
-- [瀏覽 GitHub repository](https://github.com/kenduest-brobridge/grafana-utils)
-- [查看 Releases](https://github.com/kenduest-brobridge/grafana-utils/releases)
-- [回報問題](https://github.com/kenduest-brobridge/grafana-utils/issues)
+- [瀏覽 GitHub repository](https://github.com/kenduest-brobridge/grafana-util)
+- [查看 Releases](https://github.com/kenduest-brobridge/grafana-util/releases)
+- [回報問題](https://github.com/kenduest-brobridge/grafana-util/issues)
 
 ## 維護者
 

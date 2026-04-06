@@ -7,7 +7,6 @@
 //!   falls back to `org_<id>_<name>` directory names only when the bundle lacks
 //!   stable org fields.
 
-use reqwest::Method;
 use serde::Deserialize;
 use serde_json::{Map, Value};
 use std::collections::BTreeSet;
@@ -16,6 +15,7 @@ use std::path::{Path, PathBuf};
 
 use crate::common::{message, string_field, Result};
 use crate::dashboard::DEFAULT_ORG_ID;
+use crate::grafana_api::DatasourceResourceClient;
 use crate::http::JsonHttpClient;
 
 use super::datasource_export_support::{
@@ -268,7 +268,7 @@ impl DatasourceImportRecord {
 pub(crate) struct DatasourceExportOrgScope {
     pub(crate) source_org_id: i64,
     pub(crate) source_org_name: String,
-    pub(crate) import_dir: PathBuf,
+    pub(crate) input_dir: PathBuf,
 }
 
 #[derive(Debug, Clone)]
@@ -277,13 +277,13 @@ pub(crate) struct DatasourceExportOrgTargetPlan {
     pub(crate) source_org_name: String,
     pub(crate) target_org_id: Option<i64>,
     pub(crate) org_action: &'static str,
-    pub(crate) import_dir: PathBuf,
+    pub(crate) input_dir: PathBuf,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct DatasourceImportDryRunReport {
     pub(crate) mode: String,
-    pub(crate) import_dir: PathBuf,
+    pub(crate) input_dir: PathBuf,
     pub(crate) input_format: DatasourceImportInputFormat,
     pub(crate) source_org_id: String,
     pub(crate) target_org_id: String,
@@ -336,40 +336,15 @@ struct ProvisioningImportDatasource {
 }
 
 pub(crate) fn fetch_current_org(client: &JsonHttpClient) -> Result<Map<String, Value>> {
-    match client.request_json(Method::GET, "/api/org", &[], None)? {
-        Some(value) => value
-            .as_object()
-            .cloned()
-            .ok_or_else(|| message("Unexpected current-org payload from Grafana.")),
-        None => Err(message("Grafana did not return current-org metadata.")),
-    }
+    DatasourceResourceClient::new(client).fetch_current_org()
 }
 
 pub(crate) fn list_orgs(client: &JsonHttpClient) -> Result<Vec<Map<String, Value>>> {
-    match client.request_json(Method::GET, "/api/orgs", &[], None)? {
-        Some(Value::Array(items)) => items
-            .into_iter()
-            .map(|item| {
-                item.as_object()
-                    .cloned()
-                    .ok_or_else(|| message("Unexpected org entry in /api/orgs response."))
-            })
-            .collect(),
-        Some(_) => Err(message("Unexpected /api/orgs payload from Grafana.")),
-        None => Ok(Vec::new()),
-    }
+    DatasourceResourceClient::new(client).list_orgs()
 }
 
 pub(crate) fn create_org(client: &JsonHttpClient, org_name: &str) -> Result<Map<String, Value>> {
-    let payload = Value::Object(Map::from_iter(vec![(
-        "name".to_string(),
-        Value::String(org_name.to_string()),
-    )]));
-    match client.request_json(Method::POST, "/api/orgs", &[], Some(&payload))? {
-        Some(Value::Object(object)) => Ok(object),
-        Some(_) => Err(message("Unexpected create-org payload from Grafana.")),
-        None => Err(message("Grafana did not return create-org metadata.")),
-    }
+    DatasourceResourceClient::new(client).create_org(org_name)
 }
 
 pub(crate) fn org_id_string_from_value(value: Option<&Value>) -> String {
@@ -492,9 +467,9 @@ fn validate_datasource_import_record(
 }
 
 fn load_inventory_import_records(
-    import_dir: &Path,
+    input_dir: &Path,
 ) -> Result<(DatasourceExportMetadata, Vec<DatasourceImportRecord>)> {
-    let metadata_path = import_dir.join(EXPORT_METADATA_FILENAME);
+    let metadata_path = input_dir.join(EXPORT_METADATA_FILENAME);
     if !metadata_path.is_file() {
         return Err(message(format!(
             "Datasource import directory is missing {}: {}",
@@ -512,7 +487,7 @@ fn load_inventory_import_records(
         )));
     }
     let metadata = root_manifest.metadata;
-    let datasources_path = import_dir.join(&metadata.datasources_file);
+    let datasources_path = input_dir.join(&metadata.datasources_file);
     let raw = fs::read_to_string(&datasources_path)?;
     let value: Value = serde_json::from_str(&raw)?;
     let items = value.as_array().ok_or_else(|| {
@@ -596,7 +571,7 @@ fn resolve_provisioning_import_source_path(import_path: &Path) -> Result<PathBuf
         }
     }
     Err(message(format!(
-        "Datasource provisioning import did not find datasources.yaml under {}. Point --import-dir at the export root, provisioning directory, or concrete YAML file.",
+        "Datasource provisioning import did not find datasources.yaml under {}. Point --input-dir at the export root, provisioning directory, or concrete YAML file.",
         import_path.display()
     )))
 }
@@ -709,7 +684,7 @@ pub(crate) fn load_datasource_inventory_records_from_export_root(
         }
         DatasourceExportRootScopeKind::Unknown => {
             return Err(message(format!(
-                "Datasource inspect-export only supports datasource org-root, all-orgs-root, or workspace-root manifests: {}",
+                "Datasource list local mode only supports datasource org-root, all-orgs-root, or workspace-root manifests: {}",
                 metadata_path.display()
             )));
         }
@@ -874,27 +849,27 @@ fn parse_export_org_scope(
     Ok(DatasourceExportOrgScope {
         source_org_id,
         source_org_name,
-        import_dir: scope_dir.to_path_buf(),
+        input_dir: scope_dir.to_path_buf(),
     })
 }
 
-pub(crate) fn resolve_datasource_export_root_dir(import_dir: &Path) -> Result<PathBuf> {
-    let datasource_dir = import_dir.join("datasources");
-    let dashboard_dir = import_dir.join("dashboards");
-    if import_dir.is_file() || import_dir.join(EXPORT_METADATA_FILENAME).is_file() {
-        return Ok(import_dir.to_path_buf());
+pub(crate) fn resolve_datasource_export_root_dir(input_dir: &Path) -> Result<PathBuf> {
+    let datasource_dir = input_dir.join("datasources");
+    let dashboard_dir = input_dir.join("dashboards");
+    if input_dir.is_file() || input_dir.join(EXPORT_METADATA_FILENAME).is_file() {
+        return Ok(input_dir.to_path_buf());
     }
     if datasource_dir.join(EXPORT_METADATA_FILENAME).is_file() {
         return Ok(datasource_dir);
     }
     if datasource_dir.is_dir() && dashboard_dir.is_dir() {
         return Err(message(format!(
-            "Input path {} looks like a snapshot/workspace root containing dashboards/ and datasources/, but datasources/export-metadata.json is missing. Point --import-dir at {} or at an org-scoped datasource export directory.",
-            import_dir.display(),
+            "Input path {} looks like a snapshot/workspace root containing dashboards/ and datasources/, but datasources/export-metadata.json is missing. Point --input-dir at {} or at an org-scoped datasource export directory.",
+            input_dir.display(),
             datasource_dir.display()
         )));
     }
-    Ok(import_dir.to_path_buf())
+    Ok(input_dir.to_path_buf())
 }
 
 pub(crate) fn discover_export_org_import_scopes(
@@ -903,7 +878,7 @@ pub(crate) fn discover_export_org_import_scopes(
     if !args.use_export_org {
         return Ok(Vec::new());
     }
-    let import_root = resolve_datasource_export_root_dir(&args.import_dir)?;
+    let import_root = resolve_datasource_export_root_dir(&args.input_dir)?;
     let metadata_path = import_root.join(EXPORT_METADATA_FILENAME);
     if !metadata_path.is_file() {
         return Err(message(format!(
@@ -960,7 +935,7 @@ pub(crate) fn discover_export_org_import_scopes(
         if !missing.is_empty() {
             return Err(message(format!(
                 "Selected exported org IDs were not found in {}: {}",
-                args.import_dir.display(),
+                args.input_dir.display(),
                 missing.join(", ")
             )));
         }
@@ -968,14 +943,14 @@ pub(crate) fn discover_export_org_import_scopes(
     if scopes.is_empty() {
         match args.input_format {
             DatasourceImportInputFormat::Inventory => {
-                if args.import_dir.join(EXPORT_METADATA_FILENAME).is_file() {
+                if args.input_dir.join(EXPORT_METADATA_FILENAME).is_file() {
                     return Err(message(
                         "Datasource import with --use-export-org expects the combined export root, not one org export directory.",
                     ));
                 }
             }
             DatasourceImportInputFormat::Provisioning => {
-                if resolve_provisioning_import_source_path(&args.import_dir).is_ok() {
+                if resolve_provisioning_import_source_path(&args.input_dir).is_ok() {
                     return Err(message(
                         "Datasource import with --use-export-org expects the combined export root, not one org provisioning directory or YAML file.",
                     ));

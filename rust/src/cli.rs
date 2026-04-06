@@ -25,9 +25,9 @@ pub use crate::cli_help::{
     render_unified_help_text, render_unified_version_text,
 };
 use crate::cli_help::{
-    DASHBOARD_BROWSE_HELP_TEXT, DASHBOARD_CLONE_LIVE_HELP_TEXT, DASHBOARD_DELETE_HELP_TEXT,
-    DASHBOARD_DIFF_HELP_TEXT, DASHBOARD_EXPORT_HELP_TEXT, DASHBOARD_GET_HELP_TEXT,
-    DASHBOARD_GOVERNANCE_GATE_HELP_TEXT, DASHBOARD_IMPORT_HELP_TEXT,
+    DASHBOARD_ANALYZE_HELP_TEXT, DASHBOARD_BROWSE_HELP_TEXT, DASHBOARD_CLONE_LIVE_HELP_TEXT,
+    DASHBOARD_DELETE_HELP_TEXT, DASHBOARD_DIFF_HELP_TEXT, DASHBOARD_EXPORT_HELP_TEXT,
+    DASHBOARD_GET_HELP_TEXT, DASHBOARD_GOVERNANCE_GATE_HELP_TEXT, DASHBOARD_IMPORT_HELP_TEXT,
     DASHBOARD_INSPECT_EXPORT_HELP_TEXT, DASHBOARD_INSPECT_LIVE_HELP_TEXT,
     DASHBOARD_INSPECT_VARS_HELP_TEXT, DASHBOARD_LIST_HELP_TEXT, DASHBOARD_PATCH_FILE_HELP_TEXT,
     DASHBOARD_PUBLISH_HELP_TEXT, DASHBOARD_RAW_TO_PROMPT_HELP_TEXT, DASHBOARD_REVIEW_HELP_TEXT,
@@ -38,15 +38,17 @@ use crate::cli_help::{
 use crate::cli_help_examples::UNIFIED_HELP_TEXT;
 use crate::common::{json_color_choice, set_json_color_choice, CliColorChoice, Result};
 use crate::dashboard::{
-    run_dashboard_cli, BrowseArgs, CloneLiveArgs, DashboardCliArgs, DashboardCommand, DeleteArgs,
-    DiffArgs, ExportArgs, GetArgs, GovernanceGateArgs, ImportArgs, InspectExportArgs,
-    InspectLiveArgs, InspectVarsArgs, ListArgs, PatchFileArgs, PublishArgs, RawToPromptArgs,
-    ReviewArgs, ScreenshotArgs, TopologyArgs,
+    run_dashboard_cli, AnalyzeArgs, BrowseArgs, CloneLiveArgs, DashboardCliArgs, DashboardCommand,
+    DashboardHistoryArgs, DeleteArgs, DiffArgs, EditLiveArgs, ExportArgs, GetArgs,
+    GovernanceGateArgs, ImportArgs, InspectExportArgs, InspectLiveArgs, InspectVarsArgs, ListArgs,
+    PatchFileArgs, PublishArgs, RawToPromptArgs, ReviewArgs, ScreenshotArgs, ServeArgs,
+    TopologyArgs,
 };
 use crate::datasource::{run_datasource_cli, DatasourceGroupCommand};
 use crate::overview::{run_overview_cli, OverviewCliArgs};
 use crate::profile_cli::{run_profile_cli, ProfileCliArgs};
 use crate::project_status_command::{run_project_status_cli, ProjectStatusCliArgs};
+use crate::resource::{run_resource_cli, ResourceCliArgs};
 use crate::snapshot::{run_snapshot_cli, SnapshotCommand};
 use crate::sync::{run_sync_cli, SyncGroupCommand};
 
@@ -59,6 +61,7 @@ pub enum DashboardGroupCommand {
     )]
     Browse(BrowseArgs),
     #[command(
+        name = "fetch-live",
         about = "Fetch one live dashboard into an API-safe local JSON draft.",
         after_help = DASHBOARD_GET_HELP_TEXT
     )]
@@ -68,6 +71,10 @@ pub enum DashboardGroupCommand {
         after_help = DASHBOARD_CLONE_LIVE_HELP_TEXT
     )]
     CloneLive(CloneLiveArgs),
+    #[command(about = "Serve dashboard drafts through a local preview server.")]
+    Serve(ServeArgs),
+    #[command(about = "Edit one live dashboard through an external editor.")]
+    EditLive(EditLiveArgs),
     #[command(
         about = "List dashboard summaries without writing export files.",
         after_help = DASHBOARD_LIST_HELP_TEXT
@@ -117,16 +124,30 @@ pub enum DashboardGroupCommand {
     )]
     Publish(PublishArgs),
     #[command(
+        about = "Analyze dashboards from live Grafana or a local export tree and build summary or governance artifacts."
+        ,
+        after_help = DASHBOARD_ANALYZE_HELP_TEXT
+    )]
+    Analyze(AnalyzeArgs),
+    #[command(
+        name = "analyze-export",
+        alias = "inspect-export",
+        hide = true,
         about = "Analyze a raw dashboard export directory and summarize its structure.",
         after_help = DASHBOARD_INSPECT_EXPORT_HELP_TEXT
     )]
     InspectExport(InspectExportArgs),
     #[command(
+        name = "analyze-live",
+        alias = "inspect-live",
+        hide = true,
         about = "Analyze live Grafana dashboards without writing a persistent export.",
         after_help = DASHBOARD_INSPECT_LIVE_HELP_TEXT
     )]
     InspectLive(InspectLiveArgs),
     #[command(
+        name = "list-vars",
+        alias = "inspect-vars",
         about = "List dashboard templating variables from live Grafana.",
         after_help = DASHBOARD_INSPECT_VARS_HELP_TEXT
     )]
@@ -139,10 +160,15 @@ pub enum DashboardGroupCommand {
     #[command(
         name = "topology",
         visible_alias = "graph",
-        about = "Build a deterministic dashboard topology graph from JSON artifacts.",
+        about = "Show which dashboards, variables, data sources, and alerts depend on each other.",
         after_help = DASHBOARD_TOPOLOGY_HELP_TEXT
     )]
     Topology(TopologyArgs),
+    #[command(
+        about = "List, restore, or export live dashboard revision history.",
+        after_help = "Examples:\n\n  List recent revisions from live Grafana for one dashboard:\n    grafana-util dashboard history list --url http://localhost:3000 --basic-user admin --basic-password admin --dashboard-uid cpu-main --output-format table\n\n  Review one local history artifact without calling Grafana:\n    grafana-util dashboard history list --input ./cpu-main.history.json --output-format yaml\n\n  Restore one historical revision as a new latest Grafana version:\n    grafana-util dashboard history restore --url http://localhost:3000 --basic-user admin --basic-password admin --dashboard-uid cpu-main --version 17 --dry-run\n\n  Export recent revision history into a reusable JSON artifact:\n    grafana-util dashboard history export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --dashboard-uid cpu-main --output ./cpu-main.history.json"
+    )]
+    History(DashboardHistoryArgs),
     #[command(
         about = "Open one dashboard in a headless browser and capture image or PDF output.",
         after_help = DASHBOARD_SCREENSHOT_HELP_TEXT
@@ -165,7 +191,7 @@ pub enum UnifiedCommand {
         command: DashboardGroupCommand,
     },
     #[command(
-        about = "Run datasource browse-live, inspect-export, list, export, import, and diff workflows.",
+        about = "Run datasource list, browse-live, export, import, and diff workflows.",
         visible_alias = "ds",
         after_help = UNIFIED_DATASOURCE_HELP_TEXT
     )]
@@ -204,6 +230,10 @@ pub enum UnifiedCommand {
         after_help = UNIFIED_PROFILE_HELP_TEXT
     )]
     Profile(ProfileCliArgs),
+    #[command(
+        about = "Run resource describe, kinds, list, and get workflows through a generic read-only query surface."
+    )]
+    Resource(ResourceCliArgs),
     #[command(
         about = "Export and review live dashboard snapshots.",
         after_help = SNAPSHOT_HELP_TEXT
@@ -271,6 +301,8 @@ fn wrap_dashboard_group(command: DashboardGroupCommand) -> DashboardCliArgs {
         DashboardGroupCommand::CloneLive(inner) => {
             wrap_dashboard(DashboardCommand::CloneLive(inner))
         }
+        DashboardGroupCommand::Serve(inner) => wrap_dashboard(DashboardCommand::Serve(inner)),
+        DashboardGroupCommand::EditLive(inner) => wrap_dashboard(DashboardCommand::EditLive(inner)),
         DashboardGroupCommand::List(inner) => wrap_dashboard(DashboardCommand::List(inner)),
         DashboardGroupCommand::Export(inner) => wrap_dashboard(DashboardCommand::Export(inner)),
         DashboardGroupCommand::RawToPrompt(inner) => {
@@ -284,6 +316,7 @@ fn wrap_dashboard_group(command: DashboardGroupCommand) -> DashboardCliArgs {
         }
         DashboardGroupCommand::Review(inner) => wrap_dashboard(DashboardCommand::Review(inner)),
         DashboardGroupCommand::Publish(inner) => wrap_dashboard(DashboardCommand::Publish(inner)),
+        DashboardGroupCommand::Analyze(inner) => wrap_dashboard(DashboardCommand::Analyze(inner)),
         DashboardGroupCommand::InspectExport(inner) => {
             wrap_dashboard(DashboardCommand::InspectExport(inner))
         }
@@ -297,6 +330,7 @@ fn wrap_dashboard_group(command: DashboardGroupCommand) -> DashboardCliArgs {
             wrap_dashboard(DashboardCommand::GovernanceGate(inner))
         }
         DashboardGroupCommand::Topology(inner) => wrap_dashboard(DashboardCommand::Topology(inner)),
+        DashboardGroupCommand::History(inner) => wrap_dashboard(DashboardCommand::History(inner)),
         DashboardGroupCommand::Screenshot(inner) => {
             wrap_dashboard(DashboardCommand::Screenshot(inner))
         }
@@ -348,6 +382,7 @@ where
         UnifiedCommand::Alert(inner) => run_alert(normalize_alert_namespace_args(inner)),
         UnifiedCommand::Access(inner) => run_access(inner),
         UnifiedCommand::Profile(inner) => run_profile(inner),
+        UnifiedCommand::Resource(inner) => run_resource_cli(inner),
         UnifiedCommand::Snapshot { command } => run_snapshot(command),
         UnifiedCommand::Overview(inner) => run_overview(inner),
         UnifiedCommand::Status(inner) => run_project_status(inner),

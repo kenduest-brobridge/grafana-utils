@@ -20,7 +20,7 @@ where
 {
     let document = refresh_browser_document(&mut request_json, args)?;
     let mut session = TerminalSession::enter()?;
-    let mut state = BrowserState::new(document);
+    let mut state = BrowserState::new_with_mode(document, args.input_dir.is_some());
     ensure_selected_dashboard_view(&mut request_json, args, &mut state, false)?;
 
     loop {

@@ -4,7 +4,7 @@ use super::super::test_support;
 #[test]
 fn build_export_inspection_summary_rows_include_export_org_metadata() {
     let summary = test_support::ExportInspectionSummary {
-        import_dir: "/tmp/raw".to_string(),
+        input_dir: "/tmp/raw".to_string(),
         export_org: Some("Main Org.".to_string()),
         export_org_id: Some("1".to_string()),
         dashboard_count: 2,

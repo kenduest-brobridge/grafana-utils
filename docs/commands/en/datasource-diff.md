@@ -39,6 +39,6 @@ grafana-util datasource diff --profile prod --diff-dir ./datasources/provisionin
 - if the diff is noisy, make sure you are comparing the intended inventory bundle rather than an older provisioning tree
 
 ## Related commands
+- [datasource list](./datasource-list.md)
 - [datasource export](./datasource-export.md)
 - [datasource import](./datasource-import.md)
-- [datasource inspect-export](./datasource-inspect-export.md)

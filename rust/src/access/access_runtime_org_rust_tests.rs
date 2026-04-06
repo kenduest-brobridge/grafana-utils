@@ -6,6 +6,16 @@
 
 use super::*;
 
+fn write_local_access_bundle(dir: &std::path::Path, file_name: &str, payload: &str) {
+    fs::create_dir_all(dir).unwrap();
+    fs::write(dir.join(file_name), payload).unwrap();
+    fs::write(
+        dir.join("export-metadata.json"),
+        r#"{"kind":"grafana-utils-access-export-metadata","version":1}"#,
+    )
+    .unwrap();
+}
+
 #[test]
 fn run_access_cli_with_request_routes_user_export() {
     let args = parse_cli_from([
@@ -54,10 +64,10 @@ fn run_access_cli_with_request_routes_team_export() {
 #[test]
 fn run_access_cli_with_request_routes_team_import() {
     let temp = tempdir().unwrap();
-    let import_dir = temp.path().join("access-teams");
-    fs::create_dir_all(&import_dir).unwrap();
+    let input_dir = temp.path().join("access-teams");
+    fs::create_dir_all(&input_dir).unwrap();
     fs::write(
-        import_dir.join("teams.json"),
+        input_dir.join("teams.json"),
         r#"[{"name":"Ops","email":"ops@example.com"}]"#,
     )
     .unwrap();
@@ -66,8 +76,8 @@ fn run_access_cli_with_request_routes_team_import() {
         "grafana-util access",
         "team",
         "import",
-        "--import-dir",
-        import_dir.to_str().unwrap(),
+        "--input-dir",
+        input_dir.to_str().unwrap(),
     ]);
     let mut calls = Vec::new();
     let result = run_access_cli_with_request(
@@ -120,10 +130,10 @@ fn run_access_cli_with_request_routes_org_export() {
 #[test]
 fn run_access_cli_with_request_routes_org_import() {
     let temp = tempdir().unwrap();
-    let import_dir = temp.path().join("access-orgs");
-    fs::create_dir_all(&import_dir).unwrap();
+    let input_dir = temp.path().join("access-orgs");
+    fs::create_dir_all(&input_dir).unwrap();
     fs::write(
-        import_dir.join("orgs.json"),
+        input_dir.join("orgs.json"),
         r#"{
             "kind":"grafana-utils-access-org-export-index",
             "version":1,
@@ -146,8 +156,8 @@ fn run_access_cli_with_request_routes_org_import() {
         "admin",
         "--basic-password",
         "admin",
-        "--import-dir",
-        import_dir.to_str().unwrap(),
+        "--input-dir",
+        input_dir.to_str().unwrap(),
         "--replace-existing",
     ]);
     let mut calls = Vec::new();
@@ -313,7 +323,7 @@ fn org_export_with_request_writes_bundle_with_users() {
     let args = OrgExportArgs {
         common: make_basic_common_no_org_id(),
         org_id: None,
-        export_dir: temp_dir.path().to_path_buf(),
+        output_dir: temp_dir.path().to_path_buf(),
         overwrite: true,
         dry_run: false,
         name: Some("Main Org".to_string()),
@@ -377,6 +387,12 @@ fn org_export_with_request_writes_bundle_with_users() {
         metadata.get("sourceDir"),
         Some(&json!(temp_dir.path().to_string_lossy().to_string()))
     );
+    assert_eq!(metadata.get("metadataVersion"), Some(&json!(2)));
+    assert_eq!(metadata.get("domain"), Some(&json!("access")));
+    assert_eq!(metadata.get("resourceKind"), Some(&json!("orgs")));
+    assert_eq!(metadata.get("bundleKind"), Some(&json!("export-root")));
+    assert_eq!(metadata["source"]["kind"], json!("live"));
+    assert_eq!(metadata["capture"]["recordCount"], json!(1));
 }
 
 #[test]
@@ -394,7 +410,7 @@ fn org_import_rejects_kind_mismatch_and_future_version_bundle_contract() {
     .unwrap();
     let args = OrgImportArgs {
         common: make_basic_common_no_org_id(),
-        import_dir: temp.path().to_path_buf(),
+        input_dir: temp.path().to_path_buf(),
         replace_existing: true,
         dry_run: true,
         yes: false,
@@ -423,8 +439,8 @@ fn org_import_rejects_kind_mismatch_and_future_version_bundle_contract() {
 #[test]
 fn org_import_with_request_dry_run_reports_user_role_update_without_mutating() {
     let temp = tempdir().unwrap();
-    let import_dir = temp.path().join("access-orgs");
-    fs::create_dir_all(&import_dir).unwrap();
+    let input_dir = temp.path().join("access-orgs");
+    fs::create_dir_all(&input_dir).unwrap();
     let bundle = json!({
         "kind": "grafana-utils-access-org-export-index",
         "version": 1,
@@ -438,13 +454,13 @@ fn org_import_with_request_dry_run_reports_user_role_update_without_mutating() {
         ]
     });
     fs::write(
-        import_dir.join("orgs.json"),
+        input_dir.join("orgs.json"),
         serde_json::to_string_pretty(&bundle).unwrap(),
     )
     .unwrap();
     let args = OrgImportArgs {
         common: make_basic_common_no_org_id(),
-        import_dir: import_dir.clone(),
+        input_dir: input_dir.clone(),
         replace_existing: true,
         dry_run: true,
         yes: true,
@@ -482,8 +498,8 @@ fn org_import_with_request_dry_run_reports_user_role_update_without_mutating() {
 #[test]
 fn org_import_with_request_updates_existing_org_users() {
     let temp = tempdir().unwrap();
-    let import_dir = temp.path().join("access-orgs");
-    fs::create_dir_all(&import_dir).unwrap();
+    let input_dir = temp.path().join("access-orgs");
+    fs::create_dir_all(&input_dir).unwrap();
     let bundle = json!({
         "kind": "grafana-utils-access-org-export-index",
         "version": 1,
@@ -497,13 +513,13 @@ fn org_import_with_request_updates_existing_org_users() {
         ]
     });
     fs::write(
-        import_dir.join("orgs.json"),
+        input_dir.join("orgs.json"),
         serde_json::to_string_pretty(&bundle).unwrap(),
     )
     .unwrap();
     let args = OrgImportArgs {
         common: make_basic_common_no_org_id(),
-        import_dir: import_dir.clone(),
+        input_dir: input_dir.clone(),
         replace_existing: true,
         dry_run: false,
         yes: true,
@@ -536,8 +552,8 @@ fn org_import_with_request_updates_existing_org_users() {
 #[test]
 fn org_import_with_request_creates_missing_org_and_users_when_replace_existing_is_set() {
     let temp = tempdir().unwrap();
-    let import_dir = temp.path().join("access-orgs");
-    fs::create_dir_all(&import_dir).unwrap();
+    let input_dir = temp.path().join("access-orgs");
+    fs::create_dir_all(&input_dir).unwrap();
     let bundle = json!({
         "kind": "grafana-utils-access-org-export-index",
         "version": 1,
@@ -551,13 +567,13 @@ fn org_import_with_request_creates_missing_org_and_users_when_replace_existing_i
         ]
     });
     fs::write(
-        import_dir.join("orgs.json"),
+        input_dir.join("orgs.json"),
         serde_json::to_string_pretty(&bundle).unwrap(),
     )
     .unwrap();
     let args = OrgImportArgs {
         common: make_basic_common_no_org_id(),
-        import_dir: import_dir.clone(),
+        input_dir: input_dir.clone(),
         replace_existing: true,
         dry_run: false,
         yes: true,
@@ -717,7 +733,7 @@ fn user_export_with_request_writes_global_bundle() {
     let temp_dir = tempdir().unwrap();
     let args = UserExportArgs {
         common: make_basic_common(),
-        export_dir: temp_dir.path().to_path_buf(),
+        output_dir: temp_dir.path().to_path_buf(),
         overwrite: true,
         dry_run: false,
         scope: Scope::Global,
@@ -765,6 +781,12 @@ fn user_export_with_request_writes_global_bundle() {
         metadata.get("sourceDir"),
         Some(&json!(temp_dir.path().to_string_lossy().to_string()))
     );
+    assert_eq!(metadata.get("metadataVersion"), Some(&json!(2)));
+    assert_eq!(metadata.get("domain"), Some(&json!("access")));
+    assert_eq!(metadata.get("resourceKind"), Some(&json!("users")));
+    assert_eq!(metadata.get("bundleKind"), Some(&json!("export-root")));
+    assert_eq!(metadata["source"]["kind"], json!("live"));
+    assert_eq!(metadata["capture"]["recordCount"], json!(1));
 }
 
 #[test]
@@ -782,7 +804,7 @@ fn user_import_rejects_kind_mismatch_and_future_version_bundle_contract() {
     .unwrap();
     let args = UserImportArgs {
         common: make_basic_common(),
-        import_dir: temp_dir.path().to_path_buf(),
+        input_dir: temp_dir.path().to_path_buf(),
         scope: Scope::Global,
         replace_existing: true,
         dry_run: true,
@@ -865,7 +887,7 @@ fn user_import_with_request_dry_run_reports_global_profile_and_admin_drift() {
     .unwrap();
     let args = UserImportArgs {
         common: make_basic_common(),
-        import_dir: temp_dir.path().to_path_buf(),
+        input_dir: temp_dir.path().to_path_buf(),
         scope: Scope::Global,
         replace_existing: true,
         dry_run: true,
@@ -923,7 +945,7 @@ fn user_import_with_request_dry_run_json_reports_global_summary_and_rows() {
     .unwrap();
     let args = UserImportArgs {
         common: make_basic_common(),
-        import_dir: temp_dir.path().to_path_buf(),
+        input_dir: temp_dir.path().to_path_buf(),
         scope: Scope::Global,
         replace_existing: true,
         dry_run: true,
@@ -964,7 +986,7 @@ fn user_import_with_request_updates_existing_global_user() {
     .unwrap();
     let args = UserImportArgs {
         common: make_basic_common(),
-        import_dir: temp_dir.path().to_path_buf(),
+        input_dir: temp_dir.path().to_path_buf(),
         scope: Scope::Global,
         replace_existing: true,
         dry_run: false,
@@ -1036,7 +1058,7 @@ fn user_import_with_request_creates_missing_global_user_when_password_present() 
     .unwrap();
     let args = UserImportArgs {
         common: make_basic_common(),
-        import_dir: temp_dir.path().to_path_buf(),
+        input_dir: temp_dir.path().to_path_buf(),
         scope: Scope::Global,
         replace_existing: true,
         dry_run: false,
@@ -1082,7 +1104,7 @@ fn user_export_with_request_writes_org_bundle_with_teams() {
     let temp_dir = tempdir().unwrap();
     let args = UserExportArgs {
         common: make_basic_common(),
-        export_dir: temp_dir.path().to_path_buf(),
+        output_dir: temp_dir.path().to_path_buf(),
         overwrite: true,
         dry_run: false,
         scope: Scope::Org,
@@ -1120,6 +1142,12 @@ fn user_export_with_request_writes_org_bundle_with_teams() {
     );
     assert_eq!(metadata.get("version"), Some(&json!(1)));
     assert_eq!(metadata.get("recordCount"), Some(&json!(1)));
+    assert_eq!(metadata.get("metadataVersion"), Some(&json!(2)));
+    assert_eq!(metadata.get("domain"), Some(&json!("access")));
+    assert_eq!(metadata.get("resourceKind"), Some(&json!("users")));
+    assert_eq!(metadata.get("bundleKind"), Some(&json!("export-root")));
+    assert_eq!(metadata["source"]["kind"], json!("live"));
+    assert_eq!(metadata["capture"]["recordCount"], json!(1));
 }
 
 #[test]
@@ -1157,4 +1185,158 @@ fn user_diff_with_request_reports_same_state_for_org_bundle_with_teams() {
     );
 
     assert_eq!(result.unwrap(), 0);
+}
+
+#[test]
+fn run_access_cli_with_request_routes_user_list_local_input_dir() {
+    let temp = tempdir().unwrap();
+    let input_dir = temp.path().join("access-users");
+    write_local_access_bundle(
+        &input_dir,
+        "users.json",
+        r#"{
+            "kind":"grafana-utils-access-user-export-index",
+            "version":1,
+            "records":[
+                {"login":"alice","email":"alice@example.com","name":"Alice","orgRole":"Editor","teams":["ops"]}
+            ]
+        }"#,
+    );
+
+    let args = parse_cli_from([
+        "grafana-util access",
+        "user",
+        "list",
+        "--input-dir",
+        input_dir.to_str().unwrap(),
+        "--scope",
+        "org",
+        "--output-format",
+        "json",
+    ]);
+    let mut request_called = false;
+    let result = run_access_cli_with_request(
+        |_method, _path, _params, _payload| {
+            request_called = true;
+            panic!("local user list should not hit the request layer");
+        },
+        &args,
+    );
+
+    assert!(result.is_ok());
+    assert!(!request_called);
+}
+
+#[test]
+fn run_access_cli_with_request_routes_org_list_local_input_dir() {
+    let temp = tempdir().unwrap();
+    let input_dir = temp.path().join("access-orgs");
+    write_local_access_bundle(
+        &input_dir,
+        "orgs.json",
+        r#"{
+            "kind":"grafana-utils-access-org-export-index",
+            "version":1,
+            "records":[
+                {"name":"Main Org","users":[{"login":"alice","email":"alice@example.com","orgRole":"Editor"}]}
+            ]
+        }"#,
+    );
+
+    let args = parse_cli_from([
+        "grafana-util access",
+        "org",
+        "list",
+        "--input-dir",
+        input_dir.to_str().unwrap(),
+        "--output-format",
+        "yaml",
+    ]);
+    let mut request_called = false;
+    let result = run_access_cli_with_request(
+        |_method, _path, _params, _payload| {
+            request_called = true;
+            panic!("local org list should not hit the request layer");
+        },
+        &args,
+    );
+
+    assert!(result.is_ok());
+    assert!(!request_called);
+}
+
+#[test]
+fn run_access_cli_with_request_routes_team_list_local_input_dir() {
+    let temp = tempdir().unwrap();
+    let input_dir = temp.path().join("access-teams");
+    write_local_access_bundle(
+        &input_dir,
+        "teams.json",
+        r#"{
+            "kind":"grafana-utils-access-team-export-index",
+            "version":1,
+            "records":[
+                {"name":"Ops","email":"ops@example.com","members":["alice"],"admins":["bob"]}
+            ]
+        }"#,
+    );
+
+    let args = parse_cli_from([
+        "grafana-util access",
+        "team",
+        "list",
+        "--input-dir",
+        input_dir.to_str().unwrap(),
+        "--output-format",
+        "table",
+    ]);
+    let mut request_called = false;
+    let result = run_access_cli_with_request(
+        |_method, _path, _params, _payload| {
+            request_called = true;
+            panic!("local team list should not hit the request layer");
+        },
+        &args,
+    );
+
+    assert!(result.is_ok());
+    assert!(!request_called);
+}
+
+#[test]
+fn run_access_cli_with_request_routes_service_account_list_local_input_dir() {
+    let temp = tempdir().unwrap();
+    let input_dir = temp.path().join("access-service-accounts");
+    write_local_access_bundle(
+        &input_dir,
+        "service-accounts.json",
+        r#"{
+            "kind":"grafana-utils-access-service-account-export-index",
+            "version":1,
+            "records":[
+                {"name":"deploy-bot","role":"Editor","disabled":false,"tokens":1}
+            ]
+        }"#,
+    );
+
+    let args = parse_cli_from([
+        "grafana-util access",
+        "service-account",
+        "list",
+        "--input-dir",
+        input_dir.to_str().unwrap(),
+        "--output-format",
+        "csv",
+    ]);
+    let mut request_called = false;
+    let result = run_access_cli_with_request(
+        |_method, _path, _params, _payload| {
+            request_called = true;
+            panic!("local service-account list should not hit the request layer");
+        },
+        &args,
+    );
+
+    assert!(result.is_ok());
+    assert!(!request_called);
 }

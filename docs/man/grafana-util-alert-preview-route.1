@@ -10,6 +10,11 @@ Preview the managed route inputs without changing runtime behavior.
 Inspect the matcher set you intend to feed into set\-route.
 .IP \(bu 2
 Validate route inputs before writing the managed route document.
+.SH BEFORE / AFTER
+.IP \(bu 2
+Before: guess whether a matcher set will behave the way you expect when it reaches set\-route.
+.IP \(bu 2
+After: preview the route inputs first so the intended receiver and labels are visible before writing files.
 .SH COMMON OPTIONS
 .IP \(bu 2
 \-\-desired\-dir points to the staged alert tree.
@@ -17,6 +22,16 @@ Validate route inputs before writing the managed route document.
 \-\-label adds preview matchers in key=value form.
 .IP \(bu 2
 \-\-severity adds a convenience severity matcher value.
+.SH SUCCESS CRITERIA
+.IP \(bu 2
+The preview output matches the matcher set you plan to hand to set\-route.
+.IP \(bu 2
+The route shape is clear enough to review without editing the staged tree first.
+.SH FAILURE CHECKS
+.IP \(bu 2
+Check the labels and severity value if the preview does not match your intended route.
+.IP \(bu 2
+Make sure \-\-desired\-dir points at the staged tree you expect.
 .SH EXAMPLES
 .PP
 Preview the managed route inputs without changing runtime behavior.

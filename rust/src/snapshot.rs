@@ -4,88 +4,63 @@
 //! export root, then builds a snapshot-native inventory review document from
 //! the exported dashboard and datasource metadata.
 
-use std::collections::{BTreeMap, BTreeSet};
+#[path = "snapshot_review.rs"]
+mod snapshot_review;
+#[path = "snapshot_support.rs"]
+mod snapshot_support;
+
+use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use clap::{Args, CommandFactory, Parser, Subcommand};
-use rpassword::prompt_password;
+use clap::{Args, Parser, Subcommand};
 use serde_json::{json, Value};
 
-use crate::common::{render_json_value, CliColorChoice, GrafanaCliError, Result};
+use crate::common::CliColorChoice;
 use crate::dashboard::{
-    self, CommonCliArgs, DashboardCliArgs, DashboardCommand, ExportArgs as DashboardExportArgs,
-    TempInspectDir, EXPORT_METADATA_FILENAME, ROOT_INDEX_KIND, TOOL_SCHEMA_VERSION,
+    CommonCliArgs, EXPORT_METADATA_FILENAME, ROOT_INDEX_KIND, TOOL_SCHEMA_VERSION,
 };
-use crate::datasource::{DatasourceExportArgs, DatasourceGroupCommand};
-#[cfg(any(feature = "tui", test))]
-use crate::interactive_browser::{run_interactive_browser, BrowserItem};
-use crate::overview::{OverviewArgs, OverviewOutputFormat};
+use crate::overview::OverviewOutputFormat;
+use crate::common::Result;
 use crate::staged_export_scopes::{
     resolve_dashboard_export_scope_dirs, resolve_datasource_export_scope_dirs,
 };
-use crate::tabular_output::{print_lines, render_csv, render_table, render_yaml};
+
+pub use self::snapshot_review::render_snapshot_review_text;
+#[allow(unused_imports)]
+#[cfg(any(feature = "tui", test))]
+pub use self::snapshot_support::root_command;
+pub(crate) use self::snapshot_support::{
+    build_snapshot_access_lane_summaries, export_scope_kind_from_metadata_value, run_snapshot_cli,
+};
+#[cfg(test)]
+pub(crate) use self::snapshot_support::{
+    build_snapshot_overview_args, build_snapshot_paths, build_snapshot_root_metadata,
+    materialize_snapshot_common_auth_with_prompt, run_snapshot_export_with_handlers,
+    run_snapshot_review_document_with_handler,
+};
+#[cfg(test)]
+pub(crate) use self::snapshot_review::{
+    build_snapshot_review_browser_items, build_snapshot_review_summary_lines,
+};
 
 pub const SNAPSHOT_DASHBOARD_DIR: &str = "dashboards";
 pub const SNAPSHOT_DATASOURCE_DIR: &str = "datasources";
+pub const SNAPSHOT_ACCESS_DIR: &str = "access";
+pub const SNAPSHOT_ACCESS_USERS_DIR: &str = "users";
+pub const SNAPSHOT_ACCESS_TEAMS_DIR: &str = "teams";
+pub const SNAPSHOT_ACCESS_ORGS_DIR: &str = "orgs";
+pub const SNAPSHOT_ACCESS_SERVICE_ACCOUNTS_DIR: &str = "service-accounts";
 pub const SNAPSHOT_DATASOURCE_EXPORT_FILENAME: &str = "datasources.json";
 pub const SNAPSHOT_DATASOURCE_EXPORT_METADATA_FILENAME: &str = "export-metadata.json";
 pub const SNAPSHOT_DATASOURCE_ROOT_INDEX_KIND: &str = "grafana-utils-datasource-export-index";
 pub const SNAPSHOT_DATASOURCE_TOOL_SCHEMA_VERSION: i64 = 1;
+pub const SNAPSHOT_METADATA_FILENAME: &str = "snapshot-metadata.json";
 const SNAPSHOT_REVIEW_KIND: &str = "grafana-utils-snapshot-review";
 const SNAPSHOT_REVIEW_SCHEMA_VERSION: i64 = 1;
-const SNAPSHOT_ROOT_HELP_TEXT: &str = "Examples:\n\n  grafana-util snapshot export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./snapshot\n\n  grafana-util snapshot export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./snapshot --overwrite\n\n  grafana-util snapshot review --input-dir ./snapshot --output-format table\n\n  grafana-util snapshot review --input-dir ./snapshot --interactive";
-const SNAPSHOT_EXPORT_HELP_TEXT: &str = "Examples:\n\n  grafana-util snapshot export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./snapshot\n  grafana-util snapshot export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --export-dir ./snapshot --overwrite";
+const SNAPSHOT_ROOT_HELP_TEXT: &str = "Examples:\n\n  grafana-util snapshot export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-dir ./snapshot\n\n  grafana-util snapshot export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-dir ./snapshot --overwrite\n\n  grafana-util snapshot review --input-dir ./snapshot --output-format table\n\n  grafana-util snapshot review --input-dir ./snapshot --interactive";
+const SNAPSHOT_EXPORT_HELP_TEXT: &str = "Examples:\n\n  grafana-util snapshot export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-dir ./snapshot\n  grafana-util snapshot export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-dir ./snapshot --overwrite";
 const SNAPSHOT_REVIEW_HELP_TEXT: &str = "Examples:\n\n  grafana-util snapshot review --input-dir ./snapshot --output-format table\n  grafana-util snapshot review --input-dir ./snapshot --output-format csv\n  grafana-util snapshot review --input-dir ./snapshot --output-format text\n  grafana-util snapshot review --input-dir ./snapshot --output-format json\n  grafana-util snapshot review --input-dir ./snapshot --output-format yaml\n  grafana-util snapshot review --input-dir ./snapshot --interactive";
-
-fn export_scope_kind_from_metadata_value(metadata: &Value) -> &str {
-    metadata
-        .get("scopeKind")
-        .and_then(Value::as_str)
-        .unwrap_or_else(|| {
-            match metadata
-                .get("variant")
-                .and_then(Value::as_str)
-                .unwrap_or_default()
-            {
-                "all-orgs-root" => "all-orgs-root",
-                "root" => "org-root",
-                _ => "",
-            }
-        })
-}
-
-fn rewrite_export_scope_kind(metadata_path: &Path, scope_kind: &str) -> Result<()> {
-    if !metadata_path.is_file() {
-        return Ok(());
-    }
-    let mut metadata =
-        crate::common::load_json_object_file(metadata_path, "Snapshot export metadata")?;
-    let object = metadata
-        .as_object_mut()
-        .ok_or_else(|| crate::common::message("Snapshot export metadata must be a JSON object."))?;
-    object.insert(
-        "scopeKind".to_string(),
-        Value::String(scope_kind.to_string()),
-    );
-    fs::write(metadata_path, serde_json::to_string_pretty(&metadata)?)?;
-    Ok(())
-}
-
-fn annotate_snapshot_root_scope_kinds(export_dir: &Path) -> Result<()> {
-    let paths = build_snapshot_paths(export_dir);
-    rewrite_export_scope_kind(
-        &paths.dashboards.join(EXPORT_METADATA_FILENAME),
-        "workspace-root",
-    )?;
-    rewrite_export_scope_kind(
-        &paths
-            .datasources
-            .join(SNAPSHOT_DATASOURCE_EXPORT_METADATA_FILENAME),
-        "workspace-root",
-    )?;
-    Ok(())
-}
 
 #[cfg(feature = "tui")]
 const SNAPSHOT_REVIEW_OUTPUT_HELP: &str =
@@ -100,11 +75,11 @@ pub struct SnapshotExportArgs {
     #[command(flatten)]
     pub common: CommonCliArgs,
     #[arg(
-        long,
+        long = "output-dir",
         default_value = "snapshot",
         help = "Directory to write the snapshot export root into. The live export writes dashboard and datasource bundles under this root."
     )]
-    pub export_dir: PathBuf,
+    pub output_dir: PathBuf,
     #[arg(
         long,
         help = "Replace an existing snapshot export root instead of failing when the dashboard or datasource export directories already exist."
@@ -175,6 +150,12 @@ pub enum SnapshotCommand {
 pub struct SnapshotPaths {
     pub dashboards: PathBuf,
     pub datasources: PathBuf,
+    pub access: PathBuf,
+    pub access_users: PathBuf,
+    pub access_teams: PathBuf,
+    pub access_orgs: PathBuf,
+    pub access_service_accounts: PathBuf,
+    pub metadata: PathBuf,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -186,104 +167,6 @@ struct SnapshotReviewOrgCounts {
     datasource_count: usize,
     default_datasource_count: usize,
     datasource_types: BTreeMap<String, usize>,
-}
-
-pub fn build_snapshot_paths(export_dir: &Path) -> SnapshotPaths {
-    SnapshotPaths {
-        dashboards: export_dir.join(SNAPSHOT_DASHBOARD_DIR),
-        datasources: export_dir.join(SNAPSHOT_DATASOURCE_DIR),
-    }
-}
-
-pub fn root_command() -> clap::Command {
-    SnapshotCliArgs::command()
-}
-
-pub fn build_snapshot_overview_args(args: &SnapshotReviewArgs) -> OverviewArgs {
-    let paths = build_snapshot_paths(&args.input_dir);
-    OverviewArgs {
-        dashboard_export_dir: Some(paths.dashboards),
-        dashboard_provisioning_dir: None,
-        datasource_export_dir: Some(paths.datasources),
-        datasource_provisioning_file: None,
-        access_user_export_dir: None,
-        access_team_export_dir: None,
-        access_org_export_dir: None,
-        access_service_account_export_dir: None,
-        desired_file: None,
-        source_bundle: None,
-        target_inventory: None,
-        alert_export_dir: None,
-        availability_file: None,
-        mapping_file: None,
-        output_format: args.output_format,
-    }
-}
-
-pub fn build_snapshot_dashboard_export_args(args: &SnapshotExportArgs) -> DashboardExportArgs {
-    let paths = build_snapshot_paths(&args.export_dir);
-    DashboardExportArgs {
-        common: args.common.clone(),
-        export_dir: paths.dashboards,
-        page_size: dashboard::DEFAULT_PAGE_SIZE,
-        org_id: None,
-        all_orgs: true,
-        flat: false,
-        overwrite: args.overwrite,
-        without_dashboard_raw: false,
-        without_dashboard_prompt: false,
-        without_dashboard_provisioning: false,
-        provisioning_provider_name: "grafana-utils-dashboards".to_string(),
-        provisioning_provider_org_id: None,
-        provisioning_provider_path: None,
-        provisioning_provider_disable_deletion: false,
-        provisioning_provider_allow_ui_updates: false,
-        provisioning_provider_update_interval_seconds: 30,
-        dry_run: false,
-        progress: false,
-        verbose: false,
-    }
-}
-
-pub fn build_snapshot_datasource_export_args(args: &SnapshotExportArgs) -> DatasourceExportArgs {
-    let paths = build_snapshot_paths(&args.export_dir);
-    DatasourceExportArgs {
-        common: args.common.clone(),
-        export_dir: paths.datasources,
-        org_id: None,
-        all_orgs: true,
-        overwrite: args.overwrite,
-        without_datasource_provisioning: false,
-        dry_run: false,
-    }
-}
-
-fn materialize_snapshot_common_auth_with_prompt<F, G>(
-    mut common: CommonCliArgs,
-    mut prompt_password_reader: F,
-    mut prompt_token_reader: G,
-) -> Result<CommonCliArgs>
-where
-    F: FnMut() -> Result<String>,
-    G: FnMut() -> Result<String>,
-{
-    if common.prompt_password && common.password.is_none() {
-        common.password = Some(prompt_password_reader()?);
-    }
-    if common.prompt_token && common.api_token.is_none() {
-        common.api_token = Some(prompt_token_reader()?);
-    }
-    common.prompt_password = false;
-    common.prompt_token = false;
-    Ok(common)
-}
-
-fn materialize_snapshot_common_auth(common: CommonCliArgs) -> Result<CommonCliArgs> {
-    materialize_snapshot_common_auth_with_prompt(
-        common,
-        || prompt_password("Grafana Basic auth password: ").map_err(GrafanaCliError::from),
-        || prompt_password("Grafana API token: ").map_err(GrafanaCliError::from),
-    )
 }
 
 fn snapshot_review_org_key(org_id: &str, org: &str) -> String {
@@ -830,6 +713,8 @@ pub fn build_snapshot_review_document(
     let dashboard_lane_summary = build_dashboard_lane_summary(&dashboard_scope_dirs);
     let datasource_lane_summary =
         build_datasource_lane_summary(datasource_lane_dir, &datasource_scope_dirs);
+    let (access_lane_summary, access_counts, mut access_warnings) =
+        build_snapshot_access_lane_summaries(dashboard_dir.parent().unwrap_or(dashboard_dir))?;
     let (dashboard_org_rows, dashboard_count, missing_dashboard_org_scope) =
         collect_dashboard_org_counts(&dashboard_metadata, &dashboard_index)?;
     let dashboard_org_count = dashboard_org_rows.len();
@@ -905,6 +790,8 @@ pub fn build_snapshot_review_document(
         missing_dashboard_org_scope,
         missing_datasource_org_scope,
     );
+    let mut warnings = warnings;
+    warnings.append(&mut access_warnings);
 
     Ok(json!({
         "kind": SNAPSHOT_REVIEW_KIND,
@@ -918,6 +805,10 @@ pub fn build_snapshot_review_document(
             "datasourceCount": datasource_count,
             "datasourceTypeCount": datasource_type_totals.len(),
             "defaultDatasourceCount": default_datasource_count,
+            "accessUserCount": access_counts.user_count,
+            "accessTeamCount": access_counts.team_count,
+            "accessOrgCount": access_counts.org_count,
+            "accessServiceAccountCount": access_counts.service_account_count,
         },
         "orgs": orgs.into_iter().map(|org| json!({
             "org": org.org,
@@ -931,1069 +822,13 @@ pub fn build_snapshot_review_document(
         "lanes": {
             "dashboard": dashboard_lane_summary,
             "datasource": datasource_lane_summary,
+            "access": access_lane_summary,
         },
         "folders": folder_rows,
         "datasourceTypes": datasource_type_documents,
         "datasources": datasource_documents,
         "warnings": warnings,
     }))
-}
-
-pub fn render_snapshot_review_text(document: &Value) -> Result<Vec<String>> {
-    if document.get("kind").and_then(Value::as_str) != Some(SNAPSHOT_REVIEW_KIND) {
-        return Err(crate::common::message(
-            "Snapshot review document kind is not supported.",
-        ));
-    }
-    let summary = document
-        .get("summary")
-        .and_then(Value::as_object)
-        .ok_or_else(|| crate::common::message("Snapshot review document is missing summary."))?;
-    let mut lines = vec![
-        "Snapshot review".to_string(),
-        format!(
-            "Org coverage: {} combined org(s), {} dashboard org(s), {} datasource org(s)",
-            summary.get("orgCount").and_then(Value::as_u64).unwrap_or(0),
-            summary
-                .get("dashboardOrgCount")
-                .and_then(Value::as_u64)
-                .unwrap_or(0),
-            summary
-                .get("datasourceOrgCount")
-                .and_then(Value::as_u64)
-                .unwrap_or(0),
-        ),
-        format!(
-            "Totals: {} dashboard(s), {} folder(s), {} datasource(s)",
-            summary
-                .get("dashboardCount")
-                .and_then(Value::as_u64)
-                .unwrap_or(0),
-            summary
-                .get("folderCount")
-                .and_then(Value::as_u64)
-                .unwrap_or(0),
-            summary
-                .get("datasourceCount")
-                .and_then(Value::as_u64)
-                .unwrap_or(0),
-        ),
-        format!(
-            "Datasource profile: {} type(s), {} default datasource(s)",
-            summary
-                .get("datasourceTypeCount")
-                .and_then(Value::as_u64)
-                .unwrap_or(0),
-            summary
-                .get("defaultDatasourceCount")
-                .and_then(Value::as_u64)
-                .unwrap_or(0),
-        ),
-    ];
-    if let Some(lanes) = document.get("lanes").and_then(Value::as_object) {
-        let dashboard = lanes
-            .get("dashboard")
-            .and_then(Value::as_object)
-            .cloned()
-            .unwrap_or_default();
-        let datasource = lanes
-            .get("datasource")
-            .and_then(Value::as_object)
-            .cloned()
-            .unwrap_or_default();
-        lines.push(format!(
-            "Dashboard lanes: raw {}/{}, prompt {}/{}, provisioning {}/{}",
-            dashboard
-                .get("rawScopeCount")
-                .and_then(Value::as_u64)
-                .unwrap_or(0),
-            dashboard
-                .get("scopeCount")
-                .and_then(Value::as_u64)
-                .unwrap_or(0),
-            dashboard
-                .get("promptScopeCount")
-                .and_then(Value::as_u64)
-                .unwrap_or(0),
-            dashboard
-                .get("scopeCount")
-                .and_then(Value::as_u64)
-                .unwrap_or(0),
-            dashboard
-                .get("provisioningScopeCount")
-                .and_then(Value::as_u64)
-                .unwrap_or(0),
-            dashboard
-                .get("scopeCount")
-                .and_then(Value::as_u64)
-                .unwrap_or(0),
-        ));
-        lines.push(format!(
-            "Datasource lanes: inventory {}/{}, provisioning {}/{}",
-            datasource
-                .get("inventoryScopeCount")
-                .and_then(Value::as_u64)
-                .unwrap_or(0),
-            datasource
-                .get("inventoryExpectedScopeCount")
-                .and_then(Value::as_u64)
-                .unwrap_or(0),
-            datasource
-                .get("provisioningScopeCount")
-                .and_then(Value::as_u64)
-                .unwrap_or(0),
-            datasource
-                .get("provisioningExpectedScopeCount")
-                .and_then(Value::as_u64)
-                .unwrap_or(0),
-        ));
-    }
-    let datasource_types = document
-        .get("datasourceTypes")
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default();
-    if !datasource_types.is_empty() {
-        let summary_text = datasource_types
-            .iter()
-            .filter_map(|item| {
-                item.as_object().map(|item| {
-                    format!(
-                        "{}:{}",
-                        item.get("type")
-                            .and_then(Value::as_str)
-                            .unwrap_or("unknown"),
-                        item.get("count").and_then(Value::as_u64).unwrap_or(0)
-                    )
-                })
-            })
-            .collect::<Vec<String>>()
-            .join(", ");
-        lines.push(format!("Datasource types: {summary_text}"));
-    }
-    let warnings = document
-        .get("warnings")
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default();
-    if warnings.is_empty() {
-        lines.push("Warnings: none".to_string());
-    } else {
-        lines.push(format!("Warnings: {}", warnings.len()));
-        for warning in warnings {
-            let warning = warning.as_object().ok_or_else(|| {
-                crate::common::message("Snapshot review warning entry must be an object.")
-            })?;
-            lines.push(format!(
-                "- {}: {}",
-                warning
-                    .get("code")
-                    .and_then(Value::as_str)
-                    .unwrap_or("unknown"),
-                warning.get("message").and_then(Value::as_str).unwrap_or("")
-            ));
-        }
-    }
-    let orgs = document
-        .get("orgs")
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default();
-    if !orgs.is_empty() {
-        lines.push(String::new());
-        lines.push("# Orgs".to_string());
-        for org in orgs {
-            let org = org.as_object().ok_or_else(|| {
-                crate::common::message("Snapshot review org entry must be an object.")
-            })?;
-            lines.push(format!(
-                "- org={} orgId={} dashboards={} folders={} datasources={} defaults={} types={}",
-                org.get("org").and_then(Value::as_str).unwrap_or("unknown"),
-                org.get("orgId")
-                    .and_then(Value::as_str)
-                    .unwrap_or("unknown"),
-                org.get("dashboardCount")
-                    .and_then(Value::as_u64)
-                    .unwrap_or(0),
-                org.get("folderCount").and_then(Value::as_u64).unwrap_or(0),
-                org.get("datasourceCount")
-                    .and_then(Value::as_u64)
-                    .unwrap_or(0),
-                org.get("defaultDatasourceCount")
-                    .and_then(Value::as_u64)
-                    .unwrap_or(0),
-                org.get("datasourceTypes")
-                    .and_then(Value::as_object)
-                    .map(|types| {
-                        types
-                            .iter()
-                            .map(|(name, count)| {
-                                format!("{}:{}", name, count.as_u64().unwrap_or(0))
-                            })
-                            .collect::<Vec<String>>()
-                            .join(",")
-                    })
-                    .unwrap_or_default(),
-            ));
-        }
-    }
-    Ok(lines)
-}
-
-#[cfg(any(feature = "tui", test))]
-pub(crate) fn build_snapshot_review_summary_lines(document: &Value) -> Result<Vec<String>> {
-    if document.get("kind").and_then(Value::as_str) != Some(SNAPSHOT_REVIEW_KIND) {
-        return Err(crate::common::message(
-            "Snapshot review document kind is not supported.",
-        ));
-    }
-    let summary = document
-        .get("summary")
-        .and_then(Value::as_object)
-        .ok_or_else(|| crate::common::message("Snapshot review document is missing summary."))?;
-    let warnings = document
-        .get("warnings")
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default();
-    Ok(vec![
-        format!(
-            "Org coverage: {} combined org(s), {} dashboard org(s), {} datasource org(s)",
-            summary.get("orgCount").and_then(Value::as_u64).unwrap_or(0),
-            summary
-                .get("dashboardOrgCount")
-                .and_then(Value::as_u64)
-                .unwrap_or(0),
-            summary
-                .get("datasourceOrgCount")
-                .and_then(Value::as_u64)
-                .unwrap_or(0),
-        ),
-        format!(
-            "Totals: {} dashboard(s), {} folder(s), {} datasource(s)",
-            summary
-                .get("dashboardCount")
-                .and_then(Value::as_u64)
-                .unwrap_or(0),
-            summary
-                .get("folderCount")
-                .and_then(Value::as_u64)
-                .unwrap_or(0),
-            summary
-                .get("datasourceCount")
-                .and_then(Value::as_u64)
-                .unwrap_or(0),
-        ),
-        format!(
-            "Datasource profile: {} type(s), {} default datasource(s)",
-            summary
-                .get("datasourceTypeCount")
-                .and_then(Value::as_u64)
-                .unwrap_or(0),
-            summary
-                .get("defaultDatasourceCount")
-                .and_then(Value::as_u64)
-                .unwrap_or(0),
-        ),
-        if warnings.is_empty() {
-            "Warnings: none".to_string()
-        } else {
-            format!("Warnings: {}", warnings.len())
-        },
-    ])
-}
-
-fn snapshot_review_folder_depth(path: &str) -> usize {
-    let separator = if path.contains(" / ") { " / " } else { "/" };
-    path.split(separator)
-        .filter(|segment| !segment.trim().is_empty())
-        .count()
-}
-
-#[cfg(any(feature = "tui", test))]
-pub(crate) fn build_snapshot_review_browser_items(document: &Value) -> Result<Vec<BrowserItem>> {
-    if document.get("kind").and_then(Value::as_str) != Some(SNAPSHOT_REVIEW_KIND) {
-        return Err(crate::common::message(
-            "Snapshot review document kind is not supported.",
-        ));
-    }
-
-    let summary = document
-        .get("summary")
-        .and_then(Value::as_object)
-        .ok_or_else(|| crate::common::message("Snapshot review document is missing summary."))?;
-    let mut items = vec![BrowserItem {
-        kind: "snapshot".to_string(),
-        title: "Snapshot summary".to_string(),
-        meta: format!(
-            "{} org(s)  {} dashboard(s)  {} folder(s)  {} datasource(s)",
-            summary.get("orgCount").and_then(Value::as_u64).unwrap_or(0),
-            summary
-                .get("dashboardCount")
-                .and_then(Value::as_u64)
-                .unwrap_or(0),
-            summary
-                .get("folderCount")
-                .and_then(Value::as_u64)
-                .unwrap_or(0),
-            summary
-                .get("datasourceCount")
-                .and_then(Value::as_u64)
-                .unwrap_or(0),
-        ),
-        details: vec![
-            format!(
-                "Combined orgs: {}",
-                summary.get("orgCount").and_then(Value::as_u64).unwrap_or(0)
-            ),
-            format!(
-                "Dashboard orgs: {}",
-                summary
-                    .get("dashboardOrgCount")
-                    .and_then(Value::as_u64)
-                    .unwrap_or(0)
-            ),
-            format!(
-                "Datasource orgs: {}",
-                summary
-                    .get("datasourceOrgCount")
-                    .and_then(Value::as_u64)
-                    .unwrap_or(0)
-            ),
-            format!(
-                "Dashboards: {}",
-                summary
-                    .get("dashboardCount")
-                    .and_then(Value::as_u64)
-                    .unwrap_or(0)
-            ),
-            format!(
-                "Folders: {}",
-                summary
-                    .get("folderCount")
-                    .and_then(Value::as_u64)
-                    .unwrap_or(0)
-            ),
-            format!(
-                "Datasources: {}",
-                summary
-                    .get("datasourceCount")
-                    .and_then(Value::as_u64)
-                    .unwrap_or(0)
-            ),
-            format!(
-                "Datasource types: {}",
-                summary
-                    .get("datasourceTypeCount")
-                    .and_then(Value::as_u64)
-                    .unwrap_or(0)
-            ),
-            format!(
-                "Default datasources: {}",
-                summary
-                    .get("defaultDatasourceCount")
-                    .and_then(Value::as_u64)
-                    .unwrap_or(0)
-            ),
-        ],
-    }];
-
-    let warnings = document
-        .get("warnings")
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default();
-    for warning in &warnings {
-        let warning = warning.as_object().ok_or_else(|| {
-            crate::common::message("Snapshot review warning entry must be an object.")
-        })?;
-        let code = warning
-            .get("code")
-            .and_then(Value::as_str)
-            .unwrap_or("unknown");
-        let message = warning
-            .get("message")
-            .and_then(Value::as_str)
-            .unwrap_or_default();
-        items.push(BrowserItem {
-            kind: "warning".to_string(),
-            title: code.to_string(),
-            meta: message.to_string(),
-            details: vec![format!("Code: {}", code), format!("Message: {}", message)],
-        });
-    }
-
-    if let Some(lanes) = document.get("lanes").and_then(Value::as_object) {
-        if let Some(dashboard) = lanes.get("dashboard").and_then(Value::as_object) {
-            items.push(BrowserItem {
-                kind: "lane".to_string(),
-                title: "Dashboard lanes".to_string(),
-                meta: format!(
-                    "raw {}/{}  prompt {}/{}  provisioning {}/{}",
-                    dashboard
-                        .get("rawScopeCount")
-                        .and_then(Value::as_u64)
-                        .unwrap_or(0),
-                    dashboard
-                        .get("scopeCount")
-                        .and_then(Value::as_u64)
-                        .unwrap_or(0),
-                    dashboard
-                        .get("promptScopeCount")
-                        .and_then(Value::as_u64)
-                        .unwrap_or(0),
-                    dashboard
-                        .get("scopeCount")
-                        .and_then(Value::as_u64)
-                        .unwrap_or(0),
-                    dashboard
-                        .get("provisioningScopeCount")
-                        .and_then(Value::as_u64)
-                        .unwrap_or(0),
-                    dashboard
-                        .get("scopeCount")
-                        .and_then(Value::as_u64)
-                        .unwrap_or(0),
-                ),
-                details: vec![
-                    format!(
-                        "Raw scopes: {}/{}",
-                        dashboard
-                            .get("rawScopeCount")
-                            .and_then(Value::as_u64)
-                            .unwrap_or(0),
-                        dashboard
-                            .get("scopeCount")
-                            .and_then(Value::as_u64)
-                            .unwrap_or(0)
-                    ),
-                    format!(
-                        "Prompt scopes: {}/{}",
-                        dashboard
-                            .get("promptScopeCount")
-                            .and_then(Value::as_u64)
-                            .unwrap_or(0),
-                        dashboard
-                            .get("scopeCount")
-                            .and_then(Value::as_u64)
-                            .unwrap_or(0)
-                    ),
-                    format!(
-                        "Provisioning scopes: {}/{}",
-                        dashboard
-                            .get("provisioningScopeCount")
-                            .and_then(Value::as_u64)
-                            .unwrap_or(0),
-                        dashboard
-                            .get("scopeCount")
-                            .and_then(Value::as_u64)
-                            .unwrap_or(0)
-                    ),
-                ],
-            });
-        }
-        if let Some(datasource) = lanes.get("datasource").and_then(Value::as_object) {
-            items.push(BrowserItem {
-                kind: "lane".to_string(),
-                title: "Datasource lanes".to_string(),
-                meta: format!(
-                    "inventory {}/{}  provisioning {}/{}",
-                    datasource
-                        .get("inventoryScopeCount")
-                        .and_then(Value::as_u64)
-                        .unwrap_or(0),
-                    datasource
-                        .get("inventoryExpectedScopeCount")
-                        .and_then(Value::as_u64)
-                        .unwrap_or(0),
-                    datasource
-                        .get("provisioningScopeCount")
-                        .and_then(Value::as_u64)
-                        .unwrap_or(0),
-                    datasource
-                        .get("provisioningExpectedScopeCount")
-                        .and_then(Value::as_u64)
-                        .unwrap_or(0),
-                ),
-                details: vec![
-                    format!(
-                        "Inventory scopes: {}/{}",
-                        datasource
-                            .get("inventoryScopeCount")
-                            .and_then(Value::as_u64)
-                            .unwrap_or(0),
-                        datasource
-                            .get("inventoryExpectedScopeCount")
-                            .and_then(Value::as_u64)
-                            .unwrap_or(0)
-                    ),
-                    format!(
-                        "Provisioning scopes: {}/{}",
-                        datasource
-                            .get("provisioningScopeCount")
-                            .and_then(Value::as_u64)
-                            .unwrap_or(0),
-                        datasource
-                            .get("provisioningExpectedScopeCount")
-                            .and_then(Value::as_u64)
-                            .unwrap_or(0)
-                    ),
-                ],
-            });
-        }
-    }
-
-    let orgs = document
-        .get("orgs")
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default();
-    for org in orgs {
-        let org = org.as_object().ok_or_else(|| {
-            crate::common::message("Snapshot review org entry must be an object.")
-        })?;
-        let org_name = org
-            .get("org")
-            .and_then(Value::as_str)
-            .filter(|value| !value.trim().is_empty())
-            .unwrap_or("unknown");
-        let org_id = org
-            .get("orgId")
-            .and_then(Value::as_str)
-            .filter(|value| !value.trim().is_empty())
-            .unwrap_or("unknown");
-        let dashboard_count = org
-            .get("dashboardCount")
-            .and_then(Value::as_u64)
-            .unwrap_or(0);
-        let datasource_count = org
-            .get("datasourceCount")
-            .and_then(Value::as_u64)
-            .unwrap_or(0);
-        items.push(BrowserItem {
-            kind: "org".to_string(),
-            title: org_name.to_string(),
-            meta: format!(
-                "orgId={}  dashboards={}  folders={}  datasources={}  defaults={}",
-                org_id,
-                dashboard_count,
-                org.get("folderCount").and_then(Value::as_u64).unwrap_or(0),
-                datasource_count,
-                org.get("defaultDatasourceCount")
-                    .and_then(Value::as_u64)
-                    .unwrap_or(0)
-            ),
-            details: vec![
-                format!("Org: {}", org_name),
-                format!("Org ID: {}", org_id),
-                format!("Dashboards: {}", dashboard_count),
-                format!(
-                    "Folders: {}",
-                    org.get("folderCount").and_then(Value::as_u64).unwrap_or(0)
-                ),
-                format!("Datasources: {}", datasource_count),
-                format!(
-                    "Default datasources: {}",
-                    org.get("defaultDatasourceCount")
-                        .and_then(Value::as_u64)
-                        .unwrap_or(0)
-                ),
-                format!(
-                    "Datasource types: {}",
-                    org.get("datasourceTypes")
-                        .and_then(Value::as_object)
-                        .map(|types| {
-                            types
-                                .iter()
-                                .map(|(name, count)| {
-                                    format!("{}:{}", name, count.as_u64().unwrap_or(0))
-                                })
-                                .collect::<Vec<String>>()
-                                .join(", ")
-                        })
-                        .unwrap_or_else(|| "none".to_string())
-                ),
-            ],
-        });
-    }
-
-    let datasource_types = document
-        .get("datasourceTypes")
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default();
-    for datasource_type in datasource_types {
-        let datasource_type = datasource_type.as_object().ok_or_else(|| {
-            crate::common::message("Snapshot review datasource type entry must be an object.")
-        })?;
-        items.push(BrowserItem {
-            kind: "datasource-type".to_string(),
-            title: datasource_type
-                .get("type")
-                .and_then(Value::as_str)
-                .unwrap_or("unknown")
-                .to_string(),
-            meta: format!(
-                "count={}",
-                datasource_type
-                    .get("count")
-                    .and_then(Value::as_u64)
-                    .unwrap_or(0)
-            ),
-            details: vec![
-                format!(
-                    "Type: {}",
-                    datasource_type
-                        .get("type")
-                        .and_then(Value::as_str)
-                        .unwrap_or("unknown")
-                ),
-                format!(
-                    "Count: {}",
-                    datasource_type
-                        .get("count")
-                        .and_then(Value::as_u64)
-                        .unwrap_or(0)
-                ),
-            ],
-        });
-    }
-
-    let datasources = document
-        .get("datasources")
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default();
-    for datasource in datasources {
-        let datasource = datasource.as_object().ok_or_else(|| {
-            crate::common::message("Snapshot review datasource entry must be an object.")
-        })?;
-        items.push(BrowserItem {
-            kind: "datasource".to_string(),
-            title: datasource
-                .get("name")
-                .and_then(Value::as_str)
-                .unwrap_or("unknown")
-                .to_string(),
-            meta: format!(
-                "{}  org={}  default={}",
-                datasource
-                    .get("type")
-                    .and_then(Value::as_str)
-                    .unwrap_or_default(),
-                datasource
-                    .get("org")
-                    .and_then(Value::as_str)
-                    .unwrap_or_default(),
-                if datasource
-                    .get("isDefault")
-                    .and_then(Value::as_bool)
-                    .unwrap_or(false)
-                {
-                    "true"
-                } else {
-                    "false"
-                }
-            ),
-            details: vec![
-                format!(
-                    "Name: {}",
-                    datasource
-                        .get("name")
-                        .and_then(Value::as_str)
-                        .unwrap_or_default()
-                ),
-                format!(
-                    "UID: {}",
-                    datasource
-                        .get("uid")
-                        .and_then(Value::as_str)
-                        .unwrap_or_default()
-                ),
-                format!(
-                    "Type: {}",
-                    datasource
-                        .get("type")
-                        .and_then(Value::as_str)
-                        .unwrap_or_default()
-                ),
-                format!(
-                    "Org: {} ({})",
-                    datasource
-                        .get("org")
-                        .and_then(Value::as_str)
-                        .unwrap_or_default(),
-                    datasource
-                        .get("orgId")
-                        .and_then(Value::as_str)
-                        .unwrap_or_default()
-                ),
-                format!(
-                    "URL: {}",
-                    datasource
-                        .get("url")
-                        .and_then(Value::as_str)
-                        .unwrap_or_default()
-                ),
-                format!(
-                    "Access: {}",
-                    datasource
-                        .get("access")
-                        .and_then(Value::as_str)
-                        .unwrap_or_default()
-                ),
-                format!(
-                    "Default: {}",
-                    if datasource
-                        .get("isDefault")
-                        .and_then(Value::as_bool)
-                        .unwrap_or(false)
-                    {
-                        "true"
-                    } else {
-                        "false"
-                    }
-                ),
-            ],
-        });
-    }
-
-    for folder in document
-        .get("folders")
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default()
-    {
-        let folder = folder.as_object().ok_or_else(|| {
-            crate::common::message("Snapshot review folder entry must be an object.")
-        })?;
-        let title = folder
-            .get("title")
-            .and_then(Value::as_str)
-            .unwrap_or("unknown");
-        let path = folder
-            .get("path")
-            .and_then(Value::as_str)
-            .unwrap_or_default();
-        let org = folder
-            .get("org")
-            .and_then(Value::as_str)
-            .unwrap_or_default();
-        let org_id = folder
-            .get("orgId")
-            .and_then(Value::as_str)
-            .unwrap_or_default();
-        let uid = folder
-            .get("uid")
-            .and_then(Value::as_str)
-            .unwrap_or_default();
-        let depth = snapshot_review_folder_depth(path);
-        items.push(BrowserItem {
-            kind: "folder".to_string(),
-            title: title.to_string(),
-            meta: format!("depth={} path={} org={} uid={}", depth, path, org, uid),
-            details: vec![
-                format!("Title: {}", title),
-                format!("Depth: {}", depth),
-                format!("Path: {}", path),
-                format!("Org: {}", org),
-                format!("Org ID: {}", org_id),
-                format!("UID: {}", uid),
-            ],
-        });
-    }
-
-    Ok(items)
-}
-
-#[cfg(feature = "tui")]
-fn run_snapshot_review_interactive(document: &Value) -> Result<()> {
-    let summary_lines = build_snapshot_review_summary_lines(document)?;
-    let items = build_snapshot_review_browser_items(document)?;
-    run_interactive_browser("Snapshot review", &summary_lines, &items)
-}
-
-fn emit_snapshot_review_output(document: &Value, output: OverviewOutputFormat) -> Result<()> {
-    match output {
-        OverviewOutputFormat::Table => {
-            print_lines(&render_table(
-                &[
-                    "ROW_KIND", "NAME", "STATUS", "PRIMARY", "BLOCKERS", "WARNINGS", "DETAIL",
-                ],
-                &build_snapshot_review_tabular_rows(document)?,
-            ));
-        }
-        OverviewOutputFormat::Csv => {
-            print_lines(&render_csv(
-                &[
-                    "row_kind", "name", "status", "primary", "blockers", "warnings", "detail",
-                ],
-                &build_snapshot_review_tabular_rows(document)?,
-            ));
-        }
-        OverviewOutputFormat::Json => print!("{}", render_json_value(document)?),
-        OverviewOutputFormat::Text => {
-            for line in render_snapshot_review_text(document)? {
-                println!("{line}");
-            }
-        }
-        OverviewOutputFormat::Yaml => println!("{}", render_yaml(document)?),
-        #[cfg(feature = "tui")]
-        OverviewOutputFormat::Interactive => {
-            run_snapshot_review_interactive(document)?;
-        }
-    }
-    Ok(())
-}
-
-fn build_snapshot_review_tabular_rows(document: &Value) -> Result<Vec<Vec<String>>> {
-    if document.get("kind").and_then(Value::as_str) != Some(SNAPSHOT_REVIEW_KIND) {
-        return Err(crate::common::message(
-            "Snapshot review document kind is not supported.",
-        ));
-    }
-    let summary = document
-        .get("summary")
-        .and_then(Value::as_object)
-        .ok_or_else(|| crate::common::message("Snapshot review document is missing summary."))?;
-    let mut rows = vec![vec![
-        "overall".to_string(),
-        "snapshot".to_string(),
-        "ready".to_string(),
-        summary
-            .get("dashboardCount")
-            .and_then(Value::as_u64)
-            .unwrap_or(0)
-            .to_string(),
-        document
-            .get("warnings")
-            .and_then(Value::as_array)
-            .map(Vec::len)
-            .unwrap_or(0)
-            .to_string(),
-        summary
-            .get("defaultDatasourceCount")
-            .and_then(Value::as_u64)
-            .unwrap_or(0)
-            .to_string(),
-        format!(
-            "orgs={} datasources={}",
-            summary.get("orgCount").and_then(Value::as_u64).unwrap_or(0),
-            summary
-                .get("datasourceCount")
-                .and_then(Value::as_u64)
-                .unwrap_or(0)
-        ),
-    ]];
-    for org in document
-        .get("orgs")
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default()
-    {
-        let org = org.as_object().ok_or_else(|| {
-            crate::common::message("Snapshot review org entry must be an object.")
-        })?;
-        rows.push(vec![
-            "org".to_string(),
-            org.get("org")
-                .and_then(Value::as_str)
-                .unwrap_or("unknown")
-                .to_string(),
-            org.get("orgId")
-                .and_then(Value::as_str)
-                .unwrap_or_default()
-                .to_string(),
-            org.get("dashboardCount")
-                .and_then(Value::as_u64)
-                .unwrap_or(0)
-                .to_string(),
-            org.get("folderCount")
-                .and_then(Value::as_u64)
-                .unwrap_or(0)
-                .to_string(),
-            org.get("datasourceCount")
-                .and_then(Value::as_u64)
-                .unwrap_or(0)
-                .to_string(),
-            format!(
-                "defaults={}",
-                org.get("defaultDatasourceCount")
-                    .and_then(Value::as_u64)
-                    .unwrap_or(0)
-            ),
-        ]);
-    }
-    for warning in document
-        .get("warnings")
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default()
-    {
-        let warning = warning.as_object().ok_or_else(|| {
-            crate::common::message("Snapshot review warning entry must be an object.")
-        })?;
-        rows.push(vec![
-            "warning".to_string(),
-            warning
-                .get("code")
-                .and_then(Value::as_str)
-                .unwrap_or("unknown")
-                .to_string(),
-            "warning".to_string(),
-            String::new(),
-            String::new(),
-            String::new(),
-            warning
-                .get("message")
-                .and_then(Value::as_str)
-                .unwrap_or_default()
-                .to_string(),
-        ]);
-    }
-    Ok(rows)
-}
-
-fn normalize_snapshot_datasource_dir(temp_root: &Path, datasource_dir: &Path) -> Result<PathBuf> {
-    let metadata_path = datasource_dir.join(SNAPSHOT_DATASOURCE_EXPORT_METADATA_FILENAME);
-    if !metadata_path.is_file() {
-        return Ok(datasource_dir.to_path_buf());
-    }
-
-    let metadata: Value = serde_json::from_str(&fs::read_to_string(&metadata_path)?)?;
-    let kind = metadata
-        .get("kind")
-        .and_then(Value::as_str)
-        .unwrap_or_default();
-    let resource = metadata
-        .get("resource")
-        .and_then(Value::as_str)
-        .unwrap_or_default();
-
-    if kind != SNAPSHOT_DATASOURCE_ROOT_INDEX_KIND
-        || resource != "datasource"
-        || !matches!(
-            export_scope_kind_from_metadata_value(&metadata),
-            "all-orgs-root" | "workspace-root"
-        )
-    {
-        return Ok(datasource_dir.to_path_buf());
-    }
-
-    let mut merged = Vec::new();
-    let mut seen_rows = BTreeSet::<String>::new();
-    let mut append_rows = |rows: Vec<Value>| -> Result<()> {
-        for row in rows {
-            let key = serde_json::to_string(&row)?;
-            if seen_rows.insert(key) {
-                merged.push(row);
-            }
-        }
-        Ok(())
-    };
-
-    let root_datasources_path = datasource_dir.join(SNAPSHOT_DATASOURCE_EXPORT_FILENAME);
-    if root_datasources_path.is_file() {
-        let rows: Vec<Value> = serde_json::from_str(&fs::read_to_string(&root_datasources_path)?)?;
-        append_rows(rows)?;
-    }
-
-    let scope_dirs = resolve_datasource_export_scope_dirs(datasource_dir);
-    for path in scope_dirs {
-        if path == datasource_dir {
-            continue;
-        }
-        let datasources_path = path.join(SNAPSHOT_DATASOURCE_EXPORT_FILENAME);
-        if !datasources_path.is_file() {
-            continue;
-        }
-        let rows: Vec<Value> = serde_json::from_str(&fs::read_to_string(&datasources_path)?)?;
-        append_rows(rows)?;
-    }
-
-    let normalized_dir = temp_root.join("snapshot-review-datasources");
-    fs::create_dir_all(&normalized_dir)?;
-    fs::write(
-        normalized_dir.join(SNAPSHOT_DATASOURCE_EXPORT_FILENAME),
-        serde_json::to_string_pretty(&merged)?,
-    )?;
-    fs::write(
-        normalized_dir.join(SNAPSHOT_DATASOURCE_EXPORT_METADATA_FILENAME),
-        serde_json::to_string_pretty(&json!({
-            "schemaVersion": SNAPSHOT_DATASOURCE_TOOL_SCHEMA_VERSION,
-            "kind": SNAPSHOT_DATASOURCE_ROOT_INDEX_KIND,
-            "variant": "root",
-            "resource": "datasource",
-            "datasourceCount": merged.len(),
-            "datasourcesFile": SNAPSHOT_DATASOURCE_EXPORT_FILENAME,
-            "indexFile": "index.json",
-            "format": "grafana-datasource-inventory-v1",
-        }))?,
-    )?;
-    Ok(normalized_dir)
-}
-
-pub(crate) fn run_snapshot_export_with_handlers<FD, FS>(
-    mut args: SnapshotExportArgs,
-    mut run_dashboard: FD,
-    mut run_datasource: FS,
-) -> Result<()>
-where
-    FD: FnMut(DashboardCliArgs) -> Result<()>,
-    FS: FnMut(DatasourceGroupCommand) -> Result<()>,
-{
-    args.common = materialize_snapshot_common_auth(args.common)?;
-    run_dashboard(DashboardCliArgs {
-        color: args.common.color,
-        command: DashboardCommand::Export(build_snapshot_dashboard_export_args(&args)),
-    })?;
-    run_datasource(DatasourceGroupCommand::Export(
-        build_snapshot_datasource_export_args(&args),
-    ))?;
-    annotate_snapshot_root_scope_kinds(&args.export_dir)?;
-    Ok(())
-}
-
-pub fn run_snapshot_export(args: SnapshotExportArgs) -> Result<()> {
-    run_snapshot_export_with_handlers(
-        args,
-        dashboard::run_dashboard_cli,
-        crate::datasource::run_datasource_cli,
-    )
-}
-
-pub(crate) fn run_snapshot_review_document_with_handler<FO>(
-    args: SnapshotReviewArgs,
-    mut run_review: FO,
-) -> Result<()>
-where
-    FO: FnMut(Value) -> Result<()>,
-{
-    let paths = build_snapshot_paths(&args.input_dir);
-    let temp_dir = TempInspectDir::new("snapshot-review")?;
-    let datasource_dir = normalize_snapshot_datasource_dir(&temp_dir.path, &paths.datasources)?;
-    let document =
-        build_snapshot_review_document(&paths.dashboards, &datasource_dir, &paths.datasources)?;
-    run_review(document)
-}
-
-#[allow(dead_code)]
-pub fn run_snapshot_review(args: SnapshotReviewArgs) -> Result<()> {
-    let output = if args.interactive {
-        OverviewOutputFormat::Interactive
-    } else {
-        args.output_format
-    };
-    run_snapshot_review_document_with_handler(args, move |document| {
-        emit_snapshot_review_output(&document, output)
-    })
-}
-
-pub fn run_snapshot_cli(command: SnapshotCommand) -> Result<()> {
-    match command {
-        SnapshotCommand::Export(args) => run_snapshot_export(args),
-        SnapshotCommand::Review(args) => run_snapshot_review(args),
-    }
 }
 
 #[cfg(test)]

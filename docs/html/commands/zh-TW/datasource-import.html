@@ -783,14 +783,14 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="何時使用">何時使用</h2>
 <p>當您有本地 datasource bundle 或 provisioning 樹，想把它推進 Grafana，無論是實際執行或 dry run，都可以使用這個指令。</p>
 <h2 id="重點旗標">重點旗標</h2>
-<ul><li><code>--import-dir</code>：inventory 或 provisioning 輸入的來源路徑。</li><li><code>--input-format</code>：選擇 <code>inventory</code> 或 <code>provisioning</code>。</li><li><code>--org-id</code>、<code>--use-export-org</code>、<code>--only-org-id</code>、<code>--create-missing-orgs</code>：控制跨 org 路由。</li><li><code>--replace-existing</code>、<code>--update-existing-only</code>、<code>--require-matching-export-org</code>：匯入安全與重整控制。</li><li><code>--secret-values</code>：在匯入時解析佔位秘密值。</li><li><code>--dry-run</code>、<code>--table</code>、<code>--json</code>、<code>--output-format</code>、<code>--no-header</code>、<code>--output-columns</code>、<code>--progress</code>、<code>--verbose</code>：預覽與回報控制。</li></ul>
+<ul><li><code>--input-dir</code>：inventory 或 provisioning 輸入的來源路徑。</li><li><code>--input-format</code>：選擇 <code>inventory</code> 或 <code>provisioning</code>。</li><li><code>--org-id</code>、<code>--use-export-org</code>、<code>--only-org-id</code>、<code>--create-missing-orgs</code>：控制跨 org 路由。</li><li><code>--replace-existing</code>、<code>--update-existing-only</code>、<code>--require-matching-export-org</code>：匯入安全與重整控制。</li><li><code>--secret-values</code>：在匯入時解析佔位秘密值。</li><li><code>--dry-run</code>、<code>--table</code>、<code>--json</code>、<code>--output-format</code>、<code>--no-header</code>、<code>--output-columns</code>、<code>--progress</code>、<code>--verbose</code>：預覽與回報控制。</li></ul>
 <h2 id="範例">範例</h2>
 <pre><code># 用途：透過 Grafana API 匯入 datasource inventory。
-grafana-util datasource import --profile prod --import-dir ./datasources --dry-run --table</code></pre>
+grafana-util datasource import --profile prod --input-dir ./datasources --dry-run --table</code></pre>
 <pre><code># 用途：透過 Grafana API 匯入 datasource inventory。
-grafana-util datasource import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./datasources --use-export-org --only-org-id 2 --create-missing-orgs --dry-run --json</code></pre>
+grafana-util datasource import --url http://localhost:3000 --basic-user admin --basic-password admin --input-dir ./datasources --use-export-org --only-org-id 2 --create-missing-orgs --dry-run --json</code></pre>
 <pre><code># 用途：透過 Grafana API 匯入 datasource inventory。
-grafana-util datasource import --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --import-dir ./datasources --dry-run --table</code></pre>
+grafana-util datasource import --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --input-dir ./datasources --dry-run --table</code></pre>
 <h2 id="採用前後對照">採用前後對照</h2>
 <ul><li><strong>採用前</strong>：匯入 datasource bundle 時，常常要先手動整理檔案、org 與 secrets，然後才敢碰 Grafana。</li><li><strong>採用後</strong>：一個匯入指令就能先預覽計畫、整理 org 路由，再用適當的保護機制推進 bundle。</li></ul>
 <h2 id="成功判準">成功判準</h2>
@@ -798,7 +798,7 @@ grafana-util datasource import --url http://localhost:3000 --token &quot;$GRAFAN
 <h2 id="失敗時先檢查">失敗時先檢查</h2>
 <ul><li>如果匯入碰到錯的 org，先確認路由旗標再重跑</li><li>如果計畫看起來不完整，先確認 <code>--input-format</code> 與 bundle 是 inventory 還是 provisioning</li><li>如果 secrets 還沒解開，先檢查 placeholder 對照與提供的 secret 值</li></ul>
 <h2 id="相關指令">相關指令</h2>
-<ul><li><a href="datasource-export.html">datasource export</a></li><li><a href="datasource-diff.html">datasource diff</a></li><li><a href="datasource-inspect-export.html">datasource inspect-export</a></li></ul>
+<ul><li><a href="datasource-list.html">datasource list</a></li><li><a href="datasource-export.html">datasource export</a></li><li><a href="datasource-diff.html">datasource diff</a></li></ul>
     
   </article>
   <aside class="sidebar">

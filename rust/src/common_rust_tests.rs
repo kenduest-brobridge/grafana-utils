@@ -2,7 +2,7 @@
 //! Verifies path sanitization, shared error helpers, and authentication-header
 //! resolution logic for all Rust domains.
 use super::{
-    editor, invalid_header_name, invalid_header_value, invalid_url, parse_error,
+    editor, emit_plain_output, invalid_header_name, invalid_header_value, invalid_url, parse_error,
     resolve_auth_headers, resolve_auth_headers_with_prompt, sanitize_path_component,
     should_print_stdout, strip_ansi_codes, tui, validation, write_plain_output_file,
     GrafanaCliError,
@@ -76,8 +76,8 @@ fn structured_local_parse_and_transport_helpers_include_context() {
 
 #[test]
 fn context_preserves_error_identity_and_status_code() {
-    let parse_error = parse_error("dashboard file", "invalid JSON")
-        .with_context("Failed to load dashboard");
+    let parse_error =
+        parse_error("dashboard file", "invalid JSON").with_context("Failed to load dashboard");
 
     assert_eq!(parse_error.kind(), "context");
     assert_eq!(
@@ -258,4 +258,20 @@ fn write_plain_output_file_persists_plain_text_without_ansi() {
 
     let raw = fs::read_to_string(output_path).unwrap();
     assert_eq!(raw, "{\n  \"summary\": 1\n}\n");
+}
+
+#[test]
+fn emit_plain_output_writes_clean_file_when_output_file_is_set() {
+    let temp = tempdir().unwrap();
+    let output_path = temp.path().join("rendered.txt");
+
+    emit_plain_output(
+        "Summary\n\u{1b}[1;36mCount: 1\u{1b}[0m\n\n",
+        Some(output_path.as_path()),
+        false,
+    )
+    .unwrap();
+
+    let raw = fs::read_to_string(output_path).unwrap();
+    assert_eq!(raw, "Summary\nCount: 1\n");
 }

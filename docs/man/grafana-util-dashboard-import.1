@@ -8,9 +8,14 @@ grafana\-util\-dashboard\-import \- Import dashboard JSON files through the Graf
 Import dashboard JSON files through the Grafana API.
 .PP
 Use this when you have a local export tree or provisioning tree and need to push dashboards back into Grafana, either live or as a dry run. This command consumes raw/ or provisioning/ inputs; it does not consume the Grafana UI prompt/ lane.
+.SH BEFORE / AFTER
+.IP \(bu 2
+Before: import is a blind replay step, and you find folder, org, or schema problems only after the live call.
+.IP \(bu 2
+After: import becomes a controlled replay step that can be previewed first with \-\-dry\-run, then executed with clearer intent.
 .SH COMMON OPTIONS
 .TP
-.B \-\-import\-dir
+.B \-\-input\-dir
 source directory for raw or combined export input.
 .TP
 .B \-\-input\-format
@@ -33,11 +38,25 @@ revision message stored in Grafana.
 .TP
 .B \-\-interactive, \-\-dry\-run, \-\-table, \-\-json, \-\-output\-format, \-\-output\-columns, \-\-no\-header, \-\-progress, \-\-verbose
 preview and reporting controls.
+.SH SUCCESS CRITERIA
+.IP \(bu 2
+dry\-run shows the expected create/update actions before you touch the live server
+.IP \(bu 2
+the destination org and folder routing are explicit enough to review
+.IP \(bu 2
+the chosen input lane matches the replay goal: raw or provisioning, not prompt
+.SH FAILURE CHECKS
+.IP \(bu 2
+if folder or org placement looks wrong, verify the routing flags before re\-running live import
+.IP \(bu 2
+if the replay looks too destructive, stop at \-\-dry\-run and inspect the export tree first
+.IP \(bu 2
+if the schema check blocks replay, confirm whether the source tree needs normalization before import
 .SH EXAMPLES
 .PP
 Import dashboard JSON files through the Grafana API.
 .EX
-grafana-util dashboard import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./dashboards/raw --replace-existing
+grafana-util dashboard import --url http://localhost:3000 --basic-user admin --basic-password admin --input-dir ./dashboards/raw --replace-existing
 .EE
 .SH SEE ALSO
 \fBgrafana-util\fR(1),

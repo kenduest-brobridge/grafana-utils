@@ -798,7 +798,7 @@ grafana-util profile add ci --url https://grafana.example.com --token-env GRAFAN
 grafana-util profile example --mode full</code></pre>
 <pre><code># 用途：在目前 checkout 初始化一份新的 grafana-util.yaml。
 grafana-util profile init --overwrite</code></pre>
-<p>相關指令：<code>grafana-util status live</code>、<code>grafana-util overview live</code>、<code>grafana-util change plan</code>。</p>
+<p>相關指令：<code>grafana-util status live</code>、<code>grafana-util overview live</code>、<code>grafana-util change preview</code>。</p>
 <h2 id="list"><code>list</code></h2>
 <p>用途：從解析後的 <code>grafana-util</code> 設定檔列出 profile 名稱。</p>
 <p>適用時機：當你要確認目前 checkout 裡有哪些 profile 可用。</p>
@@ -835,7 +835,7 @@ grafana-util profile add prod --url https://grafana.example.com --basic-user adm
 <pre><code># 用途：add。
 grafana-util profile add stage --url https://grafana-stage.example.com --token-env GRAFANA_STAGE_TOKEN --store-secret encrypted-file --prompt-secret-passphrase</code></pre>
 <p>說明：</p>
-<ul><li>預設 config path：<code>grafana-util.yaml</code></li><li>預設加密秘密檔：<code>.grafana-util.secrets.yaml</code></li><li><code>encrypted-file</code> 且未設 passphrase 時，預設本地 key file：<code>.grafana-util.secrets.key</code></li><li>這些預設 secret path 都是以 config file 所在目錄為基準，不是用臨時的 process cwd 去算。</li><li><code>file</code> 是預設模式。</li><li><code>os</code> 與 <code>encrypted-file</code> 都是明確 opt-in。</li><li><code>os</code> 模式會把 secret 放進 macOS Keychain 或 Linux Secret Service，而不是寫進 <code>grafana-util.yaml</code>。</li><li><code>os</code> 目前只支援 macOS 與 Linux；如果是 headless Linux shell，通常要改用 <code>password_env</code>、<code>token_env</code> 或 <code>encrypted-file</code>。</li><li>對重複執行的自動化工作，優先把秘密放進 profile 的 <code>password_env</code> 或 <code>token_env</code>，不要把秘密直接貼進每次 live 指令。</li></ul>
+<ul><li>預設 config path：<code>grafana-util.yaml</code></li><li>預設加密秘密檔：<code>.grafana-util.secrets.yaml</code></li><li><code>encrypted-file</code> 且未設 passphrase 時，預設本地 key file：<code>.grafana-util.secrets.key</code></li><li><code>profile add --store-secret encrypted-file</code> 若 helper 檔位於 config 目錄樹內，會順手更新該目錄的 <code>.gitignore</code> 以忽略這些檔案。</li><li>這些預設 secret path 都是以 config file 所在目錄為基準，不是用臨時的 process cwd 去算。</li><li><code>file</code> 是預設模式。</li><li><code>os</code> 與 <code>encrypted-file</code> 都是明確 opt-in。</li><li><code>os</code> 模式會把 secret 放進 macOS Keychain 或 Linux Secret Service，而不是寫進 <code>grafana-util.yaml</code>。</li><li><code>os</code> 目前只支援 macOS 與 Linux；如果是 headless Linux shell，通常要改用 <code>password_env</code>、<code>token_env</code> 或 <code>encrypted-file</code>。</li><li>對重複執行的自動化工作，優先把秘密放進 profile 的 <code>password_env</code> 或 <code>token_env</code>，不要把秘密直接貼進每次 live 指令。</li></ul>
 <p>相關指令：<code>profile show</code>、<code>profile example</code>、<code>profile init</code>。</p>
 <h2 id="example"><code>example</code></h2>
 <p>用途：輸出一份帶完整註解的參考設定，方便直接拿來改。</p>

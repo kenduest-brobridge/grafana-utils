@@ -1,6 +1,7 @@
 //! Datasource diff unit tests.
 //! Validates compare status/classification and mismatch reporting around import-vs-live
 //! contract data.
+use crate::common::DiffOutputFormat;
 use crate::datasource::datasource_diff::{
     build_datasource_diff_report, normalize_export_records, normalize_live_records,
     DatasourceDiffStatus,
@@ -219,6 +220,7 @@ fn diff_report_rejects_extra_contract_fields_in_fixture_file() {
         &dir,
         DatasourceImportInputFormat::Inventory,
         &[],
+        DiffOutputFormat::Text,
     );
     let error = result.unwrap_err().to_string();
     assert!(error.contains("unsupported datasource field(s): password"));

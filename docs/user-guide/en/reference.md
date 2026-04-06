@@ -58,24 +58,60 @@ The `change` family emits several different JSON contracts. The safest routing r
 Fast lookups from the CLI:
 
 - `grafana-util change --help-schema`
-- `grafana-util change plan --help-schema`
+- `grafana-util change preview --help-schema`
 - `grafana-util change apply --help-schema`
-- `grafana-util change audit --help-schema`
+- `grafana-util change advanced audit --help-schema`
 
 Practical mapping:
 
-- `change summary --output-format json` -> `grafana-utils-sync-summary`
-- `change plan --output-format json` -> `grafana-utils-sync-plan`
-- `change review --output-format json` -> `grafana-utils-sync-plan`
+- `change inspect --output-format json` -> staged change summary or overview-style inspection output, depending on selected inputs
+- `change preview --output-format json` -> `grafana-utils-sync-plan`
 - `change apply --output-format json` -> `grafana-utils-sync-apply-intent`
 - `change apply --execute-live --output-format json` -> live apply result
-- `change audit --output-format json` -> `grafana-utils-sync-audit`
-- `change preflight --output-format json` -> `grafana-utils-sync-preflight`
-- `change assess-alerts --output-format json` -> `grafana-utils-alert-sync-plan`
-- `change bundle-preflight --output-format json` -> `grafana-utils-sync-bundle-preflight`
-- `change promotion-preflight --output-format json` -> `grafana-utils-sync-promotion-preflight`
+- `change advanced summary --output-format json` -> `grafana-utils-sync-summary`
+- `change advanced review --output-format json` -> `grafana-utils-sync-plan`
+- `change advanced audit --output-format json` -> `grafana-utils-sync-audit`
+- `change advanced preflight --output-format json` -> `grafana-utils-sync-preflight`
+- `change advanced assess-alerts --output-format json` -> `grafana-utils-alert-sync-plan`
+- `change advanced bundle-preflight --output-format json` -> `grafana-utils-sync-bundle-preflight`
+- `change advanced promotion-preflight --output-format json` -> `grafana-utils-sync-promotion-preflight`
+
+For `grafana-utils-sync-plan`, reviewers and CI should also expect ordering metadata on the reviewed preview document itself: `ordering.mode`, `operations[].orderIndex`, `operations[].orderGroup`, `operations[].kindOrder`, and `summary.blocked_reasons`.
 
 Use the dedicated [change command reference](../../commands/en/change.md) when you need the exact top-level keys for each document.
+
+### `dashboard history` JSON documents for CI
+
+`dashboard history` also exposes stable JSON contracts for automation.
+
+For local history inspection, `dashboard history list` can also read:
+
+- a single reusable artifact created by `dashboard history export --output ./cpu-main.history.json`
+- an export tree created by `dashboard export --include-history --output-dir ./dashboards`
+
+`dashboard history restore` remains live-only.
+
+The same routing rule applies:
+
+1. inspect `kind`
+2. confirm `schemaVersion`
+3. only then branch on nested fields
+
+Fast lookups from the CLI:
+
+- `grafana-util dashboard history --help-schema`
+- `grafana-util dashboard history list --help-schema`
+- `grafana-util dashboard history restore --help-schema`
+- `grafana-util dashboard history export --help-schema`
+
+Practical mapping:
+
+- `dashboard history list --output-format json` -> `grafana-util-dashboard-history-list`
+- `dashboard history list --input-dir ./dashboards --output-format json` -> `grafana-util-dashboard-history-inventory` when no `--dashboard-uid` filter is present
+- `dashboard history restore --dry-run --output-format json` -> `grafana-util-dashboard-history-restore`
+- `dashboard history export --output ./cpu-main.history.json` -> `grafana-util-dashboard-history-export`
+
+Use the dedicated [dashboard history reference](../../commands/en/dashboard-history.md) when you need the exact top-level keys for each document.
 
 ---
 
@@ -115,7 +151,7 @@ Recommended order for most teams:
 
 The `os` provider is platform-backed:
 
-- macOS: stores secrets in the Keychain through the `security` tool
+- macOS: stores secrets in the Keychain through the system keyring integration
 - Linux: stores secrets in the desktop secret service through the system keyring integration
 
 This is useful because your profile YAML keeps only a secret reference such as:
@@ -148,6 +184,8 @@ If you set `GRAFANA_UTIL_CONFIG`, the config file moves with that path. The help
 | `grafana-util.yaml` | current working directory, or the path given by `GRAFANA_UTIL_CONFIG` |
 | `.grafana-util.secrets.yaml` | same directory as `grafana-util.yaml` |
 | `.grafana-util.secrets.key` | same directory as `grafana-util.yaml` |
+
+When `encrypted-file` uses these repo-local helper paths, `profile add` also appends them to the config-directory `.gitignore` if they are not already ignored.
 
 ### 2. Initialize, add, and list profiles
 ```bash
@@ -358,7 +396,7 @@ Why these examples matter:
 | Situation | Syntax | Common values | Notes |
 | :--- | :--- | :--- | :--- |
 | Direct format selectors | `--text`, `--table`, `--csv`, `--json`, `--yaml` | `text` / `table` / `csv` / `json` / `yaml` | Common on list, review, inspect, and some dry-run mutation surfaces. |
-| Single selector for common formats | `--output-format <FORMAT>` | `text` / `table` / `csv` / `json` / `yaml` | Some commands also define command-specific values such as `report-table`, `governance-json`, `mermaid`, or `dot`. |
+| Single selector for common formats | `--output-format <FORMAT>` | `text` / `table` / `csv` / `json` / `yaml` | Some commands also define command-specific values such as `governance`, `governance-json`, `queries-json`, `mermaid`, or `dot`. |
 | Live `status` / `overview` entrypoints | `--output-format <FORMAT>` | `table` / `csv` / `text` / `json` / `yaml` / `interactive` | These live entrypoints now use the same standard selector. |
 | Write the rendered result to a file | `--output-file <PATH>` or a command-specific flag | command-specific | Common on topology, governance-gate, screenshot, and similar output-producing commands. |
 

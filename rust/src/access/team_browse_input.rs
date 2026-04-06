@@ -15,7 +15,8 @@ use crate::access::team::{
     iter_teams_with_request, list_team_members_with_request, modify_team_with_request,
     team_member_identity,
 };
-use crate::access::TeamModifyArgs;
+use crate::access::team_import_export_diff::load_team_import_records;
+use crate::access::{TeamModifyArgs, ACCESS_EXPORT_KIND_TEAMS};
 
 pub(super) enum BrowseAction {
     Continue,
@@ -141,12 +142,30 @@ where
                 "Expanded all team member rows.".to_string()
             };
         }
-        KeyCode::Char('g') => return Ok(BrowseAction::JumpToUser),
+        KeyCode::Char('g') => {
+            if args.input_dir.is_some() {
+                state.status =
+                    "Jumping from local team browse to user browse is unavailable. Open the user bundle directly with access user browse --input-dir ..."
+                        .to_string();
+            } else {
+                return Ok(BrowseAction::JumpToUser);
+            }
+        }
         KeyCode::Char('l') => {
             state.replace_rows(load_rows(request_json, args)?);
-            state.status = "Refreshed team browser from live Grafana.".to_string();
+            state.status = if args.input_dir.is_some() {
+                "Reloaded team browser from local bundle.".to_string()
+            } else {
+                "Refreshed team browser from live Grafana.".to_string()
+            };
         }
         KeyCode::Char('e') => {
+            if args.input_dir.is_some() {
+                state.status =
+                    "Local team browse is read-only. Use access team import or live browse to apply changes."
+                        .to_string();
+                return Ok(BrowseAction::Continue);
+            }
             let row = state
                 .selected_row()
                 .ok_or_else(|| message("Team browse has no selected team to edit."))?
@@ -160,7 +179,11 @@ where
             state.status = format!("Editing team {}.", name);
         }
         KeyCode::Char('d') => {
-            if let Some(row) = state.selected_row() {
+            if args.input_dir.is_some() {
+                state.status =
+                    "Local team browse is read-only. Use access team delete against live Grafana instead."
+                        .to_string();
+            } else if let Some(row) = state.selected_row() {
                 if row_kind(row) == "member" {
                     state.status = "Select a team row to delete a team.".to_string();
                     return Ok(BrowseAction::Continue);
@@ -182,6 +205,9 @@ pub(super) fn load_rows<F>(
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
+    if args.input_dir.is_some() {
+        return load_rows_from_input_dir(args);
+    }
     let mut rows = iter_teams_with_request(&mut request_json, args.query.as_deref())?
         .into_iter()
         .map(|team| normalize_team_row(&team))
@@ -227,6 +253,68 @@ where
             .collect::<Vec<_>>();
         row.insert("members".to_string(), Value::Array(members));
         row.insert("memberRows".to_string(), Value::Array(member_rows));
+    }
+    let start = args.per_page.saturating_mul(args.page.saturating_sub(1));
+    Ok(rows.into_iter().skip(start).take(args.per_page).collect())
+}
+
+fn build_local_member_rows(team: &Map<String, Value>) -> Vec<Value> {
+    let mut member_rows = Vec::new();
+    for (field, role) in [("members", "Member"), ("admins", "Admin")] {
+        if let Some(Value::Array(values)) = team.get(field) {
+            for value in values {
+                if let Some(identity) = value.as_str() {
+                    let identity = identity.trim();
+                    if identity.is_empty() {
+                        continue;
+                    }
+                    member_rows.push(Value::Object(Map::from_iter(vec![
+                        (
+                            "memberIdentity".to_string(),
+                            Value::String(identity.to_string()),
+                        ),
+                        ("memberLogin".to_string(), Value::String(String::new())),
+                        ("memberEmail".to_string(), Value::String(String::new())),
+                        ("memberName".to_string(), Value::String(String::new())),
+                        ("memberRole".to_string(), Value::String(role.to_string())),
+                    ])));
+                }
+            }
+        }
+    }
+    member_rows
+}
+
+fn load_rows_from_input_dir(args: &TeamBrowseArgs) -> Result<Vec<Map<String, Value>>> {
+    let input_dir = args
+        .input_dir
+        .as_ref()
+        .ok_or_else(|| message("Team browse local mode requires --input-dir."))?;
+    let mut rows = load_team_import_records(input_dir, ACCESS_EXPORT_KIND_TEAMS)?
+        .into_iter()
+        .map(|team| {
+            let member_rows = build_local_member_rows(&team);
+            let mut row = normalize_team_row(&team);
+            row.insert("memberRows".to_string(), Value::Array(member_rows));
+            row
+        })
+        .collect::<Vec<_>>();
+    if let Some(query) = &args.query {
+        let query = query.to_ascii_lowercase();
+        rows.retain(|row| {
+            map_get_text(row, "name")
+                .to_ascii_lowercase()
+                .contains(&query)
+                || map_get_text(row, "email")
+                    .to_ascii_lowercase()
+                    .contains(&query)
+                || map_get_text(row, "members")
+                    .to_ascii_lowercase()
+                    .contains(&query)
+        });
+    }
+    if let Some(name) = &args.name {
+        rows.retain(|row| map_get_text(row, "name") == *name);
     }
     let start = args.per_page.saturating_mul(args.page.saturating_sub(1));
     Ok(rows.into_iter().skip(start).take(args.per_page).collect())
@@ -365,6 +453,9 @@ fn current_detail_line_count(state: &BrowserState) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::access::CommonCliArgs;
+    use std::fs;
+    use tempfile::tempdir;
 
     #[test]
     fn search_prompt_treats_q_as_query_text() {
@@ -383,5 +474,56 @@ mod tests {
                 .map(|search| search.query.as_str()),
             Some("q")
         );
+    }
+
+    #[test]
+    fn load_rows_reads_local_team_bundle_without_live_requests() {
+        let temp = tempdir().unwrap();
+        fs::write(
+            temp.path().join("teams.json"),
+            r#"{
+                "kind":"grafana-utils-access-team-export-index",
+                "version":1,
+                "records":[
+                    {"name":"platform-team","email":"platform@example.com","members":["alice"],"admins":["bob"]}
+                ]
+            }"#,
+        )
+        .unwrap();
+        let args = TeamBrowseArgs {
+            common: CommonCliArgs {
+                profile: None,
+                url: "http://127.0.0.1:3000".to_string(),
+                api_token: None,
+                username: None,
+                password: None,
+                prompt_password: false,
+                prompt_token: false,
+                org_id: None,
+                timeout: 30,
+                verify_ssl: false,
+                insecure: false,
+                ca_cert: None,
+            },
+            input_dir: Some(temp.path().to_path_buf()),
+            query: None,
+            name: Some("platform-team".to_string()),
+            with_members: true,
+            page: 1,
+            per_page: 100,
+        };
+
+        let rows = load_rows(
+            |_method, _path, _params, _payload| {
+                panic!("local team browse should not hit the request layer")
+            },
+            &args,
+        )
+        .unwrap();
+
+        assert_eq!(rows.len(), 1);
+        assert_eq!(map_get_text(&rows[0], "name"), "platform-team");
+        assert_eq!(map_get_text(&rows[0], "members"), "alice,bob");
+        assert!(matches!(rows[0].get("memberRows"), Some(Value::Array(values)) if values.len() == 2));
     }
 }

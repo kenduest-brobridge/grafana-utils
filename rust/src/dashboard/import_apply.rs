@@ -2,22 +2,28 @@
 
 use reqwest::Method;
 use serde_json::Value;
+use std::collections::BTreeMap;
+use std::path::PathBuf;
 
 use crate::common::{message, Result};
+#[cfg(feature = "tui")]
+use crate::dashboard::import_interactive;
 use crate::dashboard::{
     build_http_client_for_org, build_import_payload, extract_dashboard_object,
     import_dashboard_request_with_request, load_export_metadata, load_folder_inventory,
-    load_json_file, validate, DiffArgs, FolderInventoryItem, FolderInventoryStatusKind, ImportArgs,
+    load_json_file, validate, DiffArgs, ExportMetadata, FolderInventoryItem, ImportArgs,
     DEFAULT_UNKNOWN_UID, FOLDER_INVENTORY_FILENAME,
 };
+use crate::grafana_api::DashboardResourceClient;
 use crate::http::{JsonHttpClient, JsonHttpClientConfig};
 
 use super::super::import_compare::diff_dashboards_with_request;
 use super::super::import_lookup::{
     apply_folder_path_guard_to_action, build_folder_path_match_result,
-    determine_dashboard_import_action_with_request,
+    determine_dashboard_import_action_with_client, determine_dashboard_import_action_with_request,
+    determine_import_folder_uid_override_with_client,
     determine_import_folder_uid_override_with_request, ensure_folder_inventory_entry_cached,
-    resolve_dashboard_import_folder_path_with_request,
+    ensure_folder_inventory_entry_with_client, resolve_existing_dashboard_folder_path_with_client,
     resolve_existing_dashboard_folder_path_with_request, ImportLookupCache,
 };
 use super::super::import_render::{
@@ -28,26 +34,280 @@ use super::super::import_validation::{
     validate_dashboard_import_dependencies_with_request, validate_matching_export_org_with_request,
 };
 use super::import_dry_run::{
-    collect_import_dry_run_report_with_request, folder_inventory_status_output_lines,
+    collect_import_dry_run_report_with_client, collect_import_dry_run_report_with_request,
+    folder_inventory_status_output_lines,
 };
 
-/// Purpose: implementation note.
-pub fn diff_dashboards_with_client(client: &JsonHttpClient, args: &DiffArgs) -> Result<usize> {
-    diff_dashboards_with_request(
-        |method, path, params, payload| client.request_json(method, path, params, payload),
-        args,
-    )
+trait LiveImportBackend {
+    fn validate_export_org(
+        &mut self,
+        cache: &mut ImportLookupCache,
+        args: &ImportArgs,
+        input_dir: &std::path::Path,
+        metadata: Option<&ExportMetadata>,
+    ) -> Result<()>;
+
+    fn validate_dependencies(
+        &mut self,
+        input_dir: &std::path::Path,
+        strict_schema: bool,
+        target_schema_version: Option<i64>,
+    ) -> Result<()>;
+
+    fn determine_import_folder_uid_override(
+        &mut self,
+        cache: &mut ImportLookupCache,
+        uid: &str,
+        folder_uid_override: Option<&str>,
+        preserve_existing_folder: bool,
+    ) -> Result<Option<String>>;
+
+    fn determine_dashboard_import_action(
+        &mut self,
+        cache: &mut ImportLookupCache,
+        payload: &Value,
+        replace_existing: bool,
+        update_existing_only: bool,
+    ) -> Result<&'static str>;
+
+    fn resolve_existing_dashboard_folder_path(
+        &mut self,
+        cache: &mut ImportLookupCache,
+        uid: &str,
+    ) -> Result<Option<String>>;
+
+    fn ensure_folder_inventory_entry(
+        &mut self,
+        cache: &mut ImportLookupCache,
+        folders_by_uid: &BTreeMap<String, FolderInventoryItem>,
+        folder_uid: &str,
+    ) -> Result<()>;
+
+    fn import_dashboard(&mut self, payload: &Value) -> Result<()>;
 }
 
-/// Purpose: implementation note.
-pub(crate) fn import_dashboards_with_request<F>(
-    mut request_json: F,
-    args: &ImportArgs,
-) -> Result<usize>
+struct RequestImportBackend<'a, F>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
-    let mut lookup_cache = ImportLookupCache::default();
+    request_json: &'a mut F,
+}
+
+impl<'a, F> RequestImportBackend<'a, F>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    fn new(request_json: &'a mut F) -> Self {
+        Self { request_json }
+    }
+}
+
+impl<F> LiveImportBackend for RequestImportBackend<'_, F>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    fn validate_export_org(
+        &mut self,
+        cache: &mut ImportLookupCache,
+        args: &ImportArgs,
+        input_dir: &std::path::Path,
+        metadata: Option<&ExportMetadata>,
+    ) -> Result<()> {
+        validate_matching_export_org_with_request(
+            &mut *self.request_json,
+            cache,
+            args,
+            input_dir,
+            metadata,
+            None,
+        )
+    }
+
+    fn validate_dependencies(
+        &mut self,
+        input_dir: &std::path::Path,
+        strict_schema: bool,
+        target_schema_version: Option<i64>,
+    ) -> Result<()> {
+        validate_dashboard_import_dependencies_with_request(
+            &mut *self.request_json,
+            input_dir,
+            strict_schema,
+            target_schema_version,
+        )
+    }
+
+    fn determine_import_folder_uid_override(
+        &mut self,
+        cache: &mut ImportLookupCache,
+        uid: &str,
+        folder_uid_override: Option<&str>,
+        preserve_existing_folder: bool,
+    ) -> Result<Option<String>> {
+        determine_import_folder_uid_override_with_request(
+            &mut *self.request_json,
+            cache,
+            uid,
+            folder_uid_override,
+            preserve_existing_folder,
+        )
+    }
+
+    fn determine_dashboard_import_action(
+        &mut self,
+        cache: &mut ImportLookupCache,
+        payload: &Value,
+        replace_existing: bool,
+        update_existing_only: bool,
+    ) -> Result<&'static str> {
+        determine_dashboard_import_action_with_request(
+            &mut *self.request_json,
+            cache,
+            payload,
+            replace_existing,
+            update_existing_only,
+        )
+    }
+
+    fn resolve_existing_dashboard_folder_path(
+        &mut self,
+        cache: &mut ImportLookupCache,
+        uid: &str,
+    ) -> Result<Option<String>> {
+        resolve_existing_dashboard_folder_path_with_request(&mut *self.request_json, cache, uid)
+    }
+
+    fn ensure_folder_inventory_entry(
+        &mut self,
+        cache: &mut ImportLookupCache,
+        folders_by_uid: &BTreeMap<String, FolderInventoryItem>,
+        folder_uid: &str,
+    ) -> Result<()> {
+        ensure_folder_inventory_entry_cached(
+            &mut *self.request_json,
+            cache,
+            folders_by_uid,
+            folder_uid,
+        )
+    }
+
+    fn import_dashboard(&mut self, payload: &Value) -> Result<()> {
+        let _ = import_dashboard_request_with_request(&mut *self.request_json, payload)?;
+        Ok(())
+    }
+}
+
+struct ClientImportBackend<'a> {
+    dashboard: DashboardResourceClient<'a>,
+}
+
+impl<'a> ClientImportBackend<'a> {
+    fn new(client: &'a JsonHttpClient) -> Self {
+        Self {
+            dashboard: DashboardResourceClient::new(client),
+        }
+    }
+}
+
+impl LiveImportBackend for ClientImportBackend<'_> {
+    fn validate_export_org(
+        &mut self,
+        _cache: &mut ImportLookupCache,
+        args: &ImportArgs,
+        input_dir: &std::path::Path,
+        metadata: Option<&ExportMetadata>,
+    ) -> Result<()> {
+        super::super::import_validation::validate_matching_export_org_with_client(
+            &self.dashboard,
+            args,
+            input_dir,
+            metadata,
+            None,
+        )
+    }
+
+    fn validate_dependencies(
+        &mut self,
+        input_dir: &std::path::Path,
+        strict_schema: bool,
+        target_schema_version: Option<i64>,
+    ) -> Result<()> {
+        super::super::import_validation::validate_dashboard_import_dependencies_with_client(
+            &self.dashboard,
+            input_dir,
+            strict_schema,
+            target_schema_version,
+        )
+    }
+
+    fn determine_import_folder_uid_override(
+        &mut self,
+        cache: &mut ImportLookupCache,
+        uid: &str,
+        folder_uid_override: Option<&str>,
+        preserve_existing_folder: bool,
+    ) -> Result<Option<String>> {
+        determine_import_folder_uid_override_with_client(
+            &self.dashboard,
+            cache,
+            uid,
+            folder_uid_override,
+            preserve_existing_folder,
+        )
+    }
+
+    fn determine_dashboard_import_action(
+        &mut self,
+        cache: &mut ImportLookupCache,
+        payload: &Value,
+        replace_existing: bool,
+        update_existing_only: bool,
+    ) -> Result<&'static str> {
+        determine_dashboard_import_action_with_client(
+            &self.dashboard,
+            cache,
+            payload,
+            replace_existing,
+            update_existing_only,
+        )
+    }
+
+    fn resolve_existing_dashboard_folder_path(
+        &mut self,
+        cache: &mut ImportLookupCache,
+        uid: &str,
+    ) -> Result<Option<String>> {
+        resolve_existing_dashboard_folder_path_with_client(&self.dashboard, cache, uid)
+    }
+
+    fn ensure_folder_inventory_entry(
+        &mut self,
+        cache: &mut ImportLookupCache,
+        folders_by_uid: &BTreeMap<String, FolderInventoryItem>,
+        folder_uid: &str,
+    ) -> Result<()> {
+        ensure_folder_inventory_entry_with_client(
+            &self.dashboard,
+            cache,
+            folders_by_uid,
+            folder_uid,
+        )
+    }
+
+    fn import_dashboard(&mut self, payload: &Value) -> Result<()> {
+        let _ = self.dashboard.import_dashboard_request(payload)?;
+        Ok(())
+    }
+}
+
+struct PreparedImportRun {
+    resolved_import: super::ResolvedDashboardImportSource,
+    metadata: Option<ExportMetadata>,
+    folders_by_uid: BTreeMap<String, FolderInventoryItem>,
+    dashboard_files: Vec<PathBuf>,
+}
+
+fn validate_import_args(args: &ImportArgs) -> Result<()> {
     if args.table && !args.dry_run {
         return Err(message(
             "--table is only supported with --dry-run for import-dashboard.",
@@ -83,18 +343,20 @@ where
             "--ensure-folders cannot be combined with --import-folder-uid.",
         ));
     }
+    Ok(())
+}
+
+fn prepare_import_run<F>(
+    select_dashboard_files: &mut F,
+    args: &ImportArgs,
+) -> Result<PreparedImportRun>
+where
+    F: FnMut(Vec<PathBuf>) -> Result<Option<Vec<PathBuf>>>,
+{
     let resolved_import = super::resolve_import_source(args)?;
     let metadata = load_export_metadata(
         &resolved_import.metadata_dir,
         Some(super::import_metadata_variant(args)),
-    )?;
-    validate_matching_export_org_with_request(
-        &mut request_json,
-        &mut lookup_cache,
-        args,
-        &resolved_import.metadata_dir,
-        metadata.as_ref(),
-        None,
     )?;
     let folder_inventory = if args.ensure_folders || args.dry_run {
         load_folder_inventory(&resolved_import.metadata_dir, metadata.as_ref())?
@@ -111,35 +373,13 @@ where
             resolved_import.metadata_dir.join(folders_file).display()
         )));
     }
-    let folder_statuses = if args.dry_run && args.ensure_folders {
-        super::super::import_lookup::collect_folder_inventory_statuses_cached(
-            &mut request_json,
-            &mut lookup_cache,
-            &folder_inventory,
-        )?
-    } else {
-        Vec::new()
-    };
-    let folders_by_uid: std::collections::BTreeMap<String, FolderInventoryItem> = folder_inventory
+    let folders_by_uid = folder_inventory
         .into_iter()
         .map(|item| (item.uid.clone(), item))
-        .collect();
-    if !args.dry_run {
-        validate_dashboard_import_dependencies_with_request(
-            &mut request_json,
-            &resolved_import.dashboard_dir,
-            args.strict_schema,
-            args.target_schema_version,
-        )?;
-    }
+        .collect::<BTreeMap<String, FolderInventoryItem>>();
     let discovered_dashboard_files =
         super::dashboard_files_for_import(&resolved_import.dashboard_dir)?;
-    let dashboard_files = match super::selected_dashboard_files(
-        &mut request_json,
-        &mut lookup_cache,
-        args,
-        discovered_dashboard_files.clone(),
-    )? {
+    let dashboard_files = match select_dashboard_files(discovered_dashboard_files.clone())? {
         Some(selected) => selected,
         None if args.interactive => {
             println!(
@@ -150,13 +390,31 @@ where
                     "Import"
                 }
             );
-            return Ok(0);
+            return Ok(PreparedImportRun {
+                resolved_import,
+                metadata,
+                folders_by_uid,
+                dashboard_files: Vec::new(),
+            });
         }
         None => discovered_dashboard_files,
     };
-    let total = dashboard_files.len();
+    Ok(PreparedImportRun {
+        resolved_import,
+        metadata,
+        folders_by_uid,
+        dashboard_files,
+    })
+}
+
+fn run_live_import<B: LiveImportBackend>(
+    backend: &mut B,
+    args: &ImportArgs,
+    prepared: &PreparedImportRun,
+    lookup_cache: &mut ImportLookupCache,
+) -> Result<usize> {
+    let total = prepared.dashboard_files.len();
     let effective_replace_existing = args.replace_existing || args.update_existing_only;
-    let mut dry_run_records: Vec<[String; 8]> = Vec::new();
     let mut imported_count = 0usize;
     let mut skipped_missing_count = 0usize;
     let mut skipped_folder_mismatch_count = 0usize;
@@ -167,36 +425,7 @@ where
     if !args.json {
         println!("Import mode: {}", mode);
     }
-    if args.dry_run && args.ensure_folders {
-        folder_inventory_status_output_lines(
-            &folder_statuses,
-            args.no_header,
-            args.json,
-            args.table,
-        );
-        let missing_folder_count = folder_statuses
-            .iter()
-            .filter(|status| status.kind == FolderInventoryStatusKind::Missing)
-            .count();
-        let mismatched_folder_count = folder_statuses
-            .iter()
-            .filter(|status| status.kind == FolderInventoryStatusKind::Mismatch)
-            .count();
-        let folders_file = metadata
-            .as_ref()
-            .and_then(|item| item.folders_file.as_deref())
-            .unwrap_or(super::FOLDER_INVENTORY_FILENAME);
-        if !args.json {
-            println!(
-                "Dry-run checked {} folder(s) from {}; {} missing, {} mismatched",
-                folder_statuses.len(),
-                args.import_dir.join(folders_file).display(),
-                missing_folder_count,
-                mismatched_folder_count
-            );
-        }
-    }
-    for (index, dashboard_file) in dashboard_files.iter().enumerate() {
+    for (index, dashboard_file) in prepared.dashboard_files.iter().enumerate() {
         let document = load_json_file(dashboard_file)?;
         if args.strict_schema {
             validate::validate_dashboard_import_document(
@@ -215,16 +444,15 @@ where
                 super::super::import_lookup::resolve_source_dashboard_folder_path(
                     &document,
                     dashboard_file,
-                    &resolved_import.metadata_dir,
-                    &folders_by_uid,
+                    &prepared.resolved_import.metadata_dir,
+                    &prepared.folders_by_uid,
                 )?,
             )
         } else {
             None
         };
-        let folder_uid_override = determine_import_folder_uid_override_with_request(
-            &mut request_json,
-            &mut lookup_cache,
+        let folder_uid_override = backend.determine_import_folder_uid_override(
+            lookup_cache,
             &uid,
             args.import_folder_uid.as_deref(),
             effective_replace_existing,
@@ -235,14 +463,12 @@ where
             effective_replace_existing,
             &args.import_message,
         )?;
-        let action = if args.dry_run
-            || args.update_existing_only
+        let action = if args.update_existing_only
             || args.ensure_folders
             || args.require_matching_folder_path
         {
-            Some(determine_dashboard_import_action_with_request(
-                &mut request_json,
-                &mut lookup_cache,
+            Some(backend.determine_dashboard_import_action(
+                lookup_cache,
                 &payload,
                 args.replace_existing,
                 args.update_existing_only,
@@ -251,17 +477,13 @@ where
             None
         };
         let destination_folder_path = if args.require_matching_folder_path {
-            resolve_existing_dashboard_folder_path_with_request(
-                &mut request_json,
-                &mut lookup_cache,
-                &uid,
-            )?
+            backend.resolve_existing_dashboard_folder_path(lookup_cache, &uid)?
         } else {
             None
         };
         let (
             folder_paths_match,
-            folder_match_reason,
+            _folder_match_reason,
             normalized_source_folder_path,
             normalized_destination_folder_path,
         ) = if args.require_matching_folder_path {
@@ -276,68 +498,6 @@ where
         };
         let action =
             action.map(|value| apply_folder_path_guard_to_action(value, folder_paths_match));
-        if args.dry_run {
-            let needs_dry_run_folder_path =
-                args.table || args.json || args.verbose || args.progress;
-            let folder_path = if needs_dry_run_folder_path {
-                let prefer_live_folder_path = folder_uid_override.is_some()
-                    && args.import_folder_uid.is_none()
-                    && !uid.is_empty();
-                Some(resolve_dashboard_import_folder_path_with_request(
-                    &mut request_json,
-                    &mut lookup_cache,
-                    &payload,
-                    &folders_by_uid,
-                    prefer_live_folder_path,
-                )?)
-            } else {
-                None
-            };
-            let payload_object = crate::common::value_as_object(
-                &payload,
-                "Dashboard import payload must be a JSON object.",
-            )?;
-            let dashboard = payload_object
-                .get("dashboard")
-                .and_then(Value::as_object)
-                .ok_or_else(|| message("Dashboard import payload is missing dashboard."))?;
-            let uid = crate::common::string_field(dashboard, "uid", DEFAULT_UNKNOWN_UID);
-            if args.table || args.json {
-                dry_run_records.push(super::super::import_render::build_import_dry_run_record(
-                    dashboard_file,
-                    &uid,
-                    action.unwrap_or(DEFAULT_UNKNOWN_UID),
-                    folder_path.as_deref().unwrap_or(""),
-                    &normalized_source_folder_path,
-                    normalized_destination_folder_path.as_deref(),
-                    folder_match_reason,
-                ));
-            } else if args.verbose {
-                println!(
-                    "{}",
-                    format_import_verbose_line(
-                        dashboard_file,
-                        true,
-                        Some(&uid),
-                        Some(action.unwrap_or(DEFAULT_UNKNOWN_UID)),
-                        folder_path.as_deref(),
-                    )
-                );
-            } else if args.progress {
-                println!(
-                    "{}",
-                    format_import_progress_line(
-                        index + 1,
-                        total,
-                        &uid,
-                        true,
-                        Some(action.unwrap_or(DEFAULT_UNKNOWN_UID)),
-                        folder_path.as_deref(),
-                    )
-                );
-            }
-            continue;
-        }
         if args.update_existing_only || args.require_matching_folder_path {
             let payload_object = crate::common::value_as_object(
                 &payload,
@@ -397,15 +557,14 @@ where
                 .and_then(Value::as_str)
                 .unwrap_or("");
             if !folder_uid.is_empty() && action != Some("would-fail-existing") {
-                ensure_folder_inventory_entry_cached(
-                    &mut request_json,
-                    &mut lookup_cache,
-                    &folders_by_uid,
+                backend.ensure_folder_inventory_entry(
+                    lookup_cache,
+                    &prepared.folders_by_uid,
                     folder_uid,
                 )?;
             }
         }
-        let _result = import_dashboard_request_with_request(&mut request_json, &payload)?;
+        backend.import_dashboard(&payload)?;
         imported_count += 1;
         if args.verbose {
             println!(
@@ -426,32 +585,64 @@ where
             );
         }
     }
-    if args.dry_run {
-        if args.update_existing_only {
-            skipped_missing_count = dry_run_records
-                .iter()
-                .filter(|record| record[2] == "skip-missing")
-                .count();
-        }
-        skipped_folder_mismatch_count = dry_run_records
-            .iter()
-            .filter(|record| record[2] == "skip-folder-mismatch")
-            .count();
-        if args.json {
-            print!(
-                "{}",
-                render_import_dry_run_json(
-                    mode,
-                    &folder_statuses,
-                    &dry_run_records,
-                    &args.import_dir,
-                    skipped_missing_count,
-                    skipped_folder_mismatch_count,
-                )?
-            );
-        } else if args.table {
+    if args.update_existing_only && skipped_missing_count > 0 && skipped_folder_mismatch_count > 0 {
+        println!(
+            "Imported {} dashboard files from {}; skipped {} missing dashboards and {} folder-mismatched dashboards",
+            imported_count,
+            args.input_dir.display(),
+            skipped_missing_count,
+            skipped_folder_mismatch_count
+        );
+    } else if args.update_existing_only && skipped_missing_count > 0 {
+        println!(
+            "Imported {} dashboard files from {}; skipped {} missing dashboards",
+            imported_count,
+            args.input_dir.display(),
+            skipped_missing_count
+        );
+    } else if skipped_folder_mismatch_count > 0 {
+        println!(
+            "Imported {} dashboard files from {}; skipped {} folder-mismatched dashboards",
+            imported_count,
+            args.input_dir.display(),
+            skipped_folder_mismatch_count
+        );
+    } else {
+        println!(
+            "Imported {} dashboard files from {}",
+            imported_count,
+            args.input_dir.display()
+        );
+    }
+    Ok(imported_count)
+}
+
+fn render_dry_run_report(
+    report: &super::super::import_render::ImportDryRunReport,
+    args: &ImportArgs,
+) -> Result<usize> {
+    if args.json {
+        print!(
+            "{}",
+            render_import_dry_run_json(
+                &report.mode,
+                &report.folder_statuses,
+                &report.dashboard_records,
+                &report.input_dir,
+                report.skipped_missing_count,
+                report.skipped_folder_mismatch_count,
+            )?
+        );
+    } else {
+        folder_inventory_status_output_lines(
+            &report.folder_statuses,
+            args.no_header,
+            args.json,
+            args.table,
+        );
+        if args.table {
             for line in render_import_dry_run_table(
-                &dry_run_records,
+                &report.dashboard_records,
                 !args.no_header,
                 if args.output_columns.is_empty() {
                     None
@@ -461,74 +652,184 @@ where
             ) {
                 println!("{line}");
             }
+        } else if args.verbose {
+            for record in &report.dashboard_records {
+                if record[3].is_empty() {
+                    println!(
+                        "Dry-run import uid={} dest={} action={} file={}",
+                        record[0], record[1], record[2], record[7]
+                    );
+                } else {
+                    println!(
+                        "Dry-run import uid={} dest={} action={} folderPath={} file={}",
+                        record[0], record[1], record[2], record[3], record[7]
+                    );
+                }
+            }
+        } else if args.progress {
+            for (index, record) in report.dashboard_records.iter().enumerate() {
+                if record[3].is_empty() {
+                    println!(
+                        "Dry-run dashboard {}/{}: {} dest={} action={}",
+                        index + 1,
+                        report.dashboard_records.len(),
+                        record[0],
+                        record[1],
+                        record[2]
+                    );
+                } else {
+                    println!(
+                        "Dry-run dashboard {}/{}: {} dest={} action={} folderPath={}",
+                        index + 1,
+                        report.dashboard_records.len(),
+                        record[0],
+                        record[1],
+                        record[2],
+                        record[3]
+                    );
+                }
+            }
         }
-        if args.json {
-        } else if args.update_existing_only
-            && skipped_missing_count > 0
-            && skipped_folder_mismatch_count > 0
+        if args.update_existing_only
+            && report.skipped_missing_count > 0
+            && report.skipped_folder_mismatch_count > 0
         {
             println!(
                 "Dry-run checked {} dashboard(s) from {}; would skip {} missing dashboards and {} folder-mismatched dashboards",
-                dashboard_files.len(),
-                args.import_dir.display(),
-                skipped_missing_count,
-                skipped_folder_mismatch_count
+                report.dashboard_records.len(),
+                report.input_dir.display(),
+                report.skipped_missing_count,
+                report.skipped_folder_mismatch_count
             );
-        } else if args.update_existing_only && skipped_missing_count > 0 {
+        } else if args.update_existing_only && report.skipped_missing_count > 0 {
             println!(
                 "Dry-run checked {} dashboard(s) from {}; would skip {} missing dashboards",
-                dashboard_files.len(),
-                args.import_dir.display(),
-                skipped_missing_count
+                report.dashboard_records.len(),
+                report.input_dir.display(),
+                report.skipped_missing_count
             );
-        } else if skipped_folder_mismatch_count > 0 {
+        } else if report.skipped_folder_mismatch_count > 0 {
             println!(
                 "Dry-run checked {} dashboard(s) from {}; would skip {} folder-mismatched dashboards",
-                dashboard_files.len(),
-                args.import_dir.display(),
-                skipped_folder_mismatch_count
+                report.dashboard_records.len(),
+                report.input_dir.display(),
+                report.skipped_folder_mismatch_count
             );
         } else {
             println!(
                 "Dry-run checked {} dashboard(s) from {}",
-                dashboard_files.len(),
-                args.import_dir.display()
+                report.dashboard_records.len(),
+                report.input_dir.display()
             );
         }
-        return Ok(dashboard_files.len());
     }
-    if args.update_existing_only && skipped_missing_count > 0 && skipped_folder_mismatch_count > 0 {
-        println!(
-            "Imported {} dashboard files from {}; skipped {} missing dashboards and {} folder-mismatched dashboards",
-            imported_count,
-            args.import_dir.display(),
-            skipped_missing_count,
-            skipped_folder_mismatch_count
-        );
-    } else if args.update_existing_only && skipped_missing_count > 0 {
-        println!(
-            "Imported {} dashboard files from {}; skipped {} missing dashboards",
-            imported_count,
-            args.import_dir.display(),
-            skipped_missing_count
-        );
-    } else if skipped_folder_mismatch_count > 0 {
-        println!(
-            "Imported {} dashboard files from {}; skipped {} folder-mismatched dashboards",
-            imported_count,
-            args.import_dir.display(),
-            skipped_folder_mismatch_count
-        );
+    Ok(report.dashboard_records.len())
+}
+
+/// Purpose: implementation note.
+pub fn diff_dashboards_with_client(client: &JsonHttpClient, args: &DiffArgs) -> Result<usize> {
+    diff_dashboards_with_request(
+        |method, path, params, payload| client.request_json(method, path, params, payload),
+        args,
+    )
+}
+
+/// Purpose: implementation note.
+pub(crate) fn import_dashboards_with_request<F>(
+    mut request_json: F,
+    args: &ImportArgs,
+) -> Result<usize>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    if !args.dry_run {
+        validate_import_args(args)?;
+        let mut lookup_cache = ImportLookupCache::default();
+        let prepared = prepare_import_run(
+            &mut |dashboard_files| {
+                #[cfg(feature = "tui")]
+                {
+                    super::selected_dashboard_files(
+                        &mut request_json,
+                        &mut lookup_cache,
+                        args,
+                        dashboard_files,
+                    )
+                }
+                #[cfg(not(feature = "tui"))]
+                {
+                    super::selected_dashboard_files(args, dashboard_files)
+                }
+            },
+            args,
+        )?;
+        if prepared.dashboard_files.is_empty() {
+            return Ok(0);
+        }
+        let mut backend = RequestImportBackend::new(&mut request_json);
+        backend.validate_export_org(
+            &mut lookup_cache,
+            args,
+            &prepared.resolved_import.metadata_dir,
+            prepared.metadata.as_ref(),
+        )?;
+        backend.validate_dependencies(
+            &prepared.resolved_import.dashboard_dir,
+            args.strict_schema,
+            args.target_schema_version,
+        )?;
+        return run_live_import(&mut backend, args, &prepared, &mut lookup_cache);
     }
-    Ok(imported_count)
+    validate_import_args(args)?;
+    let report = collect_import_dry_run_report_with_request(&mut request_json, args)?;
+    render_dry_run_report(&report, args)
 }
 
 /// Purpose: implementation note.
 pub fn import_dashboards_with_client(client: &JsonHttpClient, args: &ImportArgs) -> Result<usize> {
-    import_dashboards_with_request(
-        |method, path, params, payload| client.request_json(method, path, params, payload),
+    if args.dry_run {
+        let report = collect_import_dry_run_report_with_client(client, args)?;
+        return render_dry_run_report(&report, args);
+    }
+    validate_import_args(args)?;
+    let mut backend = ClientImportBackend::new(client);
+    let mut lookup_cache = ImportLookupCache::default();
+    let prepared = prepare_import_run(
+        &mut |_dashboard_files| {
+            #[cfg(feature = "tui")]
+            {
+                import_interactive::select_import_dashboard_files_with_client(
+                    &backend.dashboard,
+                    &mut lookup_cache,
+                    args,
+                )
+            }
+            #[cfg(not(feature = "tui"))]
+            {
+                let _ = _dashboard_files;
+                if args.interactive {
+                    return super::super::tui_not_built("import --interactive");
+                }
+                Ok(None)
+            }
+        },
         args,
-    )
+    )?;
+    if prepared.dashboard_files.is_empty() {
+        return Ok(0);
+    }
+    backend.validate_export_org(
+        &mut lookup_cache,
+        args,
+        &prepared.resolved_import.metadata_dir,
+        prepared.metadata.as_ref(),
+    )?;
+    backend.validate_dependencies(
+        &prepared.resolved_import.dashboard_dir,
+        args.strict_schema,
+        args.target_schema_version,
+    )?;
+    run_live_import(&mut backend, args, &prepared, &mut lookup_cache)
 }
 
 /// Purpose: implementation note.

@@ -57,7 +57,7 @@ fn run_sync_cli_apply_accepts_non_blocking_preflight_file() {
     .unwrap();
 
     let result = run_sync_cli(SyncGroupCommand::Apply(SyncApplyArgs {
-        plan_file,
+        plan_file: Some(plan_file),
         preflight_file: Some(preflight_file),
         bundle_preflight_file: None,
         approve: true,
@@ -121,7 +121,7 @@ fn run_sync_cli_apply_rejects_preflight_with_mismatched_trace_id() {
     .unwrap();
 
     let error = run_sync_cli(SyncGroupCommand::Apply(SyncApplyArgs {
-        plan_file,
+        plan_file: Some(plan_file),
         preflight_file: Some(preflight_file),
         bundle_preflight_file: None,
         approve: true,
@@ -191,7 +191,7 @@ fn run_sync_cli_apply_rejects_blocking_preflight_file() {
     .unwrap();
 
     let error = run_sync_cli(SyncGroupCommand::Apply(SyncApplyArgs {
-        plan_file,
+        plan_file: Some(plan_file),
         preflight_file: Some(preflight_file),
         bundle_preflight_file: None,
         approve: true,
@@ -259,7 +259,7 @@ fn run_sync_cli_apply_rejects_blocking_bundle_preflight_file() {
     .unwrap();
 
     let error = run_sync_cli(SyncGroupCommand::Apply(SyncApplyArgs {
-        plan_file,
+        plan_file: Some(plan_file),
         preflight_file: None,
         bundle_preflight_file: Some(bundle_preflight_file),
         approve: true,
@@ -346,7 +346,7 @@ fn run_sync_cli_apply_rejects_bundle_preflight_with_blocked_alert_artifacts() {
     .unwrap();
 
     let error = run_sync_cli(SyncGroupCommand::Apply(SyncApplyArgs {
-        plan_file,
+        plan_file: Some(plan_file),
         preflight_file: None,
         bundle_preflight_file: Some(bundle_preflight_file),
         approve: true,
@@ -428,7 +428,7 @@ fn run_sync_cli_apply_rejects_bundle_preflight_with_missing_secret_placeholder_a
     .unwrap();
 
     let error = run_sync_cli(SyncGroupCommand::Apply(SyncApplyArgs {
-        plan_file,
+        plan_file: Some(plan_file),
         preflight_file: None,
         bundle_preflight_file: Some(bundle_preflight_file),
         approve: true,
@@ -496,7 +496,7 @@ fn run_sync_cli_apply_accepts_non_blocking_bundle_preflight_file() {
     .unwrap();
 
     let result = run_sync_cli(SyncGroupCommand::Apply(SyncApplyArgs {
-        plan_file,
+        plan_file: Some(plan_file),
         preflight_file: None,
         bundle_preflight_file: Some(bundle_preflight_file),
         approve: true,
@@ -565,7 +565,7 @@ fn run_sync_cli_apply_rejects_lineage_aware_preflight_without_trace_id() {
     .unwrap();
 
     let error = run_sync_cli(SyncGroupCommand::Apply(SyncApplyArgs {
-        plan_file,
+        plan_file: Some(plan_file),
         preflight_file: Some(preflight_file),
         bundle_preflight_file: None,
         approve: true,
@@ -638,7 +638,7 @@ fn run_sync_cli_apply_rejects_lineage_aware_bundle_preflight_with_mismatched_par
     .unwrap();
 
     let error = run_sync_cli(SyncGroupCommand::Apply(SyncApplyArgs {
-        plan_file,
+        plan_file: Some(plan_file),
         preflight_file: None,
         bundle_preflight_file: Some(bundle_preflight_file),
         approve: true,
@@ -709,7 +709,7 @@ fn run_sync_cli_apply_rejects_bundle_preflight_with_mismatched_trace_id() {
     .unwrap();
 
     let error = run_sync_cli(SyncGroupCommand::Apply(SyncApplyArgs {
-        plan_file,
+        plan_file: Some(plan_file),
         preflight_file: None,
         bundle_preflight_file: Some(bundle_preflight_file),
         approve: true,

@@ -59,7 +59,7 @@ grafana-util profile example --mode full
 grafana-util profile init --overwrite
 ```
 
-相關指令：`grafana-util status live`、`grafana-util overview live`、`grafana-util change plan`。
+相關指令：`grafana-util status live`、`grafana-util overview live`、`grafana-util change preview`。
 
 ## `list`
 
@@ -146,6 +146,7 @@ grafana-util profile add stage --url https://grafana-stage.example.com --token-e
 - 預設 config path：`grafana-util.yaml`
 - 預設加密秘密檔：`.grafana-util.secrets.yaml`
 - `encrypted-file` 且未設 passphrase 時，預設本地 key file：`.grafana-util.secrets.key`
+- `profile add --store-secret encrypted-file` 若 helper 檔位於 config 目錄樹內，會順手更新該目錄的 `.gitignore` 以忽略這些檔案。
 - 這些預設 secret path 都是以 config file 所在目錄為基準，不是用臨時的 process cwd 去算。
 - `file` 是預設模式。
 - `os` 與 `encrypted-file` 都是明確 opt-in。

@@ -49,13 +49,13 @@ pub(super) fn load_object_from_value(path: &Path, label: &str) -> Result<Map<Str
 }
 
 pub(super) fn load_access_export_records(
-    export_dir: &Path,
+    output_dir: &Path,
     payload_filename: &str,
     expected_kind: &str,
     label: &str,
 ) -> Result<Vec<Map<String, Value>>> {
-    let payload_path = export_dir.join(payload_filename);
-    let metadata_path = export_dir.join(ACCESS_EXPORT_METADATA_FILENAME);
+    let payload_path = output_dir.join(payload_filename);
+    let metadata_path = output_dir.join(ACCESS_EXPORT_METADATA_FILENAME);
     let payload = load_object_from_value(&payload_path, label)?;
     let metadata = load_object_from_value(&metadata_path, label)?;
 

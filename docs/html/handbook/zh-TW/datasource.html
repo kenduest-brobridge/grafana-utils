@@ -763,24 +763,24 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
     <h1><span class="hero-title-main">Data source 維運手冊</span></h1>
 
 
-    <p>這一章整理 data source 的盤點、備份、回放與受控變更。重點是讓你知道哪些資料適合進 Git，哪些資料只適合在恢復時補回。</p>
+    <p>這一章整理 data source 的盤點、備份、回放與受控變更。重點是讓你知道哪些資料適合進 Git，哪些資料只適合在恢復時補回，也能先看 live Grafana 或本地 bundle 的 inventory。</p>
 <h2 id="適用對象">適用對象</h2>
 <ul><li>負責 data source 盤點、同步與恢復的人</li><li>需要把 data source 資產接進 Git 或 provisioning 流程的人</li><li>需要先做 dry-run，再決定要不要套用的人</li></ul>
 <h2 id="主要目標">主要目標</h2>
-<ul><li>先看懂 live data source 長什麼樣</li><li>再建立可回放的輸出樹</li><li>最後才進行匯入、修改或刪除</li></ul>
+<ul><li>先看懂 live data source 或本地 bundle 長什麼樣</li><li>再建立可回放的輸出樹</li><li>最後才進行匯入、修改或刪除</li></ul>
 <h2 id="採用前後對照">採用前後對照</h2>
 <ul><li>以前：data source 變更常被當成單次設定修改，回復方式與還原層級不夠清楚。</li><li>現在：先盤點、再做遮蔽式還原、再投影到 provisioning，最後才做 dry-run 或實際變更。</li></ul>
 <h2 id="成功判準">成功判準</h2>
-<ul><li>你知道哪些欄位要放進恢復包，哪些欄位一定要遮蔽。</li><li>你能先確認 live inventory，再決定要不要動它。</li><li>你能分清楚自己是在處理 recovery、provisioning，還是直接 live mutation。</li></ul>
+<ul><li>你知道哪些欄位要放進恢復包，哪些欄位一定要遮蔽。</li><li>你能先確認 live inventory 或本地匯出 bundle，再決定要不要動它。</li><li>你能分清楚自己是在處理 recovery、provisioning，還是直接 live mutation。</li></ul>
 <h2 id="失敗時先檢查">失敗時先檢查</h2>
 <ul><li>如果回放包裡出現明文 secret，先停下來修匯出路徑，不要先存檔。</li><li>如果匯入預覽跟你以為的 live data source 對不上，先檢查 UID 與 type mapping。</li><li>如果 provisioning 投影跟恢復包不一致，先確認你到底要的是哪一條 lane。</li></ul>
 <p>&gt; <strong>維運目標</strong>：確保 data source 設定可以安全地備份、比對與回放，並透過 <strong>Masked Recovery（遮蔽式還原）</strong> 保護敏感憑證。</p>
 <h2 id="指令頁面">指令頁面</h2>
 <p>如果你現在要查的是指令細節，而不是工作流程章節，可以直接看下面這些指令頁：</p>
-<ul><li><a href="../../commands/zh-TW/datasource.html">datasource 指令總覽</a></li><li><a href="../../commands/zh-TW/datasource-types.html">datasource types</a></li><li><a href="../../commands/zh-TW/datasource-browse.html">datasource browse</a></li><li><a href="../../commands/zh-TW/datasource-inspect-export.html">datasource inspect-export</a></li><li><a href="../../commands/zh-TW/datasource-export.html">datasource export</a></li><li><a href="../../commands/zh-TW/datasource-import.html">datasource import</a></li><li><a href="../../commands/zh-TW/datasource-diff.html">datasource diff</a></li><li><a href="../../commands/zh-TW/datasource-list.html">datasource list</a></li><li><a href="../../commands/zh-TW/datasource-add.html">datasource add</a></li><li><a href="../../commands/zh-TW/datasource-modify.html">datasource modify</a></li><li><a href="../../commands/zh-TW/datasource-delete.html">datasource delete</a></li><li><a href="../../commands/zh-TW/index.html">指令詳細說明總索引</a></li></ul>
+<ul><li><a href="../../commands/zh-TW/datasource.html">datasource 指令總覽</a></li><li><a href="../../commands/zh-TW/datasource-types.html">datasource types</a></li><li><a href="../../commands/zh-TW/datasource-browse.html">datasource browse</a></li><li><a href="../../commands/zh-TW/datasource-list.html">datasource list</a></li><li><a href="../../commands/zh-TW/datasource-export.html">datasource export</a></li><li><a href="../../commands/zh-TW/datasource-import.html">datasource import</a></li><li><a href="../../commands/zh-TW/datasource-diff.html">datasource diff</a></li><li><a href="../../commands/zh-TW/datasource-list.html">datasource list</a></li><li><a href="../../commands/zh-TW/datasource-add.html">datasource add</a></li><li><a href="../../commands/zh-TW/datasource-modify.html">datasource modify</a></li><li><a href="../../commands/zh-TW/datasource-delete.html">datasource delete</a></li><li><a href="../../commands/zh-TW/index.html">指令詳細說明總索引</a></li></ul>
 <h2 id="核心工作流用途">核心工作流用途</h2>
 <p>data source 這組功能主要是為了這幾種場景設計：</p>
-<ul><li><strong>資產盤點</strong>：稽核現有的 data source、其類型以及後端 URL。</li><li><strong>恢復與回放</strong>：維護可供災難恢復的 data source 匯出紀錄。</li><li><strong>Provisioning 投影</strong>：產生 Grafana 檔案式配置系統所需的 YAML 檔案。</li><li><strong>差異審查 (Drift Review)</strong>：在套用變更前，比對本地暫存檔案與 live Grafana。</li><li><strong>受控變更</strong>：在 Dry-run 保護下新增、修改或刪除 live 的 data source。</li></ul>
+<ul><li><strong>資產盤點</strong>：稽核現有的 data source、其類型以及後端 URL，來源可以是 live Grafana 或本地 bundle。</li><li><strong>恢復與回放</strong>：維護可供災難恢復的 data source 匯出紀錄。</li><li><strong>Provisioning 投影</strong>：產生 Grafana 檔案式配置系統所需的 YAML 檔案。</li><li><strong>差異審查 (Drift Review)</strong>：在套用變更前，比對本地暫存檔案與 live Grafana。</li><li><strong>受控變更</strong>：在 Dry-run 保護下新增、修改或刪除 live 的 data source。</li></ul>
 <h2 id="工作流程邊界">工作流程邊界</h2>
 <p>data source 匯出會產生兩個主要輸出物，各自負責不同的用途：</p>
 <table><thead><tr><th>檔案</th><th>用途</th><th>最佳使用場景</th></tr></thead><tbody><tr><td><code>datasources.json</code></td><td><strong>Masked Recovery（遮蔽式還原）</strong></td><td>標準回放合約。用於還原、回放與差異比對。</td></tr><tr><td><code>provisioning/datasources.yaml</code></td><td><strong>Provisioning 投影</strong></td><td>模擬 Grafana 檔案配置系統所需的磁碟結構。</td></tr></tbody></table>
@@ -800,18 +800,18 @@ dehk4kxat5la8b  Prometheus  prometheus  http://prometheus:9090  true            
 <p><strong>如何解讀：</strong></p>
 <ul><li><strong>UID</strong>：用於自動化的穩定身份識別。</li><li><strong>TYPE</strong>：識別外掛實作 (例如 prometheus, loki)。</li><li><strong>IS_DEFAULT</strong>：標示這是否為該 org 的預設 data source。</li><li><strong>URL</strong>：該紀錄關聯的後端目標位址。</li></ul>
 <h2 id="關鍵指令-完整參數參考">關鍵指令 (完整參數參考)</h2>
-<table><thead><tr><th>指令</th><th>帶有參數的完整範例</th></tr></thead><tbody><tr><td><strong>盤點 (List)</strong></td><td><code>grafana-util datasource list --all-orgs --table</code></td></tr><tr><td><strong>匯出 (Export)</strong></td><td><code>grafana-util datasource export --export-dir ./datasources --overwrite</code></td></tr><tr><td><strong>匯入 (Import)</strong></td><td><code>grafana-util datasource import --import-dir ./datasources --replace-existing --dry-run --table</code></td></tr><tr><td><strong>比對 (Diff)</strong></td><td><code>grafana-util datasource diff --import-dir ./datasources</code></td></tr><tr><td><strong>新增 (Add)</strong></td><td><code>grafana-util datasource add --uid &lt;UID&gt; --name &lt;NAME&gt; --type prometheus --datasource-url &lt;URL&gt; --dry-run --table</code></td></tr></tbody></table>
+<table><thead><tr><th>指令</th><th>帶有參數的完整範例</th></tr></thead><tbody><tr><td><strong>盤點 (List)</strong></td><td><code>grafana-util datasource list --all-orgs --table</code> 或 <code>grafana-util datasource list --input-dir ./datasources --table</code></td></tr><tr><td><strong>匯出 (Export)</strong></td><td><code>grafana-util datasource export --output-dir ./datasources --overwrite</code></td></tr><tr><td><strong>匯入 (Import)</strong></td><td><code>grafana-util datasource import --input-dir ./datasources --replace-existing --dry-run --table</code></td></tr><tr><td><strong>比對 (Diff)</strong></td><td><code>grafana-util datasource diff --input-dir ./datasources</code></td></tr><tr><td><strong>新增 (Add)</strong></td><td><code>grafana-util datasource add --uid &lt;UID&gt; --name &lt;NAME&gt; --type prometheus --datasource-url &lt;URL&gt; --dry-run --table</code></td></tr></tbody></table>
 <h2 id="實作範例">實作範例</h2>
 <h3 id="1-匯出盤點資產">1. 匯出盤點資產</h3>
 <pre><code># 用途：1. 匯出盤點資產。
-grafana-util datasource export --export-dir ./datasources --overwrite</code></pre>
+grafana-util datasource export --output-dir ./datasources --overwrite</code></pre>
 <p><strong>範例輸出：</strong></p>
 <pre><code>Exported datasource inventory -&gt; datasources/datasources.json
 Exported metadata            -&gt; datasources/export-metadata.json
 Datasource export completed: 3 item(s)</code></pre>
 <h3 id="2-dry-run-匯入預覽">2. Dry-Run 匯入預覽</h3>
 <pre><code># 用途：2. Dry-Run 匯入預覽。
-grafana-util datasource import --import-dir ./datasources --replace-existing --dry-run --table</code></pre>
+grafana-util datasource import --input-dir ./datasources --replace-existing --dry-run --table</code></pre>
 <p><strong>範例輸出：</strong></p>
 <pre><code>UID         NAME               TYPE         ACTION   DESTINATION
 prom-main   prometheus-main    prometheus   update   existing
@@ -825,13 +825,21 @@ grafana-util datasource add \
 <p><strong>範例輸出：</strong></p>
 <pre><code>INDEX  NAME       TYPE         ACTION  DETAIL
 1      prom-new   prometheus   create  would create datasource uid=prom-main</code></pre>
+<h3 id="4-本地盤點">4. 本地盤點</h3>
+<pre><code># 用途：4. 本地盤點。
+grafana-util datasource list --input-dir ./datasources --table</code></pre>
+<p><strong>範例輸出：</strong></p>
+<pre><code>UID             NAME        TYPE        URL                     IS_DEFAULT  ORG  ORG_ID
+--------------  ----------  ----------  ----------------------  ----------  ---  ------
+dehk4kxat5la8b  Prometheus  prometheus  http://prometheus:9090  true             1</code></pre>
+<ul><li><strong>UID</strong>：用於自動化的穩定身份識別碼。</li><li><strong>TYPE</strong>：識別外掛實作 (例如 prometheus, loki)。</li><li><strong>IS_DEFAULT</strong>：標示這是否為該 org 的預設 data source。</li><li><strong>URL</strong>：該紀錄關聯的後端目標位址。</li></ul>
 <p><a href="dashboard.html">⬅️ 上一章：Dashboard 管理</a> | <a href="index.html">🏠 回首頁</a> | <a href="alert.html">➡️ 下一章：告警治理</a></p>
     <nav class="footer-nav"><a class="link-card" href="dashboard.html"><span>Previous</span>Dashboard 維運人員手冊</a><a class="link-card" href="alert.html"><span>Next</span>Alert 維運人員手冊</a></nav>
   </article>
   <aside class="sidebar">
   <button class="sidebar-toggle sidebar-toggle-right" type="button" aria-expanded="true" aria-label="Toggle page sidebar">▶</button>
   <div class="sidebar-content">
-    <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#適用對象"><span class="toc-label">適用對象</span></a></li><li class="toc-level-2"><a href="#主要目標"><span class="toc-label">主要目標</span></a></li><li class="toc-level-2"><a href="#採用前後對照"><span class="toc-label">採用前後對照</span></a></li><li class="toc-level-2"><a href="#成功判準"><span class="toc-label">成功判準</span></a></li><li class="toc-level-2"><a href="#失敗時先檢查"><span class="toc-label">失敗時先檢查</span></a></li><li class="toc-level-2"><a href="#指令頁面"><span class="toc-label">指令頁面</span></a></li><li class="toc-level-2"><a href="#核心工作流用途"><span class="toc-label">核心工作流用途</span></a></li><li class="toc-level-2"><a href="#工作流程邊界"><span class="toc-label">工作流程邊界</span></a></li><li class="toc-level-2"><a href="#閱讀即時資產盤點"><span class="toc-label">閱讀即時資產盤點</span></a></li><li class="toc-level-2"><a href="#關鍵指令-完整參數參考"><span class="toc-label">關鍵指令 (完整參數參考)</span></a></li><li class="toc-level-2"><a href="#實作範例"><span class="toc-label">實作範例</span></a></li><li class="toc-level-3"><a href="#1-匯出盤點資產"><span class="toc-label">1. 匯出盤點資產</span></a></li><li class="toc-level-3"><a href="#2-dry-run-匯入預覽"><span class="toc-label">2. Dry-Run 匯入預覽</span></a></li><li class="toc-level-3"><a href="#3-直接即時新增-dry-run"><span class="toc-label">3. 直接即時新增 (Dry-Run)</span></a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: 繁體中文</a></li><li><a href="../en/datasource.html" class="sidebar-meta-link">Switch to English</a></li></ul></section>
+    <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#適用對象"><span class="toc-label">適用對象</span></a></li><li class="toc-level-2"><a href="#主要目標"><span class="toc-label">主要目標</span></a></li><li class="toc-level-2"><a href="#採用前後對照"><span class="toc-label">採用前後對照</span></a></li><li class="toc-level-2"><a href="#成功判準"><span class="toc-label">成功判準</span></a></li><li class="toc-level-2"><a href="#失敗時先檢查"><span class="toc-label">失敗時先檢查</span></a></li><li class="toc-level-2"><a href="#指令頁面"><span class="toc-label">指令頁面</span></a></li><li class="toc-level-2"><a href="#核心工作流用途"><span class="toc-label">核心工作流用途</span></a></li><li class="toc-level-2"><a href="#工作流程邊界"><span class="toc-label">工作流程邊界</span></a></li><li class="toc-level-2"><a href="#閱讀即時資產盤點"><span class="toc-label">閱讀即時資產盤點</span></a></li><li class="toc-level-2"><a href="#關鍵指令-完整參數參考"><span class="toc-label">關鍵指令 (完整參數參考)</span></a></li><li class="toc-level-2"><a href="#實作範例"><span class="toc-label">實作範例</span></a></li><li class="toc-level-3"><a href="#1-匯出盤點資產"><span class="toc-label">1. 匯出盤點資產</span></a></li><li class="toc-level-3"><a href="#2-dry-run-匯入預覽"><span class="toc-label">2. Dry-Run 匯入預覽</span></a></li><li class="toc-level-3"><a href="#3-直接即時新增-dry-run"><span class="toc-label">3. 直接即時新增 (Dry-Run)</span></a></li><li class="toc-level-3"><a href="#4-本地盤點"><span class="toc-label">4. 本地盤點</span></a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: 繁體中文</a></li><li><a href="../en/datasource.html" class="sidebar-meta-link">Switch to English</a></li></ul></section>
   </div>
 </aside>
 

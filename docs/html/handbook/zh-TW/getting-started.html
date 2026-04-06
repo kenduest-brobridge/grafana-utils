@@ -785,11 +785,11 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="步驟-1安裝">步驟 1：安裝</h2>
 <h3 id="下載並安裝">下載並安裝</h3>
 <pre><code># 用途：下載並安裝。
-curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh</code></pre>
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh</code></pre>
 <p>若您想固定版本，或想指定安裝到哪個 binary 目錄，也可以直接這樣裝：</p>
 <pre><code># 用途：把固定版本安裝到指定的 binary 目錄。
 VERSION=0.8.0 BIN_DIR=&quot;$HOME/.local/bin&quot; \
-  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh</code></pre>
+  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh</code></pre>
 <p>安裝腳本會優先使用您指定的 <code>BIN_DIR</code>。若沒有設定，會先嘗試可寫入的 <code>/usr/local/bin</code>，再退回 <code>$HOME/.local/bin</code>。</p>
 <p>如果最後選到的安裝目錄尚未加入 <code>PATH</code>，安裝腳本會直接印出對應 <code>zsh</code> 或 <code>bash</code> 可貼上的設定方式。若想先看完整安裝說明，也可以先執行：</p>
 <pre><code># 用途：查看安裝腳本支援的參數、BIN_DIR 行為與 PATH 設定提醒。

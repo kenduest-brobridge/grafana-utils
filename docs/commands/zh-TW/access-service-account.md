@@ -2,11 +2,12 @@
 
 ## 目的
 
-列出、建立、匯出、匯入、比對或刪除 Grafana service account，並管理其 token。
+列出 live 或本機的 Grafana service account、建立、匯出、匯入、比對或刪除 Grafana service account，並管理其 token。
 
 ## 使用時機
 
 - 檢視 service-account 清單。
+- 從 live Grafana 或本機匯出套件中檢視 service account。
 - 建立或更新 service-account 套件。
 - 產生或刪除 service-account token。
 
@@ -29,10 +30,10 @@
 
 ## 主要旗標
 
-- `list`: `--query`, `--page`, `--per-page`, `--table`, `--csv`, `--json`, `--yaml`, `--output-format`
+- `list`: `--input-dir`, `--query`, `--page`, `--per-page`, `--table`, `--csv`, `--json`, `--yaml`, `--output-format`
 - `add`: `--name`, `--role`, `--disabled`, `--json`
-- `export` 與 `diff`: `--export-dir` 或 `--diff-dir`, `--overwrite`, `--dry-run`
-- `import`: `--import-dir`, `--replace-existing`, `--dry-run`, `--table`, `--json`, `--output-format`, `--yes`
+- `export` 與 `diff`: `--output-dir` 或 `--diff-dir`, `--overwrite`, `--dry-run`
+- `import`: `--input-dir`, `--replace-existing`, `--dry-run`, `--table`, `--json`, `--output-format`, `--yes`
 - `delete`: `--name`, `--yes`, `--json`
 - `token add`: `--service-account-id` 或 `--name`, `--token-name`, `--seconds-to-live`, `--json`
 - `token delete`: `--service-account-id` 或 `--name`, `--token-name`, `--yes`, `--json`
@@ -42,6 +43,11 @@
 ```bash
 # 用途：在建立或刪除 token 前，先看清楚 service account。
 grafana-util access service-account list --profile prod --output-format text
+```
+
+```bash
+# 用途：先看本機存好的 service-account 套件。
+grafana-util access service-account list --input-dir ./access-service-accounts --output-format table
 ```
 
 ```bash

@@ -83,7 +83,7 @@ fn build_routed_import_dry_run_json_with_request_reuses_org_inventory_lookup() {
             |target_org_id, scoped_args| {
                 Ok(test_support::import::ImportDryRunReport {
                     mode: "create-only".to_string(),
-                    import_dir: scoped_args.import_dir.clone(),
+                    input_dir: scoped_args.input_dir.clone(),
                     folder_statuses: Vec::new(),
                     dashboard_records: vec![[
                         if target_org_id == 2 {
@@ -98,7 +98,7 @@ fn build_routed_import_dry_run_json_with_request_reuses_org_inventory_lookup() {
                         "".to_string(),
                         "".to_string(),
                         scoped_args
-                            .import_dir
+                            .input_dir
                             .join("dash.json")
                             .display()
                             .to_string(),
@@ -200,7 +200,7 @@ fn build_routed_import_dry_run_json_with_request_reports_orgs_and_dashboards() {
             |target_org_id, scoped_args| {
                 Ok(test_support::import::ImportDryRunReport {
                     mode: "create-only".to_string(),
-                    import_dir: scoped_args.import_dir.clone(),
+                    input_dir: scoped_args.input_dir.clone(),
                     folder_statuses: Vec::new(),
                     dashboard_records: vec![[
                         if target_org_id == 2 {
@@ -215,7 +215,7 @@ fn build_routed_import_dry_run_json_with_request_reports_orgs_and_dashboards() {
                         "".to_string(),
                         "".to_string(),
                         scoped_args
-                            .import_dir
+                            .input_dir
                             .join("dash.json")
                             .display()
                             .to_string(),
@@ -326,13 +326,13 @@ fn import_dashboards_with_use_export_org_dry_run_table_returns_after_org_summary
             _ => Err(test_support::message(format!("unexpected request {path}"))),
         },
         |target_org_id, scoped_args| {
-            import_calls.push((target_org_id, scoped_args.import_dir.clone()));
+            import_calls.push((target_org_id, scoped_args.input_dir.clone()));
             Ok(0)
         },
         |_target_org_id, scoped_args| {
             Ok(test_support::import::ImportDryRunReport {
                 mode: "create-only".to_string(),
-                import_dir: scoped_args.import_dir.clone(),
+                input_dir: scoped_args.input_dir.clone(),
                 folder_statuses: Vec::new(),
                 dashboard_records: Vec::new(),
                 skipped_missing_count: 0,

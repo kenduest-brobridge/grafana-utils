@@ -11,19 +11,22 @@ Use this when a local draft is ready to go live and you want the command to stag
 .SH COMMON OPTIONS
 .TP
 .B \-\-input
-dashboard JSON file to publish.
+dashboard JSON file to publish. Use \- to read one wrapped or bare dashboard JSON document from standard input.
 .TP
 .B \-\-replace\-existing
 update an existing dashboard when the UID already exists.
 .TP
 .B \-\-folder\-uid
-override the destination folder UID.
+override the destination folder UID. The built\-in General folder is normalized back to the default root publish path instead of sending a literal general folder UID.
 .TP
 .B \-\-message
 revision message stored in Grafana.
 .TP
 .B \-\-dry\-run
 preview the publish without changing Grafana.
+.TP
+.B \-\-watch
+rerun publish or dry\-run whenever the local input file changes. Use this with a local file path, not \-\-input \-. The watcher reports change detection, transient failures, and reruns, and keeps watching until you stop it.
 .TP
 .B \-\-table, \-\-json
 dry\-run output modes.

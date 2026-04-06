@@ -78,6 +78,15 @@ pub enum ImpactOutputFormat {
     Json,
 }
 
+/// Output selectors for dashboard history list/restore views.
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
+pub enum HistoryOutputFormat {
+    Text,
+    Table,
+    Json,
+    Yaml,
+}
+
 /// Output selectors for dashboard validation reports.
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
 pub enum ValidationOutputFormat {

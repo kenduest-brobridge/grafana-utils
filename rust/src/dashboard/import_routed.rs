@@ -19,8 +19,8 @@ use super::import_validation::{
     discover_export_org_import_scopes, resolve_target_org_plan_for_export_scope_with_request,
 };
 
-fn count_dashboard_files(import_dir: &Path) -> Result<usize> {
-    let mut dashboard_files = super::discover_dashboard_files(import_dir)?;
+fn count_dashboard_files(input_dir: &Path) -> Result<usize> {
+    let mut dashboard_files = super::discover_dashboard_files(input_dir)?;
     dashboard_files.retain(|path| {
         path.file_name().and_then(|name| name.to_str()) != Some(super::FOLDER_INVENTORY_FILENAME)
     });
@@ -47,14 +47,14 @@ where
             args,
             &scope,
         )?;
-        let dashboard_count = count_dashboard_files(&target_plan.import_dir)?;
+        let dashboard_count = count_dashboard_files(&target_plan.input_dir)?;
         orgs.push(serde_json::json!({
             "sourceOrgId": target_plan.source_org_id,
             "sourceOrgName": target_plan.source_org_name,
             "orgAction": target_plan.org_action,
             "targetOrgId": target_plan.target_org_id,
             "dashboardCount": dashboard_count,
-            "importDir": target_plan.import_dir.display().to_string(),
+            "importDir": target_plan.input_dir.display().to_string(),
         }));
         let preview = if let Some(target_org_id) = target_plan.target_org_id {
             let mut scoped_args = args.clone();
@@ -62,7 +62,7 @@ where
             scoped_args.use_export_org = false;
             scoped_args.only_org_id = Vec::new();
             scoped_args.create_missing_orgs = false;
-            scoped_args.import_dir = target_plan.import_dir.clone();
+            scoped_args.input_dir = target_plan.input_dir.clone();
             let report = collect_preview_for_org(target_org_id, &scoped_args)?;
             build_import_dry_run_json_value(&report)
         } else {
@@ -71,7 +71,7 @@ where
                 "folders": [],
                 "dashboards": [],
                 "summary": {
-                    "importDir": target_plan.import_dir.display().to_string(),
+                    "importDir": target_plan.input_dir.display().to_string(),
                     "folderCount": 0,
                     "missingFolders": 0,
                     "mismatchedFolders": 0,
@@ -145,7 +145,7 @@ where
             args,
             &scope,
         )?;
-        let dashboard_count = count_dashboard_files(&target_plan.import_dir)?;
+        let dashboard_count = count_dashboard_files(&target_plan.input_dir)?;
         org_rows.push(build_routed_import_org_row(&target_plan, dashboard_count));
         resolved_plans.push(target_plan);
     }
@@ -166,7 +166,7 @@ where
                     &target_plan.source_org_name,
                     target_plan.org_action,
                     target_plan.target_org_id,
-                    &target_plan.import_dir,
+                    &target_plan.input_dir,
                 )
             );
         }
@@ -182,7 +182,7 @@ where
         scoped_args.use_export_org = false;
         scoped_args.only_org_id = Vec::new();
         scoped_args.create_missing_orgs = false;
-        scoped_args.import_dir = target_plan.import_dir.clone();
+        scoped_args.input_dir = target_plan.input_dir.clone();
         imported_count += import_for_org(target_org_id, &scoped_args).map_err(|error| {
             message(format!(
                 "Dashboard routed import failed for {}: {}",
@@ -191,7 +191,7 @@ where
                     &target_plan.source_org_name,
                     target_plan.org_action,
                     target_plan.target_org_id,
-                    &target_plan.import_dir,
+                    &target_plan.input_dir,
                 ),
                 error
             ))

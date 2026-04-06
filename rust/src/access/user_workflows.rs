@@ -159,5 +159,5 @@ mod user_workflows_import_export;
 
 pub(crate) use user_workflows_diff::diff_users_with_request;
 pub(crate) use user_workflows_import_export::{
-    export_users_with_request, import_users_with_request,
+    export_users_with_request, import_users_with_request, load_access_import_records,
 };

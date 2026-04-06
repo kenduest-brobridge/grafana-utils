@@ -156,7 +156,7 @@ fn user_import_with_request_org_scope_requires_yes_for_team_removal() {
     .unwrap();
     let args = UserImportArgs {
         common: make_basic_common(),
-        import_dir: temp_dir.path().to_path_buf(),
+        input_dir: temp_dir.path().to_path_buf(),
         scope: Scope::Org,
         replace_existing: true,
         dry_run: false,
@@ -202,7 +202,7 @@ fn user_import_with_request_dry_run_reports_org_role_and_team_drift() {
     .unwrap();
     let args = UserImportArgs {
         common: make_basic_common(),
-        import_dir: temp_dir.path().to_path_buf(),
+        input_dir: temp_dir.path().to_path_buf(),
         scope: Scope::Org,
         replace_existing: true,
         dry_run: true,
@@ -266,7 +266,7 @@ fn user_import_with_request_dry_run_json_reports_org_summary_and_rows() {
     .unwrap();
     let args = UserImportArgs {
         common: make_basic_common(),
-        import_dir: temp_dir.path().to_path_buf(),
+        input_dir: temp_dir.path().to_path_buf(),
         scope: Scope::Org,
         replace_existing: true,
         dry_run: true,
@@ -313,7 +313,7 @@ fn user_import_with_request_updates_existing_org_user_role_and_team_membership()
     .unwrap();
     let args = UserImportArgs {
         common: make_basic_common(),
-        import_dir: temp_dir.path().to_path_buf(),
+        input_dir: temp_dir.path().to_path_buf(),
         scope: Scope::Org,
         replace_existing: true,
         dry_run: false,
@@ -403,7 +403,7 @@ fn team_export_with_request_writes_bundle_with_members_and_admins() {
     let temp_dir = tempdir().unwrap();
     let args = TeamExportArgs {
         common: make_token_common(),
-        export_dir: temp_dir.path().to_path_buf(),
+        output_dir: temp_dir.path().to_path_buf(),
         overwrite: true,
         dry_run: false,
         with_members: true,
@@ -458,6 +458,12 @@ fn team_export_with_request_writes_bundle_with_members_and_admins() {
         metadata.get("sourceDir"),
         Some(&json!(temp_dir.path().to_string_lossy().to_string()))
     );
+    assert_eq!(metadata.get("metadataVersion"), Some(&json!(2)));
+    assert_eq!(metadata.get("domain"), Some(&json!("access")));
+    assert_eq!(metadata.get("resourceKind"), Some(&json!("teams")));
+    assert_eq!(metadata.get("bundleKind"), Some(&json!("export-root")));
+    assert_eq!(metadata["source"]["kind"], json!("live"));
+    assert_eq!(metadata["capture"]["recordCount"], json!(1));
 }
 
 #[test]
@@ -475,7 +481,7 @@ fn team_import_rejects_kind_mismatch_and_future_version_bundle_contract() {
     .unwrap();
     let args = TeamImportArgs {
         common: make_token_common(),
-        import_dir: temp_dir.path().to_path_buf(),
+        input_dir: temp_dir.path().to_path_buf(),
         replace_existing: true,
         dry_run: true,
         table: false,
@@ -509,7 +515,7 @@ fn team_diff_with_request_reports_same_state_for_members_and_admins() {
     let temp_dir = tempdir().unwrap();
     let export_args = TeamExportArgs {
         common: make_token_common(),
-        export_dir: temp_dir.path().to_path_buf(),
+        output_dir: temp_dir.path().to_path_buf(),
         overwrite: true,
         dry_run: false,
         with_members: false,
@@ -550,7 +556,7 @@ fn team_diff_with_request_reports_membership_drift() {
     let temp_dir = tempdir().unwrap();
     let export_args = TeamExportArgs {
         common: make_token_common(),
-        export_dir: temp_dir.path().to_path_buf(),
+        output_dir: temp_dir.path().to_path_buf(),
         overwrite: true,
         dry_run: false,
         with_members: true,
@@ -728,16 +734,16 @@ fn user_import_dry_run_document_reports_summary_and_rows() {
 #[test]
 fn team_import_with_request_creates_team_and_memberships() {
     let temp = tempdir().unwrap();
-    let import_dir = temp.path().join("access-teams");
-    fs::create_dir_all(&import_dir).unwrap();
+    let input_dir = temp.path().join("access-teams");
+    fs::create_dir_all(&input_dir).unwrap();
     fs::write(
-        import_dir.join("teams.json"),
+        input_dir.join("teams.json"),
         r#"[{"name":"Ops","email":"ops@example.com","members":["alice@example.com"],"admins":["bob@example.com"]}]"#,
     )
     .unwrap();
     let args = TeamImportArgs {
         common: make_token_common(),
-        import_dir: import_dir.clone(),
+        input_dir: input_dir.clone(),
         replace_existing: false,
         dry_run: false,
         yes: false,
@@ -794,16 +800,16 @@ fn team_import_with_request_creates_team_and_memberships() {
 #[test]
 fn team_import_with_request_rejects_member_removals_without_yes() {
     let temp = tempdir().unwrap();
-    let import_dir = temp.path().join("access-teams");
-    fs::create_dir_all(&import_dir).unwrap();
+    let input_dir = temp.path().join("access-teams");
+    fs::create_dir_all(&input_dir).unwrap();
     fs::write(
-        import_dir.join("teams.json"),
+        input_dir.join("teams.json"),
         r#"[{"name":"Ops","members":["alice@example.com"]}]"#,
     )
     .unwrap();
     let args = TeamImportArgs {
         common: make_token_common(),
-        import_dir: import_dir.clone(),
+        input_dir: input_dir.clone(),
         replace_existing: true,
         dry_run: false,
         yes: false,
@@ -832,16 +838,16 @@ fn team_import_with_request_rejects_member_removals_without_yes() {
 #[test]
 fn team_import_with_request_updates_memberships_when_yes_is_set() {
     let temp = tempdir().unwrap();
-    let import_dir = temp.path().join("access-teams");
-    fs::create_dir_all(&import_dir).unwrap();
+    let input_dir = temp.path().join("access-teams");
+    fs::create_dir_all(&input_dir).unwrap();
     fs::write(
-        import_dir.join("teams.json"),
+        input_dir.join("teams.json"),
         r#"[{"name":"Ops","members":["alice@example.com","bob@example.com"]}]"#,
     )
     .unwrap();
     let args = TeamImportArgs {
         common: make_token_common(),
-        import_dir: import_dir.clone(),
+        input_dir: input_dir.clone(),
         replace_existing: true,
         dry_run: false,
         yes: true,
@@ -1100,6 +1106,7 @@ fn team_list_with_request_reads_search_and_members() {
         with_members: true,
         page: 1,
         per_page: 100,
+        input_dir: None,
         table: false,
         csv: false,
         json: false,

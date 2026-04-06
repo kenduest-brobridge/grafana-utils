@@ -10,10 +10,14 @@ use crate::http::JsonHttpClient;
 
 // Internal modules stay split by resource kind so user/org/team/service-account
 // workflows can evolve independently while this file keeps only domain routing.
+#[path = "browse_support.rs"]
+mod browse_support;
 #[path = "browse_terminal.rs"]
 mod browse_terminal;
 #[path = "cli_defs.rs"]
 mod cli_defs;
+#[path = "facade_support.rs"]
+mod facade_support;
 #[path = "live_project_status.rs"]
 mod live_project_status;
 #[path = "org.rs"]
@@ -42,61 +46,27 @@ mod user_browse;
 pub use cli_defs::{
     build_auth_context, build_http_client, build_http_client_no_org_id, normalize_access_cli_args,
     parse_cli_from, root_command, AccessAuthContext, AccessCliArgs, AccessCommand, CommonCliArgs,
-    DryRunOutputFormat, OrgAddArgs, OrgCommand, OrgDeleteArgs, OrgDiffArgs, OrgExportArgs,
-    OrgImportArgs, OrgListArgs, OrgModifyArgs, Scope, ServiceAccountAddArgs, ServiceAccountCommand,
-    ServiceAccountDiffArgs, ServiceAccountExportArgs, ServiceAccountImportArgs,
-    ServiceAccountListArgs, ServiceAccountTokenAddArgs, ServiceAccountTokenCommand, TeamAddArgs,
-    TeamBrowseArgs, TeamCommand, TeamDiffArgs, TeamExportArgs, TeamImportArgs, TeamListArgs,
-    TeamModifyArgs, UserAddArgs, UserBrowseArgs, UserCommand, UserDeleteArgs, UserDiffArgs,
-    UserExportArgs, UserImportArgs, UserListArgs, UserModifyArgs, ACCESS_EXPORT_KIND_ORGS,
-    ACCESS_EXPORT_KIND_SERVICE_ACCOUNTS, ACCESS_EXPORT_KIND_TEAMS, ACCESS_EXPORT_KIND_USERS,
-    ACCESS_EXPORT_METADATA_FILENAME, ACCESS_EXPORT_VERSION, ACCESS_ORG_EXPORT_FILENAME,
-    ACCESS_SERVICE_ACCOUNT_EXPORT_FILENAME, ACCESS_TEAM_EXPORT_FILENAME,
-    ACCESS_USER_EXPORT_FILENAME, DEFAULT_PAGE_SIZE, DEFAULT_TIMEOUT, DEFAULT_URL,
+    CommonCliArgsNoOrgId, DryRunOutputFormat, OrgAddArgs, OrgCommand, OrgDeleteArgs, OrgDiffArgs,
+    OrgExportArgs, OrgImportArgs, OrgListArgs, OrgModifyArgs, Scope, ServiceAccountAddArgs,
+    ServiceAccountCommand, ServiceAccountDiffArgs, ServiceAccountExportArgs,
+    ServiceAccountImportArgs, ServiceAccountListArgs, ServiceAccountTokenAddArgs,
+    ServiceAccountTokenCommand, TeamAddArgs, TeamBrowseArgs, TeamCommand, TeamDiffArgs,
+    TeamExportArgs, TeamImportArgs, TeamListArgs, TeamModifyArgs, UserAddArgs, UserBrowseArgs,
+    UserCommand, UserDeleteArgs, UserDiffArgs, UserExportArgs, UserImportArgs, UserListArgs,
+    UserModifyArgs, ACCESS_EXPORT_KIND_ORGS, ACCESS_EXPORT_KIND_SERVICE_ACCOUNTS,
+    ACCESS_EXPORT_KIND_TEAMS, ACCESS_EXPORT_KIND_USERS, ACCESS_EXPORT_METADATA_FILENAME,
+    ACCESS_EXPORT_VERSION, ACCESS_ORG_EXPORT_FILENAME, ACCESS_SERVICE_ACCOUNT_EXPORT_FILENAME,
+    ACCESS_TEAM_EXPORT_FILENAME, ACCESS_USER_EXPORT_FILENAME, DEFAULT_PAGE_SIZE, DEFAULT_TIMEOUT,
+    DEFAULT_URL,
 };
 #[allow(unused_imports)]
-pub(crate) use live_project_status::{
+pub(crate) use facade_support::{
     build_access_live_domain_status, build_access_live_domain_status_with_request,
 };
 pub use pending_delete::{
     GroupCommandStage, ServiceAccountDeleteArgs, ServiceAccountTokenDeleteArgs, TeamDeleteArgs,
 };
 pub(crate) use project_status::{build_access_domain_status, AccessDomainStatusInputs};
-
-#[derive(Clone, Debug)]
-enum BrowseSwitch {
-    Exit,
-    ToUser(UserBrowseArgs),
-    ToTeam(TeamBrowseArgs),
-}
-
-fn default_team_browse_args_from_user(args: &UserBrowseArgs) -> TeamBrowseArgs {
-    TeamBrowseArgs {
-        common: args.common.clone(),
-        query: None,
-        name: None,
-        with_members: true,
-        page: 1,
-        per_page: DEFAULT_PAGE_SIZE,
-    }
-}
-
-fn default_user_browse_args_from_team(args: &TeamBrowseArgs) -> UserBrowseArgs {
-    UserBrowseArgs {
-        common: args.common.clone(),
-        scope: Scope::Global,
-        all_orgs: false,
-        current_org: false,
-        query: None,
-        login: None,
-        email: None,
-        org_role: None,
-        grafana_admin: None,
-        with_teams: false,
-        page: 1,
-        per_page: DEFAULT_PAGE_SIZE,
-    }
-}
 
 fn request_object<F>(
     mut request_json: F,
@@ -193,10 +163,26 @@ fn run_user_access_cli(command: &UserCommand, args: &AccessCliArgs) -> Result<()
     // auth behavior where applicable.
     match command {
         UserCommand::List(inner) => {
-            run_access_cli_with_common(&inner.common, args, build_http_client)
+            if inner.input_dir.is_some() {
+                user::list_users_from_input_dir(inner)?;
+                Ok(())
+            } else {
+                run_access_cli_with_common(&inner.common, args, build_http_client)
+            }
         }
         UserCommand::Browse(inner) => {
-            run_access_cli_with_common(&inner.common, args, build_http_client)
+            if inner.input_dir.is_some() {
+                run_access_cli_with_request(
+                    |_method, _path, _params, _payload| {
+                        Err(message(
+                            "Local access user browse should not call the live request layer.",
+                        ))
+                    },
+                    args,
+                )
+            } else {
+                run_access_cli_with_common(&inner.common, args, build_http_client)
+            }
         }
         UserCommand::Add(inner) => {
             run_access_cli_with_common(&inner.common, args, build_http_client)
@@ -224,7 +210,12 @@ fn run_org_access_cli(command: &OrgCommand, args: &AccessCliArgs) -> Result<()> 
     // management targets Grafana's global admin surface rather than one org.
     match command {
         OrgCommand::List(inner) => {
-            run_access_cli_with_common(&inner.common, args, build_http_client_no_org_id)
+            if inner.input_dir.is_some() {
+                org::list_orgs_from_input_dir(inner)?;
+                Ok(())
+            } else {
+                run_access_cli_with_common(&inner.common, args, build_http_client_no_org_id)
+            }
         }
         OrgCommand::Add(inner) => {
             run_access_cli_with_common(&inner.common, args, build_http_client_no_org_id)
@@ -252,10 +243,26 @@ fn run_team_access_cli(command: &TeamCommand, args: &AccessCliArgs) -> Result<()
     // resolved within the selected Grafana org scope.
     match command {
         TeamCommand::List(inner) => {
-            run_access_cli_with_common(&inner.common, args, build_http_client)
+            if inner.input_dir.is_some() {
+                team::list_teams_from_input_dir(inner)?;
+                Ok(())
+            } else {
+                run_access_cli_with_common(&inner.common, args, build_http_client)
+            }
         }
         TeamCommand::Browse(inner) => {
-            run_access_cli_with_common(&inner.common, args, build_http_client)
+            if inner.input_dir.is_some() {
+                run_access_cli_with_request(
+                    |_method, _path, _params, _payload| {
+                        Err(message(
+                            "Local access team browse should not call the live request layer.",
+                        ))
+                    },
+                    args,
+                )
+            } else {
+                run_access_cli_with_common(&inner.common, args, build_http_client)
+            }
         }
         TeamCommand::Add(inner) => {
             run_access_cli_with_common(&inner.common, args, build_http_client)
@@ -286,7 +293,12 @@ fn run_service_account_access_cli(
     // can treat service-account management as one domain branch.
     match command {
         ServiceAccountCommand::List(inner) => {
-            run_access_cli_with_common(&inner.common, args, build_http_client)
+            if inner.input_dir.is_some() {
+                service_account::list_service_accounts_from_input_dir(inner)?;
+                Ok(())
+            } else {
+                run_access_cli_with_common(&inner.common, args, build_http_client)
+            }
         }
         ServiceAccountCommand::Add(inner) => {
             run_access_cli_with_common(&inner.common, args, build_http_client)
@@ -327,26 +339,34 @@ where
     match &args.command {
         AccessCommand::User { command } => match command {
             UserCommand::List(args) => {
-                let _ = user::list_users_with_request(&mut request_json, args)?;
+                if args.input_dir.is_some() {
+                    let _ = user::list_users_from_input_dir(args)?;
+                } else {
+                    let _ = user::list_users_with_request(&mut request_json, args)?;
+                }
             }
             UserCommand::Browse(args) => {
                 #[cfg(feature = "tui")]
                 {
                     let mut session = browse_terminal::TerminalSession::enter()?;
-                    let mut next = BrowseSwitch::ToUser(args.clone());
+                    let mut next = browse_support::BrowseSwitch::ToUser(args.clone());
                     loop {
                         next = match next {
-                            BrowseSwitch::Exit => break,
-                            BrowseSwitch::ToUser(inner) => user_browse::browse_users_in_session(
-                                &mut session,
-                                &mut request_json,
-                                &inner,
-                            )?,
-                            BrowseSwitch::ToTeam(inner) => team_browse::browse_teams_in_session(
-                                &mut session,
-                                &mut request_json,
-                                &inner,
-                            )?,
+                            browse_support::BrowseSwitch::Exit => break,
+                            browse_support::BrowseSwitch::ToUser(inner) => {
+                                user_browse::browse_users_in_session(
+                                    &mut session,
+                                    &mut request_json,
+                                    &inner,
+                                )?
+                            }
+                            browse_support::BrowseSwitch::ToTeam(inner) => {
+                                team_browse::browse_teams_in_session(
+                                    &mut session,
+                                    &mut request_json,
+                                    &inner,
+                                )?
+                            }
                         };
                     }
                 }
@@ -376,7 +396,11 @@ where
         },
         AccessCommand::Org { command } => match command {
             OrgCommand::List(args) => {
-                let _ = org::list_orgs_with_request(&mut request_json, args)?;
+                if args.input_dir.is_some() {
+                    let _ = org::list_orgs_from_input_dir(args)?;
+                } else {
+                    let _ = org::list_orgs_with_request(&mut request_json, args)?;
+                }
             }
             OrgCommand::Add(args) => {
                 let _ = org::add_org_with_request(&mut request_json, args)?;
@@ -399,26 +423,34 @@ where
         },
         AccessCommand::Team { command } => match command {
             TeamCommand::List(args) => {
-                let _ = team::list_teams_command_with_request(&mut request_json, args)?;
+                if args.input_dir.is_some() {
+                    let _ = team::list_teams_from_input_dir(args)?;
+                } else {
+                    let _ = team::list_teams_command_with_request(&mut request_json, args)?;
+                }
             }
             TeamCommand::Browse(args) => {
                 #[cfg(feature = "tui")]
                 {
                     let mut session = browse_terminal::TerminalSession::enter()?;
-                    let mut next = BrowseSwitch::ToTeam(args.clone());
+                    let mut next = browse_support::BrowseSwitch::ToTeam(args.clone());
                     loop {
                         next = match next {
-                            BrowseSwitch::Exit => break,
-                            BrowseSwitch::ToUser(inner) => user_browse::browse_users_in_session(
-                                &mut session,
-                                &mut request_json,
-                                &inner,
-                            )?,
-                            BrowseSwitch::ToTeam(inner) => team_browse::browse_teams_in_session(
-                                &mut session,
-                                &mut request_json,
-                                &inner,
-                            )?,
+                            browse_support::BrowseSwitch::Exit => break,
+                            browse_support::BrowseSwitch::ToUser(inner) => {
+                                user_browse::browse_users_in_session(
+                                    &mut session,
+                                    &mut request_json,
+                                    &inner,
+                                )?
+                            }
+                            browse_support::BrowseSwitch::ToTeam(inner) => {
+                                team_browse::browse_teams_in_session(
+                                    &mut session,
+                                    &mut request_json,
+                                    &inner,
+                                )?
+                            }
                         };
                     }
                 }
@@ -448,10 +480,14 @@ where
         },
         AccessCommand::ServiceAccount { command } => match command {
             ServiceAccountCommand::List(args) => {
-                let _ = service_account::list_service_accounts_command_with_request(
-                    &mut request_json,
-                    args,
-                )?;
+                if args.input_dir.is_some() {
+                    let _ = service_account::list_service_accounts_from_input_dir(args)?;
+                } else {
+                    let _ = service_account::list_service_accounts_command_with_request(
+                        &mut request_json,
+                        args,
+                    )?;
+                }
             }
             ServiceAccountCommand::Add(args) => {
                 let _ = service_account::add_service_account_with_request(&mut request_json, args)?;

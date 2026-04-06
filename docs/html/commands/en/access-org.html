@@ -766,11 +766,11 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
     <section class="command-intro">
   <div class="command-intro-grid"><div class="command-intro-block">
   <p class="command-intro-label">What this page covers</p>
-  <p class="command-intro-text">List, create, modify, export, import, diff, or delete Grafana organizations.</p>
+  <p class="command-intro-text">List live or local Grafana organizations, create, modify, export, import, diff, or delete Grafana organizations.</p>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">When to open this page</p>
-  <ul class="command-intro-list"><li>Inspect organization inventory and org users.</li><li>Create a new organization or rename an existing one.</li><li>Export or import org bundles between environments.</li><li>Remove an organization by id or exact name.</li></ul>
+  <ul class="command-intro-list"><li>Inspect organization inventory and org users.</li><li>Inspect organizations from a live Grafana server or from a local export bundle.</li><li>Create a new organization or rename an existing one.</li><li>Export or import org bundles between environments.</li><li>Remove an organization by id or exact name.</li></ul>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">Who this page is for</p>
@@ -779,9 +779,9 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 </section>
 <h2 id="purpose">Purpose</h2>
-<p>List, create, modify, export, import, diff, or delete Grafana organizations.</p>
+<p>List live or local Grafana organizations, create, modify, export, import, diff, or delete Grafana organizations.</p>
 <h2 id="when-to-use">When to use</h2>
-<ul><li>Inspect organization inventory and org users.</li><li>Create a new organization or rename an existing one.</li><li>Export or import org bundles between environments.</li><li>Remove an organization by id or exact name.</li></ul>
+<ul><li>Inspect organization inventory and org users.</li><li>Inspect organizations from a live Grafana server or from a local export bundle.</li><li>Create a new organization or rename an existing one.</li><li>Export or import org bundles between environments.</li><li>Remove an organization by id or exact name.</li></ul>
 <h2 id="before-after">Before / After</h2>
 <ul><li><strong>Before</strong>: org administration often starts as a one-off admin click path or a script that only works in one environment.</li><li><strong>After</strong>: one namespace covers inventory, rename, export/import, and deletion with repeatable admin-backed access.</li></ul>
 <h2 id="what-success-looks-like">What success looks like</h2>
@@ -789,12 +789,14 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="failure-checks">Failure checks</h2>
 <ul><li>if a create, rename, export, import, or delete step fails, confirm the selected profile has the required admin privileges</li><li>if a name-based lookup returns the wrong org, recheck the exact org id or exact name before retrying</li><li>if bundle import or export looks incomplete, confirm you are targeting the expected environment</li></ul>
 <h2 id="key-flags">Key flags</h2>
-<ul><li><code>list</code>: <code>--org-id</code>, <code>--name</code>, <code>--query</code>, <code>--with-users</code>, <code>--table</code>, <code>--csv</code>, <code>--json</code>, <code>--yaml</code>, <code>--output-format</code></li><li><code>add</code>: <code>--name</code>, <code>--json</code></li><li><code>modify</code>: <code>--org-id</code>, <code>--name</code>, <code>--set-name</code>, <code>--json</code></li><li><code>export</code> and <code>diff</code>: <code>--org-id</code>, <code>--name</code>, <code>--export-dir</code> or <code>--diff-dir</code>, <code>--overwrite</code>, <code>--dry-run</code>, <code>--with-users</code></li><li><code>import</code>: <code>--import-dir</code>, <code>--replace-existing</code>, <code>--dry-run</code>, <code>--yes</code></li><li><code>delete</code>: <code>--org-id</code>, <code>--name</code>, <code>--yes</code>, <code>--json</code></li></ul>
+<ul><li><code>list</code>: <code>--input-dir</code>, <code>--org-id</code>, <code>--name</code>, <code>--query</code>, <code>--with-users</code>, <code>--table</code>, <code>--csv</code>, <code>--json</code>, <code>--yaml</code>, <code>--output-format</code></li><li><code>add</code>: <code>--name</code>, <code>--json</code></li><li><code>modify</code>: <code>--org-id</code>, <code>--name</code>, <code>--set-name</code>, <code>--json</code></li><li><code>export</code> and <code>diff</code>: <code>--org-id</code>, <code>--name</code>, <code>--output-dir</code> or <code>--diff-dir</code>, <code>--overwrite</code>, <code>--dry-run</code>, <code>--with-users</code></li><li><code>import</code>: <code>--input-dir</code>, <code>--replace-existing</code>, <code>--dry-run</code>, <code>--yes</code></li><li><code>delete</code>: <code>--org-id</code>, <code>--name</code>, <code>--yes</code>, <code>--json</code></li></ul>
 <h2 id="notes">Notes</h2>
 <ul><li>Use <code>--profile</code> for repeatable org inventory when the selected profile has the required admin privileges.</li><li>Org administration is commonly broader than a narrow API token. Basic auth or an admin-backed profile is the safer default for create, rename, export, import, and delete flows.</li></ul>
 <h2 id="examples">Examples</h2>
 <pre><code># Purpose: Inspect org inventory before a rename or migration.
 grafana-util access org list --profile prod --output-format text</code></pre>
+<pre><code># Purpose: Review a saved org bundle before replaying it.
+grafana-util access org list --input-dir ./access-orgs --output-format table</code></pre>
 <pre><code># Purpose: Rename one org after confirming the current org name.
 grafana-util access org modify --url http://localhost:3000 --basic-user admin --basic-password admin --name platform --set-name platform-core --json</code></pre>
 <pre><code># Purpose: Review the exact org name before changing it.

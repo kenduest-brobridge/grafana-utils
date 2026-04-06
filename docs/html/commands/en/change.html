@@ -766,11 +766,11 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
     <section class="command-intro">
   <div class="command-intro-grid"><div class="command-intro-block">
   <p class="command-intro-label">What this page covers</p>
-  <p class="command-intro-text">review-first sync workflows with optional live Grafana fetch and apply paths.</p>
+  <p class="command-intro-text">task-first staged change workflow with optional live Grafana preview and apply paths.</p>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">When to open this page</p>
-  <ul class="command-intro-list"><li>when you need to summarize desired resources, plan against live state, review a plan, apply a reviewed plan, audit drift, or build bundle and promotion preflight documents.</li></ul>
+  <ul class="command-intro-list"><li>when you need to inspect a staged package, check whether it looks safe to continue, preview what would change, apply an approved preview, or drop into lower-level advanced review contracts.</li></ul>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">Who this page is for</p>
@@ -779,38 +779,55 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 </section>
 <h2 id="root">Root</h2>
-<p>Purpose: review-first sync workflows with optional live Grafana fetch and apply paths.</p>
-<p>When to use: when you need to summarize desired resources, plan against live state, review a plan, apply a reviewed plan, audit drift, or build bundle and promotion preflight documents.</p>
-<p>Description: start here when your team follows a review-first change workflow and you need the whole path in one place. The <code>change</code> namespace is the control surface for summary, preflight, planning, review, audit, and apply, so operators can see how those steps fit together before they run one exact subcommand.</p>
+<p>Purpose: task-first staged change workflow with optional live Grafana preview and apply paths.</p>
+<p>When to use: when you need to inspect a staged package, check whether it looks safe to continue, preview what would change, apply an approved preview, or drop into lower-level advanced review contracts.</p>
+<p>Description: start here when you want the normal operator lane first. The default <code>change</code> surface is now <code>inspect -&gt; check -&gt; preview -&gt; apply</code>. Lower-level steps such as <code>summary</code>, <code>plan</code>, <code>review</code>, <code>preflight</code>, <code>audit</code>, and bundle/promotion workflows still exist under <code>change advanced</code> when you need explicit staged contracts.</p>
 <p>Before / After:</p>
-<ul><li><strong>Before</strong>: a change package is just a pile of files and a risky apply path.</li><li><strong>After</strong>: the same package moves through summary, preflight, plan, review, and apply with explicit checkpoints.</li></ul>
-<p>Key flags: the root command is a namespace; the main operational flags live on the subcommands. Common workflow inputs include <code>--desired-file</code>, <code>--plan-file</code>, <code>--live-file</code>, <code>--fetch-live</code>, <code>--approve</code>, <code>--execute-live</code>, <code>--source-bundle</code>, <code>--target-inventory</code>, <code>--availability-file</code>, <code>--mapping-file</code>, and <code>--output-format</code>.</p>
-<h3 id="json-contracts-for-ci-and-scripts">JSON contracts for CI and scripts</h3>
-<p>If you want to automate around <code>change</code> outputs, treat <code>kind</code> plus <code>schemaVersion</code> as the contract guard before you inspect the rest of the payload.</p>
-<p>Quick lookups from the CLI:</p>
-<ul><li><code>grafana-util change --help-schema</code></li><li><code>grafana-util change summary --help-schema</code></li><li><code>grafana-util change plan --help-schema</code></li><li><code>grafana-util change apply --help-schema</code></li></ul>
-<table><thead><tr><th>Command</th><th>Output kind</th><th>Top-level fields to expect</th></tr></thead><tbody><tr><td><code>change summary --output-format json</code></td><td><code>grafana-utils-sync-summary</code></td><td><code>kind</code>, <code>schemaVersion</code>, <code>toolVersion</code>, <code>summary</code>, <code>resources</code></td></tr><tr><td><code>change plan --output-format json</code></td><td><code>grafana-utils-sync-plan</code></td><td><code>kind</code>, <code>schemaVersion</code>, <code>toolVersion</code>, <code>dryRun</code>, <code>reviewRequired</code>, <code>reviewed</code>, <code>allowPrune</code>, <code>summary</code>, <code>alertAssessment</code>, <code>operations</code>, <code>traceId</code>, <code>stage</code>, <code>stepIndex</code>, <code>parentTraceId</code></td></tr><tr><td><code>change review --output-format json</code></td><td><code>grafana-utils-sync-plan</code></td><td>same plan shape, plus <code>reviewedBy</code>, <code>reviewedAt</code>, <code>reviewNote</code>, and lineage moved to <code>stage=review</code></td></tr><tr><td><code>change apply --output-format json</code></td><td><code>grafana-utils-sync-apply-intent</code></td><td><code>kind</code>, <code>schemaVersion</code>, <code>toolVersion</code>, <code>mode</code>, <code>reviewed</code>, <code>reviewRequired</code>, <code>allowPrune</code>, <code>approved</code>, <code>summary</code>, <code>alertAssessment</code>, <code>operations</code>, optional <code>preflightSummary</code>, optional <code>bundlePreflightSummary</code>, <code>appliedBy</code>, <code>appliedAt</code>, <code>approvalReason</code>, <code>applyNote</code>, <code>traceId</code>, <code>stage</code>, <code>stepIndex</code>, <code>parentTraceId</code></td></tr><tr><td><code>change apply --execute-live --output-format json</code></td><td>live apply result</td><td><code>mode</code>, <code>appliedCount</code>, <code>results</code></td></tr><tr><td><code>change audit --output-format json</code></td><td><code>grafana-utils-sync-audit</code></td><td><code>kind</code>, <code>schemaVersion</code>, <code>toolVersion</code>, <code>summary</code>, <code>currentLock</code>, <code>baselineLock</code>, <code>drifts</code></td></tr><tr><td><code>change preflight --output-format json</code></td><td><code>grafana-utils-sync-preflight</code></td><td><code>kind</code>, <code>schemaVersion</code>, <code>toolVersion</code>, <code>summary</code>, <code>checks</code></td></tr><tr><td><code>change assess-alerts --output-format json</code></td><td><code>grafana-utils-alert-sync-plan</code></td><td><code>kind</code>, <code>schemaVersion</code>, <code>toolVersion</code>, <code>summary</code>, <code>alerts</code></td></tr><tr><td><code>change bundle-preflight --output-format json</code></td><td><code>grafana-utils-sync-bundle-preflight</code></td><td><code>kind</code>, <code>schemaVersion</code>, <code>summary</code>, <code>syncPreflight</code>, <code>alertArtifactAssessment</code>, <code>secretPlaceholderAssessment</code>, <code>providerAssessment</code></td></tr><tr><td><code>change promotion-preflight --output-format json</code></td><td><code>grafana-utils-sync-promotion-preflight</code></td><td><code>kind</code>, <code>schemaVersion</code>, <code>toolVersion</code>, <code>summary</code>, <code>bundlePreflight</code>, <code>mappingSummary</code>, <code>checkSummary</code>, <code>handoffSummary</code>, <code>continuationSummary</code>, <code>checks</code>, <code>resolvedChecks</code>, <code>blockingChecks</code></td></tr></tbody></table>
-<p>Notes:</p>
-<ul><li><code>change apply</code> has two JSON shapes. Without <code>--execute-live</code>, it emits a staged apply-intent document. With <code>--execute-live</code>, it emits the live execution result instead.</li><li><code>change summary</code>, <code>change plan</code>, <code>change review</code>, and <code>change apply</code> all keep <code>summary</code> as the main aggregate block, but the nested fields differ by stage.</li><li><code>change bundle</code> does not use <code>--output-format</code>; it writes the bundle contract with <code>--output-file</code>.</li></ul>
+<ul><li><strong>Before</strong>: a change package is just a pile of files and a risky apply path.</li><li><strong>After</strong>: the same package moves through inspect, check, preview, and apply with explicit checkpoints, while advanced contracts stay available behind <code>change advanced</code>.</li></ul>
+<p>Key flags: the root command is a namespace; the main operational flags live on the subcommands. Common workflow inputs include <code>--workspace</code>, <code>--desired-file</code>, <code>--dashboard-export-dir</code>, <code>--dashboard-provisioning-dir</code>, <code>--alert-export-dir</code>, <code>--source-bundle</code>, <code>--target-inventory</code>, <code>--availability-file</code>, <code>--mapping-file</code>, <code>--fetch-live</code>, <code>--live-file</code>, <code>--preview-file</code>, <code>--approve</code>, <code>--execute-live</code>, and <code>--output-format</code>.</p>
+<h3 id="first-run-path">First-run path</h3>
+<p>If you are starting fresh, use this order first:</p>
+<ol><li><code>change inspect</code> to see what the staged package contains</li><li><code>change check</code> to confirm it is structurally ready</li><li><code>change preview</code> to see what would change</li><li><code>change apply</code> only after the preview is reviewed and approved</li></ol>
+<h3 id="what-workspace-tries-to-discover">What <code>--workspace</code> tries to discover</h3>
+<p>When you pass <code>--workspace .</code>, <code>change</code> looks for the common staged inputs it can assemble into one review lane:</p>
+<ul><li>dashboard export trees</li><li>dashboard provisioning trees</li><li>datasource provisioning files</li><li>alert export trees</li><li>staged desired change files</li><li>source bundles, target inventory files, and promotion mapping files</li></ul>
+<p>If discovery finds nothing usable, stop and switch to explicit flags such as <code>--desired-file</code>, <code>--dashboard-export-dir</code>, <code>--alert-export-dir</code>, <code>--source-bundle</code>, or <code>--target-inventory</code>.</p>
 <p>What success looks like:</p>
 <ul><li>you can explain the size and risk of a change before apply</li><li>staged inputs pass preflight before they enter plan or apply</li><li>reviewed plans carry explicit evidence instead of relying on operator memory</li></ul>
 <p>Failure checks:</p>
 <ul><li>if summary or preflight looks wrong, stop before plan or apply</li><li>if live fetch changes the result unexpectedly, compare staged inputs against the live target first</li><li>if automation consumes JSON, validate <code>kind</code> and <code>schemaVersion</code> before deeper parsing</li></ul>
 <p>Examples:</p>
-<pre><code># Purpose: Summarize desired sync resources before planning.
-grafana-util change summary --desired-file ./desired.json</code></pre>
-<pre><code># Purpose: Build a reviewed plan from desired and live state.
-grafana-util change plan \
-  --desired-file ./desired.json \
-  --fetch-live \
-  --profile prod</code></pre>
-<pre><code># Purpose: Apply a reviewed plan to live Grafana after explicit approval.
+<pre><code># Purpose: Inspect the staged package from common repo-local inputs.
+grafana-util change inspect --workspace .</code></pre>
+<pre><code># Purpose: Check whether the staged package is safe to continue.
+grafana-util change check --workspace . --fetch-live --output-format json</code></pre>
+<pre><code># Purpose: Preview what would change from discovered or explicit staged inputs.
+grafana-util change preview --workspace . --fetch-live --profile prod</code></pre>
+<pre><code># Purpose: Apply a reviewed preview to live Grafana after explicit approval.
 grafana-util change apply \
-  --plan-file ./sync-plan-reviewed.json \
+  --preview-file ./change-preview.json \
   --approve \
   --execute-live \
   --profile prod</code></pre>
 <p>Related commands: <code>grafana-util overview</code>, <code>grafana-util status</code>, <code>grafana-util snapshot</code>.</p>
+<h2 id="primary-subcommands">Primary Subcommands</h2>
+<p>Use the root page to understand the overall lane, then open the subcommand page that matches the step you are actually performing:</p>
+<ul><li><a href="change-inspect.html">change inspect</a>: identify what the staged package contains</li><li><a href="change-check.html">change check</a>: confirm that the staged package is structurally ready</li><li><a href="change-preview.html">change preview</a>: build the reviewable change preview</li><li><a href="change-apply.html">change apply</a>: turn a reviewed preview into an apply intent or a live apply</li></ul>
+<p>This split is intentional. <code>change</code> is a namespace with one primary lane plus a set of advanced contracts; the step-by-step operator manual lives on the individual subcommand pages.</p>
+<h2 id="advanced"><code>advanced</code></h2>
+<p>Purpose: expose lower-level staged contracts and specialized sync workflows.</p>
+<p>When to use: when you need explicit <code>summary</code>, <code>plan</code>, <code>review</code>, <code>preflight</code>, <code>audit</code>, <code>bundle</code>, or promotion handoff documents instead of the task-first lane.</p>
+<p>Examples:</p>
+<pre><code># Purpose: Enter lower-level staged contracts or specialized sync workflows only when the primary lane is not enough.
+grafana-util change advanced bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json --output-format json</code></pre>
+<h3 id="for-ci-and-scripts-only">For CI and scripts only</h3>
+<p>If you are reading this page as an operator, stop here and use the primary <code>inspect -&gt; check -&gt; preview -&gt; apply</code> lane unless you know you need one of the lower-level contracts below.</p>
+<p>If you are automating around <code>change</code> outputs, treat <code>kind</code> plus <code>schemaVersion</code> as the contract guard before you inspect the rest of the payload.</p>
+<p>Quick lookups from the CLI:</p>
+<ul><li><code>grafana-util change --help-schema</code></li><li><code>grafana-util change inspect --help</code></li><li><code>grafana-util change preview --help-schema</code></li><li><code>grafana-util change apply --help-schema</code></li></ul>
+<table><thead><tr><th>Command</th><th>Output kind</th><th>Top-level fields to expect</th></tr></thead><tbody><tr><td><code>change inspect --output-format json</code></td><td>overview/status-style staged summary</td><td>command-specific staged summary and discovered-input output</td></tr><tr><td><code>change check --output-format json</code></td><td>project-status staged status</td><td>staged readiness/status output plus blockers or warnings</td></tr><tr><td><code>change preview --output-format json</code></td><td><code>grafana-utils-sync-plan</code> or bundle/promotion preflight kinds</td><td>preview uses the existing staged plan/bundle-preflight/promotion-preflight contracts under a task-first entrypoint; sync-plan previews also carry <code>ordering.mode</code>, <code>operations[].orderIndex</code>, <code>operations[].orderGroup</code>, <code>operations[].kindOrder</code>, and <code>summary.blocked_reasons</code></td></tr><tr><td><code>change apply --output-format json</code></td><td><code>grafana-utils-sync-apply-intent</code></td><td><code>kind</code>, <code>schemaVersion</code>, <code>toolVersion</code>, <code>mode</code>, <code>reviewed</code>, <code>reviewRequired</code>, <code>allowPrune</code>, <code>approved</code>, <code>summary</code>, <code>alertAssessment</code>, <code>operations</code>, optional <code>preflightSummary</code>, optional <code>bundlePreflightSummary</code>, <code>appliedBy</code>, <code>appliedAt</code>, <code>approvalReason</code>, <code>applyNote</code>, <code>traceId</code>, <code>stage</code>, <code>stepIndex</code>, <code>parentTraceId</code>; ordering metadata stays on the reviewed preview</td></tr><tr><td><code>change apply --execute-live --output-format json</code></td><td>live apply result</td><td><code>mode</code>, <code>appliedCount</code>, <code>results</code></td></tr><tr><td><code>change advanced audit --output-format json</code></td><td><code>grafana-utils-sync-audit</code></td><td><code>kind</code>, <code>schemaVersion</code>, <code>toolVersion</code>, <code>summary</code>, <code>currentLock</code>, <code>baselineLock</code>, <code>drifts</code></td></tr><tr><td><code>change advanced preflight --output-format json</code></td><td><code>grafana-utils-sync-preflight</code></td><td><code>kind</code>, <code>schemaVersion</code>, <code>toolVersion</code>, <code>summary</code>, <code>checks</code></td></tr><tr><td><code>change advanced assess-alerts --output-format json</code></td><td><code>grafana-utils-alert-sync-plan</code></td><td><code>kind</code>, <code>schemaVersion</code>, <code>toolVersion</code>, <code>summary</code>, <code>alerts</code></td></tr><tr><td><code>change advanced bundle-preflight --output-format json</code></td><td><code>grafana-utils-sync-bundle-preflight</code></td><td><code>kind</code>, <code>schemaVersion</code>, <code>summary</code>, <code>syncPreflight</code>, <code>alertArtifactAssessment</code>, <code>secretPlaceholderAssessment</code>, <code>providerAssessment</code></td></tr><tr><td><code>change advanced promotion-preflight --output-format json</code></td><td><code>grafana-utils-sync-promotion-preflight</code></td><td><code>kind</code>, <code>schemaVersion</code>, <code>toolVersion</code>, <code>summary</code>, <code>bundlePreflight</code>, <code>mappingSummary</code>, <code>checkSummary</code>, <code>handoffSummary</code>, <code>continuationSummary</code>, <code>checks</code>, <code>resolvedChecks</code>, <code>blockingChecks</code></td></tr></tbody></table>
+<p>Notes:</p>
+<ul><li><code>change apply</code> has two JSON shapes. Without <code>--execute-live</code>, it emits a staged apply-intent document. With <code>--execute-live</code>, it emits the live execution result instead.</li><li><code>change preview</code> is task-first. It may emit the existing staged plan kind or the bundle/promotion preflight kinds depending on which staged inputs you provide.</li><li><code>change apply</code> accepts <code>--preview-file</code> and still accepts <code>--plan-file</code> as an alias for compatibility.</li><li><code>change advanced bundle</code> does not use <code>--output-format</code>; it writes the bundle contract with <code>--output-file</code>.</li></ul>
 <h2 id="summary"><code>summary</code></h2>
 <p>Purpose: summarize local desired sync resources.</p>
 <p>When to use: when you want a quick size check before planning or applying.</p>
@@ -822,6 +839,17 @@ grafana-util change apply \
 grafana-util change summary --desired-file ./desired.json</code></pre>
 <pre><code># Purpose: summary.
 grafana-util change summary --desired-file ./desired.json --output-format json</code></pre>
+<p><strong>Expected Output:</strong></p>
+<pre><code>{
+  &quot;kind&quot;: &quot;grafana-utils-sync-summary&quot;,
+  &quot;summary&quot;: {
+    &quot;resourceCount&quot;: 8,
+    &quot;dashboardCount&quot;: 5,
+    &quot;datasourceCount&quot;: 1
+  },
+  &quot;resources&quot;: []
+}</code></pre>
+<p>Use this as the quickest “how big is this change package?” artifact before you spend time on preflight or plan work.</p>
 <p>Related commands: <code>change plan</code>, <code>change preflight</code>.</p>
 <h2 id="plan"><code>plan</code></h2>
 <p>Purpose: build a staged sync plan from desired and live state.</p>
@@ -841,6 +869,18 @@ grafana-util change plan \
   --profile prod \
   --allow-prune \
   --output-format json</code></pre>
+<p><strong>Expected Output:</strong></p>
+<pre><code>{
+  &quot;kind&quot;: &quot;grafana-utils-sync-plan&quot;,
+  &quot;reviewed&quot;: false,
+  &quot;summary&quot;: {
+    &quot;would_create&quot;: 1,
+    &quot;would_update&quot;: 4,
+    &quot;would_delete&quot;: 0
+  },
+  &quot;operations&quot;: []
+}</code></pre>
+<p>This is the review artifact most teams actually pass around. The key signals are the <code>summary</code> counts and whether the plan is still unreviewed.</p>
 <p>Related commands: <code>change review</code>, <code>change apply</code>, <code>change summary</code>.</p>
 <h2 id="review"><code>review</code></h2>
 <p>Purpose: mark a staged sync plan as reviewed.</p>
@@ -855,34 +895,20 @@ grafana-util change plan \
 grafana-util change review --plan-file ./sync-plan.json</code></pre>
 <pre><code># Purpose: review.
 grafana-util change review --plan-file ./sync-plan.json --review-note &#x27;peer-reviewed&#x27; --output-format json</code></pre>
+<p><strong>Expected Output:</strong></p>
+<pre><code>{
+  &quot;kind&quot;: &quot;grafana-utils-sync-plan&quot;,
+  &quot;reviewed&quot;: true,
+  &quot;stage&quot;: &quot;review&quot;,
+  &quot;stepIndex&quot;: 2,
+  &quot;reviewNote&quot;: &quot;peer-reviewed&quot;
+}</code></pre>
+<p>Once review succeeds, downstream apply steps should no longer need to infer approval from filenames or operator memory.</p>
 <p>What success looks like:</p>
 <ul><li>the reviewed plan is a distinct artifact, not just a verbal approval</li><li>downstream apply steps can tell that review already happened</li><li>the review note or reviewer identity is preserved for later audit or handoff</li></ul>
 <p>Failure checks:</p>
 <ul><li>if review output still shows <code>reviewed: false</code>, confirm you are reading the new reviewed file rather than the old plan</li><li>if review metadata is missing, check whether you expected <code>--reviewed-by</code>, <code>--reviewed-at</code>, or <code>--review-note</code> to be recorded</li><li>if a later step rejects the reviewed plan, inspect the <code>stage</code>, <code>stepIndex</code>, and review fields before assuming apply is broken</li></ul>
 <p>Related commands: <code>change plan</code>, <code>change apply</code>.</p>
-<h2 id="apply"><code>apply</code></h2>
-<p>Purpose: build a gated apply intent from a reviewed sync plan, and optionally execute it live.</p>
-<p>When to use: when a plan is already reviewed and you are ready to emit or execute the apply step.</p>
-<p>Before / After:</p>
-<ul><li><strong>Before</strong>: the last mile between a reviewed plan and a live mutation is often a vague operator step.</li><li><strong>After</strong>: apply turns that step into either a staged intent document or an explicit live execution with approval evidence attached.</li></ul>
-<p>Key flags: <code>--plan-file</code>, <code>--preflight-file</code>, <code>--bundle-preflight-file</code>, <code>--approve</code>, <code>--execute-live</code>, <code>--allow-folder-delete</code>, <code>--allow-policy-reset</code>, <code>--org-id</code>, <code>--output-format</code>, <code>--applied-by</code>, <code>--applied-at</code>, <code>--approval-reason</code>, <code>--apply-note</code>.</p>
-<p>JSON shape:</p>
-<ul><li>default <code>change apply --output-format json</code></li><li><code>kind</code>: <code>grafana-utils-sync-apply-intent</code></li><li><code>schemaVersion</code>, <code>toolVersion</code></li><li><code>mode: apply</code></li><li><code>reviewed</code>, <code>reviewRequired</code>, <code>allowPrune</code>, <code>approved</code></li><li><code>summary</code>, <code>alertAssessment</code>, <code>operations</code></li><li>optional <code>preflightSummary</code></li><li>optional <code>bundlePreflightSummary</code></li><li><code>appliedBy</code>, <code>appliedAt</code>, <code>approvalReason</code>, <code>applyNote</code></li><li><code>traceId</code>, <code>stage</code>, <code>stepIndex</code>, <code>parentTraceId</code></li><li><code>change apply --execute-live --output-format json</code></li><li><code>mode: live-apply</code></li><li><code>appliedCount</code></li><li><code>results</code></li><li>each row includes <code>kind</code>, <code>identity</code>, <code>action</code>, <code>response</code></li></ul>
-<p>Examples:</p>
-<pre><code># Purpose: apply.
-grafana-util change apply --plan-file ./sync-plan-reviewed.json --approve</code></pre>
-<pre><code># Purpose: apply.
-grafana-util change apply \
-  --plan-file ./sync-plan-reviewed.json \
-  --approve \
-  --execute-live \
-  --allow-folder-delete \
-  --profile prod</code></pre>
-<p>What success looks like:</p>
-<ul><li>a reviewed plan can move into a gated apply step without losing the review lineage</li><li>staged apply intent JSON is explicit enough for approval workflows or change tickets</li><li>live apply output shows exactly how many operations ran and what each result was</li></ul>
-<p>Failure checks:</p>
-<ul><li>if apply refuses to proceed, confirm the input plan was reviewed and that approval flags such as <code>--approve</code> are present</li><li>if live execution behaves differently from the staged intent, compare the plan, optional preflight, and live target before retrying</li><li>if automation reads apply JSON, distinguish staged <code>grafana-utils-sync-apply-intent</code> from live <code>mode: live-apply</code> output before parsing fields</li></ul>
-<p>Related commands: <code>change review</code>, <code>change preflight</code>, <code>change bundle-preflight</code>.</p>
 <h2 id="audit"><code>audit</code></h2>
 <p>Purpose: audit managed Grafana resources against a checksum lock and current live state.</p>
 <p>When to use: when you need a drift check or want to refresh a lock snapshot.</p>
@@ -894,6 +920,16 @@ grafana-util change apply \
 grafana-util change audit --managed-file ./desired.json --live-file ./live.json --write-lock ./sync-lock.json</code></pre>
 <pre><code># Purpose: audit.
 grafana-util change audit --lock-file ./sync-lock.json --fetch-live --profile prod --fail-on-drift --output-format json</code></pre>
+<p><strong>Expected Output:</strong></p>
+<pre><code>{
+  &quot;kind&quot;: &quot;grafana-utils-sync-audit&quot;,
+  &quot;summary&quot;: {
+    &quot;inSyncCount&quot;: 12,
+    &quot;driftCount&quot;: 1
+  },
+  &quot;drifts&quot;: []
+}</code></pre>
+<p>Treat <code>driftCount &gt; 0</code> as the top-level signal that your managed state and live Grafana have separated.</p>
 <p>Related commands: <code>change preflight</code>, <code>change plan</code>, <code>status live</code>.</p>
 <h2 id="preflight"><code>preflight</code></h2>
 <p>Purpose: build a staged sync preflight document from desired resources and optional availability hints.</p>
@@ -912,6 +948,17 @@ grafana-util change preflight \
   --fetch-live \
   --profile prod \
   --output-format json</code></pre>
+<p><strong>Expected Output:</strong></p>
+<pre><code>{
+  &quot;kind&quot;: &quot;grafana-utils-sync-preflight&quot;,
+  &quot;summary&quot;: {
+    &quot;checkCount&quot;: 6,
+    &quot;okCount&quot;: 6,
+    &quot;blockingCount&quot;: 0
+  },
+  &quot;checks&quot;: []
+}</code></pre>
+<p>This is the structural gate. If <code>blockingCount</code> is not zero, stop here and fix the inputs before you build or approve a plan.</p>
 <p>What success looks like:</p>
 <ul><li>the preflight document tells you whether the change is structurally ready to enter plan or apply</li><li>blocking checks are explicit enough that another operator or CI lane can stop safely</li><li>availability hints and live fetch data line up with the target environment you intend to change</li></ul>
 <p>Failure checks:</p>
@@ -928,6 +975,17 @@ grafana-util change preflight \
 grafana-util change assess-alerts --alerts-file ./alerts.json</code></pre>
 <pre><code># Purpose: assess-alerts.
 grafana-util change assess-alerts --alerts-file ./alerts.json --output-format json</code></pre>
+<p><strong>Expected Output:</strong></p>
+<pre><code>{
+  &quot;kind&quot;: &quot;grafana-utils-alert-sync-plan&quot;,
+  &quot;summary&quot;: {
+    &quot;alertCount&quot;: 3,
+    &quot;candidateCount&quot;: 2,
+    &quot;blockedCount&quot;: 1
+  },
+  &quot;alerts&quot;: []
+}</code></pre>
+<p>This is useful when alert resources need a narrower explanation than the wider sync plan gives you.</p>
 <p>Related commands: <code>change bundle</code>, <code>change bundle-preflight</code>, <code>overview</code>.</p>
 <h2 id="bundle"><code>bundle</code></h2>
 <p>Purpose: package exported dashboards, alerting resources, datasource inventory, and metadata into one local source bundle.</p>
@@ -940,6 +998,18 @@ grafana-util change assess-alerts --alerts-file ./alerts.json --output-format js
 grafana-util change bundle --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json</code></pre>
 <pre><code># Purpose: bundle.
 grafana-util change bundle --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json</code></pre>
+<p><strong>Expected Output:</strong></p>
+<pre><code>{
+  &quot;kind&quot;: &quot;grafana-utils-sync-source-bundle&quot;,
+  &quot;summary&quot;: {
+    &quot;dashboardCount&quot;: 5,
+    &quot;datasourceCount&quot;: 1,
+    &quot;alertCount&quot;: 3
+  },
+  &quot;dashboards&quot;: [],
+  &quot;alerts&quot;: []
+}</code></pre>
+<p>Whether it is written to disk or printed to stdout, this bundle is the packaging artifact used by later bundle and promotion checks.</p>
 <p>Related commands: <code>change bundle-preflight</code>, <code>change promotion-preflight</code>, <code>snapshot export</code>.</p>
 <h2 id="bundle-preflight"><code>bundle-preflight</code></h2>
 <p>Purpose: build a staged bundle-level sync preflight document from a source bundle and target inventory.</p>
@@ -952,6 +1022,17 @@ grafana-util change bundle --dashboard-provisioning-dir ./dashboards/provisionin
 grafana-util change bundle-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --output-format json</code></pre>
 <pre><code># Purpose: bundle-preflight.
 grafana-util change bundle-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --availability-file ./availability.json --output-format json</code></pre>
+<p><strong>Expected Output:</strong></p>
+<pre><code>{
+  &quot;kind&quot;: &quot;grafana-utils-sync-bundle-preflight&quot;,
+  &quot;summary&quot;: {
+    &quot;resourceCount&quot;: 9,
+    &quot;syncBlockingCount&quot;: 0,
+    &quot;providerBlockingCount&quot;: 0
+  },
+  &quot;syncPreflight&quot;: {}
+}</code></pre>
+<p>This is the right artifact when you want one bundle-level go/no-go result before any promotion or apply handoff.</p>
 <p>Related commands: <code>change bundle</code>, <code>change promotion-preflight</code>, <code>status staged</code>.</p>
 <h2 id="promotion-preflight"><code>promotion-preflight</code></h2>
 <p>Purpose: build a staged promotion review handoff from a source bundle and target inventory.</p>
@@ -964,13 +1045,26 @@ grafana-util change bundle-preflight --source-bundle ./sync-source-bundle.json -
 grafana-util change promotion-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --mapping-file ./promotion-map.json --output-format json</code></pre>
 <pre><code># Purpose: promotion-preflight.
 grafana-util change promotion-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --mapping-file ./promotion-map.json --availability-file ./availability.json --output-format json</code></pre>
+<p><strong>Expected Output:</strong></p>
+<pre><code>{
+  &quot;kind&quot;: &quot;grafana-utils-sync-promotion-preflight&quot;,
+  &quot;summary&quot;: {
+    &quot;resourceCount&quot;: 9,
+    &quot;directMatchCount&quot;: 6,
+    &quot;mappedCount&quot;: 3,
+    &quot;blockingCount&quot;: 0
+  },
+  &quot;mappingSummary&quot;: {},
+  &quot;blockingChecks&quot;: []
+}</code></pre>
+<p>Use this when the hard question is not “what will change?” but “is this source bundle promotable into that target environment with the current mappings?”.</p>
 <p>Related commands: <code>change bundle-preflight</code>, <code>change apply</code>, <code>status live</code>.</p>
     
   </article>
   <aside class="sidebar">
   <button class="sidebar-toggle sidebar-toggle-right" type="button" aria-expanded="true" aria-label="Toggle page sidebar">▶</button>
   <div class="sidebar-content">
-    <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#root"><span class="toc-label">Root</span></a></li><li class="toc-level-3"><a href="#json-contracts-for-ci-and-scripts"><span class="toc-label">JSON contracts for CI and scripts</span></a></li><li class="toc-level-2"><a href="#summary"><span class="toc-label">summary`</span></a></li><li class="toc-level-2"><a href="#plan"><span class="toc-label">plan`</span></a></li><li class="toc-level-2"><a href="#review"><span class="toc-label">review`</span></a></li><li class="toc-level-2"><a href="#apply"><span class="toc-label">apply`</span></a></li><li class="toc-level-2"><a href="#audit"><span class="toc-label">audit`</span></a></li><li class="toc-level-2"><a href="#preflight"><span class="toc-label">preflight`</span></a></li><li class="toc-level-2"><a href="#assess-alerts"><span class="toc-label">assess-alerts`</span></a></li><li class="toc-level-2"><a href="#bundle"><span class="toc-label">bundle`</span></a></li><li class="toc-level-2"><a href="#bundle-preflight"><span class="toc-label">bundle-preflight`</span></a></li><li class="toc-level-2"><a href="#promotion-preflight"><span class="toc-label">promotion-preflight`</span></a></li></ul></section><section class="sidebar-section"><h2>Related</h2><ul class="sidebar-meta-list"><li><a href="../../handbook/en/change-overview-status.html" class="sidebar-meta-link">Matching handbook chapter</a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: English</a></li><li><a href="../zh-TW/change.html" class="sidebar-meta-link">Switch to 繁體中文</a></li></ul></section>
+    <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#root"><span class="toc-label">Root</span></a></li><li class="toc-level-3"><a href="#first-run-path"><span class="toc-label">First-run path</span></a></li><li class="toc-level-3"><a href="#what-workspace-tries-to-discover"><span class="toc-label">What `--workspace` tries to discover</span></a></li><li class="toc-level-2"><a href="#primary-subcommands"><span class="toc-label">Primary Subcommands</span></a></li><li class="toc-level-2"><a href="#advanced"><span class="toc-label">advanced`</span></a></li><li class="toc-level-3"><a href="#for-ci-and-scripts-only"><span class="toc-label">For CI and scripts only</span></a></li><li class="toc-level-2"><a href="#summary"><span class="toc-label">summary`</span></a></li><li class="toc-level-2"><a href="#plan"><span class="toc-label">plan`</span></a></li><li class="toc-level-2"><a href="#review"><span class="toc-label">review`</span></a></li><li class="toc-level-2"><a href="#audit"><span class="toc-label">audit`</span></a></li><li class="toc-level-2"><a href="#preflight"><span class="toc-label">preflight`</span></a></li><li class="toc-level-2"><a href="#assess-alerts"><span class="toc-label">assess-alerts`</span></a></li><li class="toc-level-2"><a href="#bundle"><span class="toc-label">bundle`</span></a></li><li class="toc-level-2"><a href="#bundle-preflight"><span class="toc-label">bundle-preflight`</span></a></li><li class="toc-level-2"><a href="#promotion-preflight"><span class="toc-label">promotion-preflight`</span></a></li></ul></section><section class="sidebar-section"><h2>Related</h2><ul class="sidebar-meta-list"><li><a href="../../handbook/en/change-overview-status.html" class="sidebar-meta-link">Matching handbook chapter</a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: English</a></li><li><a href="../zh-TW/change.html" class="sidebar-meta-link">Switch to 繁體中文</a></li></ul></section>
   </div>
 </aside>
 

@@ -45,7 +45,7 @@ Get from zero to a first install check, connectivity check, and estate-level ove
 ### 1. Install (Global Binary)
 ```bash
 # Downloads and installs the latest version to your local bin directory
-curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh
 ```
 
 ### 2. Confirm the Installed Version

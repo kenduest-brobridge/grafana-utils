@@ -41,8 +41,8 @@ where
         .into_iter()
         .map(|item| normalize_service_account_row(&item))
         .collect::<Vec<Map<String, Value>>>();
-    let bundle_path = args.export_dir.join(ACCESS_SERVICE_ACCOUNT_EXPORT_FILENAME);
-    let metadata_path = args.export_dir.join(ACCESS_EXPORT_METADATA_FILENAME);
+    let bundle_path = args.output_dir.join(ACCESS_SERVICE_ACCOUNT_EXPORT_FILENAME);
+    let metadata_path = args.output_dir.join(ACCESS_EXPORT_METADATA_FILENAME);
     assert_not_overwrite(&bundle_path, args.dry_run, args.overwrite)?;
     assert_not_overwrite(&metadata_path, args.dry_run, args.overwrite)?;
     if !args.dry_run {
@@ -65,7 +65,8 @@ where
             &metadata_path,
             &Value::Object(build_service_account_export_metadata(
                 &args.common.url,
-                &args.export_dir,
+                args.common.profile.as_deref(),
+                &args.output_dir,
                 records.len(),
             )),
             args.overwrite,
@@ -97,7 +98,7 @@ where
 {
     validate_service_account_import_dry_run_output(args)?;
     let records =
-        load_service_account_import_records(&args.import_dir, ACCESS_EXPORT_KIND_SERVICE_ACCOUNTS)?;
+        load_service_account_import_records(&args.input_dir, ACCESS_EXPORT_KIND_SERVICE_ACCOUNTS)?;
     let mut created = 0usize;
     let mut updated = 0usize;
     let mut skipped = 0usize;
@@ -112,7 +113,7 @@ where
             return Err(message(format!(
                 "Access service-account import record {} in {} lacks name.",
                 index + 1,
-                args.import_dir.display()
+                args.input_dir.display()
             )));
         }
         let existing = list_service_accounts_with_request(
@@ -312,7 +313,7 @@ where
                             ),
                             (
                                 "source".to_string(),
-                                Value::String(args.import_dir.to_string_lossy().to_string()),
+                                Value::String(args.input_dir.to_string_lossy().to_string()),
                             ),
                         ])),
                     ),
@@ -337,7 +338,7 @@ where
         created,
         updated,
         skipped,
-        args.import_dir.display()
+        args.input_dir.display()
     );
     Ok(0)
 }

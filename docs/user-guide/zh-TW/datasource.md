@@ -1,6 +1,6 @@
 # Data source 維運手冊
 
-這一章整理 data source 的盤點、備份、回放與受控變更。重點是讓你知道哪些資料適合進 Git，哪些資料只適合在恢復時補回。
+這一章整理 data source 的盤點、備份、回放與受控變更。重點是讓你知道哪些資料適合進 Git，哪些資料只適合在恢復時補回，也能先看 live Grafana 或本地 bundle 的 inventory。
 
 ## 適用對象
 
@@ -10,7 +10,7 @@
 
 ## 主要目標
 
-- 先看懂 live data source 長什麼樣
+- 先看懂 live data source 或本地 bundle 長什麼樣
 - 再建立可回放的輸出樹
 - 最後才進行匯入、修改或刪除
 
@@ -22,7 +22,7 @@
 ## 成功判準
 
 - 你知道哪些欄位要放進恢復包，哪些欄位一定要遮蔽。
-- 你能先確認 live inventory，再決定要不要動它。
+- 你能先確認 live inventory 或本地匯出 bundle，再決定要不要動它。
 - 你能分清楚自己是在處理 recovery、provisioning，還是直接 live mutation。
 
 ## 失敗時先檢查
@@ -40,7 +40,7 @@
 - [datasource 指令總覽](../../commands/zh-TW/datasource.md)
 - [datasource types](../../commands/zh-TW/datasource-types.md)
 - [datasource browse](../../commands/zh-TW/datasource-browse.md)
-- [datasource inspect-export](../../commands/zh-TW/datasource-inspect-export.md)
+- [datasource list](../../commands/zh-TW/datasource-list.md)
 - [datasource export](../../commands/zh-TW/datasource-export.md)
 - [datasource import](../../commands/zh-TW/datasource-import.md)
 - [datasource diff](../../commands/zh-TW/datasource-diff.md)
@@ -55,7 +55,7 @@
 ## 🛠️ 核心工作流用途
 
 data source 這組功能主要是為了這幾種場景設計：
-- **資產盤點**：稽核現有的 data source、其類型以及後端 URL。
+- **資產盤點**：稽核現有的 data source、其類型以及後端 URL，來源可以是 live Grafana 或本地 bundle。
 - **恢復與回放**：維護可供災難恢復的 data source 匯出紀錄。
 - **Provisioning 投影**：產生 Grafana 檔案式配置系統所需的 YAML 檔案。
 - **差異審查 (Drift Review)**：在套用變更前，比對本地暫存檔案與 live Grafana。
@@ -108,10 +108,10 @@ dehk4kxat5la8b  Prometheus  prometheus  http://prometheus:9090  true            
 
 | 指令 | 帶有參數的完整範例 |
 | :--- | :--- |
-| **盤點 (List)** | `grafana-util datasource list --all-orgs --table` |
-| **匯出 (Export)** | `grafana-util datasource export --export-dir ./datasources --overwrite` |
-| **匯入 (Import)** | `grafana-util datasource import --import-dir ./datasources --replace-existing --dry-run --table` |
-| **比對 (Diff)** | `grafana-util datasource diff --import-dir ./datasources` |
+| **盤點 (List)** | `grafana-util datasource list --all-orgs --table` 或 `grafana-util datasource list --input-dir ./datasources --table` |
+| **匯出 (Export)** | `grafana-util datasource export --output-dir ./datasources --overwrite` |
+| **匯入 (Import)** | `grafana-util datasource import --input-dir ./datasources --replace-existing --dry-run --table` |
+| **比對 (Diff)** | `grafana-util datasource diff --input-dir ./datasources` |
 | **新增 (Add)** | `grafana-util datasource add --uid <UID> --name <NAME> --type prometheus --datasource-url <URL> --dry-run --table` |
 
 ---
@@ -121,7 +121,7 @@ dehk4kxat5la8b  Prometheus  prometheus  http://prometheus:9090  true            
 ### 1. 匯出盤點資產
 ```bash
 # 用途：1. 匯出盤點資產。
-grafana-util datasource export --export-dir ./datasources --overwrite
+grafana-util datasource export --output-dir ./datasources --overwrite
 ```
 **範例輸出：**
 ```text
@@ -133,7 +133,7 @@ Datasource export completed: 3 item(s)
 ### 2. Dry-Run 匯入預覽
 ```bash
 # 用途：2. Dry-Run 匯入預覽。
-grafana-util datasource import --import-dir ./datasources --replace-existing --dry-run --table
+grafana-util datasource import --input-dir ./datasources --replace-existing --dry-run --table
 ```
 **範例輸出：**
 ```text
@@ -158,6 +158,22 @@ grafana-util datasource add \
 INDEX  NAME       TYPE         ACTION  DETAIL
 1      prom-new   prometheus   create  would create datasource uid=prom-main
 ```
+
+### 4. 本地盤點
+```bash
+# 用途：4. 本地盤點。
+grafana-util datasource list --input-dir ./datasources --table
+```
+**範例輸出：**
+```text
+UID             NAME        TYPE        URL                     IS_DEFAULT  ORG  ORG_ID
+--------------  ----------  ----------  ----------------------  ----------  ---  ------
+dehk4kxat5la8b  Prometheus  prometheus  http://prometheus:9090  true             1
+```
+- **UID**：用於自動化的穩定身份識別碼。
+- **TYPE**：識別外掛實作 (例如 prometheus, loki)。
+- **IS_DEFAULT**：標示這是否為該 org 的預設 data source。
+- **URL**：該紀錄關聯的後端目標位址。
 
 ---
 [⬅️ 上一章：Dashboard 管理](dashboard.md) | [🏠 回首頁](index.md) | [➡️ 下一章：告警治理](alert.md)

@@ -783,18 +783,18 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="使用時機">使用時機</h2>
 <ul><li>在 Grafana 內重建已匯出的 alert 套件。</li><li>搭配 <code>--replace-existing</code> 更新既有的 alert 資源。</li><li>在真正變更前先預覽匯入動作。</li></ul>
 <h2 id="主要旗標">主要旗標</h2>
-<ul><li><code>--import-dir</code> 指向 <code>raw/</code> 匯出目錄。</li><li><code>--replace-existing</code> 會更新識別相符的資源。</li><li><code>--dry-run</code> 預覽匯入流程。</li><li><code>--json</code> 將 dry-run 輸出呈現為結構化 JSON。</li><li><code>--dashboard-uid-map</code> 與 <code>--panel-id-map</code> 用來在匯入時修正關聯的 alert 規則。</li></ul>
+<ul><li><code>--input-dir</code> 指向 <code>raw/</code> 匯出目錄。</li><li><code>--replace-existing</code> 會更新識別相符的資源。</li><li><code>--dry-run</code> 預覽匯入流程。</li><li><code>--json</code> 將 dry-run 輸出呈現為結構化 JSON。</li><li><code>--dashboard-uid-map</code> 與 <code>--panel-id-map</code> 用來在匯入時修正關聯的 alert 規則。</li></ul>
 <h2 id="採用前後對照">採用前後對照</h2>
 <ul><li>之前：一筆一筆手動重建 alert 資源，或把 JSON 分開貼回 Grafana。</li><li>之後：直接匯入整份匯出套件，讓命令自己處理整個資源集。</li></ul>
 <h2 id="成功判準">成功判準</h2>
 <ul><li>dry-run 輸出看起來跟你預期要匯入的資源一致。</li><li>實際匯入後，規則、聯絡點、靜音時段、範本與政策都回到預期狀態。</li><li>如果有 dashboard 連動規則，匯入後的對應也還是對的。</li></ul>
 <h2 id="失敗時先檢查">失敗時先檢查</h2>
-<ul><li><code>--import-dir</code> 要指向 <code>raw/</code> 目錄，不要只指到上層匯出資料夾。</li><li>如果 dashboard 連動規則有搬動，匯入前先補上 dashboard / panel 對應表。</li><li>需要覆蓋既有資源時，記得加 <code>--replace-existing</code>。</li></ul>
+<ul><li><code>--input-dir</code> 要指向 <code>raw/</code> 目錄，不要只指到上層匯出資料夾。</li><li>如果 dashboard 連動規則有搬動，匯入前先補上 dashboard / panel 對應表。</li><li>需要覆蓋既有資源時，記得加 <code>--replace-existing</code>。</li></ul>
 <h2 id="範例">範例</h2>
 <pre><code># 用途：透過 Grafana API 匯入 alert 資源 JSON 檔。
-grafana-util alert import --url http://localhost:3000 --import-dir ./alerts/raw --replace-existing</code></pre>
+grafana-util alert import --url http://localhost:3000 --input-dir ./alerts/raw --replace-existing</code></pre>
 <pre><code># 用途：透過 Grafana API 匯入 alert 資源 JSON 檔。
-grafana-util alert import --url http://localhost:3000 --import-dir ./alerts/raw --replace-existing --dry-run --json</code></pre>
+grafana-util alert import --url http://localhost:3000 --input-dir ./alerts/raw --replace-existing --dry-run --json</code></pre>
 <h2 id="相關命令">相關命令</h2>
 <ul><li><a href="alert.html">alert</a></li><li><a href="alert-export.html">alert export</a></li><li><a href="alert-diff.html">alert diff</a></li></ul>
     

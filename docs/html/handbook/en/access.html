@@ -763,11 +763,11 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
     <h1><span class="hero-title-main">Access Management (Identity &amp; Access)</span></h1>
 
 
-    <p>Use this chapter when identity and access are the task: org boundaries, users, teams, service accounts, and the tokens that let automation act safely.</p>
+    <p>Use this chapter when identity and access are the task: org boundaries, users, teams, service accounts, and the tokens that let automation act safely. Inventory reads can come from live Grafana or from a local export bundle; the workflow is the same either way.</p>
 <h2 id="who-it-is-for">Who It Is For</h2>
 <ul><li>Administrators managing org, user, team, or service-account lifecycle work.</li><li>Operators exporting or replaying identity state across environments.</li><li>Teams rotating service-account tokens or auditing access drift.</li></ul>
 <h2 id="primary-goals">Primary Goals</h2>
-<ul><li>Clarify which access surface matches the task before running mutations.</li><li>Keep org, user, team, and service-account inventory reviewable.</li><li>Treat token rotation and access replay as controlled workflows instead of one-off edits.</li></ul>
+<ul><li>Clarify which access surface matches the task before running mutations.</li><li>Keep org, user, team, and service-account inventory reviewable from live or local sources.</li><li>Treat token rotation and access replay as controlled workflows instead of one-off edits.</li></ul>
 <h2 id="before-after">Before / After</h2>
 <ul><li>Before: identity and access work was spread across several command groups with different naming styles.</li><li>After: org, user, team, and service-account workflows share one guide, one glossary, and clearer entry points.</li></ul>
 <h2 id="what-success-looks-like">What success looks like</h2>
@@ -778,14 +778,16 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <p>Need the command-by-command surface instead of the workflow guide?</p>
 <ul><li><a href="../../commands/en/access.html">access command overview</a></li><li><a href="../../commands/en/access-user.html">access user</a></li><li><a href="../../commands/en/access-org.html">access org</a></li><li><a href="../../commands/en/access-team.html">access team</a></li><li><a href="../../commands/en/access-service-account.html">access service-account</a></li><li><a href="../../commands/en/access-service-account-token.html">access service-account token</a></li><li><a href="../../commands/en/index.html">full command index</a></li></ul>
 <h2 id="org-management">org Management</h2>
-<p>Use <code>access org</code> when you need Basic-auth-backed inventory, export, or replay for orgs, especially when you need to verify which orgs exist before a cross-org change.</p>
+<p>Use <code>access org</code> when you need Basic-auth-backed inventory, export, or replay for orgs, especially when you need to verify which orgs exist before a cross-org change. The same <code>list</code> command can also read a saved bundle with <code>--input-dir</code>.</p>
 <h3 id="1-list-export-and-replay-orgs">1. List, Export, and Replay orgs</h3>
 <pre><code># Purpose: 1. List, Export, and Replay orgs.
 grafana-util access org list --table</code></pre>
 <pre><code># Purpose: 1. List, Export, and Replay orgs.
-grafana-util access org export --export-dir ./access-orgs</code></pre>
+grafana-util access org list --input-dir ./access-orgs --table</code></pre>
 <pre><code># Purpose: 1. List, Export, and Replay orgs.
-grafana-util access org import --import-dir ./access-orgs --dry-run</code></pre>
+grafana-util access org export --output-dir ./access-orgs</code></pre>
+<pre><code># Purpose: 1. List, Export, and Replay orgs.
+grafana-util access org import --input-dir ./access-orgs --dry-run</code></pre>
 <p><strong>Expected Output:</strong></p>
 <pre><code>ID   NAME        IS_MAIN   QUOTA
 1    Main Org    true      -
@@ -799,7 +801,7 @@ PREFLIGHT IMPORT:
   - would update 1 org(s)</code></pre>
 <p>Use the list output to confirm the main org, then export/import when you need a repeatable org snapshot.</p>
 <h2 id="user-and-team-management">User and team management</h2>
-<p>Use <code>access user</code> and <code>access team</code> for membership changes, snapshots, and drift checks when you need to reconcile who can see or edit what.</p>
+<p>Use <code>access user</code> and <code>access team</code> for membership changes, snapshots, and drift checks when you need to reconcile who can see or edit what. Their <code>list</code> and <code>browse</code> commands both read local bundles through <code>--input-dir</code>.</p>
 <h3 id="1-add-modify-and-diff-users">1. Add, Modify, and Diff Users</h3>
 <pre><code># Add a new user with global admin role
 grafana-util access user add --login dev-user --role Admin --prompt-password
@@ -809,6 +811,9 @@ grafana-util access user modify --login dev-user --org-id 5 --role Editor
 
 # Compare a saved user snapshot against live Grafana
 grafana-util access user diff --diff-dir ./access-users --scope global</code></pre>
+<p>If you want the same user inventory from a saved bundle, use:</p>
+<pre><code># Inspect the same user inventory from a local bundle
+grafana-util access user list --input-dir ./access-users</code></pre>
 <p><strong>Expected Output:</strong></p>
 <pre><code>Created user dev-user -&gt; id=12 orgRole=Editor grafanaAdmin=true
 
@@ -818,9 +823,11 @@ No user differences across 12 user(s).</code></pre>
 <pre><code># Purpose: 2. Discover and Sync Teams.
 grafana-util access team list --org-id 1 --table</code></pre>
 <pre><code># Purpose: 2. Discover and Sync Teams.
-grafana-util access team export --export-dir ./access-teams --with-members</code></pre>
+grafana-util access team list --input-dir ./access-teams --table</code></pre>
 <pre><code># Purpose: 2. Discover and Sync Teams.
-grafana-util access team import --import-dir ./access-teams --replace-existing --dry-run --table</code></pre>
+grafana-util access team export --output-dir ./access-teams --with-members</code></pre>
+<pre><code># Purpose: 2. Discover and Sync Teams.
+grafana-util access team import --input-dir ./access-teams --replace-existing --dry-run --table</code></pre>
 <p><strong>Expected Output:</strong></p>
 <pre><code>ID   NAME           MEMBERS   EMAIL
 10   Platform SRE   5         sre@company.com
@@ -833,12 +840,14 @@ dev-admin   Admin   update   existing
 ops-user    Viewer  create   missing</code></pre>
 <p>Use <code>--with-members</code> when the export must preserve membership state, and use <code>--dry-run --table</code> before a destructive import.</p>
 <h2 id="service-account-management">service account management</h2>
-<p>Service accounts are the foundation of repeatable automation, CI jobs, and scoped integrations.</p>
+<p>Service accounts are the foundation of repeatable automation, CI jobs, and scoped integrations. Their inventory can be reviewed from live Grafana or from a local export bundle before you touch tokens.</p>
 <h3 id="1-list-and-export-service-accounts">1. List and Export Service Accounts</h3>
 <pre><code># Purpose: 1. List and Export Service Accounts.
 grafana-util access service-account list --json</code></pre>
 <pre><code># Purpose: 1. List and Export Service Accounts.
-grafana-util access service-account export --export-dir ./access-sa</code></pre>
+grafana-util access service-account list --input-dir ./access-sa --output-format text</code></pre>
+<pre><code># Purpose: 1. List and Export Service Accounts.
+grafana-util access service-account export --output-dir ./access-sa</code></pre>
 <p><strong>Expected Output:</strong></p>
 <pre><code>[
   {
@@ -885,7 +894,7 @@ grafana-util access service-account token delete --service-account-id 15 --token
 <h2 id="drift-detection-diff">Drift Detection (Diff)</h2>
 <p>Compare your local identity snapshots against the live Grafana server.</p>
 <pre><code># Purpose: Compare your local identity snapshots against the live Grafana server.
-grafana-util access user diff --import-dir ./access-users</code></pre>
+grafana-util access user diff --input-dir ./access-users</code></pre>
 <pre><code># Purpose: Compare your local identity snapshots against the live Grafana server.
 grafana-util access team diff --diff-dir ./access-teams</code></pre>
 <pre><code># Purpose: Compare your local identity snapshots against the live Grafana server.

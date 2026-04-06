@@ -11,7 +11,7 @@
 - **採用後**：匯入會先變成可 preview 的回放步驟，先用 `--dry-run` 看清楚，再決定是否真的動 live。
 
 ## 重點旗標
-- `--import-dir`：原始或合併匯出輸入的來源目錄。
+- `--input-dir`：原始或合併匯出輸入的來源目錄。
 - `--input-format`：選擇 `raw` 或 `provisioning`。
 - `--org-id`、`--use-export-org`、`--only-org-id`、`--create-missing-orgs`：控制跨 org 路由。
 - `--import-folder-uid`：強制指定目的資料夾 UID。
@@ -33,17 +33,17 @@
 ## 範例
 ```bash
 # 用途：透過 Grafana API 匯入儀表板 JSON 檔案。
-grafana-util dashboard import --profile prod --import-dir ./dashboards/raw --replace-existing
+grafana-util dashboard import --profile prod --input-dir ./dashboards/raw --replace-existing
 ```
 
 ```bash
 # 用途：透過 Grafana API 匯入儀表板 JSON 檔案。
-grafana-util dashboard import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./dashboards/raw --dry-run --table
+grafana-util dashboard import --url http://localhost:3000 --basic-user admin --basic-password admin --input-dir ./dashboards/raw --dry-run --table
 ```
 
 ```bash
 # 用途：透過 Grafana API 匯入儀表板 JSON 檔案。
-grafana-util dashboard import --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --import-dir ./dashboards/raw --dry-run --table
+grafana-util dashboard import --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --input-dir ./dashboards/raw --dry-run --table
 ```
 
 ## 相關指令

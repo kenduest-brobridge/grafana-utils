@@ -42,6 +42,19 @@ class GenerateManpagesTests(unittest.TestCase):
         self.assertIn("Open one dashboard in a headless browser and capture image or PDF output.", screenshot_manpage)
         self.assertIn(".SH EXAMPLES", screenshot_manpage)
 
+    def test_subcommand_manpage_projects_before_after_success_and_failure_sections(self):
+        module = load_module()
+
+        generated = module.generate_manpages()
+        topology_manpage = generated["grafana-util-dashboard-topology.1"]
+
+        self.assertIn(".SH BEFORE / AFTER", topology_manpage)
+        self.assertIn("one topology run gives you a reproducible graph", topology_manpage)
+        self.assertIn(".SH SUCCESS CRITERIA", topology_manpage)
+        self.assertIn("the same topology can be reviewed in the terminal", topology_manpage)
+        self.assertIn(".SH FAILURE CHECKS", topology_manpage)
+        self.assertIn("if the graph looks empty or too small", topology_manpage)
+
     def test_namespace_manpage_subcommands_include_use_case_summary(self):
         module = load_module()
 
@@ -56,6 +69,20 @@ class GenerateManpagesTests(unittest.TestCase):
             "List, create, export, import, diff, or delete Grafana service accounts, and manage their tokens. Use when:",
             access_manpage,
         )
+
+    def test_namespace_manpage_projects_root_workflow_evidence_sections(self):
+        module = load_module()
+
+        generated = module.generate_manpages()
+        dashboard_manpage = generated["grafana-util-dashboard.1"]
+
+        self.assertIn(".SH WORKFLOW LANES", dashboard_manpage)
+        self.assertIn(".SH WORKFLOW LANES", dashboard_manpage)
+        self.assertIn("Review Before Mutate: review, governance\\-gate, and impact analysis.", dashboard_manpage)
+        self.assertIn("Choose this page when the task is dashboard work", dashboard_manpage)
+        self.assertIn(".SH BEFORE / AFTER", dashboard_manpage)
+        self.assertIn(".SH SUCCESS CRITERIA", dashboard_manpage)
+        self.assertIn(".SH FAILURE CHECKS", dashboard_manpage)
 
     def test_top_level_manpage_commands_include_use_case_summary(self):
         module = load_module()
@@ -79,6 +106,21 @@ class GenerateManpagesTests(unittest.TestCase):
         self.assertIn(".B grafana\\-util\\-dashboard\\-screenshot(1)", top_level_manpage)
         self.assertIn(".SS access", top_level_manpage)
         self.assertIn(".B grafana\\-util\\-access\\-service\\-account\\-token(1)", top_level_manpage)
+
+    def test_top_level_manpage_points_sync_workflows_to_change_family(self):
+        module = load_module()
+
+        generated = module.generate_manpages()
+        top_level_manpage = generated["grafana-util.1"]
+
+        self.assertIn(".B change", top_level_manpage)
+        self.assertIn("Declarative sync planning and gated apply workflows.", top_level_manpage)
+        self.assertIn(
+            "public CLI surface and generated manpages live under grafana-util change",
+            top_level_manpage,
+        )
+        self.assertIn("grafana-util-change*(1) pages.", top_level_manpage)
+        self.assertNotIn("does not yet carry a generated sync namespace manpage", top_level_manpage)
 
     def test_namespace_manpage_examples_include_caption_lines(self):
         module = load_module()

@@ -764,11 +764,11 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 
 
     <h2 id="這一頁對應的工作流">這一頁對應的工作流</h2>
-<table><thead><tr><th>工作流</th><th>常用子命令</th></tr></thead><tbody><tr><td>盤點與瀏覽 data source</td><td><code>types</code>、<code>list</code>、<code>browse</code>、<code>inspect-export</code></td></tr><tr><td>匯出 / 匯入 / 比對</td><td><code>export</code>、<code>import</code>、<code>diff</code></td></tr><tr><td>新增 / 修改 / 刪除</td><td><code>add</code>、<code>modify</code>、<code>delete</code></td></tr></tbody></table>
+<table><thead><tr><th>工作流</th><th>常用子命令</th></tr></thead><tbody><tr><td>盤點與瀏覽 data source</td><td><code>types</code>、<code>list</code>、<code>browse</code></td></tr><tr><td>匯出 / 匯入 / 比對</td><td><code>export</code>、<code>import</code>、<code>diff</code></td></tr><tr><td>新增 / 修改 / 刪除</td><td><code>add</code>、<code>modify</code>、<code>delete</code></td></tr></tbody></table>
 <h2 id="從這裡開始">從這裡開始</h2>
-<ul><li>新環境先看支援類型：<code>datasource types</code></li><li>要盤點線上現況：<code>datasource list</code>、<code>datasource browse</code></li><li>要先做草稿或搬移：<code>datasource export</code>、<code>datasource diff</code></li><li>要直接改 live data source：<code>datasource add</code>、<code>datasource modify</code>、<code>datasource delete</code></li><li>要看匯出結果裡的細節：<code>datasource inspect-export</code></li></ul>
+<ul><li>新環境先看支援類型：<code>datasource types</code></li><li>要盤點線上現況，或看本地匯出內容：<code>datasource list</code>、<code>datasource browse</code></li><li>要先做草稿或搬移：<code>datasource export</code>、<code>datasource diff</code></li><li>要直接改 live data source：<code>datasource add</code>、<code>datasource modify</code>、<code>datasource delete</code></li></ul>
 <h2 id="說明">說明</h2>
-<p><code>grafana-util datasource</code> 把 data source 的生命週期收在同一個入口：從類型查找、瀏覽、匯出、匯入、比對，到 live add / modify / delete 都在這裡處理。這頁適合先判斷下一步該走 inventory、bundle、diff，還是 live mutation。</p>
+<p><code>grafana-util datasource</code> 把 data source 的生命週期收在同一個入口：從類型查找、瀏覽、讀取 live 或本地 inventory、匯出、匯入、比對，到 live add / modify / delete 都在這裡處理。這頁適合先判斷下一步該走 inventory、bundle、diff，還是 live mutation。</p>
 <h2 id="重點旗標">重點旗標</h2>
 <ul><li><code>--url</code>：Grafana 基底網址。</li><li><code>--token</code>、<code>--basic-user</code>、<code>--basic-password</code>：共用的線上 Grafana 憑證。</li><li><code>--profile</code>：從 <code>grafana-util.yaml</code> 載入 repo 本地預設值。</li><li><code>--color</code>：控制這個指令群組的 JSON 彩色輸出。</li></ul>
 <h2 id="採用前後對照">採用前後對照</h2>
@@ -784,13 +784,11 @@ grafana-util datasource types</code></pre>
 grafana-util datasource browse --profile prod</code></pre>
 <pre><code># 先匯出成 bundle，再拿去做 diff 或搬移。
 grafana-util datasource export --profile prod --output-dir ./datasources</code></pre>
-<pre><code># 先看匯出內容，再決定要不要進一步改 live data source。
-grafana-util datasource inspect-export --input-dir ./datasources</code></pre>
 <h2 id="相關命令">相關命令</h2>
 <h3 id="盤點">盤點</h3>
 <ul><li><a href="datasource-types.html">datasource types</a></li><li><a href="datasource-list.html">datasource list</a></li><li><a href="datasource-browse.html">datasource browse</a></li></ul>
 <h3 id="搬移">搬移</h3>
-<ul><li><a href="datasource-inspect-export.html">datasource inspect-export</a></li><li><a href="datasource-export.html">datasource export</a></li><li><a href="datasource-import.html">datasource import</a></li><li><a href="datasource-diff.html">datasource diff</a></li></ul>
+<ul><li><a href="datasource-export.html">datasource export</a></li><li><a href="datasource-import.html">datasource import</a></li><li><a href="datasource-diff.html">datasource diff</a></li></ul>
 <h3 id="變更前檢查">變更前檢查</h3>
 <ul><li><a href="datasource-add.html">datasource add</a></li><li><a href="datasource-modify.html">datasource modify</a></li><li><a href="datasource-delete.html">datasource delete</a></li></ul>
     

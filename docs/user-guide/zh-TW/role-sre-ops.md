@@ -11,7 +11,7 @@
 ## 主要目標
 
 - 先用 `status live` 和 `overview live` 確認現況
-- 先在 `change summary` 與 `change preflight` 擋掉不合理的變更包
+- 先在 `change inspect`、`change check`、`change preview` 擋掉不合理的變更包
 - 先用 `--dry-run` 看匯入結果，再決定要不要真的套用
 - 需要時才用 direct Basic auth 做 break-glass
 
@@ -36,7 +36,7 @@
 
 - 維護前先做即時整備度檢查
 - 盤點跨 org 的 dashboard、data source 或 alert
-- 在 apply 之前先做 staged summary、preflight 與 dry-run
+- 在 apply 之前先做 staged inspect、check、preview 與 dry-run
 - 在備份、漂移檢查或災難復原時做匯出與比對
 
 ## 建議的連線與秘密資料處理方式
@@ -60,17 +60,22 @@ grafana-util overview live --profile prod --output-format interactive
 
 ```bash
 # 用途：建議先跑的 5 個指令。
-grafana-util change summary --desired-file ./desired.json
+grafana-util change inspect --workspace .
 ```
 
 ```bash
 # 用途：建議先跑的 5 個指令。
-grafana-util change preflight --desired-file ./desired.json --fetch-live --output-format json
+grafana-util change check --workspace . --fetch-live --output-format json
 ```
 
 ```bash
 # 用途：建議先跑的 5 個指令。
-grafana-util dashboard export --export-dir ./backups --overwrite --progress
+grafana-util change preview --workspace . --fetch-live --output-format json
+```
+
+```bash
+# 用途：建議先跑的 5 個指令。
+grafana-util dashboard export --output-dir ./backups --overwrite --progress
 ```
 
 如果你要先處理存取層資產，可以把 `dashboard export` 換成：
@@ -101,11 +106,11 @@ grafana-util access org list --table
 
 ## 常見錯誤與限制
 
-- 不要把 `status live` 當成部署前的唯一檢查；`change preflight` 和 staged 驗證還是要跑。
+- 不要把 `status live` 當成部署前的唯一檢查；`change check` 和 staged 驗證還是要跑。
 - 不要在匯入前略過 `--dry-run`，尤其是會覆寫既有資產時。
 - 不要假設 token 看得到所有 org，`--all-orgs` 與管理操作常會受 scope 限制。
 - 不要把 `tokens.json` 當一般輸出檔；它包含敏感資訊。
-- 不要直接進行破壞性操作，先看摘要、再看 preflight、最後才套用。
+- 不要直接進行破壞性操作，先 inspect、再 check、再 preview，最後才套用。
 
 ## 什麼叫做處於良好的維運姿勢
 

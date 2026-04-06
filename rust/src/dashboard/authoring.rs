@@ -5,8 +5,11 @@
 use reqwest::Method;
 use serde_json::{Map, Value};
 use std::fs;
+use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 use std::process;
+use std::thread;
+use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use crate::common::{message, render_json_value, string_field, value_as_object, Result};
@@ -33,6 +36,138 @@ pub(crate) struct DashboardAuthoringReviewResult {
     pub(crate) meta_message_present: bool,
     pub(crate) blocking_issues: Vec<String>,
     pub(crate) suggested_next_action: String,
+}
+
+const STDIN_PATH_TOKEN: &str = "-";
+const STDIN_DISPLAY_LABEL: &str = "<stdin>";
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct DashboardInputDocument {
+    pub(crate) document: Value,
+    pub(crate) display_label: String,
+    pub(crate) validation_path: PathBuf,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct FileWatchFingerprint {
+    modified_millis: u128,
+    len: u64,
+}
+
+fn is_stdin_path(path: &Path) -> bool {
+    path.to_str() == Some(STDIN_PATH_TOKEN)
+}
+
+fn parse_dashboard_input_json(raw: &str, source_label: &str) -> Result<Value> {
+    let value: Value = serde_json::from_str(raw).map_err(|error| {
+        message(format!(
+            "Failed to parse dashboard JSON from {source_label}: {error}"
+        ))
+    })?;
+    if !value.is_object() {
+        return Err(message(format!(
+            "Dashboard input must contain a JSON object: {source_label}"
+        )));
+    }
+    Ok(value)
+}
+
+pub(crate) fn load_dashboard_input_document_from_reader<R: Read>(
+    mut reader: R,
+    source_label: &str,
+    validation_path: PathBuf,
+) -> Result<DashboardInputDocument> {
+    let mut raw = String::new();
+    reader.read_to_string(&mut raw)?;
+    let document = parse_dashboard_input_json(&raw, source_label)?;
+    Ok(DashboardInputDocument {
+        document,
+        display_label: source_label.to_string(),
+        validation_path,
+    })
+}
+
+fn load_dashboard_input_document(input: &Path) -> Result<DashboardInputDocument> {
+    if is_stdin_path(input) {
+        return load_dashboard_input_document_from_reader(
+            io::stdin(),
+            STDIN_DISPLAY_LABEL,
+            PathBuf::from(STDIN_DISPLAY_LABEL),
+        );
+    }
+
+    Ok(DashboardInputDocument {
+        document: load_json_file(input)?,
+        display_label: input.display().to_string(),
+        validation_path: input.to_path_buf(),
+    })
+}
+
+fn validate_publish_args(args: &PublishArgs) -> Result<()> {
+    if args.watch && is_stdin_path(&args.input) {
+        return Err(message(
+            "--watch cannot be combined with --input -. Point --input at a local file.",
+        ));
+    }
+    Ok(())
+}
+
+fn validate_patch_file_args(args: &PatchFileArgs) -> Result<()> {
+    if is_stdin_path(&args.input) && args.output.is_none() {
+        return Err(message(
+            "patch-file --input - requires --output because standard input cannot be overwritten in place.",
+        ));
+    }
+    Ok(())
+}
+
+fn current_file_watch_fingerprint(path: &Path) -> Result<Option<FileWatchFingerprint>> {
+    match fs::metadata(path) {
+        Ok(metadata) => {
+            let modified = metadata
+                .modified()
+                .map_err(|error| {
+                    message(format!(
+                        "Failed to read file modification time for {}: {error}",
+                        path.display()
+                    ))
+                })?
+                .duration_since(UNIX_EPOCH)
+                .map_err(|error| {
+                    message(format!(
+                        "File modification time is before UNIX_EPOCH for {}: {error}",
+                        path.display()
+                    ))
+                })?;
+            Ok(Some(FileWatchFingerprint {
+                modified_millis: modified.as_millis(),
+                len: metadata.len(),
+            }))
+        }
+        Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(None),
+        Err(error) => Err(error.into()),
+    }
+}
+
+pub(crate) fn watch_start_message(path: &Path) -> String {
+    format!(
+        "Watching {} for dashboard publish changes. Press Ctrl-C to stop.",
+        path.display()
+    )
+}
+
+pub(crate) fn watch_change_detected_message(path: &Path) -> String {
+    format!(
+        "Detected dashboard input change for {}; waiting for a stable save.",
+        path.display()
+    )
+}
+
+pub(crate) fn watch_change_unstable_message(path: &Path) -> String {
+    format!(
+        "Dashboard input changed again before it stabilized; still watching {}.",
+        path.display()
+    )
 }
 
 fn set_meta_folder_uid(document: &mut Map<String, Value>, folder_uid: &str) -> Result<()> {
@@ -158,7 +293,8 @@ fn review_next_action(has_blocking_issues: bool, dashboard_id_is_null: bool) -> 
 }
 
 pub(crate) fn review_dashboard_file(input: &Path) -> Result<DashboardAuthoringReviewResult> {
-    let document = load_json_file(input)?;
+    let dashboard_input = load_dashboard_input_document(input)?;
+    let document = dashboard_input.document;
     let document_object = value_as_object(&document, "Dashboard review expects a JSON object.")?;
     let dashboard = extract_dashboard_object(document_object)?;
     let document_kind = if document_object.contains_key("dashboard") {
@@ -181,7 +317,12 @@ pub(crate) fn review_dashboard_file(input: &Path) -> Result<DashboardAuthoringRe
         .map(|meta| meta.contains_key("message"))
         .unwrap_or(false);
 
-    let blocking_issues = match validate_dashboard_import_document(&document, input, false, None) {
+    let blocking_issues = match validate_dashboard_import_document(
+        &document,
+        &dashboard_input.validation_path,
+        false,
+        None,
+    ) {
         Ok(()) => Vec::new(),
         Err(error) => vec![error.to_string()],
     };
@@ -189,7 +330,7 @@ pub(crate) fn review_dashboard_file(input: &Path) -> Result<DashboardAuthoringRe
     let suggested_next_action = review_next_action(has_blocking_issues, dashboard_id_is_null);
 
     Ok(DashboardAuthoringReviewResult {
-        input_file: input.display().to_string(),
+        input_file: dashboard_input.display_label,
         document_kind,
         title,
         uid,
@@ -349,8 +490,10 @@ fn display_text(value: &str) -> String {
 }
 
 pub(crate) fn patch_dashboard_file(args: &PatchFileArgs) -> Result<()> {
-    let mut document = load_json_file(&args.input)?;
-    validate_dashboard_import_document(&document, &args.input, false, None)?;
+    validate_patch_file_args(args)?;
+    let dashboard_input = load_dashboard_input_document(&args.input)?;
+    let mut document = dashboard_input.document;
+    validate_dashboard_import_document(&document, &dashboard_input.validation_path, false, None)?;
     patch_dashboard_document(&mut document, args)?;
     let output_path = args.output.as_ref().unwrap_or(&args.input);
     write_json_document(&document, output_path)
@@ -363,7 +506,7 @@ fn build_publish_import_args(temp_input: PathBuf, args: &PublishArgs) -> ImportA
         use_export_org: false,
         only_org_id: Vec::new(),
         create_missing_orgs: false,
-        import_dir: temp_input,
+        input_dir: temp_input,
         input_format: super::DashboardImportInputFormat::Raw,
         import_folder_uid: args.folder_uid.clone(),
         ensure_folders: false,
@@ -386,15 +529,18 @@ fn build_publish_import_args(temp_input: PathBuf, args: &PublishArgs) -> ImportA
     }
 }
 
-pub(crate) fn publish_dashboard_with_request<F>(
-    mut request_json: F,
-    args: &PublishArgs,
-) -> Result<()>
+fn publish_dashboard_once_with_request<F>(request_json: &mut F, args: &PublishArgs) -> Result<()>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
-    let document = load_json_file(&args.input)?;
-    validate_dashboard_import_document(&document, &args.input, false, None)?;
+    validate_publish_args(args)?;
+    let dashboard_input = load_dashboard_input_document(&args.input)?;
+    validate_dashboard_import_document(
+        &dashboard_input.document,
+        &dashboard_input.validation_path,
+        false,
+        None,
+    )?;
     let temp_dir = std::env::temp_dir().join(format!(
         "grafana-dashboard-publish-{}-{}",
         process::id(),
@@ -406,24 +552,91 @@ where
     fs::create_dir_all(&temp_dir)?;
     let result = (|| -> Result<()> {
         let staged_path = temp_dir.join("dashboard.json");
-        fs::copy(&args.input, &staged_path)?;
+        write_dashboard(&dashboard_input.document, &staged_path, false)?;
         let import_args = build_publish_import_args(temp_dir.clone(), args);
-        let _ = super::import::import_dashboards_with_request(&mut request_json, &import_args)?;
+        let _ = super::import::import_dashboards_with_request(request_json, &import_args)?;
         Ok(())
     })();
     let _ = fs::remove_dir_all(&temp_dir);
     result
 }
 
+pub(crate) fn publish_dashboard_with_request<F>(
+    mut request_json: F,
+    args: &PublishArgs,
+) -> Result<()>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    publish_dashboard_once_with_request(&mut request_json, args)
+}
+
+fn watch_publish_dashboard_with_client(client: &JsonHttpClient, args: &PublishArgs) -> Result<()> {
+    validate_publish_args(args)?;
+    let input_path = &args.input;
+    eprintln!("{}", watch_start_message(input_path));
+
+    match publish_dashboard_once_with_request(
+        &mut |method, path, params, payload| client.request_json(method, path, params, payload),
+        args,
+    ) {
+        Ok(()) => {}
+        Err(error) => eprintln!("Initial publish failed: {error}"),
+    }
+
+    let mut last_seen = current_file_watch_fingerprint(input_path)?;
+    loop {
+        thread::sleep(Duration::from_millis(500));
+        let current = current_file_watch_fingerprint(input_path)?;
+        if current == last_seen {
+            continue;
+        }
+
+        eprintln!("{}", watch_change_detected_message(input_path));
+
+        thread::sleep(Duration::from_millis(300));
+        let stabilized = current_file_watch_fingerprint(input_path)?;
+        if stabilized != current {
+            last_seen = stabilized;
+            eprintln!("{}", watch_change_unstable_message(input_path));
+            continue;
+        }
+
+        match stabilized {
+            Some(_) => match publish_dashboard_once_with_request(
+                &mut |method, path, params, payload| {
+                    client.request_json(method, path, params, payload)
+                },
+                args,
+            ) {
+                Ok(()) => eprintln!("Re-ran dashboard publish for {}.", input_path.display()),
+                Err(error) => eprintln!(
+                    "Dashboard publish failed for {}: {error}",
+                    input_path.display()
+                ),
+            },
+            None => eprintln!(
+                "Dashboard input file is missing; still watching {}.",
+                input_path.display()
+            ),
+        }
+        last_seen = stabilized;
+    }
+}
+
 pub(crate) fn publish_dashboard_with_client(
     client: &JsonHttpClient,
     args: &PublishArgs,
 ) -> Result<()> {
-    publish_dashboard_with_request(
-        |method, path, params, payload| client.request_json(method, path, params, payload),
-        args,
-    )?;
-    Ok(())
+    if args.watch {
+        watch_publish_dashboard_with_client(client, args)
+    } else {
+        publish_dashboard_with_request(
+            |method, path, params, payload| client.request_json(method, path, params, payload),
+            args,
+        )?;
+        Ok(())
+    }
 }
 
 pub(crate) fn build_live_dashboard_authoring_document(

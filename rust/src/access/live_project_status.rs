@@ -12,6 +12,9 @@ use reqwest::Method;
 use serde_json::{Map, Value};
 
 use crate::common::Result;
+use crate::grafana_api::{
+    project_status_live as project_status_live_support, AccessResourceClient,
+};
 use crate::http::JsonHttpClient;
 use crate::project_status::{
     status_finding, ProjectDomainStatus, ProjectStatusFinding, PROJECT_STATUS_PARTIAL,
@@ -19,7 +22,7 @@ use crate::project_status::{
 };
 
 use super::render::{normalize_org_role, scalar_text, value_bool};
-use super::{request_array, request_object_list_field, DEFAULT_PAGE_SIZE};
+use super::{request_object_list_field, DEFAULT_PAGE_SIZE};
 use super::{
     team::iter_teams_with_request,
     user::{iter_global_users_with_request, list_org_users_with_request},
@@ -362,6 +365,34 @@ where
     )
 }
 
+fn read_live_users(client: &AccessResourceClient<'_>) -> LiveScopeReading {
+    if let Ok(users) = client.list_org_users() {
+        return LiveScopeReading::readable(
+            "users",
+            ACCESS_SOURCE_KIND_LIVE_ORG_USERS,
+            "live.users.count",
+            ACCESS_FINDING_KIND_USERS_COUNT,
+            users.len(),
+            build_user_review_signals(&users),
+        );
+    }
+    if let Ok(users) = client.iter_global_users(DEFAULT_PAGE_SIZE) {
+        return LiveScopeReading::readable(
+            "users",
+            ACCESS_SOURCE_KIND_LIVE_GLOBAL_USERS,
+            "live.users.count",
+            ACCESS_FINDING_KIND_USERS_COUNT,
+            users.len(),
+            build_user_review_signals(&users),
+        );
+    }
+    LiveScopeReading::unreadable(
+        "users",
+        "live.users.count",
+        ACCESS_FINDING_KIND_USERS_UNREADABLE,
+    )
+}
+
 fn read_live_teams_with_request<F>(request_json: &mut F) -> LiveScopeReading
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
@@ -383,26 +414,40 @@ where
     }
 }
 
+fn read_live_teams(client: &AccessResourceClient<'_>) -> LiveScopeReading {
+    match client.iter_teams(None, DEFAULT_PAGE_SIZE) {
+        Ok(teams) => LiveScopeReading::readable(
+            "teams",
+            ACCESS_SOURCE_KIND_LIVE_TEAMS,
+            "live.teams.count",
+            ACCESS_FINDING_KIND_TEAMS_COUNT,
+            teams.len(),
+            build_team_review_signals(&teams),
+        ),
+        Err(_error) => LiveScopeReading::unreadable(
+            "teams",
+            "live.teams.count",
+            ACCESS_FINDING_KIND_TEAMS_UNREADABLE,
+        ),
+    }
+}
+
 fn read_live_orgs_with_request<F>(request_json: &mut F) -> LiveScopeReading
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
-    match request_array(
-        &mut *request_json,
-        Method::GET,
-        "/api/orgs",
-        &[],
-        None,
-        "Unexpected organization list response from Grafana.",
-    ) {
-        Ok(orgs) => LiveScopeReading::readable(
-            "orgs",
-            ACCESS_SOURCE_KIND_LIVE_ORGS,
-            "live.orgs.count",
-            ACCESS_FINDING_KIND_ORGS_COUNT,
-            orgs.len(),
-            Vec::new(),
-        ),
+    match project_status_live_support::list_visible_orgs_with_request(request_json) {
+        Ok(orgs) => {
+            let orgs: Vec<Map<String, Value>> = orgs;
+            LiveScopeReading::readable(
+                "orgs",
+                ACCESS_SOURCE_KIND_LIVE_ORGS,
+                "live.orgs.count",
+                ACCESS_FINDING_KIND_ORGS_COUNT,
+                orgs.len(),
+                Vec::new(),
+            )
+        }
         Err(_error) => LiveScopeReading::unreadable(
             "orgs",
             "live.orgs.count",
@@ -416,6 +461,24 @@ where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
     match list_live_service_accounts_with_request(&mut *request_json) {
+        Ok(service_accounts) => LiveScopeReading::readable(
+            "service accounts",
+            ACCESS_SOURCE_KIND_LIVE_SERVICE_ACCOUNTS,
+            "live.serviceAccounts.count",
+            ACCESS_FINDING_KIND_SERVICE_ACCOUNTS_COUNT,
+            service_accounts.len(),
+            build_service_account_review_signals(&service_accounts),
+        ),
+        Err(_error) => LiveScopeReading::unreadable(
+            "service accounts",
+            "live.serviceAccounts.count",
+            ACCESS_FINDING_KIND_SERVICE_ACCOUNTS_UNREADABLE,
+        ),
+    }
+}
+
+fn read_live_service_accounts(client: &AccessResourceClient<'_>) -> LiveScopeReading {
+    match client.list_service_accounts(DEFAULT_PAGE_SIZE) {
         Ok(service_accounts) => LiveScopeReading::readable(
             "service accounts",
             ACCESS_SOURCE_KIND_LIVE_SERVICE_ACCOUNTS,
@@ -557,8 +620,78 @@ where
 pub(crate) fn build_access_live_domain_status(
     client: &JsonHttpClient,
 ) -> Option<ProjectDomainStatus> {
-    build_access_live_domain_status_with_request(|method, path, params, payload| {
-        client.request_json(method, path, params, payload)
+    let access_client = AccessResourceClient::new(client);
+    let readings = [
+        read_live_users(&access_client),
+        read_live_teams(&access_client),
+        match project_status_live_support::list_visible_orgs(client) {
+            Ok(orgs) => {
+                let orgs: Vec<Map<String, Value>> = orgs;
+                LiveScopeReading::readable(
+                    "orgs",
+                    ACCESS_SOURCE_KIND_LIVE_ORGS,
+                    "live.orgs.count",
+                    ACCESS_FINDING_KIND_ORGS_COUNT,
+                    orgs.len(),
+                    Vec::new(),
+                )
+            }
+            Err(_error) => LiveScopeReading::unreadable(
+                "orgs",
+                "live.orgs.count",
+                ACCESS_FINDING_KIND_ORGS_UNREADABLE,
+            ),
+        },
+        read_live_service_accounts(&access_client),
+    ];
+
+    let mut source_kinds = Vec::new();
+    let mut warnings = Vec::new();
+    let mut total_count = 0usize;
+    let mut unreadable_count = 0usize;
+
+    for reading in &readings {
+        if let Some(source_kind) = reading.source_kind {
+            source_kinds.push(source_kind.to_string());
+            total_count += reading.count;
+        } else {
+            unreadable_count += 1;
+        }
+        warnings.push(reading.finding());
+        warnings.extend(
+            reading
+                .review_signals
+                .iter()
+                .map(LiveScopeReviewSignal::finding),
+        );
+    }
+
+    let (status, reason_code) = if unreadable_count > 0 {
+        (PROJECT_STATUS_PARTIAL, ACCESS_REASON_PARTIAL_LIVE_SCOPES)
+    } else if total_count == 0 {
+        (PROJECT_STATUS_PARTIAL, ACCESS_REASON_PARTIAL_NO_DATA)
+    } else {
+        (PROJECT_STATUS_READY, ACCESS_REASON_READY)
+    };
+
+    Some(ProjectDomainStatus {
+        id: ACCESS_DOMAIN_ID.to_string(),
+        scope: ACCESS_SCOPE.to_string(),
+        mode: ACCESS_MODE.to_string(),
+        status: status.to_string(),
+        reason_code: reason_code.to_string(),
+        primary_count: total_count,
+        blocker_count: 0,
+        warning_count: warnings.iter().map(|item| item.count).sum(),
+        source_kinds,
+        signal_keys: ACCESS_SIGNAL_KEYS
+            .iter()
+            .map(|item| (*item).to_string())
+            .collect(),
+        blockers: Vec::new(),
+        warnings,
+        next_actions: build_next_actions(&readings, total_count),
+        freshness: Default::default(),
     })
 }
 

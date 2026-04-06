@@ -1,5 +1,7 @@
 //! Interactive browse workflows and terminal-driven state flow for Dashboard entities.
 
+use serde_json::json;
+
 use super::*;
 
 #[test]
@@ -778,8 +780,10 @@ fn dashboard_history_restore_reimports_selected_version_payload() {
         move |method, path, _params, payload| match (method, path) {
             (Method::GET, "/api/dashboards/uid/cpu-main") => Ok(Some(json!({
                 "dashboard": {
+                    "id": 42,
                     "uid": "cpu-main",
-                    "title": "CPU Main"
+                    "title": "CPU Main",
+                    "version": 7
                 },
                 "meta": {
                     "folderUid": "infra"
@@ -815,9 +819,9 @@ fn dashboard_history_restore_reimports_selected_version_payload() {
     assert_eq!(payload["overwrite"], json!(true));
     assert_eq!(payload["folderUid"], json!("infra"));
     assert_eq!(payload["dashboard"]["uid"], json!("cpu-main"));
-    assert_eq!(payload["dashboard"]["id"], Value::Null);
+    assert_eq!(payload["dashboard"]["id"], json!(42));
     assert_eq!(payload["dashboard"]["title"], json!("CPU Old"));
-    assert!(payload["dashboard"].get("version").is_none());
+    assert_eq!(payload["dashboard"]["version"], json!(7));
 }
 
 #[test]

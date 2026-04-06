@@ -1,10 +1,10 @@
 # dashboard impact
 
 ## Purpose
-Estimate the blast radius of one datasource from dashboard governance artifacts.
+Estimate the blast radius of one datasource directly from live Grafana, a local export tree, or reusable dashboard governance artifacts.
 
 ## When to use
-Use this when you are about to change, migrate, or troubleshoot one datasource and need to know which dashboards and alert resources depend on it before you touch the live system.
+Use this when you are about to change, migrate, or troubleshoot one datasource and need to know which dashboards and alert resources depend on it before you touch the live system. Prefer direct live or local inputs for the common path; keep governance artifacts for reuse.
 
 ## Before / After
 
@@ -12,7 +12,10 @@ Use this when you are about to change, migrate, or troubleshoot one datasource a
 - **After**: one `impact` run tells you which dashboards and alert-linked resources are downstream of a datasource UID.
 
 ## Key flags
-- `--governance`: dashboard governance JSON input.
+- `--url`: analyze live Grafana directly.
+- `--input-dir`: analyze a local export tree directly.
+- `--input-format`: choose `raw` or `provisioning` when analyzing local exports.
+- `--governance`: dashboard governance JSON input (`governance-json` artifact).
 - `--datasource-uid`: datasource UID to trace.
 - `--alert-contract`: optional alert contract JSON input.
 - `--output-format`: render `text` or `json`.
@@ -20,15 +23,26 @@ Use this when you are about to change, migrate, or troubleshoot one datasource a
 
 ## Examples
 ```bash
-# Purpose: Estimate the blast radius of one datasource from dashboard governance artifacts.
+# Purpose: Estimate the blast radius of one datasource directly from live Grafana.
 grafana-util dashboard impact \
-  --governance ./governance.json \
+  --url http://localhost:3000 \
+  --basic-user admin \
+  --basic-password admin \
   --datasource-uid prom-main \
   --output-format text
 ```
 
 ```bash
-# Purpose: Estimate the blast radius of one datasource from dashboard governance artifacts.
+# Purpose: Estimate the blast radius of one datasource from a local export tree.
+grafana-util dashboard impact \
+  --input-dir ./dashboards/raw \
+  --input-format raw \
+  --datasource-uid prom-main \
+  --output-format json
+```
+
+```bash
+# Purpose: Estimate the blast radius of one datasource from reusable dashboard governance artifacts.
 grafana-util dashboard impact \
   --governance ./governance.json \
   --datasource-uid prom-main \
@@ -49,6 +63,6 @@ grafana-util dashboard impact \
 - if the JSON is going into CI or an external tool, validate the top-level shape before you assume a zero-impact result is real
 
 ## Related commands
-- [dashboard inspect-export](./dashboard-inspect-export.md)
+- [dashboard analyze (local)](./dashboard-analyze-export.md)
 - [dashboard topology](./dashboard-topology.md)
 - [dashboard governance-gate](./dashboard-governance-gate.md)

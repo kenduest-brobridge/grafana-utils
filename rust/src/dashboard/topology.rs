@@ -1,13 +1,14 @@
-//! Artifact-driven topology and impact analysis for dashboards and alert contracts.
+//! Topology and impact analysis for dashboards and alert contracts.
+//! Direct live/local analysis is the common path; saved artifacts stay available for advanced reuse.
 use serde::Serialize;
 use serde_json::Value;
 use std::path::Path;
 
 use crate::common::{
-    load_json_object_file, render_json_value, should_print_stdout, write_plain_output_file,
-    Result,
+    emit_plain_output, load_json_object_file, render_json_value, should_print_stdout, Result,
 };
 
+use super::analysis_source::{resolve_dashboard_analysis_artifacts, DashboardAnalysisSourceArgs};
 use super::{
     write_json_document, ImpactArgs, ImpactOutputFormat, TopologyArgs, TopologyOutputFormat,
 };
@@ -326,12 +327,23 @@ fn build_impact_interactive_summary(document: &ImpactDocument) -> Vec<String> {
 }
 
 pub(crate) fn run_dashboard_topology(args: &TopologyArgs) -> Result<()> {
-    let governance = load_object(&args.governance)?;
+    let artifacts = resolve_dashboard_analysis_artifacts(&DashboardAnalysisSourceArgs {
+        common: &args.common,
+        page_size: args.page_size,
+        org_id: args.org_id,
+        all_orgs: args.all_orgs,
+        input_dir: args.input_dir.as_deref(),
+        input_format: args.input_format,
+        input_type: args.input_type,
+        governance: args.governance.as_deref(),
+        queries: args.queries.as_deref(),
+        require_queries: false,
+    })?;
     let alert_contract = match args.alert_contract.as_ref() {
         Some(path) => Some(load_object(path)?),
         None => None,
     };
-    let document = build_topology_document(&governance, alert_contract.as_ref())?;
+    let document = build_topology_document(&artifacts.governance, alert_contract.as_ref())?;
     if args.interactive {
         #[cfg(all(feature = "tui", not(test)))]
         {
@@ -372,24 +384,40 @@ pub(crate) fn run_dashboard_topology(args: &TopologyArgs) -> Result<()> {
     if let Some(output_file) = args.output_file.as_ref() {
         if matches!(args.output_format, TopologyOutputFormat::Json) {
             write_json_document(&document, output_file)?;
-        } else {
-            write_plain_output_file(output_file, &rendered)?;
         }
     }
-    if should_print_stdout(args.output_file.as_deref(), args.also_stdout) {
-        println!("{rendered}");
+    if matches!(args.output_format, TopologyOutputFormat::Json) {
+        if should_print_stdout(args.output_file.as_deref(), args.also_stdout) {
+            print!("{rendered}");
+        }
+    } else {
+        emit_plain_output(&rendered, args.output_file.as_deref(), args.also_stdout)?;
     }
     Ok(())
 }
 
 pub(crate) fn run_dashboard_impact(args: &ImpactArgs) -> Result<()> {
-    let governance = load_object(&args.governance)?;
+    let artifacts = resolve_dashboard_analysis_artifacts(&DashboardAnalysisSourceArgs {
+        common: &args.common,
+        page_size: args.page_size,
+        org_id: args.org_id,
+        all_orgs: args.all_orgs,
+        input_dir: args.input_dir.as_deref(),
+        input_format: args.input_format,
+        input_type: args.input_type,
+        governance: args.governance.as_deref(),
+        queries: args.queries.as_deref(),
+        require_queries: false,
+    })?;
     let alert_contract = match args.alert_contract.as_ref() {
         Some(path) => Some(load_object(path)?),
         None => None,
     };
-    let document =
-        build_impact_document(&governance, alert_contract.as_ref(), &args.datasource_uid)?;
+    let document = build_impact_document(
+        &artifacts.governance,
+        alert_contract.as_ref(),
+        &args.datasource_uid,
+    )?;
     if args.interactive {
         #[cfg(all(feature = "tui", not(test)))]
         {
@@ -413,6 +441,89 @@ pub(crate) fn run_dashboard_impact(args: &ImpactArgs) -> Result<()> {
         ImpactOutputFormat::Json => print!("{}", render_json_value(&document)?),
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod output_contract_tests {
+    use super::*;
+    use crate::common::CliColorChoice;
+    use serde_json::json;
+    use std::fs;
+    use tempfile::tempdir;
+
+    fn make_common_args() -> crate::dashboard::CommonCliArgs {
+        crate::dashboard::CommonCliArgs {
+            color: CliColorChoice::Never,
+            profile: None,
+            url: "http://127.0.0.1:3000".to_string(),
+            api_token: None,
+            username: None,
+            password: None,
+            prompt_password: false,
+            prompt_token: false,
+            timeout: 30,
+            verify_ssl: false,
+        }
+    }
+
+    #[test]
+    fn run_dashboard_topology_writes_plain_text_output_file_and_keeps_also_stdout_enabled() {
+        let temp = tempdir().unwrap();
+        let governance = temp.path().join("governance.json");
+        let output_file = temp.path().join("topology.txt");
+        fs::write(
+            &governance,
+            serde_json::to_string_pretty(&json!({
+                "dashboardGovernance": [
+                    {
+                        "dashboardUid": "cpu-main",
+                        "dashboardTitle": "CPU Main",
+                        "folderPath": "Platform",
+                        "panelCount": 1,
+                        "queryCount": 1
+                    }
+                ],
+                "dashboardDatasourceEdges": [
+                    {
+                        "dashboardUid": "cpu-main",
+                        "dashboardTitle": "CPU Main",
+                        "folderPath": "Platform",
+                        "datasourceUid": "prom-main",
+                        "datasource": "Prometheus Main",
+                        "family": "prometheus",
+                        "panelCount": 1,
+                        "queryCount": 1
+                    }
+                ]
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+
+        run_dashboard_topology(&TopologyArgs {
+            common: make_common_args(),
+            page_size: 500,
+            org_id: None,
+            all_orgs: false,
+            input_dir: None,
+            input_format: crate::dashboard::DashboardImportInputFormat::Raw,
+            input_type: None,
+            governance: Some(governance),
+            queries: None,
+            alert_contract: None,
+            output_format: TopologyOutputFormat::Text,
+            output_file: Some(output_file.clone()),
+            also_stdout: true,
+            interactive: false,
+        })
+        .unwrap();
+
+        let raw = fs::read_to_string(output_file).unwrap();
+        assert_eq!(
+            raw,
+            "Dashboard topology: nodes=2 edges=1 datasources=1 dashboards=1 panels=0 variables=0 alert-resources=0 alert-rules=0 contact-points=0 mute-timings=0 notification-policies=0 templates=0\n  datasource:prom-main --feeds--> dashboard:cpu-main\n"
+        );
+    }
 }
 
 #[cfg(test)]

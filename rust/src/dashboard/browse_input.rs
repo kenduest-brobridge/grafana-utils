@@ -135,44 +135,82 @@ where
             Ok(BrowserLoopAction::Continue)
         }
         KeyCode::Char('v') if state.pending_delete.is_none() => {
+            if state.local_mode {
+                state.status = "Local browse shows tree facts from export files. Live dashboard details are unavailable.".to_string();
+                return Ok(BrowserLoopAction::Continue);
+            }
             refresh_selected_dashboard_view(request_json, args, state)?;
             Ok(BrowserLoopAction::Continue)
         }
         KeyCode::Char('h') if state.pending_delete.is_none() => {
+            if state.local_mode {
+                state.status = "Local browse does not support live history browsing.".to_string();
+                return Ok(BrowserLoopAction::Continue);
+            }
             open_selected_dashboard_history(request_json, args, state)?;
             Ok(BrowserLoopAction::Continue)
         }
         KeyCode::Char('r')
             if state.pending_delete.is_none() && !key.modifiers.contains(KeyModifiers::SHIFT) =>
         {
+            if state.local_mode {
+                state.status = "Local browse is read-only. Rename is unavailable.".to_string();
+                return Ok(BrowserLoopAction::Continue);
+            }
             start_selected_dashboard_rename(request_json, args, state)?;
             Ok(BrowserLoopAction::Continue)
         }
         KeyCode::Char('m') if state.pending_delete.is_none() => {
+            if state.local_mode {
+                state.status = "Local browse is read-only. Move is unavailable.".to_string();
+                return Ok(BrowserLoopAction::Continue);
+            }
             start_selected_dashboard_move(request_json, args, state)?;
             Ok(BrowserLoopAction::Continue)
         }
         KeyCode::Char('e')
             if state.pending_delete.is_none() && !key.modifiers.contains(KeyModifiers::SHIFT) =>
         {
+            if state.local_mode {
+                state.status = "Local browse is read-only. Edit dialog is unavailable.".to_string();
+                return Ok(BrowserLoopAction::Continue);
+            }
             start_selected_dashboard_edit(request_json, args, state)?;
             Ok(BrowserLoopAction::Continue)
         }
         KeyCode::Char('E') if state.pending_delete.is_none() => {
+            if state.local_mode {
+                state.status =
+                    "Local browse is read-only. Raw JSON edit is unavailable.".to_string();
+                return Ok(BrowserLoopAction::Continue);
+            }
             run_selected_external_edit(request_json, args, session, state)?;
             Ok(BrowserLoopAction::Continue)
         }
         KeyCode::Char('e')
             if state.pending_delete.is_none() && key.modifiers.contains(KeyModifiers::SHIFT) =>
         {
+            if state.local_mode {
+                state.status =
+                    "Local browse is read-only. Raw JSON edit is unavailable.".to_string();
+                return Ok(BrowserLoopAction::Continue);
+            }
             run_selected_external_edit(request_json, args, session, state)?;
             Ok(BrowserLoopAction::Continue)
         }
         KeyCode::Char('d') if state.pending_delete.is_none() => {
+            if state.local_mode {
+                state.status = "Local browse is read-only. Delete is unavailable.".to_string();
+                return Ok(BrowserLoopAction::Continue);
+            }
             preview_selected_delete(request_json, args, state, false)?;
             Ok(BrowserLoopAction::Continue)
         }
         KeyCode::Char('D') if state.pending_delete.is_none() => {
+            if state.local_mode {
+                state.status = "Local browse is read-only. Delete is unavailable.".to_string();
+                return Ok(BrowserLoopAction::Continue);
+            }
             let include_folders = matches!(
                 state.selected_node().map(|node| node.kind.clone()),
                 Some(DashboardBrowseNodeKind::Folder)
@@ -344,11 +382,24 @@ where
     match node.kind {
         DashboardBrowseNodeKind::Org => {
             if announce {
-                state.status = "Org rows summarize browse scope. Select a folder or dashboard row."
-                    .to_string();
+                state.status = if state.local_mode {
+                    "Org rows summarize the local export scope. Select a folder or dashboard row."
+                        .to_string()
+                } else {
+                    "Org rows summarize browse scope. Select a folder or dashboard row.".to_string()
+                };
             }
         }
         DashboardBrowseNodeKind::Dashboard => {
+            if state.local_mode {
+                if announce {
+                    state.status =
+                        "Local browse shows dashboard facts from export files. Live details and actions are unavailable."
+                            .to_string();
+                }
+                state.detail_scroll = 0;
+                return Ok(());
+            }
             if let Some(cache_key) = live_view_cache_key(&node) {
                 if state.live_view_cache.contains_key(&cache_key) {
                     return Ok(());
@@ -376,7 +427,11 @@ where
         }
         DashboardBrowseNodeKind::Folder => {
             if announce {
-                state.status = "Folder rows already show live tree metadata.".to_string();
+                state.status = if state.local_mode {
+                    "Folder rows already show local tree metadata.".to_string()
+                } else {
+                    "Folder rows already show live tree metadata.".to_string()
+                };
             }
         }
     }

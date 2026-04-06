@@ -6,16 +6,17 @@ use serde_json::{Map, Value};
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::common::{message, render_json_value, string_field, value_as_object, Result};
+use crate::grafana_api::{DashboardResourceClient, DatasourceResourceClient};
 use crate::http::JsonHttpClient;
 use crate::tabular_output::render_yaml;
 
 use super::{
-    build_datasource_catalog, build_folder_path, build_http_client, build_http_client_for_org,
-    datasource_type_alias, extract_dashboard_object, fetch_dashboard_with_request,
-    fetch_folder_if_exists_with_request, is_builtin_datasource_ref, is_placeholder_string,
-    list_dashboard_summaries_with_request, list_datasources_with_request, lookup_datasource,
-    resolve_datasource_type_alias, ListArgs, DEFAULT_DASHBOARD_TITLE, DEFAULT_FOLDER_TITLE,
-    DEFAULT_FOLDER_UID, DEFAULT_UNKNOWN_UID,
+    build_api_client, build_datasource_catalog, build_folder_path, build_http_client_for_org,
+    build_http_client_for_org_from_api, datasource_type_alias, extract_dashboard_object,
+    fetch_dashboard_with_request, fetch_folder_if_exists_with_request, is_builtin_datasource_ref,
+    is_placeholder_string, list_dashboard_summaries_with_request, list_datasources_with_request,
+    lookup_datasource, resolve_datasource_type_alias, ListArgs, DEFAULT_DASHBOARD_TITLE,
+    DEFAULT_FOLDER_TITLE, DEFAULT_FOLDER_UID, DEFAULT_UNKNOWN_UID,
 };
 
 #[path = "list_render.rs"]
@@ -26,6 +27,94 @@ pub(crate) use list_render::{
     format_dashboard_summary_line, render_dashboard_summary_csv, render_dashboard_summary_json,
     render_dashboard_summary_table, render_dashboard_summary_text,
 };
+
+struct DashboardListResourceClients<'a> {
+    dashboard: DashboardResourceClient<'a>,
+    datasource: DatasourceResourceClient<'a>,
+}
+
+impl<'a> DashboardListResourceClients<'a> {
+    fn new(client: &'a JsonHttpClient) -> Self {
+        Self {
+            dashboard: DashboardResourceClient::new(client),
+            datasource: DatasourceResourceClient::new(client),
+        }
+    }
+
+    fn list_dashboard_summaries(&self, page_size: usize) -> Result<Vec<Map<String, Value>>> {
+        self.dashboard.list_dashboard_summaries(page_size)
+    }
+
+    fn attach_dashboard_folder_paths(
+        &self,
+        summaries: &[Map<String, Value>],
+    ) -> Result<Vec<Map<String, Value>>> {
+        let mut folder_paths = BTreeMap::new();
+        for summary in summaries {
+            let folder_uid = string_field(summary, "folderUid", "");
+            let folder_title = string_field(summary, "folderTitle", DEFAULT_FOLDER_TITLE);
+            if folder_uid.is_empty() || folder_paths.contains_key(&folder_uid) {
+                continue;
+            }
+            let folder = self.dashboard.fetch_folder_if_exists(&folder_uid)?;
+            let folder_path = match folder {
+                Some(folder) => build_folder_path(&folder, &folder_title),
+                None => folder_title,
+            };
+            folder_paths.insert(folder_uid, folder_path);
+        }
+
+        Ok(summaries
+            .iter()
+            .map(|summary| {
+                let mut item = summary.clone();
+                let folder_uid = string_field(summary, "folderUid", "");
+                let folder_title = string_field(summary, "folderTitle", DEFAULT_FOLDER_TITLE);
+                item.insert(
+                    "folderPath".to_string(),
+                    Value::String(
+                        folder_paths
+                            .get(&folder_uid)
+                            .cloned()
+                            .unwrap_or(folder_title),
+                    ),
+                );
+                item
+            })
+            .collect())
+    }
+
+    fn attach_dashboard_sources(
+        &self,
+        summaries: &[Map<String, Value>],
+    ) -> Result<Vec<Map<String, Value>>> {
+        let datasource_catalog = build_datasource_catalog(&self.datasource.list_datasources()?);
+        summaries
+            .iter()
+            .map(|summary| {
+                let uid = string_field(summary, "uid", "");
+                let mut item = summary.clone();
+                if uid.is_empty() {
+                    item.insert("sources".to_string(), Value::Array(Vec::new()));
+                    item.insert("sourceUids".to_string(), Value::Array(Vec::new()));
+                    return Ok(item);
+                }
+                let payload = self.dashboard.fetch_dashboard(&uid)?;
+                let (sources, source_uids) =
+                    collect_dashboard_source_metadata(&payload, &datasource_catalog)?;
+                item.insert(
+                    "sources".to_string(),
+                    Value::Array(sources.into_iter().map(Value::String).collect()),
+                );
+                item.insert(
+                    "sourceUids".to_string(),
+                    Value::Array(source_uids.into_iter().map(Value::String).collect()),
+                );
+                Ok(item)
+            })
+            .collect()
+    }
+}
 
 /// attach dashboard folder paths with request.
 pub(crate) fn attach_dashboard_folder_paths_with_request<F>(
@@ -271,7 +360,7 @@ pub(crate) fn collect_dashboard_source_metadata(
 }
 
 fn dashboard_list_needs_sources(args: &ListArgs) -> bool {
-    args.with_sources
+    args.show_sources
         || args.text
         || args.json
         || args.yaml
@@ -314,6 +403,27 @@ where
             Ok(item)
         })
         .collect()
+}
+
+fn collect_list_dashboards_with_client(
+    client: &JsonHttpClient,
+    args: &ListArgs,
+    org: Option<&Map<String, Value>>,
+) -> Result<Vec<Map<String, Value>>> {
+    let resources = DashboardListResourceClients::new(client);
+    let dashboard_summaries = resources.list_dashboard_summaries(args.page_size)?;
+    let current_org = match org {
+        Some(org) => org.clone(),
+        None => resources.dashboard.fetch_current_org()?,
+    };
+    let summaries = resources.attach_dashboard_folder_paths(&dashboard_summaries)?;
+    let summaries = attach_dashboard_org_metadata(&summaries, &current_org);
+    let summaries = if dashboard_list_needs_sources(args) && !summaries.is_empty() {
+        resources.attach_dashboard_sources(&summaries)?
+    } else {
+        summaries
+    };
+    Ok(summaries)
 }
 
 pub(crate) fn collect_list_dashboards_with_request<F>(
@@ -396,6 +506,7 @@ fn render_dashboard_list_output(
 }
 
 /// Purpose: implementation note.
+#[allow(dead_code)]
 pub(crate) fn list_dashboards_with_request<F>(mut request_json: F, args: &ListArgs) -> Result<usize>
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
@@ -424,19 +535,16 @@ where
 /// Args: see function signature.
 /// Returns: see implementation.
 pub fn list_dashboards_with_client(client: &JsonHttpClient, args: &ListArgs) -> Result<usize> {
-    list_dashboards_with_request(
-        |method, path, params, payload| client.request_json(method, path, params, payload),
-        args,
-    )
+    let summaries = collect_list_dashboards_with_client(client, args, None)?;
+    render_dashboard_list_output(&summaries, args)
 }
 
 /// Purpose: implementation note.
 pub(crate) fn list_dashboards_with_org_clients(args: &ListArgs) -> Result<usize> {
-    let admin_client = build_http_client(&args.common)?;
+    let admin_api = build_api_client(&args.common)?;
+    let admin_client = admin_api.http_client();
     let orgs = if args.all_orgs {
-        list_orgs_with_request(|method, path, params, payload| {
-            admin_client.request_json(method, path, params, payload)
-        })?
+        DashboardResourceClient::new(admin_client).list_orgs()?
     } else {
         Vec::new()
     };
@@ -444,35 +552,15 @@ pub(crate) fn list_dashboards_with_org_clients(args: &ListArgs) -> Result<usize>
     if args.all_orgs {
         for org in orgs {
             let org_id = org_id_value(&org)?;
-            let org_client = build_http_client_for_org(&args.common, org_id)?;
-            let mut scoped = collect_list_dashboards_with_request(
-                &mut |method, path, params, payload| {
-                    org_client.request_json(method, path, params, payload)
-                },
-                args,
-                Some(&org),
-                None,
-            )?;
+            let org_client = build_http_client_for_org_from_api(&admin_api, org_id)?;
+            let mut scoped = collect_list_dashboards_with_client(&org_client, args, Some(&org))?;
             summaries.append(&mut scoped);
         }
     } else if let Some(org_id) = args.org_id {
         let org_client = build_http_client_for_org(&args.common, org_id)?;
-        summaries = collect_list_dashboards_with_request(
-            &mut |method, path, params, payload| {
-                org_client.request_json(method, path, params, payload)
-            },
-            args,
-            None,
-            None,
-        )?;
+        summaries = collect_list_dashboards_with_client(&org_client, args, None)?;
     } else {
-        let client = build_http_client(&args.common)?;
-        summaries = collect_list_dashboards_with_request(
-            &mut |method, path, params, payload| client.request_json(method, path, params, payload),
-            args,
-            None,
-            None,
-        )?;
+        summaries = collect_list_dashboards_with_client(admin_client, args, None)?;
     }
     render_dashboard_list_output(&summaries, args)
 }

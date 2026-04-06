@@ -763,11 +763,11 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
     <h1><span class="hero-title-main">身分與存取管理</span><span class="hero-title-secondary">Identity &amp; Access</span></h1>
 
 
-    <p>這一章整理 Grafana 的身分與存取資產：org、使用者、team 與 service account。重點是先把人、組織與自動化憑證的生命週期講清楚，再談匯出、同步與回放。</p>
+    <p>這一章整理 Grafana 的身分與存取資產：org、使用者、team 與 service account。重點是先把人、組織與自動化憑證的生命週期講清楚，再談匯出、同步與回放。 盤點可以直接來自 live Grafana，也可以來自本機匯出的套件；流程本身是一樣的。</p>
 <h2 id="適用對象">適用對象</h2>
 <ul><li>負責 org、使用者、team 或 service account 管理的人</li><li>需要做權限盤點、同步、匯出或回放的人</li><li>需要把身分資產接進 Git 或 CI 流程的人</li></ul>
 <h2 id="主要目標">主要目標</h2>
-<ul><li>先理解 org / user / team / service account 的關係</li><li>再把盤點、匯出、匯入與 diff 做成可重複流程</li><li>需要時才對 token 做輪替或刪除</li></ul>
+<ul><li>先理解 org / user / team / service account 的關係</li><li>再把盤點、匯出、匯入與 diff 做成可重複流程，而且盤點可以來自 live 或本機</li><li>需要時才對 token 做輪替或刪除</li></ul>
 <h2 id="採用前後對照">採用前後對照</h2>
 <ul><li>以前：身分與存取的工作分散在不同 command 群組，命名風格也不一致。</li><li>現在：org、user、team 與 service account 放在同一份導引，入口與術語都更清楚。</li></ul>
 <h2 id="成功判準">成功判準</h2>
@@ -778,14 +778,16 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <p>如果你現在要查的是指令細節，而不是工作流程章節，可以直接看下面這些指令頁：</p>
 <ul><li><a href="../../commands/zh-TW/access.html">access 指令總覽</a></li><li><a href="../../commands/zh-TW/access-user.html">access user</a></li><li><a href="../../commands/zh-TW/access-org.html">access org</a></li><li><a href="../../commands/zh-TW/access-team.html">access team</a></li><li><a href="../../commands/zh-TW/access-service-account.html">access service-account</a></li><li><a href="../../commands/zh-TW/access-service-account-token.html">access service-account token</a></li><li><a href="../../commands/zh-TW/index.html">指令詳細說明總索引</a></li></ul>
 <h2 id="org-管理">org 管理</h2>
-<p>需要用 Basic auth 盤點、匯出或回放 org 時，請使用 <code>access org</code>。</p>
+<p>需要用 Basic auth 盤點、匯出或回放 org 時，請使用 <code>access org</code>。它的 <code>list</code> 也可以直接讀本機 bundle。</p>
 <h3 id="1-列出匯出與回放-org">1. 列出、匯出與回放 org</h3>
 <pre><code># 用途：1. 列出、匯出與回放 org。
 grafana-util access org list --table</code></pre>
 <pre><code># 用途：1. 列出、匯出與回放 org。
-grafana-util access org export --export-dir ./access-orgs</code></pre>
+grafana-util access org list --input-dir ./access-orgs --table</code></pre>
 <pre><code># 用途：1. 列出、匯出與回放 org。
-grafana-util access org import --import-dir ./access-orgs --dry-run</code></pre>
+grafana-util access org export --output-dir ./access-orgs</code></pre>
+<pre><code># 用途：1. 列出、匯出與回放 org。
+grafana-util access org import --input-dir ./access-orgs --dry-run</code></pre>
 <p><strong>預期輸出：</strong></p>
 <pre><code>ID   NAME        IS_MAIN   QUOTA
 1    Main Org    true      -
@@ -799,7 +801,7 @@ PREFLIGHT IMPORT:
   - would update 1 org(s)</code></pre>
 <p>先用 list 確認主 org，再用 export/import 建立可重播的 org 快照。</p>
 <h2 id="使用者與-team-管理">使用者與 team 管理</h2>
-<p>需要調整成員、管理快照或檢查漂移時，請使用 <code>access user</code> 與 <code>access team</code>。</p>
+<p>需要調整成員、管理快照或檢查漂移時，請使用 <code>access user</code> 與 <code>access team</code>。它們的 <code>list</code> 與 <code>browse</code> 都可以讀本機 bundle。</p>
 <h3 id="1-新增修改與比對使用者">1. 新增、修改與比對使用者</h3>
 <pre><code># 新增一個具備全域 Admin 角色的使用者
 grafana-util access user add --login dev-user --role Admin --prompt-password
@@ -809,6 +811,9 @@ grafana-util access user modify --login dev-user --org-id 5 --role Editor
 
 # 將儲存的使用者快照與即時 Grafana 比對
 grafana-util access user diff --diff-dir ./access-users --scope global</code></pre>
+<p>如果要看同一份本機套件，可以改用：</p>
+<pre><code># 從本機套件檢視同一份使用者 inventory
+grafana-util access user list --input-dir ./access-users</code></pre>
 <p><strong>預期輸出：</strong></p>
 <pre><code>Created user dev-user -&gt; id=12 orgRole=Editor grafanaAdmin=true
 
@@ -818,9 +823,11 @@ No user differences across 12 user(s).</code></pre>
 <pre><code># 用途：2. team 盤點與同步。
 grafana-util access team list --org-id 1 --table</code></pre>
 <pre><code># 用途：2. team 盤點與同步。
-grafana-util access team export --export-dir ./access-teams --with-members</code></pre>
+grafana-util access team list --input-dir ./access-teams --table</code></pre>
 <pre><code># 用途：2. team 盤點與同步。
-grafana-util access team import --import-dir ./access-teams --replace-existing --dry-run --table</code></pre>
+grafana-util access team export --output-dir ./access-teams --with-members</code></pre>
+<pre><code># 用途：2. team 盤點與同步。
+grafana-util access team import --input-dir ./access-teams --replace-existing --dry-run --table</code></pre>
 <p><strong>預期輸出：</strong></p>
 <pre><code>ID   NAME           MEMBERS   EMAIL
 10   Platform SRE   5         sre@company.com
@@ -833,12 +840,14 @@ dev-admin   Admin   update   existing
 ops-user    Viewer  create   missing</code></pre>
 <p>匯出時加上 <code>--with-members</code> 才會保留成員狀態；要做可能覆寫的匯入前，先用 <code>--dry-run --table</code> 看一次。</p>
 <h2 id="service-account-管理">service account 管理</h2>
-<p>service account 是自動化流程常見的基礎元件。</p>
+<p>service account 是自動化流程常見的基礎元件。它的 inventory 也可以先從本機套件看，不必先碰 live Grafana。</p>
 <h3 id="1-列出與匯出-service-account">1. 列出與匯出 service account</h3>
 <pre><code># 用途：1. 列出與匯出 service account。
 grafana-util access service-account list --json</code></pre>
 <pre><code># 用途：1. 列出與匯出 service account。
-grafana-util access service-account export --export-dir ./access-sa</code></pre>
+grafana-util access service-account list --input-dir ./access-sa --output-format text</code></pre>
+<pre><code># 用途：1. 列出與匯出 service account。
+grafana-util access service-account export --output-dir ./access-sa</code></pre>
 <p><strong>預期輸出：</strong></p>
 <pre><code>[
   {
@@ -885,7 +894,7 @@ grafana-util access service-account token delete --service-account-id 15 --token
 <h2 id="漂移檢查-diff">漂移檢查 (Diff)</h2>
 <p>比較本機快照與 live Grafana 之間的差異。</p>
 <pre><code># 用途：比較本機快照與 live Grafana 之間的差異。
-grafana-util access user diff --import-dir ./access-users</code></pre>
+grafana-util access user diff --input-dir ./access-users</code></pre>
 <pre><code># 用途：比較本機快照與 live Grafana 之間的差異。
 grafana-util access team diff --diff-dir ./access-teams</code></pre>
 <pre><code># 用途：比較本機快照與 live Grafana 之間的差異。

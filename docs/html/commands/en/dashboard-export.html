@@ -766,11 +766,11 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
     <section class="command-intro">
   <div class="command-intro-grid"><div class="command-intro-block">
   <p class="command-intro-label">What this page covers</p>
-  <p class="command-intro-text">Export dashboards to raw/, prompt/, and provisioning/ files.</p>
+  <p class="command-intro-text">Export dashboards to raw/, prompt/, and provisioning/ files, with optional history/ artifacts.</p>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">When to open this page</p>
-  <ul class="command-intro-list"><li>Use this when you need a local export tree for later import, review, diff, or file-provisioning workflows. The prompt/ lane is for Grafana UI import, not dashboard API import; use dashboard raw-to-prompt when you need to convert ordinary or raw dashboard JSON into prompt JSON.</li></ul>
+  <ul class="command-intro-list"><li>Use this when you need a local export tree for later import, review, diff, or file-provisioning workflows. Add --include-history when you also need dashboard revision-history artifacts under each exported org scope. The prompt/ lane is for Grafana UI import, not dashboard API import; use dashboard raw-to-prompt when you need to convert ordinary or raw dashboard JSON into prompt JSON.</li></ul>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">Who this page is for</p>
@@ -779,28 +779,30 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 </section>
 <h2 id="purpose">Purpose</h2>
-<p>Export dashboards to <code>raw/</code>, <code>prompt/</code>, and <code>provisioning/</code> files.</p>
+<p>Export dashboards to <code>raw/</code>, <code>prompt/</code>, and <code>provisioning/</code> files, with optional <code>history/</code> artifacts.</p>
 <h2 id="when-to-use">When to use</h2>
-<p>Use this when you need a local export tree for later import, review, diff, or file-provisioning workflows. The <code>prompt/</code> lane is for Grafana UI import, not dashboard API import; use <code>dashboard raw-to-prompt</code> when you need to convert ordinary or raw dashboard JSON into prompt JSON.</p>
+<p>Use this when you need a local export tree for later import, review, diff, or file-provisioning workflows. Add <code>--include-history</code> when you also need dashboard revision-history artifacts under each exported org scope. The <code>prompt/</code> lane is for Grafana UI import, not dashboard API import; use <code>dashboard raw-to-prompt</code> when you need to convert ordinary or raw dashboard JSON into prompt JSON.</p>
 <h2 id="before-after">Before / After</h2>
 <ul><li><strong>Before</strong>: export is a one-off action, and you only discover later whether the tree is reviewable or reusable.</li><li><strong>After</strong>: export becomes the first artifact in a repeatable workflow that can feed inspect, diff, dry-run import, and Git review.</li></ul>
 <h2 id="key-flags">Key flags</h2>
-<ul><li><code>--export-dir</code>: target directory for the export tree.</li><li><code>--org-id</code>: export one explicit Grafana org.</li><li><code>--all-orgs</code>: export each visible org into per-org subdirectories. Prefer Basic auth.</li><li><code>--flat</code>: write files directly into each export variant directory.</li><li><code>--overwrite</code>: replace existing export files.</li><li><code>--without-dashboard-raw</code>, <code>--without-dashboard-prompt</code>, <code>--without-dashboard-provisioning</code>: skip a variant.</li><li><code>--provisioning-provider-name</code>, <code>--provisioning-provider-org-id</code>, <code>--provisioning-provider-path</code>: customize the generated provisioning provider file.</li><li><code>--provisioning-provider-disable-deletion</code>, <code>--provisioning-provider-allow-ui-updates</code>, <code>--provisioning-provider-update-interval-seconds</code>: tune provisioning behavior.</li><li><code>--dry-run</code>: preview what would be written.</li></ul>
+<ul><li><code>--output-dir</code>: target directory for the export tree.</li><li><code>--org-id</code>: export one explicit Grafana org.</li><li><code>--all-orgs</code>: export each visible org into per-org subdirectories. Prefer Basic auth.</li><li><code>--flat</code>: write files directly into each export variant directory.</li><li><code>--overwrite</code>: replace existing export files.</li><li><code>--without-dashboard-raw</code>, <code>--without-dashboard-prompt</code>, <code>--without-dashboard-provisioning</code>: skip a variant.</li><li><code>--include-history</code>: write dashboard revision-history artifacts under a <code>history/</code> subdirectory for each exported org scope.</li><li><code>--provisioning-provider-name</code>, <code>--provisioning-provider-org-id</code>, <code>--provisioning-provider-path</code>: customize the generated provisioning provider file.</li><li><code>--provisioning-provider-disable-deletion</code>, <code>--provisioning-provider-allow-ui-updates</code>, <code>--provisioning-provider-update-interval-seconds</code>: tune provisioning behavior.</li><li><code>--dry-run</code>: preview what would be written.</li></ul>
 <h2 id="notes">Notes</h2>
-<ul><li>Use <code>--profile</code> for normal single-org export flows.</li><li>For <code>--all-orgs</code>, prefer admin-backed <code>--profile</code> or direct Basic auth because token visibility may not cover every org you expect.</li></ul>
+<ul><li>Use <code>--profile</code> for normal single-org export flows.</li><li>For <code>--all-orgs</code>, prefer admin-backed <code>--profile</code> or direct Basic auth because token visibility may not cover every org you expect.</li><li>When you combine <code>--all-orgs</code> with <code>--include-history</code>, each exported org scope gets its own <code>org_&lt;id&gt;_&lt;name&gt;/history/</code> subtree.</li></ul>
 <h2 id="what-success-looks-like">What success looks like</h2>
-<ul><li>a <code>raw/</code> tree exists for API replay and deeper inspection</li><li>a <code>prompt/</code> tree exists when you need a cleaner handoff for UI-style import</li><li>the export tree is stable enough to commit, diff, or inspect before mutation</li></ul>
+<ul><li>a <code>raw/</code> tree exists for API replay and deeper inspection</li><li>a <code>prompt/</code> tree exists when you need a cleaner handoff for UI-style import</li><li>a <code>history/</code> tree exists under each exported org scope when you pass <code>--include-history</code></li><li>the export tree is stable enough to commit, diff, or inspect before mutation</li></ul>
 <h2 id="failure-checks">Failure checks</h2>
-<ul><li>if dashboards are missing, check org scope before suspecting the exporter</li><li>if multi-org output looks partial, check whether the credential can really see every org</li><li>if the next step is import, confirm whether you should continue from <code>raw/</code> or <code>prompt/</code></li></ul>
+<ul><li>if dashboards are missing, check org scope before suspecting the exporter</li><li>if multi-org output looks partial, check whether the credential can really see every org</li><li>if expected history artifacts are missing, confirm that you passed <code>--include-history</code> and are checking the right org scope</li><li>if the next step is import, confirm whether you should continue from <code>raw/</code> or <code>prompt/</code></li></ul>
 <h2 id="examples">Examples</h2>
 <pre><code># Purpose: Export dashboards to `raw/`, `prompt/`, and `provisioning/` files.
-grafana-util dashboard export --profile prod --export-dir ./dashboards --overwrite</code></pre>
+grafana-util dashboard export --profile prod --output-dir ./dashboards --overwrite</code></pre>
 <pre><code># Purpose: Export dashboards to `raw/`, `prompt/`, and `provisioning/` files.
-grafana-util dashboard export --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --export-dir ./dashboards --overwrite</code></pre>
+grafana-util dashboard export --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output-dir ./dashboards --overwrite</code></pre>
 <pre><code># Purpose: Export dashboards to `raw/`, `prompt/`, and `provisioning/` files.
-grafana-util dashboard export --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --export-dir ./dashboards --overwrite</code></pre>
+grafana-util dashboard export --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --output-dir ./dashboards --overwrite</code></pre>
+<pre><code># Purpose: Export dashboards plus per-org revision-history artifacts into a reusable tree.
+grafana-util dashboard export --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --include-history --output-dir ./dashboards --overwrite</code></pre>
 <h2 id="related-commands">Related commands</h2>
-<ul><li><a href="dashboard-inspect-export.html">dashboard inspect-export</a></li><li><a href="dashboard-import.html">dashboard import</a></li><li><a href="dashboard-diff.html">dashboard diff</a></li><li><a href="dashboard-raw-to-prompt.html">dashboard raw-to-prompt</a></li></ul>
+<ul><li><a href="dashboard-analyze-export.html">dashboard analyze (local)</a></li><li><a href="dashboard-import.html">dashboard import</a></li><li><a href="dashboard-diff.html">dashboard diff</a></li><li><a href="dashboard-raw-to-prompt.html">dashboard raw-to-prompt</a></li><li><a href="dashboard-history.html">dashboard history</a></li></ul>
     
   </article>
   <aside class="sidebar">

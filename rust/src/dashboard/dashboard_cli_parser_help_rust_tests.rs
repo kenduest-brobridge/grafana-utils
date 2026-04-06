@@ -1,7 +1,7 @@
 //! Dashboard CLI parser/help regressions kept separate from runtime-heavy tests.
 use super::super::{
-    parse_cli_from, DashboardCliArgs, DashboardCommand, RawToPromptLogFormat,
-    RawToPromptOutputFormat, RawToPromptResolution, SimpleOutputFormat,
+    parse_cli_from, DashboardCliArgs, DashboardCommand, DashboardHistorySubcommand,
+    RawToPromptLogFormat, RawToPromptOutputFormat, RawToPromptResolution, SimpleOutputFormat,
 };
 use crate::common::CliColorChoice;
 use crate::dashboard::DashboardImportInputFormat;
@@ -22,6 +22,18 @@ pub(super) fn render_dashboard_help() -> String {
     command.render_help().to_string()
 }
 
+pub(super) fn render_dashboard_history_subcommand_help(name: &str) -> String {
+    let mut command = DashboardCliArgs::command();
+    let history = command
+        .find_subcommand_mut("history")
+        .unwrap_or_else(|| panic!("missing history subcommand"));
+    history
+        .find_subcommand_mut(name)
+        .unwrap_or_else(|| panic!("missing history {name} subcommand"))
+        .render_help()
+        .to_string()
+}
+
 #[test]
 fn parse_cli_supports_list_mode() {
     let args = parse_cli_from([
@@ -39,7 +51,7 @@ fn parse_cli_supports_list_mode() {
             assert_eq!(list_args.page_size, 25);
             assert_eq!(list_args.org_id, None);
             assert!(!list_args.all_orgs);
-            assert!(!list_args.with_sources);
+            assert!(!list_args.show_sources);
             assert!(list_args.output_columns.is_empty());
             assert!(!list_args.table);
             assert!(!list_args.csv);
@@ -51,13 +63,13 @@ fn parse_cli_supports_list_mode() {
 }
 
 #[test]
-fn parse_cli_supports_list_with_sources() {
+fn parse_cli_supports_list_show_sources() {
     let args = parse_cli_from([
         "grafana-util",
         "list",
         "--url",
         "https://grafana.example.com",
-        "--with-sources",
+        "--show-sources",
         "--json",
     ]);
 
@@ -65,11 +77,29 @@ fn parse_cli_supports_list_with_sources() {
         DashboardCommand::List(list_args) => {
             assert_eq!(list_args.org_id, None);
             assert!(!list_args.all_orgs);
-            assert!(list_args.with_sources);
+            assert!(list_args.show_sources);
             assert!(list_args.output_columns.is_empty());
             assert!(list_args.json);
             assert!(!list_args.table);
             assert!(!list_args.csv);
+        }
+        _ => panic!("expected list command"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_list_with_sources_alias() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "list",
+        "--url",
+        "https://grafana.example.com",
+        "--with-sources",
+    ]);
+
+    match args.command {
+        DashboardCommand::List(list_args) => {
+            assert!(list_args.show_sources);
         }
         _ => panic!("expected list command"),
     }
@@ -92,7 +122,7 @@ fn parse_cli_supports_list_output_columns_with_aliases() {
                 list_args.output_columns,
                 vec!["uid", "folder_uid", "org_id", "sources", "source_uids"]
             );
-            assert!(!list_args.with_sources);
+            assert!(!list_args.show_sources);
         }
         _ => panic!("expected list command"),
     }
@@ -183,6 +213,7 @@ fn parse_cli_supports_prompt_token() {
 fn parse_cli_supports_export_org_scope_flags() {
     let org_args = parse_cli_from(["grafana-util", "export", "--org-id", "7"]);
     let all_orgs_args = parse_cli_from(["grafana-util", "export", "--all-orgs"]);
+    let history_args = parse_cli_from(["grafana-util", "export", "--include-history"]);
 
     match org_args.command {
         DashboardCommand::Export(export_args) => {
@@ -196,6 +227,15 @@ fn parse_cli_supports_export_org_scope_flags() {
         DashboardCommand::Export(export_args) => {
             assert_eq!(export_args.org_id, None);
             assert!(export_args.all_orgs);
+        }
+        _ => panic!("expected export command"),
+    }
+
+    match history_args.command {
+        DashboardCommand::Export(export_args) => {
+            assert!(export_args.include_history);
+            assert!(!export_args.all_orgs);
+            assert_eq!(export_args.org_id, None);
         }
         _ => panic!("expected export command"),
     }
@@ -462,10 +502,19 @@ fn parse_cli_rejects_conflicting_export_org_scope_flags() {
 fn export_help_explains_flat_layout() {
     let help = render_dashboard_subcommand_help("export");
     assert!(help.contains("--all-orgs"));
+    assert!(help.contains("--include-history"));
     assert!(help.contains("Prefer Basic auth when you need cross-org export"));
     assert!(help.contains("Export dashboards across all visible orgs with Basic auth"));
     assert!(help.contains("Write dashboard files directly into each export variant directory"));
     assert!(help.contains("folder-based subdirectories on disk"));
+}
+
+#[test]
+fn export_help_mentions_history_artifacts() {
+    let help = render_dashboard_subcommand_help("export");
+    assert!(help.contains("history/"));
+    assert!(help.contains("revision history"));
+    assert!(help.contains("per-dashboard revision history"));
 }
 
 #[test]
@@ -518,9 +567,16 @@ fn top_level_help_includes_examples() {
     assert!(help.contains("Export dashboards across all visible orgs with Basic auth"));
     assert!(help.contains("List dashboards across all visible orgs with Basic auth"));
     assert!(help.contains("Export dashboards with an API token from the current org"));
-    assert!(help.contains("grafana-util export"));
+    assert!(help.contains("grafana-util dashboard export"));
+    assert!(help.contains("grafana-util dashboard list"));
+    assert!(help.contains("grafana-util dashboard diff"));
+    assert!(help.contains("grafana-util dashboard publish"));
+    assert!(help.contains("grafana-util dashboard screenshot"));
     assert!(help.contains("--all-orgs"));
-    assert!(help.contains("grafana-util diff"));
+    assert!(!help.contains("grafana-util export"));
+    assert!(!help.contains("grafana-util list"));
+    assert!(!help.contains("grafana-util diff"));
+    assert!(!help.contains("grafana-util publish"));
 }
 
 #[test]
@@ -573,7 +629,7 @@ fn parse_cli_supports_import_progress_and_verbose_flags() {
     let args = parse_cli_from([
         "grafana-util",
         "import",
-        "--import-dir",
+        "--input-dir",
         "./dashboards/raw",
         "--progress",
         "-v",
@@ -593,7 +649,7 @@ fn parse_cli_supports_import_interactive_flag() {
     let args = parse_cli_from([
         "grafana-util",
         "import",
-        "--import-dir",
+        "--input-dir",
         "./dashboards/raw",
         "--interactive",
     ]);
@@ -611,7 +667,7 @@ fn parse_cli_supports_provisioning_import_format() {
     let args = parse_cli_from([
         "grafana-util",
         "import",
-        "--import-dir",
+        "--input-dir",
         "./dashboards/provisioning",
         "--input-format",
         "provisioning",
@@ -653,7 +709,7 @@ fn parse_cli_supports_provisioning_diff_input_format() {
     let args = parse_cli_from([
         "grafana-util",
         "diff",
-        "--import-dir",
+        "--input-dir",
         "./dashboards/provisioning",
         "--input-format",
         "provisioning",
@@ -666,7 +722,7 @@ fn parse_cli_supports_provisioning_diff_input_format() {
                 DashboardImportInputFormat::Provisioning
             );
             assert_eq!(
-                diff_args.import_dir,
+                diff_args.input_dir,
                 std::path::PathBuf::from("./dashboards/provisioning")
             );
         }
@@ -715,6 +771,29 @@ fn parse_cli_supports_patch_file_command() {
 }
 
 #[test]
+fn parse_cli_supports_patch_file_stdin_input() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "patch-file",
+        "--input",
+        "-",
+        "--output",
+        "./drafts/cpu-main.json",
+    ]);
+
+    match args.command {
+        DashboardCommand::PatchFile(patch_args) => {
+            assert_eq!(patch_args.input, PathBuf::from("-"));
+            assert_eq!(
+                patch_args.output,
+                Some(PathBuf::from("./drafts/cpu-main.json"))
+            );
+        }
+        _ => panic!("expected patch-file command"),
+    }
+}
+
+#[test]
 fn parse_cli_supports_publish_command() {
     let args = parse_cli_from([
         "grafana-util",
@@ -744,8 +823,46 @@ fn parse_cli_supports_publish_command() {
             assert_eq!(publish_args.folder_uid.as_deref(), Some("infra"));
             assert_eq!(publish_args.message, "Promote CPU dashboard");
             assert!(publish_args.dry_run);
+            assert!(!publish_args.watch);
             assert!(publish_args.table);
             assert!(!publish_args.json);
+        }
+        _ => panic!("expected publish command"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_publish_watch_and_stdin_input() {
+    let watch_args = parse_cli_from([
+        "grafana-util",
+        "publish",
+        "--url",
+        "https://grafana.example.com",
+        "--input",
+        "./drafts/cpu-main.json",
+        "--watch",
+    ]);
+    let stdin_args = parse_cli_from([
+        "grafana-util",
+        "publish",
+        "--url",
+        "https://grafana.example.com",
+        "--input",
+        "-",
+    ]);
+
+    match watch_args.command {
+        DashboardCommand::Publish(publish_args) => {
+            assert_eq!(publish_args.input, PathBuf::from("./drafts/cpu-main.json"));
+            assert!(publish_args.watch);
+        }
+        _ => panic!("expected publish command"),
+    }
+
+    match stdin_args.command {
+        DashboardCommand::Publish(publish_args) => {
+            assert_eq!(publish_args.input, PathBuf::from("-"));
+            assert!(!publish_args.watch);
         }
         _ => panic!("expected publish command"),
     }
@@ -772,6 +889,7 @@ fn patch_file_help_mentions_in_place_and_output_paths() {
     assert!(help.contains("--tag"));
     assert!(help.contains("Patch a raw export file in place"));
     assert!(help.contains("Patch one draft file into a new output path"));
+    assert!(help.contains("Patch one dashboard from standard input into an explicit output file"));
 }
 
 #[test]
@@ -856,6 +974,8 @@ fn review_help_mentions_local_file_only_output_modes() {
     assert!(help.contains("yaml"));
     assert!(help.contains("Review one local dashboard JSON file without touching Grafana."));
     assert!(help.contains("grafana-util dashboard review"));
+    assert!(help.contains("standard input"));
+    assert!(help.contains("Review one generated dashboard from standard input"));
 }
 
 #[test]
@@ -865,9 +985,89 @@ fn publish_help_mentions_dry_run_preview() {
     assert!(help.contains("--folder-uid"));
     assert!(help.contains("--message"));
     assert!(help.contains("--dry-run"));
+    assert!(help.contains("--watch"));
     assert!(help.contains("--table"));
     assert!(help.contains("Publish one draft file to the current Grafana org"));
     assert!(help.contains("Preview the same publish without writing to Grafana"));
+    assert!(help.contains("Publish one generated dashboard from standard input"));
+    assert!(help.contains("Watch one local draft file and rerun dry-run after each save"));
+}
+
+#[test]
+fn parse_cli_supports_dashboard_serve_command() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "serve",
+        "--script",
+        "jsonnet dashboards/cpu.jsonnet",
+        "--watch",
+        "./dashboards",
+        "--port",
+        "18080",
+        "--open-browser",
+    ]);
+
+    match args.command {
+        DashboardCommand::Serve(serve_args) => {
+            assert_eq!(
+                serve_args.script.as_deref(),
+                Some("jsonnet dashboards/cpu.jsonnet")
+            );
+            assert_eq!(serve_args.port, 18080);
+            assert_eq!(serve_args.watch, vec![PathBuf::from("./dashboards")]);
+            assert!(serve_args.input.is_none());
+            assert!(serve_args.open_browser);
+        }
+        _ => panic!("expected serve command"),
+    }
+}
+
+#[test]
+fn serve_help_mentions_local_preview_server() {
+    let help = render_dashboard_subcommand_help("serve");
+    assert!(help.contains("--input"));
+    assert!(help.contains("--script"));
+    assert!(help.contains("--watch"));
+    assert!(help.contains("--open-browser"));
+    assert!(help.contains("--port"));
+    assert!(help.contains("local preview server"));
+}
+
+#[test]
+fn parse_cli_supports_dashboard_edit_live_command() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "edit-live",
+        "--url",
+        "https://grafana.example.com",
+        "--dashboard-uid",
+        "cpu-main",
+        "--output",
+        "./drafts/cpu-main.edited.json",
+    ]);
+
+    match args.command {
+        DashboardCommand::EditLive(edit_args) => {
+            assert_eq!(edit_args.common.url, "https://grafana.example.com");
+            assert_eq!(edit_args.dashboard_uid, "cpu-main");
+            assert_eq!(
+                edit_args.output,
+                Some(PathBuf::from("./drafts/cpu-main.edited.json"))
+            );
+            assert!(!edit_args.apply_live);
+        }
+        _ => panic!("expected edit-live command"),
+    }
+}
+
+#[test]
+fn edit_live_help_mentions_safe_local_draft_default() {
+    let help = render_dashboard_subcommand_help("edit-live");
+    assert!(help.contains("--dashboard-uid"));
+    assert!(help.contains("--output"));
+    assert!(help.contains("--apply-live"));
+    assert!(help.contains("local draft"));
+    assert!(help.contains("review output"));
 }
 
 #[test]
@@ -875,7 +1075,7 @@ fn parse_cli_supports_import_dry_run_json_flag() {
     let args = parse_cli_from([
         "grafana-util",
         "import",
-        "--import-dir",
+        "--input-dir",
         "./dashboards/raw",
         "--dry-run",
         "--json",
@@ -895,7 +1095,7 @@ fn parse_cli_supports_import_dry_run_output_format_table() {
     let args = parse_cli_from([
         "grafana-util",
         "import",
-        "--import-dir",
+        "--input-dir",
         "./dashboards/raw",
         "--dry-run",
         "--output-format",
@@ -938,6 +1138,32 @@ fn parse_cli_supports_browse_with_path() {
 }
 
 #[test]
+fn parse_cli_supports_browse_local_export_tree() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "browse",
+        "--input-dir",
+        "./dashboards/raw",
+        "--input-format",
+        "raw",
+        "--path",
+        "Platform / Infra",
+    ]);
+
+    match args.command {
+        DashboardCommand::Browse(browse_args) => {
+            assert_eq!(
+                browse_args.input_dir,
+                Some(PathBuf::from("./dashboards/raw"))
+            );
+            assert_eq!(browse_args.input_format, DashboardImportInputFormat::Raw);
+            assert_eq!(browse_args.path.as_deref(), Some("Platform / Infra"));
+        }
+        _ => panic!("expected browse command"),
+    }
+}
+
+#[test]
 fn browse_help_mentions_live_tree_controls() {
     let help = render_dashboard_subcommand_help("browse");
     assert!(help.contains("interactive terminal UI"));
@@ -946,6 +1172,14 @@ fn browse_help_mentions_live_tree_controls() {
     assert!(help.contains("--all-orgs"));
     assert!(help.contains("Open the browser at one folder subtree"));
     assert!(help.contains("Browse all visible orgs with Basic auth"));
+    assert!(help.contains("local export tree"));
+}
+
+#[test]
+fn browse_help_mentions_local_export_tree_examples() {
+    let help = render_dashboard_subcommand_help("browse");
+    assert!(help.contains("--input-dir ./dashboards/raw"));
+    assert!(help.contains("Browse a raw export tree from disk"));
 }
 
 #[test]
@@ -1053,7 +1287,7 @@ fn parse_cli_supports_import_dry_run_output_columns() {
     let args = parse_cli_from([
         "grafana-util",
         "import",
-        "--import-dir",
+        "--input-dir",
         "./dashboards/raw",
         "--dry-run",
         "--output-format",
@@ -1086,7 +1320,7 @@ fn parse_cli_supports_import_update_existing_only_flag() {
     let args = parse_cli_from([
         "grafana-util",
         "import",
-        "--import-dir",
+        "--input-dir",
         "./dashboards/raw",
         "--update-existing-only",
     ]);
@@ -1105,7 +1339,7 @@ fn parse_cli_supports_import_require_matching_folder_path_flag() {
     let args = parse_cli_from([
         "grafana-util",
         "import",
-        "--import-dir",
+        "--input-dir",
         "./dashboards/raw",
         "--require-matching-folder-path",
     ]);
@@ -1123,7 +1357,7 @@ fn parse_cli_supports_import_org_scope_flag() {
     let args = parse_cli_from([
         "grafana-util",
         "import",
-        "--import-dir",
+        "--input-dir",
         "./dashboards/raw",
         "--org-id",
         "7",
@@ -1142,7 +1376,7 @@ fn parse_cli_supports_import_by_export_org_flags() {
     let args = parse_cli_from([
         "grafana-util",
         "import",
-        "--import-dir",
+        "--input-dir",
         "./dashboards",
         "--use-export-org",
         "--only-org-id",
@@ -1168,7 +1402,7 @@ fn parse_cli_supports_import_require_matching_export_org_flag() {
     let args = parse_cli_from([
         "grafana-util",
         "import",
-        "--import-dir",
+        "--input-dir",
         "./dashboards/raw",
         "--require-matching-export-org",
     ]);
@@ -1186,7 +1420,7 @@ fn parse_cli_rejects_import_org_id_with_use_export_org() {
     let error = DashboardCliArgs::try_parse_from([
         "grafana-util",
         "import",
-        "--import-dir",
+        "--input-dir",
         "./dashboards",
         "--org-id",
         "7",
@@ -1203,7 +1437,7 @@ fn parse_cli_supports_import_use_export_org_flags() {
     let args = parse_cli_from([
         "grafana-util",
         "import",
-        "--import-dir",
+        "--input-dir",
         "./dashboards",
         "--use-export-org",
         "--only-org-id",
@@ -1227,7 +1461,7 @@ fn parse_cli_supports_import_use_export_org_flags() {
 fn parse_cli_supports_dashboard_get_and_clone_live_commands() {
     let get_args = parse_cli_from([
         "grafana-util",
-        "get",
+        "fetch-live",
         "--profile",
         "prod",
         "--dashboard-uid",
@@ -1256,7 +1490,7 @@ fn parse_cli_supports_dashboard_get_and_clone_live_commands() {
             assert_eq!(args.dashboard_uid, "cpu-main");
             assert_eq!(args.output, PathBuf::from("./cpu-main.json"));
         }
-        _ => panic!("expected get command"),
+        _ => panic!("expected fetch-live command"),
     }
 
     match clone_args.command {
@@ -1272,21 +1506,94 @@ fn parse_cli_supports_dashboard_get_and_clone_live_commands() {
 }
 
 #[test]
-fn dashboard_get_help_mentions_local_draft_and_output_path() {
-    let help = render_dashboard_subcommand_help("get");
+fn dashboard_fetch_live_help_mentions_local_draft_and_output_path() {
+    let help = render_dashboard_subcommand_help("fetch-live");
     assert!(help.contains("API-safe local JSON draft"));
+    assert!(help.contains("What it does:"));
+    assert!(help.contains("When to use:"));
     assert!(help.contains("--dashboard-uid"));
     assert!(help.contains("--output"));
-    assert!(help.contains("grafana-util dashboard get"));
+    assert!(help.contains("grafana-util dashboard fetch-live"));
 }
 
 #[test]
 fn dashboard_clone_live_help_mentions_override_flags() {
     let help = render_dashboard_subcommand_help("clone-live");
     assert!(help.contains("optional overrides"));
+    assert!(help.contains("What it does:"));
+    assert!(help.contains("Related commands:"));
     assert!(help.contains("--source-uid"));
     assert!(help.contains("--name"));
     assert!(help.contains("--uid"));
     assert!(help.contains("--folder-uid"));
     assert!(help.contains("grafana-util dashboard clone-live"));
+}
+
+#[test]
+fn dashboard_fetch_live_help_colorizes_section_headings_and_example_commands() {
+    let help = crate::dashboard::maybe_render_dashboard_subcommand_help_from_os_args(
+        ["grafana-util", "dashboard", "fetch-live", "--help"],
+        true,
+    )
+    .expect("expected dashboard subcommand help");
+    assert!(help.contains("\u{1b}[1;36mWhat it does:\u{1b}[0m"));
+    assert!(help.contains("\u{1b}[1;36mExamples:\u{1b}[0m"));
+    assert!(help.contains("    \u{1b}[1;97mgrafana-util dashboard fetch-live"));
+}
+
+#[test]
+fn parse_cli_supports_dashboard_history_list_input_sources() {
+    let input_args = parse_cli_from([
+        "grafana-util",
+        "history",
+        "list",
+        "--input",
+        "./cpu-main.history.json",
+        "--output-format",
+        "json",
+    ]);
+    let import_dir_args = parse_cli_from([
+        "grafana-util",
+        "history",
+        "list",
+        "--input-dir",
+        "./dashboards",
+        "--dashboard-uid",
+        "cpu-main",
+        "--output-format",
+        "yaml",
+    ]);
+
+    match input_args.command {
+        DashboardCommand::History(history_args) => match history_args.command {
+            DashboardHistorySubcommand::List(args) => {
+                assert_eq!(args.dashboard_uid, None);
+                assert_eq!(args.input, Some(PathBuf::from("./cpu-main.history.json")));
+                assert_eq!(args.input_dir, None);
+            }
+            _ => panic!("expected history list subcommand"),
+        },
+        _ => panic!("expected history command"),
+    }
+
+    match import_dir_args.command {
+        DashboardCommand::History(history_args) => match history_args.command {
+            DashboardHistorySubcommand::List(args) => {
+                assert_eq!(args.dashboard_uid.as_deref(), Some("cpu-main"));
+                assert_eq!(args.input, None);
+                assert_eq!(args.input_dir, Some(PathBuf::from("./dashboards")));
+            }
+            _ => panic!("expected history list subcommand"),
+        },
+        _ => panic!("expected history command"),
+    }
+}
+
+#[test]
+fn dashboard_history_list_help_mentions_local_inputs() {
+    let help = render_dashboard_history_subcommand_help("list");
+    assert!(help.contains("--input"));
+    assert!(help.contains("--input-dir"));
+    assert!(help.contains("dashboard history export"));
+    assert!(help.contains("dashboard export --include-history"));
 }

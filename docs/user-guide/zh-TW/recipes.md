@@ -43,12 +43,12 @@
 
 **解決方案**：利用 **`prompt/` lane** 做乾淨遷移。
 
-1. **從 Dev 匯出**：`grafana-util dashboard export --export-dir ./dev-assets`
+1. **從 Dev 匯出**：`grafana-util dashboard export --output-dir ./dev-assets`
 2. **定位乾淨來源**：使用 `./dev-assets/prompt/` 下的檔案。這些檔案已去除來源環境專屬 metadata。
 3. **匯入到 Prod**：
    ```bash
 # 用途：匯入到 Prod。
-   grafana-util dashboard import --import-dir ./dev-assets/prompt --url https://prod-grafana --replace-existing
+   grafana-util dashboard import --input-dir ./dev-assets/prompt --url https://prod-grafana --replace-existing
    ```
 
 **適合什麼時候用**：來源與目標環境的 dashboard 意圖相同，但不想直接帶著來源環境 metadata 時。
@@ -81,10 +81,10 @@
 
 ```bash
 # 用途：解決方案：匯入前先跑 pre-import inspection。
-grafana-util dashboard inspect-export --import-dir ./backups/raw --output-format report-table
+grafana-util dashboard analyze --input-dir ./backups/raw --input-format raw --output-format dependency
 ```
 
-**檢查重點**：確認報告中 `Sources` 欄位列出的每個 UID，都存在於目標環境的 `datasource list`。
+**檢查重點**：確認依賴報告列出的每個 datasource，都存在於目標環境的 `datasource list`。
 
 **適合什麼時候用**：正式匯入前、promotion bundle 送審前，或確認某批 dashboard export 是否真的可攜時。
 
@@ -118,7 +118,7 @@ for file in ./dashboards/raw/*.json; do
   grafana-util dashboard patch-file --input "$file" --tag "ManagedBySRE" --output "$file"
 done
 
-grafana-util dashboard import --import-dir ./dashboards/raw --replace-existing --dry-run --table
+grafana-util dashboard import --input-dir ./dashboards/raw --replace-existing --dry-run --table
 ```
 
 **適合什麼時候用**：修改是本機、機械式，而且可以清楚 review 的結構調整時。

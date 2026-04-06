@@ -8,6 +8,11 @@ grafana\-util\-profile \- manage repo\-local grafana\-util profile configuration
 list, inspect, add, and initialize repo\-local grafana\-util profiles.
 .PP
 when you want to keep Grafana connection defaults in the current checkout and reuse them with \-\-profile.
+.SH BEFORE / AFTER
+.IP \(bu 2
+Before: connection settings live in scattered flags or ad hoc shell history, so the same live command is hard to repeat later.
+.IP \(bu 2
+After: a named profile keeps URL, auth, and secret handling in one place so live commands stay shorter and easier to reuse.
 .SH SUBCOMMANDS
 .TP
 .B list
@@ -24,6 +29,50 @@ print a comment\-rich reference config that operators can copy and adapt. Use wh
 .TP
 .B init
 initialize grafana\-util.yaml in the current working directory. Use when: A checkout does not yet have a repo\-local profile file and you want the built\-in starter template.
+.SH SUCCESS CRITERIA
+.IP \(bu 2
+one profile name captures the connection setup you actually want to reuse
+.IP \(bu 2
+secret storage mode matches the environment instead of forcing every command to restate auth
+.IP \(bu 2
+downstream live commands can stay readable because the profile hides repeated boilerplate
+.SH FAILURE CHECKS
+.PP
+\- if a command fails after switching profiles, verify the resolved show output before assuming the command is broken
+.PP
+\- if a secret is missing, check whether the profile is using file, os, or encrypted\-file storage and whether that mode fits the current machine
+.PP
+\- if a live command still needs too many flags, reconsider whether the profile should carry the default URL or auth values instead
+.PP
+Key flags: the root command is a namespace; operational flags live on subcommands. The shared root flag is \-\-color.
+.PP
+Examples:
+.PP
+# Purpose: List profiles available in the current checkout.
+.PP
+grafana\-util profile list
+.PP
+# Purpose: Inspect the resolved profile before running live commands.
+.PP
+grafana\-util profile show \-\-profile prod \-\-output\-format yaml
+.PP
+# Purpose: Create a reusable production profile with prompt\-based secrets.
+.PP
+grafana\-util profile add prod \-\-url https://grafana.example.com \-\-basic\-user admin \-\-prompt\-password \-\-store\-secret encrypted\-file
+.PP
+# Purpose: Create a CI profile that reads the token from an environment variable.
+.PP
+grafana\-util profile add ci \-\-url https://grafana.example.com \-\-token\-env GRAFANA_CI_TOKEN \-\-store\-secret os
+.PP
+# Purpose: Print a fully annotated profile template.
+.PP
+grafana\-util profile example \-\-mode full
+.PP
+# Purpose: Initialize a fresh grafana\-util.yaml in the current checkout.
+.PP
+grafana\-util profile init \-\-overwrite
+.PP
+Related commands: grafana\-util status live, grafana\-util overview live, grafana\-util change preview.
 .SH SEE ALSO
 \fBgrafana-util\fR(1),
 \fBgrafana-util-status\fR(1),

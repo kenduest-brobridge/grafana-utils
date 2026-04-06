@@ -235,10 +235,10 @@ fn routed_datasource_status_matrix_covers_exists_missing_would_create_and_create
 #[test]
 fn datasource_import_rejects_output_columns_without_table_output() {
     let temp = tempdir().unwrap();
-    let import_dir = temp.path().join("datasources");
-    fs::create_dir_all(&import_dir).unwrap();
+    let input_dir = temp.path().join("datasources");
+    fs::create_dir_all(&input_dir).unwrap();
     fs::write(
-        import_dir.join("datasources.json"),
+        input_dir.join("datasources.json"),
         serde_json::to_string_pretty(&json!([])).unwrap(),
     )
     .unwrap();
@@ -247,8 +247,8 @@ fn datasource_import_rejects_output_columns_without_table_output() {
         DatasourceCliArgs::parse_normalized_from([
             "grafana-util",
             "import",
-            "--import-dir",
-            import_dir.to_str().unwrap(),
+            "--input-dir",
+            input_dir.to_str().unwrap(),
             "--token",
             "token",
             "--dry-run",
@@ -267,10 +267,10 @@ fn datasource_import_rejects_output_columns_without_table_output() {
 #[test]
 fn datasource_import_rejects_extra_secret_or_server_managed_fields() {
     let temp = tempdir().unwrap();
-    let import_dir = temp.path().join("datasources");
-    fs::create_dir_all(&import_dir).unwrap();
+    let input_dir = temp.path().join("datasources");
+    fs::create_dir_all(&input_dir).unwrap();
     fs::write(
-        import_dir.join("export-metadata.json"),
+        input_dir.join("export-metadata.json"),
         serde_json::to_string_pretty(&json!({
             "schemaVersion": 1,
             "kind": "grafana-utils-datasource-export-index",
@@ -286,7 +286,7 @@ fn datasource_import_rejects_extra_secret_or_server_managed_fields() {
     )
     .unwrap();
     fs::write(
-        import_dir.join("datasources.json"),
+        input_dir.join("datasources.json"),
         serde_json::to_string_pretty(&json!([{
             "uid": "prom-main",
             "name": "Prometheus Main",
@@ -303,13 +303,13 @@ fn datasource_import_rejects_extra_secret_or_server_managed_fields() {
     )
     .unwrap();
     fs::write(
-        import_dir.join("index.json"),
+        input_dir.join("index.json"),
         serde_json::to_string_pretty(&json!({"items": []})).unwrap(),
     )
     .unwrap();
 
     let error =
-        load_import_records(&import_dir, DatasourceImportInputFormat::Inventory).unwrap_err();
+        load_import_records(&input_dir, DatasourceImportInputFormat::Inventory).unwrap_err();
 
     assert!(error
         .to_string()
@@ -391,10 +391,10 @@ datasources:
 #[test]
 fn datasource_import_loads_inventory_recovery_bundle_passthrough_fields() {
     let temp = tempdir().unwrap();
-    let import_dir = temp.path().join("datasources");
-    fs::create_dir_all(&import_dir).unwrap();
+    let input_dir = temp.path().join("datasources");
+    fs::create_dir_all(&input_dir).unwrap();
     fs::write(
-        import_dir.join("export-metadata.json"),
+        input_dir.join("export-metadata.json"),
         serde_json::to_string_pretty(&json!({
             "schemaVersion": 1,
             "kind": "grafana-utils-datasource-export-index",
@@ -410,7 +410,7 @@ fn datasource_import_loads_inventory_recovery_bundle_passthrough_fields() {
     )
     .unwrap();
     fs::write(
-        import_dir.join("datasources.json"),
+        input_dir.join("datasources.json"),
         serde_json::to_string_pretty(&json!([{
             "uid": "loki-main",
             "name": "Loki Main",
@@ -438,13 +438,13 @@ fn datasource_import_loads_inventory_recovery_bundle_passthrough_fields() {
     )
     .unwrap();
     fs::write(
-        import_dir.join("index.json"),
+        input_dir.join("index.json"),
         serde_json::to_string_pretty(&json!({"items": []})).unwrap(),
     )
     .unwrap();
 
     let (_, records) =
-        load_import_records(&import_dir, DatasourceImportInputFormat::Inventory).unwrap();
+        load_import_records(&input_dir, DatasourceImportInputFormat::Inventory).unwrap();
 
     assert_eq!(records.len(), 1);
     assert_eq!(records[0].uid, "loki-main");
@@ -568,11 +568,9 @@ fn datasource_inspect_export_renders_inventory_root_in_multiple_output_modes() {
             .unwrap();
 
     assert!(table.contains("UID"));
-    assert!(table.contains("Datasource inspect-export:"));
     assert!(table.contains("Layer: operator-summary"));
     assert!(table.contains("Mode: inventory"));
     assert!(table.contains("Prometheus Main"));
-    assert!(text.contains("Datasource inspect-export:"));
     assert!(text.contains("Layer: operator-summary"));
     assert!(text.contains("Mode: inventory"));
     assert!(text.contains("Bundle: recovery-capable masked export"));
@@ -621,18 +619,19 @@ fn datasource_inspect_export_renders_provisioning_yaml_file_as_csv_and_yaml() {
 }
 
 #[test]
-fn datasource_inspect_export_help_mentions_masked_recovery_bundle_contract() {
+fn datasource_list_help_mentions_local_inventory_source_flags() {
     let mut command = DatasourceCliArgs::command();
     let subcommand = command
-        .find_subcommand_mut("inspect-export")
-        .unwrap_or_else(|| panic!("missing datasource inspect-export help"));
+        .find_subcommand_mut("list")
+        .unwrap_or_else(|| panic!("missing datasource list help"));
     let mut output = Vec::new();
     subcommand.write_long_help(&mut output).unwrap();
     let help = String::from_utf8(output).unwrap();
 
-    assert!(help.contains("recovery-capable masked export"));
-    assert!(help.contains("operator-summary views"));
-    assert!(help.contains("JSON or YAML for the full machine-readable bundle contract"));
+    assert!(help.contains("--input-dir"));
+    assert!(help.contains("--input-format"));
+    assert!(help.contains("local"));
+    assert!(help.contains("inventory"));
 }
 
 #[test]
@@ -770,7 +769,7 @@ fn datasource_diff_help_mentions_operator_summary_report() {
     assert!(help.contains("--input-format"));
     assert!(help.contains("provisioning"));
     assert!(help.contains("operator-summary diff report"));
-    assert!(help.contains("inspect-export --json or --yaml"));
+    assert!(help.contains("datasource list --input-dir"));
 }
 
 #[test]
@@ -992,7 +991,7 @@ fn datasource_inspect_export_requires_explicit_input_type_without_tty_for_ambigu
     let error = prompt_datasource_inspect_export_input_format(&root).unwrap_err();
     assert!(error
         .to_string()
-        .contains("--input-type inventory or --input-type provisioning"));
+        .contains("--input-format inventory or --input-format provisioning"));
 
     fs::remove_dir_all(root).unwrap();
 }
@@ -1021,7 +1020,7 @@ fn discover_export_org_import_scopes_reads_selected_multi_org_root() {
     );
     let args = DatasourceImportArgs {
         common: test_datasource_common_args(),
-        import_dir: import_root,
+        input_dir: import_root,
         input_format: DatasourceImportInputFormat::Inventory,
         org_id: None,
         use_export_org: true,
@@ -1097,7 +1096,7 @@ fn discover_export_org_import_scopes_accepts_workspace_root_and_sorts_children()
     .unwrap();
     let args = DatasourceImportArgs {
         common: test_datasource_common_args(),
-        import_dir: workspace_root,
+        input_dir: workspace_root,
         input_format: DatasourceImportInputFormat::Inventory,
         org_id: None,
         use_export_org: true,
@@ -1127,8 +1126,8 @@ fn discover_export_org_import_scopes_accepts_workspace_root_and_sorts_children()
         vec![2, 9]
     );
     assert_eq!(scopes[0].source_org_name, "Org Two");
-    assert!(scopes[0].import_dir.ends_with("org_2_Org_Two"));
-    assert!(scopes[1].import_dir.ends_with("org_9_Ops_Org"));
+    assert!(scopes[0].input_dir.ends_with("org_2_Org_Two"));
+    assert!(scopes[1].input_dir.ends_with("org_9_Ops_Org"));
 }
 
 #[test]
@@ -1146,7 +1145,7 @@ fn discover_export_org_import_scopes_errors_when_selected_org_missing() {
     );
     let args = DatasourceImportArgs {
         common: test_datasource_common_args(),
-        import_dir: import_root,
+        input_dir: import_root,
         input_format: DatasourceImportInputFormat::Inventory,
         org_id: None,
         use_export_org: true,
@@ -1195,7 +1194,7 @@ fn datasource_import_with_use_export_org_requires_basic_auth() {
             "http://grafana.example",
             "--token",
             "token",
-            "--import-dir",
+            "--input-dir",
             import_root.to_str().unwrap(),
             "--use-export-org",
             "--dry-run",
@@ -1271,9 +1270,13 @@ fn diff_datasources_with_live_returns_zero_for_matching_inventory() {
     .unwrap()
     .clone()];
 
-    let (compared_count, differences) =
-        diff_datasources_with_live(&diff_dir, DatasourceImportInputFormat::Inventory, &live)
-            .unwrap();
+    let (compared_count, differences) = diff_datasources_with_live(
+        &diff_dir,
+        DatasourceImportInputFormat::Inventory,
+        &live,
+        crate::common::DiffOutputFormat::Text,
+    )
+    .unwrap();
 
     assert_eq!(compared_count, 1);
     assert_eq!(differences, 0);
@@ -1305,9 +1308,13 @@ fn diff_datasources_with_live_detects_changed_inventory() {
     .unwrap()
     .clone()];
 
-    let (compared_count, differences) =
-        diff_datasources_with_live(&diff_dir, DatasourceImportInputFormat::Inventory, &live)
-            .unwrap();
+    let (compared_count, differences) = diff_datasources_with_live(
+        &diff_dir,
+        DatasourceImportInputFormat::Inventory,
+        &live,
+        crate::common::DiffOutputFormat::Text,
+    )
+    .unwrap();
 
     assert_eq!(compared_count, 1);
     assert_eq!(differences, 1);
@@ -1334,19 +1341,25 @@ fn diff_datasources_with_live_supports_provisioning_root_directory_and_file() {
     let provisioning_dir = diff_root.join("provisioning");
     let provisioning_file = provisioning_dir.join("datasources.yaml");
 
-    let (root_count, root_differences) =
-        diff_datasources_with_live(&diff_root, DatasourceImportInputFormat::Provisioning, &live)
-            .unwrap();
+    let (root_count, root_differences) = diff_datasources_with_live(
+        &diff_root,
+        DatasourceImportInputFormat::Provisioning,
+        &live,
+        crate::common::DiffOutputFormat::Text,
+    )
+    .unwrap();
     let (dir_count, dir_differences) = diff_datasources_with_live(
         &provisioning_dir,
         DatasourceImportInputFormat::Provisioning,
         &live,
+        crate::common::DiffOutputFormat::Text,
     )
     .unwrap();
     let (file_count, file_differences) = diff_datasources_with_live(
         &provisioning_file,
         DatasourceImportInputFormat::Provisioning,
         &live,
+        crate::common::DiffOutputFormat::Text,
     )
     .unwrap();
 

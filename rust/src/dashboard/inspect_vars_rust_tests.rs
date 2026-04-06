@@ -4,10 +4,14 @@ use super::test_support::{
     extract_dashboard_variables, parse_cli_from, DashboardCommand, SimpleOutputFormat,
 };
 use crate::dashboard::vars::{
-    render_dashboard_variable_output, DashboardVariableDocument, DashboardVariableRow,
+    execute_dashboard_variable_inspection, render_dashboard_variable_output,
+    DashboardVariableDocument, DashboardVariableRow,
 };
+use crate::dashboard::DashboardImportInputFormat;
 use serde_json::json;
+use std::fs;
 use std::path::PathBuf;
+use tempfile::tempdir;
 
 #[test]
 fn parse_inspect_vars_args_supports_dashboard_url_only() {
@@ -85,6 +89,127 @@ fn parse_inspect_vars_args_supports_output_file() {
         Some(PathBuf::from("/tmp/inspect-vars.json"))
     );
     assert!(!args.also_stdout);
+}
+
+#[test]
+fn execute_dashboard_variable_inspection_supports_local_input_file() {
+    let temp = tempdir().unwrap();
+    let input_path = temp.path().join("cpu-main.json");
+    fs::write(
+        &input_path,
+        serde_json::to_string_pretty(&json!({
+            "dashboard": {
+                "uid": "cpu-main",
+                "title": "CPU Main",
+                "templating": {
+                    "list": [
+                        {
+                            "name": "cluster",
+                            "type": "query",
+                            "label": "Cluster",
+                            "current": {"text": "prod-a", "value": "prod-a"},
+                            "options": [{"text": "prod-a", "value": "prod-a"}]
+                        }
+                    ]
+                }
+            }
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+
+    let args = super::test_support::InspectVarsArgs {
+        common: super::test_support::CommonCliArgs {
+            color: crate::common::CliColorChoice::Auto,
+            profile: None,
+            url: "https://grafana.example.com".to_string(),
+            api_token: Some("secret".to_string()),
+            username: None,
+            password: None,
+            prompt_password: false,
+            prompt_token: false,
+            timeout: 30,
+            verify_ssl: false,
+        },
+        dashboard_uid: None,
+        dashboard_url: None,
+        input: Some(input_path.clone()),
+        input_dir: None,
+        input_format: DashboardImportInputFormat::Raw,
+        vars_query: None,
+        org_id: None,
+        output_format: Some(SimpleOutputFormat::Yaml),
+        no_header: false,
+        output_file: None,
+        also_stdout: false,
+    };
+
+    let document = execute_dashboard_variable_inspection(&args).unwrap();
+    assert_eq!(document.dashboard_uid, "cpu-main");
+    assert_eq!(document.dashboard_title, "CPU Main");
+    assert_eq!(document.variable_count, 1);
+    assert_eq!(document.variables[0].name, "cluster");
+}
+
+#[test]
+fn execute_dashboard_variable_inspection_supports_local_import_dir() {
+    let temp = tempdir().unwrap();
+    let raw_dir = temp.path().join("raw");
+    fs::create_dir_all(&raw_dir).unwrap();
+    fs::write(
+        raw_dir.join("cpu-main.json"),
+        serde_json::to_string_pretty(&json!({
+            "dashboard": {
+                "uid": "cpu-main",
+                "title": "CPU Main",
+                "templating": {
+                    "list": [
+                        {
+                            "name": "cluster",
+                            "type": "query",
+                            "label": "Cluster",
+                            "current": {"text": "prod-a", "value": "prod-a"},
+                            "options": [{"text": "prod-a", "value": "prod-a"}]
+                        }
+                    ]
+                }
+            }
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+
+    let args = super::test_support::InspectVarsArgs {
+        common: super::test_support::CommonCliArgs {
+            color: crate::common::CliColorChoice::Auto,
+            profile: None,
+            url: "https://grafana.example.com".to_string(),
+            api_token: Some("secret".to_string()),
+            username: None,
+            password: None,
+            prompt_password: false,
+            prompt_token: false,
+            timeout: 30,
+            verify_ssl: false,
+        },
+        dashboard_uid: Some("cpu-main".to_string()),
+        dashboard_url: None,
+        input: None,
+        input_dir: Some(raw_dir.clone()),
+        input_format: DashboardImportInputFormat::Raw,
+        vars_query: None,
+        org_id: None,
+        output_format: Some(SimpleOutputFormat::Yaml),
+        no_header: false,
+        output_file: None,
+        also_stdout: false,
+    };
+
+    let document = execute_dashboard_variable_inspection(&args).unwrap();
+    assert_eq!(document.dashboard_uid, "cpu-main");
+    assert_eq!(document.dashboard_title, "CPU Main");
+    assert_eq!(document.variable_count, 1);
+    assert_eq!(document.variables[0].name, "cluster");
 }
 
 #[test]
@@ -228,6 +353,9 @@ fn render_dashboard_variable_output_supports_text_yaml_and_json() {
         },
         dashboard_uid: Some("infra-main".to_string()),
         dashboard_url: None,
+        input: None,
+        input_dir: None,
+        input_format: DashboardImportInputFormat::Raw,
         vars_query: None,
         org_id: None,
         output_format: None,

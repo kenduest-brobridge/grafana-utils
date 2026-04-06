@@ -8,10 +8,25 @@ grafana\-util\-datasource\-types \- Show the built\-in supported datasource type
 Show the built\-in supported datasource type catalog.
 .PP
 Use this when you need to see the canonical datasource type ids that the CLI normalizes and supports for create flows.
+.SH BEFORE / AFTER
+.IP \(bu 2
+Before: you had to guess the canonical plugin type ids from UI labels, examples, or stale notes.
+.IP \(bu 2
+After: one catalog lists the built\-in datasource type ids the CLI normalizes for create flows.
 .SH COMMON OPTIONS
 .TP
 .B \-\-output\-format
 render the catalog as text, table, csv, json, or yaml.
+.SH SUCCESS CRITERIA
+.IP \(bu 2
+you can pick the right type id before creating or modifying a datasource
+.IP \(bu 2
+the list is short enough to scan quickly but explicit enough for automation
+.SH FAILURE CHECKS
+.IP \(bu 2
+if a type is missing, confirm whether the plugin is actually supported by this repo version
+.IP \(bu 2
+if the catalog does not match the Grafana you expect, check whether you are looking at an older binary
 .SH EXAMPLES
 .PP
 Show the built\-in supported datasource type catalog.

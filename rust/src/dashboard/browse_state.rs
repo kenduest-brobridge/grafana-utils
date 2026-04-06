@@ -50,6 +50,7 @@ pub(crate) struct SelectionAnchor {
 
 pub(crate) struct BrowserState {
     pub(crate) document: DashboardBrowseDocument,
+    pub(crate) local_mode: bool,
     pub(crate) list_state: ListState,
     pub(crate) detail_scroll: u16,
     pub(crate) live_view_cache: BTreeMap<String, Vec<String>>,
@@ -63,16 +64,24 @@ pub(crate) struct BrowserState {
 }
 
 impl BrowserState {
+    #[cfg(test)]
     pub(crate) fn new(document: DashboardBrowseDocument) -> Self {
+        Self::new_with_mode(document, false)
+    }
+
+    pub(crate) fn new_with_mode(document: DashboardBrowseDocument, local_mode: bool) -> Self {
         let mut list_state = ListState::default();
         list_state.select((!document.nodes.is_empty()).then_some(0));
         let status = if document.nodes.is_empty() {
             "No dashboards matched the current tree.".to_string()
+        } else if local_mode {
+            "Loaded local dashboard tree. Live actions are unavailable in browse mode.".to_string()
         } else {
             "Loaded dashboard tree. Use e for edit, E for raw JSON edit, v for live details, and d/D for delete.".to_string()
         };
         Self {
             document,
+            local_mode,
             list_state,
             detail_scroll: 0,
             live_view_cache: BTreeMap::new(),

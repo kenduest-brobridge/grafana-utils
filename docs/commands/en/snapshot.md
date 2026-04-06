@@ -4,19 +4,20 @@
 
 Purpose: export and review Grafana snapshot inventory bundles.
 
-When to use: when you want a local snapshot root that captures dashboard and datasource inventory for later inspection.
+When to use: when you want a local snapshot root that captures dashboard, datasource, and access inventory for later inspection.
 
-Description: open this page when you need an offline snapshot of Grafana inventory that can be reviewed later without talking to the server again. The `snapshot` namespace is useful for handoff, backup, incident review, or any workflow where you want one local artifact before moving into deeper analysis.
+Description: open this page when you need an offline snapshot of Grafana inventory that can be reviewed later without talking to the server again. The `snapshot` namespace is useful for handoff, backup, incident review, or any workflow where you want one local artifact before moving into deeper analysis. Snapshot exports now stage dashboard, datasource, and access lanes under one root and also write `snapshot-metadata.json` so later tooling can discover those lanes without guessing paths.
 
 ## Before / After
 
-- **Before**: snapshot-style review usually means re-querying Grafana or opening a pile of dashboards and datasources one by one.
+- **Before**: snapshot-style review usually means re-querying Grafana or opening a pile of dashboards, datasources, and access records one by one.
 - **After**: export first, then review the local bundle as a repeatable artifact without touching the live server again.
 
 ## What success looks like
 
 - you can hand off a snapshot root and another operator can inspect it without asking for live access
 - export output is a durable artifact instead of a temporary UI session
+- the snapshot root includes lane metadata that later analysis can resolve without rescanning the whole tree
 - review output is clear enough to feed into a follow-up analysis or incident note
 
 ## Failure checks
@@ -31,7 +32,7 @@ Examples:
 
 ```bash
 # Purpose: Export a local snapshot bundle from live Grafana.
-grafana-util snapshot export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./snapshot
+grafana-util snapshot export --url http://localhost:3000 --basic-user admin --basic-password admin --output-dir ./snapshot
 ```
 
 ```bash
@@ -43,22 +44,32 @@ Related commands: `grafana-util overview`, `grafana-util status staged`, `grafan
 
 ## `export`
 
-Purpose: export dashboard and datasource inventory into a local snapshot bundle.
+Purpose: export dashboard, datasource, and access inventory into a local snapshot bundle.
 
 When to use: when you need a local snapshot root that can be reviewed without Grafana access.
 
-Key flags: `--export-dir`, `--overwrite`, plus the shared Grafana connection and auth flags.
+What gets written:
+
+- `snapshot/dashboards/`
+- `snapshot/datasources/`
+- `snapshot/access/users/`
+- `snapshot/access/teams/`
+- `snapshot/access/orgs/`
+- `snapshot/access/service-accounts/`
+- `snapshot/snapshot-metadata.json`
+
+Key flags: `--output-dir`, `--overwrite`, plus the shared Grafana connection and auth flags.
 
 Examples:
 
 ```bash
 # Purpose: export.
-grafana-util snapshot export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./snapshot
+grafana-util snapshot export --url http://localhost:3000 --basic-user admin --basic-password admin --output-dir ./snapshot
 ```
 
 ```bash
 # Purpose: export.
-grafana-util snapshot export --profile prod --export-dir ./snapshot --overwrite
+grafana-util snapshot export --profile prod --output-dir ./snapshot --overwrite
 ```
 
 Related commands: `snapshot review`, `change bundle`, `overview`.
@@ -68,6 +79,8 @@ Related commands: `snapshot review`, `change bundle`, `overview`.
 Purpose: review a local snapshot inventory without touching Grafana.
 
 When to use: when you want to inspect an exported snapshot root as table, csv, text, json, yaml, or interactive output.
+
+Review summary now includes access counts for users, teams, orgs, and service accounts alongside dashboard and datasource coverage.
 
 Key flags: `--input-dir`, `--interactive`, `--output-format`.
 

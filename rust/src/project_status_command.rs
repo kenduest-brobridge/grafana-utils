@@ -292,6 +292,7 @@ fn run_project_status_interactive(status: ProjectStatus) -> CommonResult<()> {
 }
 
 #[cfg(not(feature = "tui"))]
+#[allow(dead_code)]
 fn run_project_status_interactive(_status: ProjectStatus) -> CommonResult<()> {
     Err(crate::common::tui(
         "Project-status interactive mode requires the `tui` feature.",

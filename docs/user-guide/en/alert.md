@@ -133,7 +133,7 @@ grafana-util alert apply \
 | Command | Full Example with Arguments |
 | :--- | :--- |
 | **List Rules** | `grafana-util alert list-rules --all-orgs --table` |
-| **Export** | `grafana-util alert export --export-dir ./alerts --overwrite` |
+| **Export** | `grafana-util alert export --output-dir ./alerts --overwrite` |
 | **Plan** | `grafana-util alert plan --desired-dir ./alerts/desired --prune --output-format json` |
 | **Apply** | `grafana-util alert apply --plan-file ./plan.json --approve` |
 | **Set Route** | `grafana-util alert set-route --desired-dir ./alerts/desired --receiver pagerduty` |

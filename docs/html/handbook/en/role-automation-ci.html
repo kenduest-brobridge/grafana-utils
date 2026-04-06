@@ -787,7 +787,7 @@ grafana-util profile show --profile ci --output-format yaml</code></pre>
 <pre><code># Purpose: First commands to run.
 grafana-util status staged --desired-file ./desired.json --output-format json</code></pre>
 <pre><code># Purpose: First commands to run.
-grafana-util change preflight --desired-file ./desired.json --fetch-live --output-format json</code></pre>
+grafana-util change check --desired-file ./desired.json --fetch-live --output-format json</code></pre>
 <pre><code># Purpose: First commands to run.
 grafana-util overview live --profile ci --output-format yaml</code></pre>
 <p>If the job only needs to validate one live surface, you can replace the last line with an equivalent direct Basic-auth or narrow-token read, but do not ask the credential to see more than its real scope.</p>

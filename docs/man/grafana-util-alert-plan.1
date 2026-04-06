@@ -12,6 +12,11 @@ Review the changes needed to align Grafana with a desired\-state alert tree.
 Prune live\-only alert resources from the plan when needed.
 .IP \(bu 2
 Repair linked rules with dashboard or panel remapping during planning.
+.SH BEFORE / AFTER
+.IP \(bu 2
+Before: alert changes are hard to reason about until you attempt apply.
+.IP \(bu 2
+After: one plan shows create/update/delete intent and linked\-rule repair choices before live mutation.
 .SH COMMON OPTIONS
 .IP \(bu 2
 \-\-desired\-dir points to the staged alert desired\-state tree.
@@ -21,6 +26,20 @@ Repair linked rules with dashboard or panel remapping during planning.
 \-\-dashboard\-uid\-map and \-\-panel\-id\-map repair linked alert rules.
 .IP \(bu 2
 \-\-output\-format renders the plan as text or json.
+.SH SUCCESS CRITERIA
+.IP \(bu 2
+you can review alert changes before apply
+.IP \(bu 2
+linked dashboard or panel remapping is visible in the plan step
+.IP \(bu 2
+delete candidates are explicit instead of implicit
+.SH FAILURE CHECKS
+.IP \(bu 2
+if the plan is missing expected rules, check the desired tree first
+.IP \(bu 2
+if linked rules still look broken, verify the dashboard and panel mapping files
+.IP \(bu 2
+if prune feels too destructive, remove \-\-prune and compare again before apply
 .SH EXAMPLES
 .PP
 Build a staged alert management plan from desired alert resources.

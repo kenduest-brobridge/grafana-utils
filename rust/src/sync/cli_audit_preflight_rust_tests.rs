@@ -315,7 +315,7 @@ fn run_sync_cli_apply_accepts_explicit_audit_metadata() {
     .unwrap();
 
     let result = run_sync_cli(SyncGroupCommand::Apply(SyncApplyArgs {
-        plan_file,
+        plan_file: Some(plan_file),
         preflight_file: None,
         bundle_preflight_file: None,
         approve: true,

@@ -2,11 +2,12 @@
 
 ## 目的
 
-列出、瀏覽、建立、修改、匯出、匯入、比對或刪除 Grafana 使用者。
+列出或瀏覽 live 與本機的 Grafana 使用者，以及建立、修改、匯出、匯入、比對或刪除 Grafana 使用者。
 
 ## 使用時機
 
 - 檢視目前 org 或全域管理範圍內的使用者。
+- 從 live Grafana 或本機匯出套件中檢視使用者。
 - 以登入名、電子郵件、角色與管理員設定建立或更新使用者。
 - 匯出與匯入使用者清單套件。
 - 從 org 成員關係或全域登錄中移除使用者。
@@ -30,12 +31,12 @@
 
 ## 主要旗標
 
-- `list`: `--scope`, `--all-orgs`, `--query`, `--login`, `--email`, `--org-role`, `--grafana-admin`, `--with-teams`, `--page`, `--per-page`, `--table`, `--csv`, `--json`, `--yaml`, `--output-format`
-- `browse`: `--scope`, `--all-orgs`, `--current-org`, `--query`, `--login`, `--email`, `--org-role`, `--grafana-admin`, `--page`, `--per-page`
+- `list`: `--input-dir`, `--scope`, `--all-orgs`, `--query`, `--login`, `--email`, `--org-role`, `--grafana-admin`, `--with-teams`, `--page`, `--per-page`, `--table`, `--csv`, `--json`, `--yaml`, `--output-format`
+- `browse`: `--input-dir`, `--scope`, `--all-orgs`, `--current-org`, `--query`, `--login`, `--email`, `--org-role`, `--grafana-admin`, `--page`, `--per-page`
 - `add`: `--login`, `--email`, `--name`, `--password` 或 `--password-file` 或 `--prompt-user-password`, `--org-role`, `--grafana-admin`, `--json`
 - `modify`: `--user-id`, `--login`, `--email`, `--set-login`, `--set-email`, `--set-name`, `--set-password` 或 `--set-password-file` 或 `--prompt-set-password`, `--set-org-role`, `--set-grafana-admin`, `--json`
-- `export` 與 `diff`: `--export-dir` 或 `--diff-dir`, `--overwrite`, `--dry-run`, `--scope`, `--with-teams`
-- `import`: `--import-dir`, `--scope`, `--replace-existing`, `--dry-run`, `--table`, `--json`, `--output-format`, `--yes`
+- `export` 與 `diff`: `--output-dir` 或 `--diff-dir`, `--overwrite`, `--dry-run`, `--scope`, `--with-teams`
+- `import`: `--input-dir`, `--scope`, `--replace-existing`, `--dry-run`, `--table`, `--json`, `--output-format`, `--yes`
 - `delete`: `--user-id`, `--login`, `--email`, `--scope`, `--yes`, `--json`
 
 ## 範例
@@ -43,6 +44,16 @@
 ```bash
 # 用途：在調整成員權限前，先看清楚單一 org 裡有哪些使用者。
 grafana-util access user list --profile prod --scope org --output-format text
+```
+
+```bash
+# 用途：先看本機存好的使用者套件。
+grafana-util access user list --input-dir ./access-users --output-format table
+```
+
+```bash
+# 用途：直接互動式瀏覽本機使用者套件，不碰 live Grafana。
+grafana-util access user browse --input-dir ./access-users --login alice
 ```
 
 ```bash

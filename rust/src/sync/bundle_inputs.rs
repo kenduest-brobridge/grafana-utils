@@ -346,7 +346,7 @@ pub(crate) fn load_dashboard_provisioning_bundle_sections(
     )
 }
 
-pub(crate) fn load_alerting_bundle_section(export_dir: &Path) -> Result<Value> {
+pub(crate) fn load_alerting_bundle_section(output_dir: &Path) -> Result<Value> {
     let mut alerting = Map::from_iter(vec![
         ("rules".to_string(), Value::Array(Vec::<Value>::new())),
         (
@@ -357,9 +357,9 @@ pub(crate) fn load_alerting_bundle_section(export_dir: &Path) -> Result<Value> {
         ("policies".to_string(), Value::Array(Vec::<Value>::new())),
         ("templates".to_string(), Value::Array(Vec::<Value>::new())),
     ]);
-    for path in discover_json_files(export_dir, &["index.json", "export-metadata.json"])? {
+    for path in discover_json_files(output_dir, &["index.json", "export-metadata.json"])? {
         let relative_path = path
-            .strip_prefix(export_dir)
+            .strip_prefix(output_dir)
             .unwrap_or(&path)
             .to_string_lossy()
             .replace('\\', "/");
@@ -385,7 +385,7 @@ pub(crate) fn load_alerting_bundle_section(export_dir: &Path) -> Result<Value> {
         "templateCount": alerting.get("templates").and_then(Value::as_array).map(|items| items.len()).unwrap_or(0),
     });
     alerting.insert("summary".to_string(), summary);
-    let export_metadata_path = export_dir.join("export-metadata.json");
+    let export_metadata_path = output_dir.join("export-metadata.json");
     if export_metadata_path.is_file() {
         alerting.insert(
             "exportMetadata".to_string(),
@@ -394,7 +394,7 @@ pub(crate) fn load_alerting_bundle_section(export_dir: &Path) -> Result<Value> {
     }
     alerting.insert(
         "exportDir".to_string(),
-        Value::String(export_dir.display().to_string()),
+        Value::String(output_dir.display().to_string()),
     );
     Ok(Value::Object(alerting))
 }

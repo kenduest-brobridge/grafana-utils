@@ -1,10 +1,10 @@
 # dashboard governance-gate
 
 ## Purpose
-Evaluate governance policy against dashboard inspect JSON artifacts.
+Evaluate governance policy directly against live Grafana or a local export tree, with saved analysis artifacts as an advanced reuse path.
 
 ## When to use
-Use this when you already have `governance-json` and query-report artifacts and want a policy pass or fail result before promotion.
+Use this when you want a policy pass or fail result before promotion. Prefer direct live or local analysis inputs for the common path; keep `governance-json` and `queries-json` for advanced reuse and CI pipelines.
 
 ## Before / After
 
@@ -15,20 +15,28 @@ Use this when you already have `governance-json` and query-report artifacts and 
 - `--policy-source`: choose `file` or `builtin`.
 - `--policy`: policy file path when using file-based policy input.
 - `--builtin-policy`: named built-in policy when using builtin policy input.
-- `--governance`: path to dashboard inspect governance JSON.
-- `--queries`: path to dashboard inspect query-report JSON.
+- `--url`: analyze live Grafana directly.
+- `--input-dir`: analyze a local export tree directly.
+- `--input-format`: choose `raw` or `provisioning` when analyzing local exports.
+- `--governance`: path to dashboard inspect governance JSON (`governance-json` artifact, advanced reuse).
+- `--queries`: path to dashboard inspect query-report JSON (`queries-json` artifact, advanced reuse).
 - `--output-format`: render text or JSON.
 - `--json-output`: optionally write the normalized result JSON.
 - `--interactive`: open the interactive terminal browser over findings.
 
 ## Examples
 ```bash
-# Purpose: Evaluate governance policy against dashboard inspect JSON artifacts.
-grafana-util dashboard governance-gate --policy-source file --policy ./policy.yaml --governance ./governance.json --queries ./queries.json
+# Purpose: Evaluate governance policy against live Grafana directly.
+grafana-util dashboard governance-gate --url http://localhost:3000 --basic-user admin --basic-password admin --policy-source file --policy ./policy.yaml
 ```
 
 ```bash
-# Purpose: Evaluate governance policy against dashboard inspect JSON artifacts.
+# Purpose: Evaluate governance policy against a local export tree directly.
+grafana-util dashboard governance-gate --input-dir ./dashboards/raw --input-format raw --policy-source builtin --builtin-policy default --output-format json --json-output ./governance-check.json
+```
+
+```bash
+# Purpose: Advanced reuse: evaluate governance policy against reusable analysis artifacts.
 grafana-util dashboard governance-gate --policy-source builtin --builtin-policy default --governance ./governance.json --queries ./queries.json --output-format json --json-output ./governance-check.json
 ```
 
@@ -45,6 +53,6 @@ grafana-util dashboard governance-gate --policy-source builtin --builtin-policy 
 - if automation reads the result, prefer `--output-format json` and validate the contract before treating a pass/fail as final
 
 ## Related commands
-- [dashboard inspect-export](./dashboard-inspect-export.md)
-- [dashboard inspect-live](./dashboard-inspect-live.md)
+- [dashboard analyze (local)](./dashboard-analyze-export.md)
+- [dashboard analyze (live)](./dashboard-analyze-live.md)
 - [dashboard topology](./dashboard-topology.md)

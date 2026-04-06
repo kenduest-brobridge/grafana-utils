@@ -9,6 +9,146 @@ use crate::common::{message, tool_version, Result};
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 
+fn create_update_kind_rank(kind: &str) -> usize {
+    match kind {
+        "folder" => 0,
+        "datasource" => 1,
+        "dashboard" => 2,
+        kind if is_alert_sync_kind(kind) => 3,
+        _ => 4,
+    }
+}
+
+fn delete_kind_rank(kind: &str) -> usize {
+    match kind {
+        kind if is_alert_sync_kind(kind) => 0,
+        "dashboard" => 1,
+        "datasource" => 2,
+        "folder" => 3,
+        _ => 4,
+    }
+}
+
+fn action_rank(action: &str) -> usize {
+    match action {
+        "would-create" => 0,
+        "would-update" => 1,
+        "would-delete" => 2,
+        "unmanaged" => 3,
+        "noop" => 4,
+        _ => 5,
+    }
+}
+
+fn operation_kind_rank(kind: &str, action: &str) -> usize {
+    if action == "would-delete" {
+        delete_kind_rank(kind)
+    } else {
+        create_update_kind_rank(kind)
+    }
+}
+
+fn operation_group_label(action: &str) -> &'static str {
+    match action {
+        "would-delete" => "delete",
+        "would-create" | "would-update" => "create-update",
+        "unmanaged" => "blocked",
+        _ => "read-only",
+    }
+}
+
+fn annotate_and_sort_operations(operations: &mut [Value]) {
+    operations.sort_by(|left, right| {
+        let left_action = left
+            .get("action")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        let right_action = right
+            .get("action")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        let left_kind = left.get("kind").and_then(Value::as_str).unwrap_or_default();
+        let right_kind = right
+            .get("kind")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        let left_identity = left
+            .get("identity")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        let right_identity = right
+            .get("identity")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        action_rank(left_action)
+            .cmp(&action_rank(right_action))
+            .then_with(|| {
+                operation_kind_rank(left_kind, left_action)
+                    .cmp(&operation_kind_rank(right_kind, right_action))
+            })
+            .then_with(|| left_kind.cmp(right_kind))
+            .then_with(|| left_identity.cmp(right_identity))
+    });
+
+    for (index, item) in operations.iter_mut().enumerate() {
+        let Some(object) = item.as_object_mut() else {
+            continue;
+        };
+        let action = object
+            .get("action")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string();
+        let kind = object
+            .get("kind")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string();
+        object.insert("orderIndex".to_string(), serde_json::json!(index + 1));
+        object.insert(
+            "orderGroup".to_string(),
+            serde_json::json!(operation_group_label(&action)),
+        );
+        object.insert(
+            "kindOrder".to_string(),
+            serde_json::json!(operation_kind_rank(&kind, &action)),
+        );
+    }
+}
+
+fn collect_plan_blocked_reasons(operations: &[Value]) -> Vec<String> {
+    let mut reasons = Vec::new();
+    for item in operations {
+        let Some(object) = item.as_object() else {
+            continue;
+        };
+        let action = object
+            .get("action")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        if action != "unmanaged" {
+            continue;
+        }
+        let kind = object
+            .get("kind")
+            .and_then(Value::as_str)
+            .unwrap_or("unknown");
+        let identity = object
+            .get("identity")
+            .and_then(Value::as_str)
+            .unwrap_or("unknown");
+        let reason = object
+            .get("reason")
+            .and_then(Value::as_str)
+            .unwrap_or("blocked");
+        reasons.push(format!("kind={kind} identity={identity} reason={reason}"));
+        if reasons.len() >= 3 {
+            break;
+        }
+    }
+    reasons
+}
+
 fn build_index(specs: &[SyncResourceSpec]) -> Result<BTreeMap<(String, String), SyncResourceSpec>> {
     let mut index = BTreeMap::new();
     for spec in specs {
@@ -185,6 +325,7 @@ pub(crate) fn build_sync_plan_summary_document(operations: &[Value]) -> Value {
         "would_delete": would_delete,
         "noop": noop,
         "unmanaged": unmanaged,
+        "blocked_reasons": collect_plan_blocked_reasons(operations),
         // Keep these aggregate names stable so older renderers can continue to
         // read the same backward-compatible summary buckets.
         "alert_candidate": alert_assessment["summary"]["candidateCount"],
@@ -271,6 +412,7 @@ pub fn build_sync_plan_document(
         }));
     }
 
+    annotate_and_sort_operations(&mut operations);
     let alert_assessment = build_sync_alert_assessment_document(&operations);
     Ok(serde_json::json!({
         "kind": SYNC_PLAN_KIND,
@@ -280,6 +422,11 @@ pub fn build_sync_plan_document(
         "reviewRequired": true,
         "reviewed": false,
         "allowPrune": allow_prune,
+        "ordering": {
+            "mode": "dependency-aware",
+            "createUpdateKindOrder": ["folder", "datasource", "dashboard", "alert"],
+            "deleteKindOrder": ["alert", "dashboard", "datasource", "folder"],
+        },
         "summary": build_sync_plan_summary_document(&operations),
         "alertAssessment": alert_assessment,
         "operations": operations,

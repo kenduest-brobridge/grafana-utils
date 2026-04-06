@@ -8,14 +8,14 @@ use crossterm::event::{self, Event, KeyEventKind};
 use reqwest::Method;
 use serde_json::Value;
 
+use crate::access::TeamBrowseArgs;
 use crate::common::Result;
 
 #[cfg(feature = "tui")]
-use super::browse_terminal::TerminalSession;
+use super::browse_support::default_user_browse_args_from_team;
+use super::browse_support::BrowseSwitch;
 #[cfg(feature = "tui")]
-use super::{default_user_browse_args_from_team, BrowseSwitch, TeamBrowseArgs};
-#[cfg(not(feature = "tui"))]
-use super::{BrowseSwitch, TeamBrowseArgs};
+use super::browse_terminal::TerminalSession;
 #[cfg(feature = "tui")]
 #[path = "team_browse_dialog.rs"]
 mod team_browse_dialog;

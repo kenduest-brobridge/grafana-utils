@@ -770,7 +770,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">When to open this page</p>
-  <ul class="command-intro-list"><li>List or browse access inventory.</li><li>Create, modify, export, import, diff, or delete access resources.</li><li>Manage service-account tokens.</li></ul>
+  <ul class="command-intro-list"><li>List live or local access inventory.</li><li>Create, modify, export, import, diff, or delete access resources.</li><li>Manage service-account tokens.</li></ul>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">Who this page is for</p>
@@ -781,12 +781,12 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="purpose">Purpose</h2>
 <p>Run the access-management command surface for users, orgs, teams, and service accounts.</p>
 <h2 id="when-to-use">When to use</h2>
-<ul><li>List or browse access inventory.</li><li>Create, modify, export, import, diff, or delete access resources.</li><li>Manage service-account tokens.</li></ul>
+<ul><li>List live or local access inventory.</li><li>Create, modify, export, import, diff, or delete access resources.</li><li>Manage service-account tokens.</li></ul>
 <h2 id="description">Description</h2>
 <p>Open this page when the work is about Grafana identity and access as a whole. The <code>access</code> namespace is the grouped entrypoint for org, user, team, service account, and service-account token lifecycle work.</p>
 <p>This page is for administrators who first need to choose the right access surface. If your task touches membership, org structure, service-account rotation, or access snapshots, start here and then jump into the matching subcommand page.</p>
 <h2 id="workflow-lanes">Workflow lanes</h2>
-<ul><li><strong>Inspect</strong>: user, org, team, service-account, and token inventory reads.</li><li><strong>Move</strong>: export, import, diff, and snapshot paths for moving or comparing access state.</li><li><strong>Review Before Mutate</strong>: lifecycle changes, membership edits, and service-account token rotation.</li></ul>
+<ul><li><strong>Inspect</strong>: user, org, team, and service-account inventory reads from live Grafana or local bundles.</li><li><strong>Move</strong>: export, import, diff, and snapshot paths for moving or comparing access state.</li><li><strong>Review Before Mutate</strong>: lifecycle changes, membership edits, and service-account token rotation.</li></ul>
 <p>Choose this page when you need to decide whether the next access task is inventory, migration, or a reviewed mutation.</p>
 <h2 id="before-after">Before / After</h2>
 <ul><li><strong>Before</strong>: access work is split across ad hoc UI clicks, one-off API calls, and hard-to-repeat shell commands.</li><li><strong>After</strong>: the same access surface is grouped into one CLI namespace, so inventory, lifecycle, token work, and snapshots can share the same defaults and review flow.</li></ul>
@@ -801,15 +801,15 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="examples">Examples</h2>
 <pre><code># Purpose: Inspect access inventory before choosing a lane.
 grafana-util access user list --profile prod --json</code></pre>
-<pre><code># Purpose: List service accounts from a live org.
-grafana-util access service-account list --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output-format text</code></pre>
+<pre><code># Purpose: Review a saved org bundle before importing or diffing it.
+grafana-util access org list --input-dir ./access-orgs --output-format text</code></pre>
 <pre><code># Purpose: Add a service-account token after reviewing the target account.
 grafana-util access service-account token add --url http://localhost:3000 --basic-user admin --basic-password admin --name deploy-bot --token-name nightly</code></pre>
 <h2 id="related-commands">Related commands</h2>
 <h3 id="inspect">Inspect</h3>
-<ul><li><a href="access-user.html">access user</a></li><li><a href="access-org.html">access org</a></li><li><a href="access-team.html">access team</a></li></ul>
+<ul><li><a href="access-user.html">access user</a></li><li><a href="access-org.html">access org</a></li><li><a href="access-team.html">access team</a></li><li><a href="access-service-account.html">access service-account</a></li></ul>
 <h3 id="review-before-mutate">Review Before Mutate</h3>
-<ul><li><a href="access-service-account.html">access service-account</a></li><li><a href="access-service-account-token.html">access service-account token</a></li></ul>
+<ul><li><a href="access-service-account-token.html">access service-account token</a></li></ul>
     
   </article>
   <aside class="sidebar">

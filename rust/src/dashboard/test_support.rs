@@ -5,9 +5,10 @@ pub(crate) use crate::dashboard::browse_support::build_dashboard_browse_document
 pub(crate) use crate::dashboard::cli_defs::{
     build_auth_context, build_http_client, build_http_client_for_org, normalize_dashboard_cli_args,
     parse_cli_from, BrowseArgs, CommonCliArgs, DashboardAuthContext, DashboardCliArgs,
-    DashboardCommand, DashboardImportInputFormat, DiffArgs, ExportArgs, GovernanceGateArgs,
-    GovernanceGateOutputFormat, GovernancePolicySource, ImpactArgs, ImpactOutputFormat, ImportArgs,
-    InspectExportArgs, InspectExportReportFormat, InspectLiveArgs, InspectOutputFormat,
+    DashboardCommand, DashboardHistorySubcommand, DashboardImportInputFormat, DiffArgs, ExportArgs,
+    GovernanceGateArgs, GovernanceGateOutputFormat, GovernancePolicySource, HistoryExportArgs,
+    HistoryListArgs, HistoryOutputFormat, HistoryRestoreArgs, ImpactArgs, ImpactOutputFormat,
+    ImportArgs, InspectExportArgs, InspectExportReportFormat, InspectLiveArgs, InspectOutputFormat,
     InspectVarsArgs, ListArgs, RawToPromptArgs, RawToPromptLogFormat, RawToPromptOutputFormat,
     RawToPromptResolution, ScreenshotArgs, ScreenshotFullPageOutput, ScreenshotOutputFormat,
     ScreenshotTheme, SimpleOutputFormat, TopologyArgs, TopologyOutputFormat, ValidateExportArgs,
@@ -39,6 +40,14 @@ pub(crate) use crate::dashboard::governance_policy::{
 pub(crate) use crate::dashboard::help::{
     maybe_render_dashboard_help_full_from_os_args, render_inspect_export_help_full,
     render_inspect_live_help_full,
+};
+pub(crate) use crate::dashboard::history::{
+    build_dashboard_history_export_document_with_request,
+    build_dashboard_history_list_document_with_request, export_dashboard_history_with_request,
+    restore_dashboard_history_version_with_request_and_message, run_dashboard_history_list,
+    run_dashboard_history_restore, DashboardHistoryExportDocument, DashboardHistoryListDocument,
+    DashboardHistoryRestoreDocument, DashboardHistoryVersion, DASHBOARD_HISTORY_EXPORT_KIND,
+    DASHBOARD_HISTORY_LIST_KIND, DASHBOARD_HISTORY_RESTORE_KIND,
 };
 pub(crate) use crate::dashboard::impact_tui::{build_impact_tui_groups, filter_impact_tui_items};
 pub(crate) use crate::dashboard::import::{

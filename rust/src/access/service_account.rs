@@ -15,6 +15,7 @@ pub(crate) use service_account_workflows::{
     add_service_account_token_with_request, add_service_account_with_request,
     diff_service_accounts_with_request, export_service_accounts_with_request,
     import_service_accounts_with_request, list_service_accounts_command_with_request,
+    list_service_accounts_from_input_dir,
 };
 
 /// Fetch one page of service-account search results from Grafana.

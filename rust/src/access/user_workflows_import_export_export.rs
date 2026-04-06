@@ -6,6 +6,9 @@ use std::path::Path;
 
 use crate::access::render::{map_get_text, normalize_org_role, normalize_user_row, scalar_text};
 use crate::common::{message, string_field, write_json_file, Result};
+use crate::export_metadata::{
+    build_export_metadata_common, export_metadata_common_map, EXPORT_BUNDLE_KIND_ROOT,
+};
 
 use super::super::{
     build_auth_context, iter_global_users_with_request, list_org_users_with_request,
@@ -26,10 +29,17 @@ fn assert_not_overwrite(path: &Path, dry_run: bool, overwrite: bool) -> Result<(
 
 fn build_access_export_metadata(
     source_url: &str,
+    source_profile: Option<&str>,
     source_dir: &Path,
     record_count: usize,
+    scope: &Scope,
+    with_teams: bool,
 ) -> Map<String, Value> {
-    Map::from_iter(vec![
+    let org_scope = match scope {
+        Scope::Org => "org",
+        Scope::Global => "global",
+    };
+    let metadata = Map::from_iter(vec![
         (
             "kind".to_string(),
             Value::String(ACCESS_EXPORT_KIND_USERS.to_string()),
@@ -50,7 +60,31 @@ fn build_access_export_metadata(
             "sourceDir".to_string(),
             Value::String(source_dir.to_string_lossy().to_string()),
         ),
-    ])
+        ("scope".to_string(), Value::String(org_scope.to_string())),
+        ("withTeams".to_string(), Value::Bool(with_teams)),
+        (
+            "userCount".to_string(),
+            Value::Number((record_count as i64).into()),
+        ),
+    ]);
+    let common = build_export_metadata_common(
+        "access",
+        "users",
+        EXPORT_BUNDLE_KIND_ROOT,
+        "live",
+        Some(source_url),
+        None,
+        source_profile,
+        Some(org_scope),
+        None,
+        None,
+        source_dir,
+        &source_dir.join(ACCESS_EXPORT_METADATA_FILENAME),
+        record_count,
+    );
+    let mut metadata = metadata;
+    metadata.extend(export_metadata_common_map(&common));
+    metadata
 }
 
 fn build_user_export_records<F>(
@@ -102,8 +136,8 @@ where
     validate_user_scope_auth(&args.scope, args.with_teams, &auth_mode)?;
     let records = build_user_export_records(&mut request_json, args)?;
 
-    let users_path = args.export_dir.join(ACCESS_USER_EXPORT_FILENAME);
-    let metadata_path = args.export_dir.join(ACCESS_EXPORT_METADATA_FILENAME);
+    let users_path = args.output_dir.join(ACCESS_USER_EXPORT_FILENAME);
+    let metadata_path = args.output_dir.join(ACCESS_EXPORT_METADATA_FILENAME);
     assert_not_overwrite(&users_path, args.dry_run, args.overwrite)?;
     assert_not_overwrite(&metadata_path, args.dry_run, args.overwrite)?;
 
@@ -127,8 +161,11 @@ where
             &metadata_path,
             &Value::Object(build_access_export_metadata(
                 &args.common.url,
-                &args.export_dir,
+                args.common.profile.as_deref(),
+                &args.output_dir,
                 records.len(),
+                &args.scope,
+                args.with_teams,
             )),
             args.overwrite,
         )?;

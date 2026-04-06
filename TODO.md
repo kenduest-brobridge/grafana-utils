@@ -20,6 +20,7 @@ Completed items that were previously listed here now live in `docs/internal/todo
 - clean repo workflow noise by keeping local scratch files, temp exports, and ad hoc notes out of normal review/commit paths
 - evaluate streaming or lower-memory dashboard listing/export paths only if large-instance validation shows the current full-materialization approach is a real bottleneck
 - evaluate semantic alert diff normalization for equivalent values such as duration aliases after the current structural diff behavior is otherwise stable
+- keep dashboard `publish --watch` on the current polling implementation unless live validation shows a concrete missed-save, latency, or portability problem that justifies an event-based watcher
 
 ## Shared Access Parameters
 

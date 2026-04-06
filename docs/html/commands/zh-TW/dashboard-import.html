@@ -785,18 +785,18 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="採用前後對照">採用前後對照</h2>
 <ul><li><strong>採用前</strong>：匯入比較像盲目 replay，folder、org 或 schema 問題往往要打到 live 後才知道。</li><li><strong>採用後</strong>：匯入會先變成可 preview 的回放步驟，先用 <code>--dry-run</code> 看清楚，再決定是否真的動 live。</li></ul>
 <h2 id="重點旗標">重點旗標</h2>
-<ul><li><code>--import-dir</code>：原始或合併匯出輸入的來源目錄。</li><li><code>--input-format</code>：選擇 <code>raw</code> 或 <code>provisioning</code>。</li><li><code>--org-id</code>、<code>--use-export-org</code>、<code>--only-org-id</code>、<code>--create-missing-orgs</code>：控制跨 org 路由。</li><li><code>--import-folder-uid</code>：強制指定目的資料夾 UID。</li><li><code>--ensure-folders</code>、<code>--replace-existing</code>、<code>--update-existing-only</code>：控制匯入行為。</li><li><code>--require-matching-folder-path</code>、<code>--require-matching-export-org</code>、<code>--strict-schema</code>、<code>--target-schema-version</code>：安全檢查。</li><li><code>--import-message</code>：儲存在 Grafana 的修訂訊息。</li><li><code>--interactive</code>、<code>--dry-run</code>、<code>--table</code>、<code>--json</code>、<code>--output-format</code>、<code>--output-columns</code>、<code>--no-header</code>、<code>--progress</code>、<code>--verbose</code>：預覽與回報控制。</li></ul>
+<ul><li><code>--input-dir</code>：原始或合併匯出輸入的來源目錄。</li><li><code>--input-format</code>：選擇 <code>raw</code> 或 <code>provisioning</code>。</li><li><code>--org-id</code>、<code>--use-export-org</code>、<code>--only-org-id</code>、<code>--create-missing-orgs</code>：控制跨 org 路由。</li><li><code>--import-folder-uid</code>：強制指定目的資料夾 UID。</li><li><code>--ensure-folders</code>、<code>--replace-existing</code>、<code>--update-existing-only</code>：控制匯入行為。</li><li><code>--require-matching-folder-path</code>、<code>--require-matching-export-org</code>、<code>--strict-schema</code>、<code>--target-schema-version</code>：安全檢查。</li><li><code>--import-message</code>：儲存在 Grafana 的修訂訊息。</li><li><code>--interactive</code>、<code>--dry-run</code>、<code>--table</code>、<code>--json</code>、<code>--output-format</code>、<code>--output-columns</code>、<code>--no-header</code>、<code>--progress</code>、<code>--verbose</code>：預覽與回報控制。</li></ul>
 <h2 id="成功判準">成功判準</h2>
 <ul><li>dry-run 先把 create/update 動作列清楚，再進入 live replay</li><li>目的 org 與 folder 路由足夠明確，可以先 review</li><li>這次匯入使用的是正確的輸入 lane：<code>raw</code> 或 <code>provisioning</code>，不是 <code>prompt</code></li></ul>
 <h2 id="失敗時先檢查">失敗時先檢查</h2>
 <ul><li>如果 folder 或 org 落點不對，先檢查路由旗標，不要直接重跑 live import</li><li>如果看起來會刪或覆蓋太多，先停在 <code>--dry-run</code> 並回頭檢查匯出樹</li><li>如果 schema 被擋下來，先確認來源資料是不是需要先正規化再匯入</li></ul>
 <h2 id="範例">範例</h2>
 <pre><code># 用途：透過 Grafana API 匯入儀表板 JSON 檔案。
-grafana-util dashboard import --profile prod --import-dir ./dashboards/raw --replace-existing</code></pre>
+grafana-util dashboard import --profile prod --input-dir ./dashboards/raw --replace-existing</code></pre>
 <pre><code># 用途：透過 Grafana API 匯入儀表板 JSON 檔案。
-grafana-util dashboard import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./dashboards/raw --dry-run --table</code></pre>
+grafana-util dashboard import --url http://localhost:3000 --basic-user admin --basic-password admin --input-dir ./dashboards/raw --dry-run --table</code></pre>
 <pre><code># 用途：透過 Grafana API 匯入儀表板 JSON 檔案。
-grafana-util dashboard import --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --import-dir ./dashboards/raw --dry-run --table</code></pre>
+grafana-util dashboard import --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --input-dir ./dashboards/raw --dry-run --table</code></pre>
 <h2 id="相關指令">相關指令</h2>
 <ul><li><a href="dashboard-export.html">dashboard export</a></li><li><a href="dashboard-raw-to-prompt.html">dashboard raw-to-prompt</a></li><li><a href="dashboard-diff.html">dashboard diff</a></li><li><a href="dashboard-publish.html">dashboard publish</a></li></ul>
     

@@ -788,7 +788,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 grafana-util overview --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts --desired-file ./desired.json --output-format table</code></pre>
 <pre><code># Purpose: Review sync bundle inputs before promotion.
 grafana-util overview --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --availability-file ./availability.json --mapping-file ./mapping.json --output-format text</code></pre>
-<p>Related commands: <code>grafana-util status staged</code>, <code>grafana-util change summary</code>, <code>grafana-util snapshot review</code>.</p>
+<p>Related commands: <code>grafana-util status staged</code>, <code>grafana-util change inspect</code>, <code>grafana-util snapshot review</code>.</p>
 <h2 id="live"><code>live</code></h2>
 <p>Purpose: render the live overview by delegating to the shared status live path.</p>
 <p>When to use: when you need the same live readout that <code>status live</code> uses, but want it under the overview namespace.</p>

@@ -2,11 +2,12 @@
 
 ## 目的
 
-列出、瀏覽、建立、修改、匯出、匯入、比對或刪除 Grafana 團隊。
+列出或瀏覽 live 與本機的 Grafana 團隊，以及建立、修改、匯出、匯入、比對或刪除 Grafana 團隊。
 
 ## 使用時機
 
 - 檢視團隊清單與團隊成員關係。
+- 從 live Grafana 或本機匯出套件中檢視團隊。
 - 建立或更新團隊成員與管理員指派。
 - 匯出或匯入團隊套件。
 - 以 id 或精確名稱刪除團隊。
@@ -30,12 +31,12 @@
 
 ## 主要旗標
 
-- `list`: `--query`, `--name`, `--with-members`, `--page`, `--per-page`, `--table`, `--csv`, `--json`, `--yaml`, `--output-format`
-- `browse`: `--query`, `--name`, `--with-members`, `--page`, `--per-page`
+- `list`: `--input-dir`, `--query`, `--name`, `--with-members`, `--page`, `--per-page`, `--table`, `--csv`, `--json`, `--yaml`, `--output-format`
+- `browse`: `--input-dir`, `--query`, `--name`, `--with-members`, `--page`, `--per-page`
 - `add`: `--name`, `--email`, `--member`, `--admin`, `--json`
 - `modify`: `--team-id`, `--name`, `--add-member`, `--remove-member`, `--add-admin`, `--remove-admin`, `--json`
-- `export` 與 `diff`: `--export-dir` 或 `--diff-dir`, `--overwrite`, `--dry-run`, `--with-members`
-- `import`: `--import-dir`, `--replace-existing`, `--dry-run`, `--table`, `--json`, `--output-format`, `--yes`
+- `export` 與 `diff`: `--output-dir` 或 `--diff-dir`, `--overwrite`, `--dry-run`, `--with-members`
+- `import`: `--input-dir`, `--replace-existing`, `--dry-run`, `--table`, `--json`, `--output-format`, `--yes`
 - `delete`: `--team-id`, `--name`, `--yes`, `--json`
 
 ## 範例
@@ -46,12 +47,17 @@ grafana-util access team list --profile prod --output-format text
 ```
 
 ```bash
-# 用途：建立一個有明確成員與管理員指派的 team。
-grafana-util access team import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-teams --replace-existing --yes
+# 用途：先看本機存好的 team 套件。
+grafana-util access team list --input-dir ./access-teams --output-format table
 ```
 
 ```bash
-# 用途：在切換環境前，先匯入 team 套件。
+# 用途：直接互動式瀏覽本機 team 套件，不碰 live Grafana。
+grafana-util access team browse --input-dir ./access-teams --name platform-team
+```
+
+```bash
+# 用途：建立一個有明確成員與管理員指派的 team。
 grafana-util access team add --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --name platform-team --email platform@example.com --member alice --admin alice --json
 ```
 

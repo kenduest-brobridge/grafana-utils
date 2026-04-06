@@ -13,7 +13,9 @@ use super::render::{
     render_yaml, scalar_text, user_account_scope_text, user_matches, user_scope_text,
     user_summary_line, user_table_rows,
 };
+use super::user_workflows::load_access_import_records;
 use super::{build_auth_context, request_array, Scope, UserListArgs, DEFAULT_PAGE_SIZE};
+use crate::access::ACCESS_EXPORT_KIND_USERS;
 
 pub(crate) fn list_org_users_with_request<F>(mut request_json: F) -> Result<Vec<Map<String, Value>>>
 where
@@ -230,6 +232,92 @@ where
             rows.len(),
             user_scope_text(&args.scope),
             args.common.url
+        );
+    }
+    Ok(rows.len())
+}
+
+fn local_user_scope(row: &Map<String, Value>, args: &UserListArgs) -> Scope {
+    match string_field(row, "scope", "").to_ascii_lowercase().as_str() {
+        "global" => Scope::Global,
+        "org" => Scope::Org,
+        _ => args.scope.clone(),
+    }
+}
+
+pub(crate) fn list_users_from_input_dir(args: &UserListArgs) -> Result<usize> {
+    let input_dir = args
+        .input_dir
+        .as_ref()
+        .ok_or_else(|| message("User list local mode requires --input-dir."))?;
+    let mut rows = load_access_import_records(input_dir, ACCESS_EXPORT_KIND_USERS)?
+        .into_iter()
+        .map(|item| {
+            let scope = local_user_scope(&item, args);
+            normalize_user_row(&item, &scope)
+        })
+        .collect::<Vec<Map<String, Value>>>();
+    if !args.with_teams {
+        for row in &mut rows {
+            row.insert("teams".to_string(), Value::Array(Vec::<Value>::new()));
+        }
+    }
+    annotate_user_account_scope(&mut rows);
+    rows.retain(|row| user_matches(row, args));
+    let rows = paginate_rows(&rows, args.page, args.per_page);
+    if args.json {
+        println!("{}", render_objects_json(&rows)?);
+    } else if args.yaml {
+        println!("{}", render_yaml(&rows)?);
+    } else if args.csv {
+        for line in render_csv(
+            &[
+                "id",
+                "login",
+                "email",
+                "name",
+                "orgRole",
+                "grafanaAdmin",
+                "scope",
+                "accountScope",
+                "teams",
+            ],
+            &user_table_rows(&rows),
+        ) {
+            println!("{line}");
+        }
+    } else if args.table {
+        for line in format_table(
+            &[
+                "ID",
+                "LOGIN",
+                "EMAIL",
+                "NAME",
+                "ORG_ROLE",
+                "GRAFANA_ADMIN",
+                "SCOPE",
+                "ACCOUNT_SCOPE",
+                "TEAMS",
+            ],
+            &user_table_rows(&rows),
+        ) {
+            println!("{line}");
+        }
+        println!();
+        println!(
+            "Listed {} user(s) from local bundle at {}",
+            rows.len(),
+            input_dir.display()
+        );
+    } else {
+        for row in &rows {
+            println!("{}", user_summary_line(row));
+        }
+        println!();
+        println!(
+            "Listed {} user(s) from local bundle at {}",
+            rows.len(),
+            input_dir.display()
         );
     }
     Ok(rows.len())

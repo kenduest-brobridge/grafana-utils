@@ -25,6 +25,7 @@ macro_rules! help_block {
 
 pub(crate) const HELP_COLOR_RESET: &str = "\x1b[0m";
 pub(crate) const HELP_COLOR_DASHBOARD: &str = "\x1b[1;36m";
+pub(crate) const HELP_COLOR_COMMAND: &str = "\x1b[1;97m";
 pub(crate) const HELP_COLOR_ALERT: &str = "\x1b[1;31m";
 pub(crate) const HELP_COLOR_DATASOURCE: &str = "\x1b[1;32m";
 pub(crate) const HELP_COLOR_ACCESS: &str = "\x1b[1;33m";
@@ -72,7 +73,7 @@ pub(crate) const UNIFIED_HELP_TEXT: &str = help_block!(
     (
         "[Dashboard Export]",
         "Export dashboards with Basic auth:",
-        "grafana-util dashboard export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./dashboards --overwrite"
+        "grafana-util dashboard export --url http://localhost:3000 --basic-user admin --basic-password admin --output-dir ./dashboards --overwrite"
     ),
     (
         "[Dashboard Raw To Prompt]",
@@ -82,7 +83,7 @@ pub(crate) const UNIFIED_HELP_TEXT: &str = help_block!(
     (
         "[Dashboard Export]",
         "Export dashboards across all visible orgs:",
-        "grafana-util dashboard export --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --export-dir ./dashboards --overwrite"
+        "grafana-util dashboard export --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --output-dir ./dashboards --overwrite"
     ),
     (
         "[Dashboard Capture]",
@@ -92,7 +93,22 @@ pub(crate) const UNIFIED_HELP_TEXT: &str = help_block!(
     (
         "[Dashboard Capture]",
         "Inspect dashboard variables before capture:",
-        r#"grafana-util dashboard inspect-vars --dashboard-url 'https://grafana.example.com/d/cpu-main/cpu-overview?var-cluster=prod-a' --token "$GRAFANA_API_TOKEN""#
+        r#"grafana-util dashboard list-vars --dashboard-url 'https://grafana.example.com/d/cpu-main/cpu-overview?var-cluster=prod-a' --token "$GRAFANA_API_TOKEN""#
+    ),
+    (
+        "[Dashboard Capture]",
+        "Inspect dashboard variables from a local dashboard file:",
+        "grafana-util dashboard list-vars --input ./dashboards/raw/cpu-main.json --output-format yaml"
+    ),
+    (
+        "[Dashboard Browse]",
+        "Browse a local export tree from disk:",
+        "grafana-util dashboard browse --input-dir ./dashboards/raw --path 'Platform / Infra'"
+    ),
+    (
+        "[Dashboard Analyze]",
+        "Analyze live Grafana before topology or governance checks:",
+        r#"grafana-util dashboard analyze --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format governance-json"#
     ),
     (
         "[Dashboard Review]",
@@ -102,7 +118,7 @@ pub(crate) const UNIFIED_HELP_TEXT: &str = help_block!(
     (
         "[Snapshot Export]",
         "Capture a live snapshot into a local export root:",
-        r#"grafana-util snapshot export --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --export-dir ./snapshot"#
+        r#"grafana-util snapshot export --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-dir ./snapshot"#
     ),
     (
         "[Alert Export]",
@@ -115,14 +131,14 @@ pub(crate) const UNIFIED_HELP_TEXT: &str = help_block!(
         r#"grafana-util datasource list --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --json"#
     ),
     (
-        "[Datasource Inspect Export]",
+        "[Datasource Local Inventory]",
         "Inspect a local datasource export root without Grafana access:",
-        r#"grafana-util datasource inspect-export --input-dir ./datasources --json"#
+        r#"grafana-util datasource list --input-dir ./datasources --json"#
     ),
     (
-        "[Access Inventory]",
-        "List org users through the unified binary:",
-        r#"grafana-util access user list --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --json"#
+        "[Access Local Inventory]",
+        "Inspect exported access users without calling Grafana:",
+        r#"grafana-util access user list --input-dir ./access-users --json"#
     ),
     (
         "[Profile Show]",
@@ -146,22 +162,22 @@ pub(crate) const UNIFIED_HELP_TEXT: &str = help_block!(
     ),
     (
         "[Change Planning]",
-        "Build a change plan directly from live Grafana state:",
-        r#"grafana-util change plan --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN"#
+        "Preview a staged change directly against live Grafana:",
+        r#"grafana-util change preview --fetch-live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN"#
     ),
     (
         "[Change Apply]",
-        "Apply a reviewed change plan back to Grafana:",
-        r#"grafana-util change apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN"#
+        "Apply a reviewed change preview back to Grafana:",
+        r#"grafana-util change apply --preview-file ./change-preview.json --approve --execute-live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN"#
     )
 );
 
 pub(crate) const UNIFIED_HELP_FULL_TEXT: &str = help_block!(
     "Extended Examples:",
     (
-        "[Dashboard Inspect Export]",
+        "[Dashboard Analyze]",
         "Render a grouped dashboard dependency table from raw exports:",
-        "grafana-util dashboard inspect-export --import-dir ./dashboards/raw --input-format raw --output-format report-tree-table --report-columns dashboard_uid,panel_title,datasource_uid,query"
+        "grafana-util dashboard analyze --input-dir ./dashboards/raw --input-format raw --output-format tree-table --report-columns dashboard_uid,panel_title,datasource_uid,query"
     ),
     (
         "[Dashboard Raw To Prompt]",
@@ -169,19 +185,19 @@ pub(crate) const UNIFIED_HELP_FULL_TEXT: &str = help_block!(
         "grafana-util dashboard raw-to-prompt --input-dir ./dashboards/raw --output-dir ./dashboards/prompt --overwrite"
     ),
     (
-        "[Dashboard Inspect Export]",
+        "[Dashboard Analyze]",
         "Inspect a provisioning tree from the file-provisioning root:",
-        "grafana-util dashboard inspect-export --import-dir ./dashboards/provisioning --input-format provisioning --report tree-table"
+        "grafana-util dashboard analyze --input-dir ./dashboards/provisioning --input-format provisioning --output-format tree-table"
     ),
     (
-        "[Dashboard Inspect Live]",
+        "[Dashboard Analyze]",
         "Render datasource governance JSON directly from live Grafana:",
-        r#"grafana-util dashboard inspect-live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format governance-json"#
+        r#"grafana-util dashboard analyze --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format governance-json"#
     ),
     (
         "[Datasource Import]",
         "Dry-run a datasource import and keep the result machine-readable:",
-        r#"grafana-util datasource import --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --import-dir ./datasources --dry-run --json"#
+        r#"grafana-util datasource import --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --input-dir ./datasources --dry-run --json"#
     ),
     (
         "[Datasource Diff]",
@@ -189,9 +205,9 @@ pub(crate) const UNIFIED_HELP_FULL_TEXT: &str = help_block!(
         r#"grafana-util datasource diff --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --diff-dir ./datasources/provisioning --input-format provisioning"#
     ),
     (
-        "[Access Team Import]",
-        "Preview a destructive team sync before confirming:",
-        "grafana-util access team import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-teams --replace-existing --dry-run --output-format table"
+        "[Access Local Inventory]",
+        "Inspect exported access users without calling Grafana:",
+        "grafana-util access user list --input-dir ./access-users --json"
     ),
     (
         "[Profile Show]",
@@ -216,17 +232,17 @@ pub(crate) const UNIFIED_HELP_FULL_TEXT: &str = help_block!(
     (
         "[Snapshot Export]",
         "Capture a live snapshot into a local export root:",
-        r#"grafana-util snapshot export --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --export-dir ./snapshot"#
+        r#"grafana-util snapshot export --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-dir ./snapshot"#
     ),
     (
         "[Alert Import]",
         "Re-map linked alert dashboards during import:",
-        "grafana-util alert import --url http://localhost:3000 --import-dir ./alerts/raw --replace-existing --dashboard-uid-map ./dashboard-map.json --panel-id-map ./panel-map.json"
+        "grafana-util alert import --url http://localhost:3000 --input-dir ./alerts/raw --replace-existing --dashboard-uid-map ./dashboard-map.json --panel-id-map ./panel-map.json"
     ),
     (
         "[Change Review]",
         "Stamp a plan as reviewed before apply:",
-        "grafana-util change review --plan-file ./sync-plan.json --review-note 'peer-reviewed' --output-format json"
+        "grafana-util change advanced review --plan-file ./sync-plan.json --review-note 'peer-reviewed' --output-format json"
     ),
     (
         "[Overview Staged]",
@@ -255,7 +271,7 @@ pub(crate) const ALERT_HELP_FULL_TEXT: &str = help_block!(
     (
         "[Alert Import]",
         "Preview a replace-existing import before execution as structured JSON:",
-        r#"grafana-util alert import --url http://localhost:3000 --import-dir ./alerts/raw --replace-existing --dry-run --json"#
+        r#"grafana-util alert import --url http://localhost:3000 --input-dir ./alerts/raw --replace-existing --dry-run --json"#
     ),
     (
         "[Alert Diff]",
@@ -305,7 +321,7 @@ pub(crate) const ALERT_HELP_FULL_TEXT: &str = help_block!(
     (
         "[Alert Import]",
         "Re-map linked dashboards and panels during import:",
-        "grafana-util alert import --url http://localhost:3000 --import-dir ./alerts/raw --replace-existing --dashboard-uid-map ./dashboard-map.json --panel-id-map ./panel-map.json"
+        "grafana-util alert import --url http://localhost:3000 --input-dir ./alerts/raw --replace-existing --dashboard-uid-map ./dashboard-map.json --panel-id-map ./panel-map.json"
     ),
     (
         "[Alert List]",
@@ -349,7 +365,7 @@ pub(crate) const DATASOURCE_HELP_FULL_TEXT: &str = help_block!(
     (
         "[Datasource Import]",
         "Import one exported org bundle with create-missing-orgs:",
-        r#"grafana-util datasource import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./datasources --use-export-org --only-org-id 2 --create-missing-orgs --dry-run --json"#
+        r#"grafana-util datasource import --url http://localhost:3000 --basic-user admin --basic-password admin --input-dir ./datasources --use-export-org --only-org-id 2 --create-missing-orgs --dry-run --json"#
     ),
     (
         "[Datasource Diff]",
@@ -366,6 +382,11 @@ pub(crate) const DATASOURCE_HELP_FULL_TEXT: &str = help_block!(
 pub(crate) const ACCESS_HELP_FULL_TEXT: &str = help_block!(
     "Extended Examples:",
     (
+        "[Access Local Inventory]",
+        "Inspect exported access users without calling Grafana:",
+        "grafana-util access user list --input-dir ./access-users --json"
+    ),
+    (
         "[Access User Diff]",
         "Compare exported users against the Grafana global scope:",
         "grafana-util access user diff --url http://localhost:3000 --basic-user admin --basic-password admin --diff-dir ./access-users --scope global"
@@ -373,7 +394,7 @@ pub(crate) const ACCESS_HELP_FULL_TEXT: &str = help_block!(
     (
         "[Access Team Import]",
         "Preview a destructive team sync as a table:",
-        "grafana-util access team import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-teams --replace-existing --dry-run --output-format table"
+        "grafana-util access team import --url http://localhost:3000 --basic-user admin --basic-password admin --input-dir ./access-teams --replace-existing --dry-run --output-format table"
     ),
     (
         "[Access Org Delete]",
@@ -392,7 +413,7 @@ pub(crate) const SYNC_HELP_FULL_TEXT: &str = help_block!(
     (
         "[Change Summary]",
         "Render the desired resource summary as JSON:",
-        "grafana-util change summary --desired-file ./desired.json --output-format json"
+        "grafana-util change inspect --dashboard-export-dir ./dashboards/raw --output-format json"
     ),
     (
         "[Change Audit]",
@@ -412,12 +433,12 @@ pub(crate) const SYNC_HELP_FULL_TEXT: &str = help_block!(
     (
         "[Change Plan]",
         "Build a live-backed plan with prune candidates:",
-        r#"grafana-util change plan --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --allow-prune --output-format json"#
+        r#"grafana-util change preview --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --allow-prune --output-format json"#
     ),
     (
         "[Change Review]",
         "Stamp a reviewed plan with reviewer metadata:",
-        "grafana-util change review --plan-file ./sync-plan.json --review-note 'peer-reviewed' --reviewed-by ops-user --output-format json"
+        "grafana-util change advanced review --plan-file ./sync-plan.json --review-note 'peer-reviewed' --reviewed-by ops-user --output-format json"
     ),
     (
         "[Change Apply]",
@@ -426,11 +447,10 @@ pub(crate) const SYNC_HELP_FULL_TEXT: &str = help_block!(
     )
 );
 
-pub(crate) const HELP_EXAMPLE_LABELS: [(&str, &str); 31] = [
+pub(crate) const HELP_EXAMPLE_LABELS: [(&str, &str); 30] = [
     ("[Dashboard Export]", HELP_COLOR_DASHBOARD),
     ("[Dashboard Capture]", HELP_COLOR_DASHBOARD),
-    ("[Dashboard Inspect Export]", HELP_COLOR_DASHBOARD),
-    ("[Dashboard Inspect Live]", HELP_COLOR_DASHBOARD),
+    ("[Dashboard Analyze]", HELP_COLOR_DASHBOARD),
     ("[Alert Export]", HELP_COLOR_ALERT),
     ("[Alert Import]", HELP_COLOR_ALERT),
     ("[Alert List]", HELP_COLOR_ALERT),
@@ -438,9 +458,9 @@ pub(crate) const HELP_EXAMPLE_LABELS: [(&str, &str); 31] = [
     ("[Datasource List]", HELP_COLOR_DATASOURCE),
     ("[Datasource Add]", HELP_COLOR_DATASOURCE),
     ("[Datasource Import]", HELP_COLOR_DATASOURCE),
-    ("[Datasource Inspect Export]", HELP_COLOR_DATASOURCE),
+    ("[Datasource Local Inventory]", HELP_COLOR_DATASOURCE),
     ("[Datasource Diff]", HELP_COLOR_DATASOURCE),
-    ("[Access Inventory]", HELP_COLOR_ACCESS),
+    ("[Access Local Inventory]", HELP_COLOR_ACCESS),
     ("[Access User Diff]", HELP_COLOR_ACCESS),
     ("[Access Team Import]", HELP_COLOR_ACCESS),
     ("[Access Org Delete]", HELP_COLOR_ACCESS),
@@ -467,6 +487,89 @@ pub(crate) fn colorize_help_examples(text: &str) -> String {
         colored = colored.replace(label, &colored_label);
     }
     colored
+}
+
+pub(crate) fn colorize_dashboard_short_help(text: &str) -> String {
+    let mut colored = text.to_string();
+    for heading in [
+        "Usage:",
+        "Choose the task first:",
+        "Work with live Grafana:",
+        "Work with local drafts:",
+        "Move dashboards:",
+        "Analyze and review risk:",
+        "More help:",
+    ] {
+        let colored_heading = format!("{HELP_COLOR_DASHBOARD}{heading}{HELP_COLOR_RESET}");
+        colored = colored.replace(heading, &colored_heading);
+    }
+    for lane in [
+        "work with live Grafana",
+        "work with local drafts",
+        "move dashboards",
+        "analyze and review risk",
+    ] {
+        let colored_lane = format!("{HELP_COLOR_DASHBOARD}{lane}{HELP_COLOR_RESET}");
+        colored = colored.replace(lane, &colored_lane);
+    }
+    for command in [
+        "browse",
+        "list",
+        "fetch-live",
+        "analyze",
+        "export",
+        "import",
+        "diff",
+        "delete",
+        "clone-live",
+        "serve",
+        "edit-live",
+        "review",
+        "patch-file",
+        "raw-to-prompt",
+        "publish",
+        "analyze-live",
+        "analyze-export",
+        "list-vars",
+        "topology",
+        "history",
+        "screenshot",
+        "governance-gate",
+    ] {
+        let needle = format!("\n  {command}");
+        let replacement = format!("\n  {HELP_COLOR_COMMAND}{command}{HELP_COLOR_RESET}");
+        colored = colored.replace(&needle, &replacement);
+    }
+    colored
+}
+
+pub(crate) fn colorize_dashboard_subcommand_help(text: &str) -> String {
+    let mut lines = Vec::new();
+    for line in text.lines() {
+        let trimmed = line.trim_start();
+        let indent = &line[..line.len() - trimmed.len()];
+        let colored = match line {
+            "Options:" | "What it does:" | "When to use:" | "Related commands:" | "Examples:"
+            | "Arguments:" | "More help:" => {
+                format!("{HELP_COLOR_DASHBOARD}{line}{HELP_COLOR_RESET}")
+            }
+            _ if line.starts_with("Usage: ") => {
+                let rest = line.trim_start_matches("Usage: ");
+                format!(
+                    "{HELP_COLOR_DASHBOARD}Usage:{HELP_COLOR_RESET} {HELP_COLOR_COMMAND}{rest}{HELP_COLOR_RESET}"
+                )
+            }
+            _ if trimmed.starts_with("grafana-util ") => {
+                format!("{indent}{HELP_COLOR_COMMAND}{trimmed}{HELP_COLOR_RESET}")
+            }
+            _ if trimmed.starts_with("- dashboard ") => {
+                format!("{indent}{HELP_COLOR_COMMAND}{trimmed}{HELP_COLOR_RESET}")
+            }
+            _ => line.to_string(),
+        };
+        lines.push(colored);
+    }
+    lines.join("\n")
 }
 
 pub(crate) fn inject_help_full_hint(help: String) -> String {

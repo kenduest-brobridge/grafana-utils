@@ -11,10 +11,10 @@ Use this when you need to rewrite dashboard metadata locally before review or pu
 .SH COMMON OPTIONS
 .TP
 .B \-\-input
-dashboard JSON file to patch.
+dashboard JSON file to patch. Use \- to read one wrapped or bare dashboard JSON document from standard input.
 .TP
 .B \-\-output
-write to a different path instead of overwriting the input.
+write to a different path instead of overwriting the input. Required when \-\-input \- is used.
 .TP
 .B \-\-name
 replace the dashboard title.

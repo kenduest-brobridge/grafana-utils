@@ -16,7 +16,7 @@ If you regularly hit problems like these, this is the tool solving them:
 
 | Before | After with `grafana-util` |
 | :--- | :--- |
-| "What changed?" means opening several Grafana screens or hand-rolling API calls. | Start with `overview`, `status`, or `change summary` and get one review surface first. |
+| "What changed?" means opening several Grafana screens or hand-rolling API calls. | Start with `overview`, `status`, or `change inspect` and get one review surface first. |
 | Export/import is a fragile action with little context. | Export, inspect, dry-run, and replay in an explicit sequence. |
 | Alerting or access changes are hard to explain in review. | Plans, summaries, and structured output make the intended change visible before apply. |
 | Secrets and auth defaults get repeated across shell history and scripts. | Profiles and secret modes make repeated workflows cleaner and safer. |
@@ -47,7 +47,7 @@ It breaks the work into a few clear surfaces:
 
 - **Inventory and observation**: start with `status` and `overview`
 - **Asset operations**: use `dashboard`, `datasource`, `alert`, and `access`
-- **Change review**: use `change` to summarize, preflight, plan, and review before apply
+- **Change review**: use `change` to inspect, check, preview, and apply through one task-first lane
 - **Connection and credentials**: use `profile` to keep URLs, auth defaults, and secret sources repeatable
 
 The goal is not to memorize every command first. The goal is to know what kind of work you are doing.
@@ -74,10 +74,17 @@ These tools can overlap. The useful question is which working style you need fir
 | Data source operations | `datasource` | Inventory, export, import, diff, mutation, and recovery for data sources |
 | Alert governance | `alert` | Alert rules, notification routing, contact points, and plan/apply workflows |
 | Identity and access | `access` | Manage orgs, users, teams, service accounts, and tokens |
-| Change review | `change` | Summarize, preflight, plan, and review changes before apply |
+| Change review | `change` | Inspect, check, preview, and apply changes through a reviewable path |
 | Connection and credentials | `profile` | Keep URLs, auth defaults, and secret sources repeatable |
 
 If all you need is “where do I start?”, use this table first, then move into the matching handbook chapter.
+
+## What to surface where
+
+Keep the README and handbook home pages short. Show the lanes people reach for first, then leave the deeper command tree in the docs index.
+
+- Show on the README/home page: `dashboard export/import/raw-to-prompt/review/publish`, `datasource export/import/diff`, `change inspect/check/preview/apply`, `status`, `overview`, `profile`, `alert plan/apply`, `access`, and `secrets`.
+- Keep in the docs index and per-command pages: `dashboard browse/fetch-live/clone-live/serve/edit-live/delete/history/list-vars/governance-gate/topology/impact/screenshot`, `datasource browse/types/list/add/modify/delete`, `snapshot`, `resource`, and the compatibility alias pages.
 
 ---
 
@@ -109,7 +116,7 @@ You do not want to apply changes blind. You want answers to:
 - is the staged input complete?
 - are routes, secrets, dependencies, and permissions in a sane state?
 
-That is where `change summary`, `change preflight`, and `alert plan` matter.
+That is where `change inspect`, `change check`, `change preview`, and `alert plan` matter.
 
 ### 4. Automation and CI/CD
 

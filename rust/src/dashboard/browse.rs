@@ -19,6 +19,9 @@ pub(crate) fn browse_dashboards_with_client(
     client: &JsonHttpClient,
     args: &BrowseArgs,
 ) -> Result<usize> {
+    if args.input_dir.is_some() {
+        return browse_dashboards_with_local_args(args);
+    }
     ensure_interactive_terminal()?;
     run_dashboard_browser_tui(
         |method, path, params, payload| client.request_json(method, path, params, payload),
@@ -28,6 +31,9 @@ pub(crate) fn browse_dashboards_with_client(
 
 #[cfg(feature = "tui")]
 pub(crate) fn browse_dashboards_with_org_client(args: &BrowseArgs) -> Result<usize> {
+    if args.input_dir.is_some() {
+        return browse_dashboards_with_local_args(args);
+    }
     let client = if args.all_orgs {
         build_http_client(&args.common)?
     } else {
@@ -37,6 +43,19 @@ pub(crate) fn browse_dashboards_with_org_client(args: &BrowseArgs) -> Result<usi
         }
     };
     browse_dashboards_with_client(&client, args)
+}
+
+#[cfg(feature = "tui")]
+fn browse_dashboards_with_local_args(args: &BrowseArgs) -> Result<usize> {
+    ensure_interactive_terminal()?;
+    run_dashboard_browser_tui(
+        |_method, _path, _params, _payload| {
+            Err(message(
+                "Local dashboard browse does not use live Grafana requests.",
+            ))
+        },
+        args,
+    )
 }
 
 #[cfg(feature = "tui")]

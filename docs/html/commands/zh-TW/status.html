@@ -784,7 +784,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 grafana-util status staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output-format json</code></pre>
 <pre><code># 用途：用可重複使用的 profile 輸出 live 狀態。
 grafana-util status live --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output-format yaml</code></pre>
-<p>相關指令：<code>grafana-util overview</code>、<code>grafana-util change preflight</code>、<code>grafana-util change apply</code>。</p>
+<p>相關指令：<code>grafana-util overview</code>、<code>grafana-util change check</code>、<code>grafana-util change apply</code>。</p>
 <h2 id="staged"><code>staged</code></h2>
 <p>用途：根據已準備好的 artifact 輸出專案狀態。</p>
 <p>適用時機：當你需要在 apply 前，先用結構化輸出做 readiness gate 時。</p>
@@ -794,7 +794,7 @@ grafana-util status live --url http://localhost:3000 --token &quot;$GRAFANA_API_
 grafana-util status staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output-format table</code></pre>
 <pre><code># 用途：staged。
 grafana-util status staged --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts --output-format interactive</code></pre>
-<p>相關指令：<code>grafana-util overview</code>、<code>grafana-util change summary</code>、<code>grafana-util change preflight</code>。</p>
+<p>相關指令：<code>grafana-util overview</code>、<code>grafana-util change inspect</code>、<code>grafana-util change check</code>。</p>
 <h2 id="live"><code>live</code></h2>
 <p>用途：根據 live Grafana 的讀取結果輸出專案狀態。</p>
 <p>適用時機：當你需要目前的 Grafana 狀態，並可選擇搭配 staged context 檔案時。</p>

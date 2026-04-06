@@ -54,7 +54,11 @@ pub(crate) fn render_dashboard_browser_frame(frame: &mut ratatui::Frame, state: 
     render_detail_panel(frame, panes[1], state);
 
     let footer = tui_shell::build_footer(
-        control_lines(state.pending_delete.is_some(), state.pending_edit.is_some()),
+        control_lines(
+            state.pending_delete.is_some(),
+            state.pending_edit.is_some(),
+            state.local_mode,
+        ),
         state.status.clone(),
     );
     frame.render_widget(footer, outer[2]);
@@ -249,7 +253,7 @@ fn render_detail_panel(
     render_focusable_lines(
         frame,
         sections[2],
-        detail_shortcut_lines(node),
+        detail_shortcut_lines(node, state.local_mode),
         pane_block(
             "Actions",
             false,
@@ -298,7 +302,7 @@ fn build_info_lines(lines: &[String]) -> Vec<Line<'static>> {
         .collect()
 }
 
-fn detail_shortcut_lines(node: &DashboardBrowseNode) -> Vec<Line<'static>> {
+fn detail_shortcut_lines(node: &DashboardBrowseNode, local_mode: bool) -> Vec<Line<'static>> {
     match node.kind {
         DashboardBrowseNodeKind::Org => vec![
             Line::from(vec![
@@ -311,41 +315,85 @@ fn detail_shortcut_lines(node: &DashboardBrowseNode) -> Vec<Line<'static>> {
                 tui_shell::plain("   "),
                 tui_shell::key_chip("/ ?", Color::Rgb(164, 116, 19)),
                 tui_shell::plain(" search"),
-                tui_shell::plain("   "),
-                tui_shell::key_chip("e/d", Color::Rgb(90, 98, 107)),
-                tui_shell::plain(" dashboard/folder rows only"),
+                if local_mode {
+                    tui_shell::plain("   ")
+                } else {
+                    tui_shell::plain("   ")
+                },
+                if local_mode {
+                    tui_shell::key_chip("local", Color::Rgb(90, 98, 107))
+                } else {
+                    tui_shell::key_chip("e/d", Color::Rgb(90, 98, 107))
+                },
+                tui_shell::plain(if local_mode {
+                    " read-only tree"
+                } else {
+                    " dashboard/folder rows only"
+                }),
             ]),
         ],
         DashboardBrowseNodeKind::Folder => vec![
             Line::from(vec![
                 tui_shell::key_chip("d", Color::Rgb(150, 38, 46)),
-                tui_shell::plain(" delete dashboards in subtree"),
+                tui_shell::plain(if local_mode {
+                    " local browse is read-only"
+                } else {
+                    " delete dashboards in subtree"
+                }),
             ]),
             Line::from(vec![
                 tui_shell::key_chip("D", Color::Rgb(150, 38, 46)),
-                tui_shell::plain(" delete subtree + folders"),
+                tui_shell::plain(if local_mode {
+                    " live delete actions unavailable"
+                } else {
+                    " delete subtree + folders"
+                }),
             ]),
         ],
         DashboardBrowseNodeKind::Dashboard => vec![
             Line::from(vec![
                 tui_shell::key_chip("r", Color::Rgb(24, 106, 59)),
-                tui_shell::plain(" rename"),
+                tui_shell::plain(if local_mode {
+                    " local browse is read-only"
+                } else {
+                    " rename"
+                }),
                 tui_shell::plain("   "),
                 tui_shell::key_chip("h", Color::Rgb(71, 55, 152)),
-                tui_shell::plain(" history"),
+                tui_shell::plain(if local_mode {
+                    " local history unavailable"
+                } else {
+                    " history"
+                }),
                 tui_shell::plain("   "),
                 tui_shell::key_chip("m", Color::Rgb(24, 78, 140)),
-                tui_shell::plain(" move folder"),
+                tui_shell::plain(if local_mode {
+                    " local browse is read-only"
+                } else {
+                    " move folder"
+                }),
             ]),
             Line::from(vec![
                 tui_shell::key_chip("e", Color::Rgb(71, 55, 152)),
-                tui_shell::plain(" edit dialog"),
+                tui_shell::plain(if local_mode {
+                    " local browse is read-only"
+                } else {
+                    " edit dialog"
+                }),
                 tui_shell::plain("   "),
                 tui_shell::key_chip("E", Color::Rgb(71, 55, 152)),
-                tui_shell::plain(" raw json"),
+                tui_shell::plain(if local_mode {
+                    " local browse is read-only"
+                } else {
+                    " raw json"
+                }),
                 tui_shell::plain("   "),
                 tui_shell::key_chip("d", Color::Rgb(150, 38, 46)),
-                tui_shell::plain(" delete"),
+                tui_shell::plain(if local_mode {
+                    " local browse is read-only"
+                } else {
+                    " delete"
+                }),
             ]),
         ],
     }
@@ -441,7 +489,14 @@ fn render_summary_lines(state: &BrowserState) -> Vec<Line<'static>> {
         } else {
             Line::from(vec![
                 tui_shell::label("Mode "),
-                tui_shell::accent("browse", Color::Green),
+                tui_shell::accent(
+                    if state.local_mode {
+                        "local-browse"
+                    } else {
+                        "browse"
+                    },
+                    Color::Green,
+                ),
                 Span::raw("  "),
                 tui_shell::focus_label("Focus "),
                 tui_shell::key_chip(
@@ -456,7 +511,34 @@ fn render_summary_lines(state: &BrowserState) -> Vec<Line<'static>> {
     ]
 }
 
-fn control_lines(has_pending_delete: bool, has_pending_edit: bool) -> Vec<Line<'static>> {
+fn control_lines(
+    has_pending_delete: bool,
+    has_pending_edit: bool,
+    local_mode: bool,
+) -> Vec<Line<'static>> {
+    if local_mode && !has_pending_delete && !has_pending_edit {
+        return vec![
+            Line::from(vec![
+                tui_shell::key_chip("Up/Down", Color::Rgb(24, 78, 140)),
+                tui_shell::plain(" move"),
+                tui_shell::plain("   "),
+                tui_shell::key_chip("PgUp/PgDn", Color::Rgb(24, 78, 140)),
+                tui_shell::plain(" scroll detail"),
+                tui_shell::plain("   "),
+                tui_shell::key_chip("Tab", Color::Rgb(164, 116, 19)),
+                tui_shell::plain(" next pane"),
+                tui_shell::plain("   "),
+                tui_shell::key_chip("l", Color::Rgb(24, 78, 140)),
+                tui_shell::plain(" refresh local tree"),
+                tui_shell::plain("   "),
+                tui_shell::key_chip("/ ?", Color::Rgb(164, 116, 19)),
+                tui_shell::plain(" search"),
+            ]),
+            Line::from(vec![
+                muted("Local browse is read-only. Live edit, move, delete, and history actions are unavailable."),
+            ]),
+        ];
+    }
     if has_pending_delete {
         vec![
             Line::from(vec![
@@ -742,7 +824,7 @@ mod tests {
 
     #[test]
     fn control_lines_use_consistent_pane_and_exit_labels() {
-        let lines = control_lines(false, false)
+        let lines = control_lines(false, false, false)
             .into_iter()
             .map(|line| line.to_string())
             .collect::<Vec<_>>();
@@ -755,7 +837,7 @@ mod tests {
 
     #[test]
     fn delete_control_lines_use_cancel_labels() {
-        let lines = control_lines(true, false)
+        let lines = control_lines(true, false, false)
             .into_iter()
             .map(|line| line.to_string())
             .collect::<Vec<_>>();
@@ -763,5 +845,23 @@ mod tests {
         assert!(lines[0].contains("cancel"));
         assert!(lines[1].contains("refresh"));
         assert!(!lines.iter().any(|line| line.contains("exit")));
+    }
+
+    #[test]
+    fn local_mode_summary_and_controls_mark_read_only_state() {
+        let state = BrowserState::new_with_mode(empty_document(), true);
+        let summary_lines = render_summary_lines(&state)
+            .into_iter()
+            .map(|line| line.to_string())
+            .collect::<Vec<_>>();
+        assert!(summary_lines[1].contains("local-browse"));
+        assert!(summary_lines[1].contains("Tree"));
+
+        let lines = control_lines(false, false, true)
+            .into_iter()
+            .map(|line| line.to_string())
+            .collect::<Vec<_>>();
+        assert!(lines[0].contains("refresh local tree"));
+        assert!(lines[1].contains("read-only"));
     }
 }

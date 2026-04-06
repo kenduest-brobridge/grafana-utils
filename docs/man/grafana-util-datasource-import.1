@@ -8,9 +8,14 @@ grafana\-util\-datasource\-import \- Import datasource inventory through the Gra
 Import datasource inventory through the Grafana API.
 .PP
 Use this when you have a local datasource bundle or provisioning tree and want to push it into Grafana, either live or as a dry run.
+.SH BEFORE / AFTER
+.IP \(bu 2
+Before: importing datasource bundles usually meant manually reconciling files, orgs, and secrets before touching Grafana.
+.IP \(bu 2
+After: one import command can preview the plan, reconcile org routing, and then push the bundle with the right guardrails.
 .SH COMMON OPTIONS
 .TP
-.B \-\-import\-dir
+.B \-\-input\-dir
 source path for inventory or provisioning input.
 .TP
 .B \-\-input\-format
@@ -27,11 +32,25 @@ resolve placeholder secrets during import.
 .TP
 .B \-\-dry\-run, \-\-table, \-\-json, \-\-output\-format, \-\-no\-header, \-\-output\-columns, \-\-progress, \-\-verbose
 preview and reporting controls.
+.SH SUCCESS CRITERIA
+.IP \(bu 2
+the import preview shows which orgs and datasources will change
+.IP \(bu 2
+provisioning and inventory inputs both route correctly
+.IP \(bu 2
+secrets are resolved before the live import, not after the damage is done
+.SH FAILURE CHECKS
+.IP \(bu 2
+if the import touches the wrong org, verify the routing flags before trying again
+.IP \(bu 2
+if the plan is incomplete, confirm the \-\-input\-format and whether the bundle is inventory or provisioning
+.IP \(bu 2
+if secrets stay unresolved, check the placeholder map and the provided secret values
 .SH EXAMPLES
 .PP
 Import datasource inventory through the Grafana API.
 .EX
-grafana-util datasource import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./datasources --dry-run --table
+grafana-util datasource import --url http://localhost:3000 --basic-user admin --basic-password admin --input-dir ./datasources --dry-run --table
 .EE
 .SH SEE ALSO
 \fBgrafana-util\fR(1),

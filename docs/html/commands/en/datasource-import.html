@@ -783,12 +783,12 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="when-to-use">When to use</h2>
 <p>Use this when you have a local datasource bundle or provisioning tree and want to push it into Grafana, either live or as a dry run.</p>
 <h2 id="key-flags">Key flags</h2>
-<ul><li><code>--import-dir</code>: source path for inventory or provisioning input.</li><li><code>--input-format</code>: choose <code>inventory</code> or <code>provisioning</code>.</li><li><code>--org-id</code>, <code>--use-export-org</code>, <code>--only-org-id</code>, <code>--create-missing-orgs</code>: control cross-org routing.</li><li><code>--replace-existing</code>, <code>--update-existing-only</code>, <code>--require-matching-export-org</code>: import safety and reconciliation controls.</li><li><code>--secret-values</code>: resolve placeholder secrets during import.</li><li><code>--dry-run</code>, <code>--table</code>, <code>--json</code>, <code>--output-format</code>, <code>--no-header</code>, <code>--output-columns</code>, <code>--progress</code>, <code>--verbose</code>: preview and reporting controls.</li></ul>
+<ul><li><code>--input-dir</code>: source path for inventory or provisioning input.</li><li><code>--input-format</code>: choose <code>inventory</code> or <code>provisioning</code>.</li><li><code>--org-id</code>, <code>--use-export-org</code>, <code>--only-org-id</code>, <code>--create-missing-orgs</code>: control cross-org routing.</li><li><code>--replace-existing</code>, <code>--update-existing-only</code>, <code>--require-matching-export-org</code>: import safety and reconciliation controls.</li><li><code>--secret-values</code>: resolve placeholder secrets during import.</li><li><code>--dry-run</code>, <code>--table</code>, <code>--json</code>, <code>--output-format</code>, <code>--no-header</code>, <code>--output-columns</code>, <code>--progress</code>, <code>--verbose</code>: preview and reporting controls.</li></ul>
 <h2 id="examples">Examples</h2>
 <pre><code># Purpose: Import datasource inventory through the Grafana API.
-grafana-util datasource import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./datasources --dry-run --table</code></pre>
+grafana-util datasource import --url http://localhost:3000 --basic-user admin --basic-password admin --input-dir ./datasources --dry-run --table</code></pre>
 <pre><code># Purpose: Import datasource inventory through the Grafana API.
-grafana-util datasource import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./datasources --use-export-org --only-org-id 2 --create-missing-orgs --dry-run --json</code></pre>
+grafana-util datasource import --url http://localhost:3000 --basic-user admin --basic-password admin --input-dir ./datasources --use-export-org --only-org-id 2 --create-missing-orgs --dry-run --json</code></pre>
 <h2 id="before-after">Before / After</h2>
 <ul><li><strong>Before</strong>: importing datasource bundles usually meant manually reconciling files, orgs, and secrets before touching Grafana.</li><li><strong>After</strong>: one import command can preview the plan, reconcile org routing, and then push the bundle with the right guardrails.</li></ul>
 <h2 id="what-success-looks-like">What success looks like</h2>
@@ -796,7 +796,7 @@ grafana-util datasource import --url http://localhost:3000 --basic-user admin --
 <h2 id="failure-checks">Failure checks</h2>
 <ul><li>if the import touches the wrong org, verify the routing flags before trying again</li><li>if the plan is incomplete, confirm the <code>--input-format</code> and whether the bundle is inventory or provisioning</li><li>if secrets stay unresolved, check the placeholder map and the provided secret values</li></ul>
 <h2 id="related-commands">Related commands</h2>
-<ul><li><a href="datasource-export.html">datasource export</a></li><li><a href="datasource-diff.html">datasource diff</a></li><li><a href="datasource-inspect-export.html">datasource inspect-export</a></li></ul>
+<ul><li><a href="datasource-list.html">datasource list</a></li><li><a href="datasource-export.html">datasource export</a></li><li><a href="datasource-diff.html">datasource diff</a></li></ul>
     
   </article>
   <aside class="sidebar">

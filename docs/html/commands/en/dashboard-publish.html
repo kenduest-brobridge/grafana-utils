@@ -783,12 +783,16 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="when-to-use">When to use</h2>
 <p>Use this when a local draft is ready to go live and you want the command to stage or push it through the same import path used by the CLI.</p>
 <h2 id="key-flags">Key flags</h2>
-<ul><li><code>--input</code>: dashboard JSON file to publish.</li><li><code>--replace-existing</code>: update an existing dashboard when the UID already exists.</li><li><code>--folder-uid</code>: override the destination folder UID.</li><li><code>--message</code>: revision message stored in Grafana.</li><li><code>--dry-run</code>: preview the publish without changing Grafana.</li><li><code>--table</code>, <code>--json</code>: dry-run output modes.</li></ul>
+<ul><li><code>--input</code>: dashboard JSON file to publish. Use <code>-</code> to read one wrapped or bare dashboard JSON document from standard input.</li><li><code>--replace-existing</code>: update an existing dashboard when the UID already exists.</li><li><code>--folder-uid</code>: override the destination folder UID. The built-in General folder is normalized back to the default root publish path instead of sending a literal <code>general</code> folder UID.</li><li><code>--message</code>: revision message stored in Grafana.</li><li><code>--dry-run</code>: preview the publish without changing Grafana.</li><li><code>--watch</code>: rerun publish or dry-run whenever the local input file changes. Use this with a local file path, not <code>--input -</code>. The watcher reports change detection, transient failures, and reruns, and keeps watching until you stop it.</li><li><code>--table</code>, <code>--json</code>: dry-run output modes.</li></ul>
 <h2 id="examples">Examples</h2>
 <pre><code># Purpose: Publish one local dashboard JSON file through the existing dashboard import pipeline.
 grafana-util dashboard publish --url http://localhost:3000 --basic-user admin --basic-password admin --input ./drafts/cpu-main.json --folder-uid infra --message &#x27;Promote CPU dashboard&#x27;</code></pre>
 <pre><code># Purpose: Publish one local dashboard JSON file through the existing dashboard import pipeline.
 grafana-util dashboard publish --url http://localhost:3000 --basic-user admin --basic-password admin --input ./drafts/cpu-main.json --dry-run --table</code></pre>
+<pre><code># Purpose: Publish one generated dashboard from standard input.
+jsonnet dashboards/cpu.jsonnet | grafana-util dashboard publish --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --input - --replace-existing</code></pre>
+<pre><code># Purpose: Watch one local draft file and rerun dry-run after each save.
+grafana-util dashboard publish --url http://localhost:3000 --basic-user admin --basic-password admin --input ./drafts/cpu-main.json --dry-run --watch</code></pre>
 <h2 id="related-commands">Related commands</h2>
 <ul><li><a href="dashboard-import.html">dashboard import</a></li><li><a href="dashboard-review.html">dashboard review</a></li><li><a href="dashboard-patch-file.html">dashboard patch-file</a></li></ul>
     

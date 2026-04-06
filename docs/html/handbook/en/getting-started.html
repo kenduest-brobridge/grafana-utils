@@ -785,11 +785,11 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="step-1-installation">Step 1: Installation</h2>
 <h3 id="download-and-install">Download and Install</h3>
 <pre><code># Purpose: Download and Install.
-curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh</code></pre>
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh</code></pre>
 <p>If you want one fixed release or one explicit install directory, the same script also supports:</p>
 <pre><code># Purpose: Install one pinned release into one explicit binary directory.
 VERSION=0.8.0 BIN_DIR=&quot;$HOME/.local/bin&quot; \
-  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-utils/main/scripts/install.sh | sh</code></pre>
+  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh</code></pre>
 <p>The installer uses <code>BIN_DIR</code> when you set it. Otherwise it tries <code>/usr/local/bin</code> when that directory is writable, then falls back to <code>$HOME/.local/bin</code>.</p>
 <p>If the chosen install directory is not already on <code>PATH</code>, the installer prints the exact shell snippet to add it for <code>zsh</code> or <code>bash</code>. You can also inspect the contract first with:</p>
 <pre><code># Purpose: Show install script options, BIN_DIR behavior, and PATH setup notes.

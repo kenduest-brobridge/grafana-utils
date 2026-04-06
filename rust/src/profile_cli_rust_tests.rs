@@ -330,6 +330,7 @@ fn apply_profile_add_writes_encrypted_file_refs_relative_to_config_dir() {
     let profile = &config.profiles["stage"];
 
     assert!(outcome.local_key_warning);
+    assert!(outcome.gitignore_updated);
     assert!(dir
         .path()
         .join("envs/dev/.grafana-util.secrets.yaml")
@@ -344,5 +345,51 @@ fn apply_profile_add_writes_encrypted_file_refs_relative_to_config_dir() {
             .as_ref()
             .and_then(|item| item.path.clone()),
         Some(PathBuf::from(".grafana-util.secrets.yaml"))
+    );
+    assert_eq!(
+        std::fs::read_to_string(dir.path().join("envs/dev/.gitignore")).unwrap(),
+        ".grafana-util.secrets.key\n.grafana-util.secrets.yaml\n"
+    );
+}
+
+#[test]
+fn apply_profile_add_appends_missing_secret_entries_to_existing_gitignore() {
+    let dir = tempdir().unwrap();
+    let config_path = dir.path().join("grafana-util.yaml");
+    std::fs::write(
+        dir.path().join(".gitignore"),
+        "target/\n.grafana-util.secrets.yaml\n",
+    )
+    .unwrap();
+    let store = MemoryOsSecretStore::default();
+    let args = ProfileAddArgs {
+        name: "stage".to_string(),
+        url: "https://grafana.example.com".to_string(),
+        token: Some("secret-token".to_string()),
+        token_env: None,
+        prompt_token: false,
+        basic_user: None,
+        basic_password: None,
+        password_env: None,
+        prompt_password: false,
+        org_id: None,
+        timeout: None,
+        verify_ssl: false,
+        insecure: false,
+        ca_cert: None,
+        set_default: false,
+        replace_existing: false,
+        store_secret: ProfileSecretStorageMode::EncryptedFile,
+        secret_file: None,
+        prompt_secret_passphrase: false,
+        secret_passphrase_env: None,
+    };
+
+    let outcome = apply_profile_add_with_store(&args, &config_path, &store).unwrap();
+
+    assert!(outcome.gitignore_updated);
+    assert_eq!(
+        std::fs::read_to_string(dir.path().join(".gitignore")).unwrap(),
+        "target/\n.grafana-util.secrets.yaml\n.grafana-util.secrets.key\n"
     );
 }

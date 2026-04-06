@@ -11,8 +11,8 @@ use crate::common::{message, string_field, value_as_object, Result};
 
 pub(crate) use self::org_workflows::{
     add_org_with_request, delete_org_with_request, diff_orgs_with_request,
-    export_orgs_with_request, import_orgs_with_request, list_orgs_with_request,
-    modify_org_with_request,
+    export_orgs_with_request, import_orgs_with_request, list_orgs_from_input_dir,
+    list_orgs_with_request, modify_org_with_request,
 };
 use super::render::{normalize_org_role, scalar_text};
 use super::{request_array, request_object, OrgListArgs};

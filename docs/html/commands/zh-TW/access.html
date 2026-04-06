@@ -766,9 +766,9 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
     <h2 id="這一頁對應的工作流">這一頁對應的工作流</h2>
 <table><thead><tr><th>工作流</th><th>常用子命令</th></tr></thead><tbody><tr><td>盤點使用者 / org / team / service account</td><td><code>user</code>、<code>org</code>、<code>team</code>、<code>service-account</code>、<code>service-account token</code></td></tr><tr><td>管理成員與權限</td><td><code>user</code>、<code>org</code>、<code>team</code></td></tr><tr><td>管理 service account 與 token</td><td><code>service-account</code>、<code>service-account token</code></td></tr></tbody></table>
 <h2 id="從這裡開始">從這裡開始</h2>
-<ul><li>先看現況：<code>access user list</code>、<code>access org list</code>、<code>access team list</code></li><li>要處理 service account：直接進 <code>access service-account</code></li><li>要追 token：直接進 <code>access service-account token</code></li><li>要先確認範圍：先看對應的 list，再做新增、修改或刪除</li></ul>
+<ul><li>先看現況：<code>access user list</code>、<code>access org list</code>、<code>access team list</code>、<code>access service-account list</code></li><li>想看本機套件：把 <code>--input-dir ./access-*</code> 加到對應的 <code>list</code></li><li>要處理 service account：直接進 <code>access service-account</code></li><li>要追 token：直接進 <code>access service-account token</code></li><li>要先確認範圍：先看對應的 list，再做新增、修改或刪除</li></ul>
 <h2 id="說明">說明</h2>
-<p><code>grafana-util access</code> 把身分與存取工作收在同一個入口：<code>user</code>、<code>org</code>、<code>team</code>、<code>service account</code> 和 <code>service-account token</code> 的生命週期都在這裡處理。這頁適合先判斷自己應該往哪個操作面走，而不是直接猜一個命令名。</p>
+<p><code>grafana-util access</code> 把身分與存取工作收在同一個入口：<code>user</code>、<code>org</code>、<code>team</code>、<code>service account</code> 和 <code>service-account token</code> 的生命週期都在這裡處理。<code>list</code> 可以直接讀 live Grafana 或本機 bundle；這頁適合先判斷自己應該往哪個操作面走，而不是直接猜一個命令名。</p>
 <h2 id="主要旗標">主要旗標</h2>
 <ul><li><code>--profile</code>、<code>--url</code>、<code>--token</code>、<code>--basic-user</code>、<code>--basic-password</code></li><li><code>--prompt-password</code>、<code>--prompt-token</code>、<code>--timeout</code>、<code>--verify-ssl</code>、<code>--insecure</code>、<code>--ca-cert</code></li><li>巢狀子命令處理 <code>user</code>、<code>org</code>、<code>team</code> 或 <code>group</code>，以及 <code>service-account</code></li></ul>
 <h2 id="採用前後對照">採用前後對照</h2>
@@ -780,6 +780,8 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="範例">範例</h2>
 <pre><code># 先盤點目前有哪些 user。
 grafana-util access user list --profile prod --json</code></pre>
+<pre><code># 先看本機存好的 org 套件。
+grafana-util access org list --input-dir ./access-orgs --output-format table</code></pre>
 <pre><code># 先建立或更新 service account token。
 grafana-util access service-account token add --url http://localhost:3000 --basic-user admin --basic-password admin --name deploy-bot --token-name nightly</code></pre>
 <pre><code># 先看 service account 與 token 的現況。

@@ -72,7 +72,7 @@ fn routed_import_status_matrix_covers_exists_missing_would_create_and_created() 
             |_target_org_id, scoped_args| {
                 Ok(ImportDryRunReport {
                     mode: "create-only".to_string(),
-                    import_dir: scoped_args.import_dir.clone(),
+                    input_dir: scoped_args.input_dir.clone(),
                     folder_statuses: Vec::new(),
                     dashboard_records: Vec::new(),
                     skipped_missing_count: 0,
@@ -103,7 +103,7 @@ fn routed_import_status_matrix_covers_exists_missing_would_create_and_created() 
             |_target_org_id, scoped_args| {
                 Ok(ImportDryRunReport {
                     mode: "create-only".to_string(),
-                    import_dir: scoped_args.import_dir.clone(),
+                    input_dir: scoped_args.input_dir.clone(),
                     folder_statuses: Vec::new(),
                     dashboard_records: Vec::new(),
                     skipped_missing_count: 0,
@@ -143,7 +143,7 @@ fn routed_import_status_matrix_covers_exists_missing_would_create_and_created() 
         |target_org_id, scoped_args| {
             created_rows.push((
                 target_org_id,
-                scoped_args.import_dir.clone(),
+                scoped_args.input_dir.clone(),
                 scoped_args.org_id,
             ));
             Ok(1)
@@ -314,7 +314,7 @@ fn import_dashboards_with_use_export_org_dry_run_filters_selected_orgs_without_c
         |target_org_id, scoped_args| {
             import_calls.push((
                 target_org_id,
-                scoped_args.import_dir.clone(),
+                scoped_args.input_dir.clone(),
                 scoped_args.org_id,
             ));
             Ok(0)
@@ -322,7 +322,7 @@ fn import_dashboards_with_use_export_org_dry_run_filters_selected_orgs_without_c
         |_target_org_id, scoped_args| {
             Ok(ImportDryRunReport {
                 mode: "create-only".to_string(),
-                import_dir: scoped_args.import_dir.clone(),
+                input_dir: scoped_args.input_dir.clone(),
                 folder_statuses: Vec::new(),
                 dashboard_records: Vec::new(),
                 skipped_missing_count: 0,

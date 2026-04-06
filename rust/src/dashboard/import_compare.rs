@@ -4,14 +4,20 @@ use serde_json::{Map, Value};
 use std::fmt::Write as _;
 use std::path::Path;
 
-use crate::common::{message, object_field, string_field, value_as_object, Result};
+use crate::common::{
+    build_shared_diff_document, message, object_field, render_json_value, string_field,
+    value_as_object, Result, SharedDiffSummary,
+};
 
-use super::{build_import_payload, build_preserved_web_import_document};
+use super::{build_import_payload, build_preserved_web_import_document, DEFAULT_FOLDER_UID};
 
 fn build_compare_document(dashboard: &Map<String, Value>, folder_uid: Option<&str>) -> Value {
     let mut compare = Map::new();
     compare.insert("dashboard".to_string(), Value::Object(dashboard.clone()));
-    if let Some(folder_uid) = folder_uid.filter(|value| !value.is_empty()) {
+    if let Some(folder_uid) = folder_uid
+        .filter(|value| !value.is_empty())
+        .filter(|value| *value != DEFAULT_FOLDER_UID)
+    {
         compare.insert(
             "folderUid".to_string(),
             Value::String(folder_uid.to_string()),
@@ -91,6 +97,7 @@ where
     let _ = super::load_export_metadata(&resolved.metadata_dir, Some(expected_variant))?;
     let dashboard_files = super::import::dashboard_files_for_import(&resolved.dashboard_dir)?;
     let mut differences = 0;
+    let mut rows = Vec::new();
     for dashboard_file in &dashboard_files {
         let document = super::load_json_file(dashboard_file)?;
         let payload = build_import_payload(&document, None, false, "")?;
@@ -106,11 +113,23 @@ where
         let Some(remote_payload) =
             super::fetch_dashboard_if_exists_with_request(&mut request_json, &uid)?
         else {
-            println!(
-                "Diff missing in Grafana for uid={} from {}",
-                uid,
-                dashboard_file.display()
-            );
+            if matches!(args.output_format, crate::common::DiffOutputFormat::Text) {
+                println!(
+                    "Diff missing in Grafana for uid={} from {}",
+                    uid,
+                    dashboard_file.display()
+                );
+            }
+            rows.push(serde_json::json!({
+                "domain": "dashboard",
+                "resourceKind": "dashboard",
+                "identity": uid,
+                "status": "missing-remote",
+                "path": dashboard_file.display().to_string(),
+                "changedFields": Vec::<String>::new(),
+                "diffText": Value::Null,
+                "contextLines": args.context_lines,
+            }));
             differences += 1;
             continue;
         };
@@ -126,16 +145,74 @@ where
                 dashboard_file,
                 args.context_lines,
             )?;
-            println!("{diff_text}");
+            if matches!(args.output_format, crate::common::DiffOutputFormat::Text) {
+                println!("{diff_text}");
+            }
+            rows.push(serde_json::json!({
+                "domain": "dashboard",
+                "resourceKind": "dashboard",
+                "identity": uid,
+                "status": "different",
+                "path": dashboard_file.display().to_string(),
+                "changedFields": ["dashboard"],
+                "diffText": diff_text,
+                "contextLines": args.context_lines,
+            }));
             differences += 1;
         } else {
-            println!("Diff matched uid={} for {}", uid, dashboard_file.display());
+            if matches!(args.output_format, crate::common::DiffOutputFormat::Text) {
+                println!("Diff matched uid={} for {}", uid, dashboard_file.display());
+            }
+            rows.push(serde_json::json!({
+                "domain": "dashboard",
+                "resourceKind": "dashboard",
+                "identity": uid,
+                "status": "same",
+                "path": dashboard_file.display().to_string(),
+                "changedFields": Vec::<String>::new(),
+                "diffText": Value::Null,
+                "contextLines": args.context_lines,
+            }));
         }
     }
-    println!(
-        "Diff checked {} dashboard(s); {} difference(s) found.",
-        dashboard_files.len(),
-        differences
-    );
+    match args.output_format {
+        crate::common::DiffOutputFormat::Text => {
+            println!(
+                "Diff checked {} dashboard(s); {} difference(s) found.",
+                dashboard_files.len(),
+                differences
+            );
+        }
+        crate::common::DiffOutputFormat::Json => {
+            let same = rows
+                .iter()
+                .filter(|row| row.get("status").and_then(Value::as_str) == Some("same"))
+                .count();
+            let different = rows
+                .iter()
+                .filter(|row| row.get("status").and_then(Value::as_str) == Some("different"))
+                .count();
+            let missing_remote = rows
+                .iter()
+                .filter(|row| row.get("status").and_then(Value::as_str) == Some("missing-remote"))
+                .count();
+            print!(
+                "{}",
+                render_json_value(&build_shared_diff_document(
+                    "grafana-util-dashboard-diff",
+                    1,
+                    SharedDiffSummary {
+                        checked: dashboard_files.len(),
+                        same,
+                        different,
+                        missing_remote,
+                        extra_remote: 0,
+                        ambiguous: 0,
+                    },
+                    &rows,
+                ))?
+            );
+        }
+    }
     Ok(differences)
 }

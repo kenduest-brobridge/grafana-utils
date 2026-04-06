@@ -766,11 +766,11 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
     <section class="command-intro">
   <div class="command-intro-grid"><div class="command-intro-block">
   <p class="command-intro-label">What this page covers</p>
-  <p class="command-intro-text">List live Grafana datasource inventory.</p>
+  <p class="command-intro-text">List datasource inventory from live Grafana or a local export bundle.</p>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">When to open this page</p>
-  <ul class="command-intro-list"><li>Use this when you need a non-interactive inventory of datasources, either for the current org, one explicit org, or across all visible orgs.</li></ul>
+  <ul class="command-intro-list"><li>Use this when you need a non-interactive inventory of datasources, either from live Grafana for the current org, one explicit org, or across all visible orgs, or from a local export bundle on disk.</li></ul>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">Who this page is for</p>
@@ -779,22 +779,24 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 </section>
 <h2 id="purpose">Purpose</h2>
-<p>List live Grafana datasource inventory.</p>
+<p>List datasource inventory from live Grafana or a local export bundle.</p>
 <h2 id="when-to-use">When to use</h2>
-<p>Use this when you need a non-interactive inventory of datasources, either for the current org, one explicit org, or across all visible orgs.</p>
+<p>Use this when you need a non-interactive inventory of datasources, either from live Grafana for the current org, one explicit org, or across all visible orgs, or from a local export bundle on disk.</p>
 <h2 id="key-flags">Key flags</h2>
-<ul><li><code>--org-id</code>: list one explicit Grafana org.</li><li><code>--all-orgs</code>: aggregate datasource inventory across visible orgs. Requires Basic auth.</li><li><code>--output-format</code>, <code>--text</code>, <code>--table</code>, <code>--csv</code>, <code>--json</code>, <code>--yaml</code>: output mode controls.</li><li><code>--output-columns</code>: choose the displayed columns.</li><li><code>--no-header</code>: suppress table headers.</li></ul>
+<ul><li><code>--input-dir</code>: read a local datasource export bundle or provisioning tree.</li><li><code>--input-format</code>: choose <code>inventory</code> or <code>provisioning</code> when the local path can mean either source shape.</li><li><code>--org-id</code>: list one explicit Grafana org.</li><li><code>--all-orgs</code>: aggregate datasource inventory across visible orgs. Requires Basic auth.</li><li><code>--output-format</code>, <code>--text</code>, <code>--table</code>, <code>--csv</code>, <code>--json</code>, <code>--yaml</code>: output mode controls.</li><li><code>--output-columns</code>: choose the displayed columns.</li><li><code>--no-header</code>: suppress table headers.</li></ul>
 <h2 id="examples">Examples</h2>
 <pre><code># Purpose: List live Grafana datasource inventory.
 grafana-util datasource list --url http://localhost:3000 --basic-user admin --basic-password admin --output-format text</code></pre>
 <pre><code># Purpose: List live Grafana datasource inventory.
 grafana-util datasource list --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --output-format yaml</code></pre>
+<pre><code># Purpose: List datasource inventory from a local export bundle.
+grafana-util datasource list --input-dir ./datasources --json</code></pre>
 <h2 id="before-after">Before / After</h2>
-<ul><li><strong>Before</strong>: datasource inventory was easy to read only after jumping between Grafana UI, export bundles, or ad hoc API calls.</li><li><strong>After</strong>: one inventory command can give you a reviewable snapshot in text, table, CSV, JSON, or YAML for either one org or all visible orgs.</li></ul>
+<ul><li><strong>Before</strong>: datasource inventory was easy to read only after jumping between Grafana UI, export bundles, or ad hoc API calls.</li><li><strong>After</strong>: one inventory command can give you a reviewable snapshot in text, table, CSV, JSON, or YAML from live Grafana or a local bundle.</li></ul>
 <h2 id="what-success-looks-like">What success looks like</h2>
-<ul><li>you can point the command at the org you care about and get the inventory you expected</li><li>table and CSV output are easy to hand to a script or review in a pull request</li><li>all-org inventory only happens when you really want a cross-org read</li></ul>
+<ul><li>you can point the command at the org you care about or at a local bundle and get the inventory you expected</li><li>table and CSV output are easy to hand to a script or review in a pull request</li><li>all-org inventory only happens when you really want a cross-org read</li></ul>
 <h2 id="failure-checks">Failure checks</h2>
-<ul><li>if the inventory is empty, confirm the org scope and whether the credentials can see the target org</li><li>if <code>--all-orgs</code> fails, fall back to Basic auth and check whether the token is limited to one org</li><li>if column selection looks wrong, verify the output format and requested columns together</li></ul>
+<ul><li>if the inventory is empty, confirm the org scope and whether the credentials can see the target org</li><li>if <code>--all-orgs</code> fails, fall back to Basic auth and check whether the token is limited to one org</li><li>if a local bundle does not read correctly, confirm <code>--input-dir</code> and <code>--input-format</code></li><li>if column selection looks wrong, verify the output format and requested columns together</li></ul>
 <h2 id="related-commands">Related commands</h2>
 <ul><li><a href="datasource-browse.html">datasource browse</a></li><li><a href="datasource-export.html">datasource export</a></li><li><a href="datasource-diff.html">datasource diff</a></li></ul>
     

@@ -58,7 +58,7 @@ fn import_dashboards_with_client_imports_discovered_files() {
         use_export_org: false,
         only_org_id: Vec::new(),
         create_missing_orgs: false,
-        import_dir: raw_dir,
+        input_dir: raw_dir,
         input_format: DashboardImportInputFormat::Raw,
         import_folder_uid: Some("new-folder".to_string()),
         ensure_folders: false,
@@ -109,7 +109,7 @@ fn import_dashboards_with_org_id_requires_basic_auth() {
         use_export_org: false,
         only_org_id: Vec::new(),
         create_missing_orgs: false,
-        import_dir: temp.path().join("raw"),
+        input_dir: temp.path().join("raw"),
         input_format: DashboardImportInputFormat::Raw,
         import_folder_uid: None,
         ensure_folders: false,
@@ -211,13 +211,13 @@ fn import_dashboards_with_create_missing_orgs_during_dry_run_previews_org_creati
             }
         },
         |target_org_id, scoped_args| {
-            import_calls.push((target_org_id, scoped_args.import_dir.clone()));
+            import_calls.push((target_org_id, scoped_args.input_dir.clone()));
             Ok(0)
         },
         |_target_org_id, scoped_args| {
             Ok(ImportDryRunReport {
                 mode: "create-only".to_string(),
-                import_dir: scoped_args.import_dir.clone(),
+                input_dir: scoped_args.input_dir.clone(),
                 folder_statuses: Vec::new(),
                 dashboard_records: Vec::new(),
                 skipped_missing_count: 0,
@@ -274,7 +274,7 @@ fn routed_interactive_import_rebinds_scoped_args_per_org() {
         |target_org_id, scoped_args| {
             import_calls.push((
                 target_org_id,
-                scoped_args.import_dir.clone(),
+                scoped_args.input_dir.clone(),
                 scoped_args.org_id,
                 scoped_args.use_export_org,
                 scoped_args.interactive,
@@ -330,7 +330,7 @@ fn routed_import_create_missing_orgs_dry_run_and_live_created_scope_stay_aligned
             |_target_org_id, scoped_args| {
                 Ok(ImportDryRunReport {
                     mode: "create-only".to_string(),
-                    import_dir: scoped_args.import_dir.clone(),
+                    input_dir: scoped_args.input_dir.clone(),
                     folder_statuses: Vec::new(),
                     dashboard_records: Vec::new(),
                     skipped_missing_count: 0,
@@ -387,7 +387,7 @@ fn routed_import_create_missing_orgs_dry_run_and_live_created_scope_stay_aligned
         |target_org_id, scoped_args| {
             import_calls.push((
                 target_org_id,
-                scoped_args.import_dir.clone(),
+                scoped_args.input_dir.clone(),
                 scoped_args.org_id,
             ));
             Ok(1)
@@ -447,7 +447,7 @@ fn build_import_auth_context_adds_org_header_for_basic_auth_imports() {
         use_export_org: false,
         only_org_id: Vec::new(),
         create_missing_orgs: false,
-        import_dir: temp.path().join("raw"),
+        input_dir: temp.path().join("raw"),
         input_format: DashboardImportInputFormat::Raw,
         import_folder_uid: None,
         ensure_folders: false,

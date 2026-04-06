@@ -766,11 +766,11 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
     <section class="command-intro">
   <div class="command-intro-grid"><div class="command-intro-block">
   <p class="command-intro-label">這頁在說什麼</p>
-  <p class="command-intro-text">從 JSON 成品建立可重現的儀表板拓樸圖。</p>
+  <p class="command-intro-text">直接從 live Grafana 或本地匯出樹建立可重現的儀表板拓樸圖，已保存的分析成品則保留給進階重用。</p>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">什麼時候看這頁</p>
-  <ul class="command-intro-list"><li>當您需要儀表板、資料夾、變數、datasource 連結，以及可選的 alert contract 資料圖形視圖時，使用這個指令。這個指令也接受 graph 別名。</li></ul>
+  <ul class="command-intro-list"><li>當您需要儀表板、資料夾、變數、datasource 連結，以及可選的 alert contract 資料圖形視圖時，使用這個指令。常見流程請優先用 --url 或 --input-dir；只有進階重用或 CI 才保留 artifact 輸入。這個指令也接受 graph 別名。</li></ul>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">適合誰</p>
@@ -779,33 +779,38 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 </section>
 <h2 id="用途">用途</h2>
-<p>從 JSON 成品建立可重現的儀表板拓樸圖。</p>
+<p>直接從 live Grafana 或本地匯出樹建立可重現的儀表板拓樸圖，已保存的分析成品則保留給進階重用。</p>
 <h2 id="何時使用">何時使用</h2>
-<p>當您需要儀表板、資料夾、變數、datasource 連結，以及可選的 alert contract 資料圖形視圖時，使用這個指令。這個指令也接受 <code>graph</code> 別名。</p>
+<p>當您需要儀表板、資料夾、變數、datasource 連結，以及可選的 alert contract 資料圖形視圖時，使用這個指令。常見流程請優先用 <code>--url</code> 或 <code>--input-dir</code>；只有進階重用或 CI 才保留 artifact 輸入。這個指令也接受 <code>graph</code> 別名。</p>
 <h2 id="採用前後對照">採用前後對照</h2>
 <ul><li><strong>採用前</strong>：相依關係通常只存在維護者的記憶、原始 JSON，或是很快過期的臨時圖。</li><li><strong>採用後</strong>：跑一次 topology，就能得到可重現的相依圖，既能在終端看摘要，也能丟給 Mermaid 或 Graphviz。</li></ul>
 <h2 id="重點旗標">重點旗標</h2>
-<ul><li><code>--governance</code>：儀表板治理 JSON 輸入。</li><li><code>--queries</code>：可選的儀表板 query-report JSON 輸入。</li><li><code>--alert-contract</code>：可選的 alert contract JSON 輸入。</li><li><code>--output-format</code>：輸出 <code>text</code>、<code>json</code>、<code>mermaid</code> 或 <code>dot</code>。</li><li><code>--output-file</code>：將渲染後的拓樸寫到磁碟。</li><li><code>--interactive</code>：開啟互動式終端機瀏覽器。</li></ul>
+<ul><li><code>--url</code>：直接分析線上 Grafana。</li><li><code>--input-dir</code>：直接分析本地匯出樹。</li><li><code>--input-format</code>：分析本地匯出時選擇 <code>raw</code> 或 <code>provisioning</code>。</li><li><code>--governance</code>：儀表板治理 JSON 輸入（<code>governance-json</code> 成品，進階重用）。</li><li><code>--queries</code>：可選的儀表板 query-report JSON 輸入（<code>queries-json</code> 成品，進階重用）。</li><li><code>--alert-contract</code>：可選的 alert contract JSON 輸入。</li><li><code>--output-format</code>：輸出 <code>text</code>、<code>json</code>、<code>mermaid</code> 或 <code>dot</code>。</li><li><code>--output-file</code>：將渲染後的拓樸寫到磁碟。</li><li><code>--interactive</code>：開啟互動式終端機瀏覽器。</li></ul>
 <h2 id="範例">範例</h2>
-<pre><code># 用途：從 JSON 成品建立可重現的儀表板拓樸圖。
+<pre><code># 用途：直接從 live Grafana 建立可重現的儀表板拓樸圖。
+grafana-util dashboard topology \
+  --url http://localhost:3000 \
+  --basic-user admin \
+  --basic-password admin \
+  --output-format mermaid</code></pre>
+<pre><code># 用途：從本地匯出樹建立可重現的儀表板拓樸圖。
+grafana-util dashboard graph \
+  --input-dir ./dashboards/raw \
+  --input-format raw \
+  --output-format dot \
+  --output-file ./dashboard-topology.dot</code></pre>
+<pre><code># 用途：進階重用：從已保存的分析成品建立可重現的儀表板拓樸圖。
 grafana-util dashboard topology \
   --governance ./governance.json \
   --queries ./queries.json \
   --alert-contract ./alert-contract.json \
   --output-format mermaid</code></pre>
-<pre><code># 用途：從 JSON 成品建立可重現的儀表板拓樸圖。
-grafana-util dashboard graph \
-  --governance ./governance.json \
-  --queries ./queries.json \
-  --alert-contract ./alert-contract.json \
-  --output-format dot \
-  --output-file ./dashboard-topology.dot</code></pre>
 <h2 id="成功判準">成功判準</h2>
 <ul><li>可以明確指出某次匯出或 live snapshot 牽涉到哪些 dashboard、panel、變數和 datasource 連結</li><li>同一份 topology 可以同時拿來終端檢查、Mermaid 文件圖和 Graphviz 視覺化，不需要重整資料</li><li>如果有 alert contract，也能提早看出路由或依賴上的意外影響</li></ul>
 <h2 id="失敗時先檢查">失敗時先檢查</h2>
 <ul><li>如果圖看起來太空或節點太少，先確認 <code>governance</code> 來源是不是正確的匯出樹或 live 環境</li><li>如果你預期有 alert 邊線卻沒有，先確認是否有帶 <code>--alert-contract</code></li><li>如果後續視覺化工具讀不進去，先確認你輸出的是 <code>mermaid</code>、<code>dot</code>、<code>json</code> 還是一般 <code>text</code></li></ul>
 <h2 id="相關指令">相關指令</h2>
-<ul><li><a href="dashboard-inspect-export.html">dashboard inspect-export</a></li><li><a href="dashboard-governance-gate.html">dashboard governance-gate</a></li><li><a href="dashboard-screenshot.html">dashboard screenshot</a></li></ul>
+<ul><li><a href="dashboard-analyze-export.html">dashboard analyze（本地）</a></li><li><a href="dashboard-governance-gate.html">dashboard governance-gate</a></li><li><a href="dashboard-screenshot.html">dashboard screenshot</a></li></ul>
     
   </article>
   <aside class="sidebar">

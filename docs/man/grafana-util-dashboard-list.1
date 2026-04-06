@@ -19,11 +19,11 @@ list one explicit Grafana org.
 .B \-\-all\-orgs
 aggregate results across visible orgs. Prefer Basic auth.
 .TP
-.B \-\-with\-sources
-include resolved datasource names for table or CSV output.
+.B \-\-show\-sources
+include resolved datasource names in the list output. \-\-with\-sources remains accepted as a compatibility alias.
 .TP
 .B \-\-output\-columns
-choose the displayed columns.
+choose the displayed columns. Selecting sources or source_uids also resolves datasource names.
 .TP
 .B \-\-output\-format, \-\-json, \-\-yaml, \-\-csv, \-\-table, \-\-text
 output mode controls.

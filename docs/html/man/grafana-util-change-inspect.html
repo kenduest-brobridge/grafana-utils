@@ -1,0 +1,956 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>grafana-util-change-inspect.1 · grafana-util docs</title>
+  <style>:root {
+  color-scheme: light dark;
+  --font-scale: 1;
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI Variable Display", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-zh: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+  --font-mono: ui-monospace, "JetBrains Mono", SFMono-Regular, Menlo, Consolas, monospace;
+
+  --bg: #ffffff;
+  --panel: #ffffff;
+  --panel-strong: #f9fbfe;
+  --text: #1c2740;
+  --muted: #30435f;
+  --heading: #0b1633;
+  --accent: #0d84d8;
+  --accent-soft: #ecf7ff;
+  --border: #ccd8e5;
+  --code-bg: #edf3f9;
+  --pre-bg: #0f172a;
+  --pre-text: #f8fafc;
+  --shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+  --input-bg: #ffffff;
+  --input-border: #ccd8e5;
+  --input-text: #1c2740;
+  --cta-bg: #0d84d8;
+  --cta-border: #0d84d8;
+  --cta-text: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b0f14;
+    --panel: #11161c;
+    --panel-strong: #151b22;
+    --text: #e6edf3;
+    --muted: #9da7b3;
+    --heading: #f3f4f6;
+    --accent: #aab4bf;
+    --accent-soft: rgba(170, 180, 191, 0.16);
+    --border: #202833;
+    --code-bg: #1b222b;
+    --pre-bg: #0a0d10;
+    --pre-text: #f3f4f6;
+    --shadow: 0 14px 32px rgba(0, 0, 0, 0.34);
+    --input-bg: #11161c;
+    --input-border: #28313b;
+    --input-text: #f3f4f6;
+    --cta-bg: #24303b;
+    --cta-border: #334250;
+    --cta-text: #f3f4f6;
+  }
+}
+
+html[data-theme="light"] {
+  --bg: #ffffff;
+  --panel: #ffffff;
+  --panel-strong: #f9fbfe;
+  --text: #1c2740;
+  --muted: #30435f;
+  --heading: #0b1633;
+  --accent: #0d84d8;
+  --accent-soft: #ecf7ff;
+  --border: #ccd8e5;
+  --code-bg: #edf3f9;
+  --pre-bg: #0f172a;
+  --pre-text: #f8fafc;
+  --shadow: 0 8px 22px rgba(15, 23, 42, 0.05);
+  --input-bg: #ffffff;
+  --input-border: #ccd8e5;
+  --input-text: #1c2740;
+  --cta-bg: #0d84d8;
+  --cta-border: #0d84d8;
+  --cta-text: #ffffff;
+}
+
+html[data-theme="dark"] {
+  --bg: #0b0f14;
+  --panel: #11161c;
+  --panel-strong: #151b22;
+  --text: #e6edf3;
+  --muted: #9da7b3;
+  --heading: #f3f4f6;
+  --accent: #aab4bf;
+  --accent-soft: rgba(170, 180, 191, 0.16);
+  --border: #202833;
+  --code-bg: #1b222b;
+  --pre-bg: #0a0d10;
+  --pre-text: #f3f4f6;
+  --shadow: 0 14px 32px rgba(0, 0, 0, 0.34);
+  --input-bg: #11161c;
+  --input-border: #28313b;
+  --input-text: #f3f4f6;
+  --cta-bg: #24303b;
+  --cta-border: #334250;
+  --cta-text: #f3f4f6;
+}
+
+html { font-size: calc(16px * var(--font-scale)); scroll-behavior: smooth; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: var(--font-sans); font-weight: 400; color: var(--text); background: var(--bg); text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; }
+html[lang="zh-TW"] body { font-family: var(--font-zh); letter-spacing: 0.025em; }
+a { color: var(--accent); text-decoration: none; font-weight: 500; transition: color 0.15s; }
+a:hover { color: var(--heading); }
+
+h1, h2, h3, h4 { font-family: var(--font-display); color: var(--heading); font-weight: 650; line-height: 1.2; margin: 0; }
+p, li { line-height: 1.72; margin-bottom: 1rem; }
+code { font: 0.88em var(--font-mono); background: var(--code-bg); padding: 0.2em 0.4em; border-radius: 4px; }
+
+pre { position: relative; max-width: 100%; box-sizing: border-box; padding: 20px; border-radius: 8px; background: var(--pre-bg); color: var(--pre-text); margin: 1.5rem 0; border: 1px solid var(--border); overflow-x: auto; }
+pre code { background: transparent !important; color: inherit !important; padding: 0 !important; font-size: 0.9rem; line-height: 1.6; white-space: pre; }
+pre.wrapped code { white-space: pre-wrap !important; word-break: break-all; }
+.code-controls { position: absolute; top: 8px; right: 8px; display: flex; gap: 6px; opacity: 0; transition: opacity 0.2s; z-index: 10; }
+pre:hover .code-controls { opacity: 1; }
+.control-btn { padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.12); background: rgba(18, 24, 33, 0.78); color: rgba(243, 244, 246, 0.92); font: 500 11px var(--font-mono); cursor: pointer; transition: background 0.15s, border-color 0.15s, color 0.15s; backdrop-filter: blur(6px); }
+.control-btn:hover { background: rgba(33, 42, 54, 0.94); border-color: rgba(255,255,255,0.2); }
+.control-btn.active { background: #eef2f6; border-color: #eef2f6; color: #111827; }
+
+.site { max-width: 1820px; margin: 0 auto; padding: 20px 18px; min-height: 100vh; display: flex; flex-direction: column; }
+.site.landing-shell { max-width: 1880px; padding-left: 24px; padding-right: 24px; }
+.site.landing-shell .topbar { margin-bottom: 10px; }
+.site-content { flex-grow: 1; }
+.topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 16px; border-bottom: 1px solid var(--border); padding-bottom: 14px; }
+.brand { font: 760 1.08rem var(--font-mono); text-transform: uppercase; letter-spacing: 0.045em; color: var(--heading) !important; text-decoration: none !important; }
+.themebar { display: flex; gap: 8px; align-items: center; }
+.themebar select {
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  box-sizing: border-box;
+  padding: 4px 10px;
+  font-size: 0.8rem; font-weight: 500; font-family: var(--font-sans);
+  border-radius: 4px; height: 28px;
+  cursor: pointer; transition: all 0.2s;
+}
+.themebar select:hover, .themebar select:focus { border-color: var(--accent); outline: none; }
+#locale-select { width: 148px; }
+#page-locale-select { width: 172px; }
+#jump-select { width: 300px; }
+#font-select { width: 138px; }
+#theme-select { width: 128px; }
+
+.layout {
+  --nav-width: 232px;
+  --sidebar-width: 244px;
+  display: grid;
+  grid-template-columns: var(--nav-width) minmax(0, 1fr) var(--sidebar-width);
+  gap: 20px;
+  align-items: start;
+}
+.layout.layout-no-nav { --nav-width: 0px; grid-template-columns: minmax(0, 1fr) var(--sidebar-width); }
+.layout.layout-no-sidebar { --sidebar-width: 0px; grid-template-columns: var(--nav-width) minmax(0, 1fr); }
+.layout.layout-no-nav.layout-no-sidebar { grid-template-columns: minmax(0, 1fr); }
+.layout.layout-collapsed-nav:not(.layout-no-nav) { --nav-width: 26px; }
+.layout.layout-collapsed-sidebar:not(.layout-no-sidebar) { --sidebar-width: 26px; }
+@media (max-width: 1280px) { .layout { grid-template-columns: 210px minmax(0, 1fr); gap: 18px; } .sidebar { display: none !important; } }
+@media (max-width: 768px) { .layout { grid-template-columns: 1fr; } .nav-sidebar { display: none !important; } }
+
+.nav-sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 12px 0 0; max-height: calc(100vh - 24px); overflow: visible; font-family: var(--font-sans); letter-spacing: -0.01em; }
+html[lang="zh-TW"] .nav-sidebar { font-family: var(--font-zh); letter-spacing: 0; }
+.nav-sidebar-content { max-height: calc(100vh - 24px); overflow-y: auto; }
+.nav-sidebar li { margin-bottom: 0; }
+.nav-sidebar h2 {
+  margin: 0 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: none;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  line-height: 1.3;
+  opacity: 0.82;
+}
+.nav-section + .nav-section { margin-top: 18px; }
+.nav-group-block + .nav-group-block { margin-top: 14px; }
+.nav-group-title {
+  margin: 0 0 6px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--heading);
+  letter-spacing: 0.01em;
+  line-height: 1.32;
+}
+.nav-tree,
+.nav-sub-list { list-style: none; margin: 0; padding: 0; position: relative; }
+.nav-tree::before,
+.nav-sub-list::before { display: none; }
+.nav-tree-node { position: relative; margin: 0; }
+.nav-tree-node + .nav-tree-node { margin-top: 2px; }
+.nav-tree-node::before { display: none; }
+.nav-group { margin: 0; position: relative; }
+.nav-group + .nav-group { margin-top: 2px; }
+.nav-group-header { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 1px 0; cursor: pointer; border-radius: 0; font-weight: 620; color: var(--heading); transition: color 0.15s; font-size: 0.9rem; }
+.nav-group-header:hover { color: var(--heading); }
+.nav-group-link { flex: 1; display: block; padding: 4px 8px; border-radius: 8px; color: var(--heading); text-decoration: none !important; font-weight: 600; line-height: 1.4; }
+.nav-group-link:hover { background: var(--panel-strong); }
+.nav-item { display: block; padding: 4px 8px; border-radius: 8px; color: var(--text); text-decoration: none !important; transition: 0.15s; font-weight: 530; font-size: 0.84rem; line-height: 1.4; }
+.nav-group-link,
+.nav-item,
+.nav-command-entry { white-space: nowrap; }
+.nav-item:hover { background: var(--panel-strong); color: var(--heading); }
+.nav-item.active,
+.nav-group-link.active { background: color-mix(in srgb, var(--accent-soft) 70%, white); color: var(--heading); font-weight: 600; box-shadow: inset 2px 0 0 var(--accent); }
+.nav-sub-list { margin-top: 4px; margin-left: 10px; }
+.nav-sub-list .nav-item { color: var(--muted); font-weight: 520; }
+.nav-sub-list .nav-item.active { color: var(--heading); font-weight: 590; }
+.nav-command-entry { display: block; padding: 4px 8px; border-radius: 8px; color: var(--muted); text-decoration: none !important; font-size: 0.82rem; font-weight: 540; line-height: 1.38; transition: 0.15s; }
+.nav-command-entry:hover { color: var(--heading); background: var(--panel-strong); }
+.nav-command-entry.active { color: var(--heading); font-weight: 620; background: color-mix(in srgb, var(--accent-soft) 60%, white); box-shadow: inset 2px 0 0 var(--accent); }
+
+.sidebar-toggle {
+  position: absolute;
+  top: 18px;
+  width: 18px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel) 92%, white);
+  color: var(--muted);
+  font: 700 10px var(--font-sans);
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(15, 23, 42, 0.08);
+  z-index: 5;
+}
+.sidebar-toggle:hover {
+  color: var(--heading);
+  border-color: color-mix(in srgb, var(--border) 55%, var(--accent));
+  background: var(--panel);
+}
+.sidebar-toggle-left { right: 0; transform: translateX(50%); }
+.sidebar-toggle-right { left: 0; transform: translateX(-50%); }
+.layout.layout-collapsed-nav .nav-sidebar-content,
+.layout.layout-collapsed-sidebar .sidebar-content {
+  opacity: 0;
+  pointer-events: none;
+}
+.layout.layout-collapsed-nav .nav-sidebar-content { visibility: hidden; }
+.layout.layout-collapsed-sidebar .sidebar-content { visibility: hidden; }
+.layout.layout-collapsed-nav .nav-sidebar,
+.layout.layout-collapsed-sidebar .sidebar {
+  min-width: 0;
+}
+.layout.layout-collapsed-nav .sidebar-toggle-left {
+  right: 4px;
+  transform: none;
+}
+.layout.layout-collapsed-sidebar .sidebar-toggle-right {
+  left: 4px;
+  transform: none;
+}
+
+.article { min-width: 0; padding: 10px 0 24px; }
+.article p,
+.article li { color: var(--text); font-weight: 460; }
+.article ul li::marker,
+.article ol li::marker { color: var(--heading); }
+.article table {
+  width: 100%;
+  margin: 1.25rem 0 1.75rem;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: auto;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+.article thead th {
+  padding: 0.9rem 1rem;
+  text-align: left;
+  vertical-align: top;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  font-weight: 680;
+  color: var(--heading);
+  background: var(--panel-strong);
+  border-bottom: 1px solid var(--border);
+}
+.article tbody td {
+  padding: 0.85rem 1rem;
+  vertical-align: top;
+  font-size: 0.94rem;
+  line-height: 1.62;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+}
+.article tbody tr:last-child td {
+  border-bottom: 0;
+}
+.article th + th,
+.article td + td {
+  border-left: 1px solid var(--border);
+}
+.article table code {
+  white-space: nowrap;
+}
+.article table + p,
+.article table + ul,
+.article table + ol {
+  margin-top: 1.1rem;
+}
+.hero-eyebrow { display: inline-block; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font: 700 10px var(--font-mono); margin-bottom: 8px; text-transform: uppercase; }
+.article h1 { font-size: 2.15rem; margin-bottom: 12px; letter-spacing: -0.018em; font-weight: 680; }
+.article h2 { margin-top: 40px; border-top: 1px solid var(--border); padding-top: 24px; font-size: 1.5rem; margin-bottom: 12px; letter-spacing: -0.012em; font-weight: 620; }
+.article h3 { margin-top: 24px; font-size: 1.2rem; margin-bottom: 12px; letter-spacing: -0.01em; font-weight: 610; }
+.hero-title-main { display: block; }
+.hero-title-secondary { display: block; margin-top: 6px; font-size: 0.68em; line-height: 1.2; color: var(--muted); font-weight: 560; letter-spacing: -0.012em; }
+.hero-summary { margin: 0 0 18px; max-width: 68ch; color: var(--text); font-size: 1rem; line-height: 1.72; font-weight: 450; }
+.section-index {
+  margin: 0 0 1.75rem;
+  padding: 1rem 1.1rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--panel-strong);
+  box-shadow: var(--shadow);
+}
+.section-index h2 {
+  margin: 0 0 0.45rem;
+  padding: 0;
+  border: 0;
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+.section-index-summary {
+  margin: 0 0 0.85rem;
+  color: var(--muted);
+  font-size: 0.94rem;
+  line-height: 1.68;
+}
+.section-index-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.4rem 1rem;
+}
+.section-index-list li {
+  margin: 0;
+}
+.section-index-list a {
+  display: block;
+  padding: 0.25rem 0;
+  color: var(--text);
+  font-weight: 560;
+}
+.section-index-list a:hover {
+  color: var(--heading);
+}
+.article blockquote { margin: 1.5rem 0; padding: 12px 16px; border-left: 3px solid var(--accent); background: var(--accent-soft); border-radius: 4px; }
+.article blockquote p { margin: 0; font-size: 0.95rem; color: var(--heading); }
+.breadcrumbs {
+  margin-bottom: 12px;
+  font-size: 0.84rem;
+  color: color-mix(in srgb, var(--muted) 78%, white);
+  font-weight: 460;
+}
+.command-intro {
+  margin: 0 0 1.6rem;
+  padding: 1rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--panel-strong);
+  box-shadow: var(--shadow);
+}
+.command-intro-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.9rem 1.1rem;
+}
+.command-intro-block { min-width: 0; }
+.command-intro-label {
+  margin: 0 0 0.35rem;
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.command-intro-text {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.98rem;
+  line-height: 1.7;
+}
+.command-intro-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: var(--text);
+}
+.command-intro-list li { margin: 0.18rem 0; }
+
+.sidebar { position: sticky; top: 12px; min-width: 0; padding: 2px 0 0 12px; max-height: calc(100vh - 24px); overflow: visible; font-family: var(--font-sans); letter-spacing: -0.01em; }
+html[lang="zh-TW"] .sidebar { font-family: var(--font-zh); letter-spacing: 0; }
+.sidebar-content { max-height: calc(100vh - 24px); overflow-y: auto; }
+.sidebar li { margin-bottom: 0; }
+.sidebar h2 { font-size: 0.74rem; font-weight: 700; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; letter-spacing: 0.05em; }
+.sidebar-section + .sidebar-section { margin-top: 22px; }
+.toc-list { list-style: none; padding: 0; margin: 0; border-left: 1px solid var(--border); }
+.toc-list li + li { margin-top: 2px; }
+.toc-list li.toc-level-2 a { font-size: 0.84rem; font-weight: 620; color: var(--text); }
+.toc-list li.toc-level-3 a { font-size: 0.78rem; font-weight: 500; color: var(--muted); padding-left: 18px; }
+.toc-list a { display: block; padding: 4px 10px; border-left: 2px solid transparent; margin-left: -1px; color: var(--muted); font-size: 0.82rem; transition: 0.15s; font-weight: 520; text-decoration: none !important; white-space: nowrap; }
+.toc-list a:hover { color: var(--heading); border-left-color: var(--border); }
+.toc-list a.active { color: var(--heading); border-left-color: var(--accent); font-weight: 680; }
+.sidebar-meta-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.sidebar-meta-link,
+.sidebar-meta-text { display: block; font-size: 0.84rem; line-height: 1.4; font-weight: 520; }
+.sidebar-meta-link { color: var(--text); text-decoration: none !important; }
+.sidebar-meta-link,
+.sidebar-meta-text { white-space: nowrap; }
+.sidebar-meta-link:hover { color: var(--heading); }
+.sidebar-meta-text { color: var(--muted); }
+.sidebar-meta-current { color: var(--heading); font-weight: 620; }
+.toc-icon { display: inline-block; opacity: 0.58; transform: scale(0.9); transform-origin: left center; margin-right: 0.32rem; }
+
+.footer-nav { display: flex; justify-content: space-between; gap: 16px; margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--border); }
+.link-card { flex: 1; padding: 12px 16px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel-strong); transition: 0.2s; text-decoration: none !important; color: var(--text); }
+.link-card:hover { border-color: var(--accent); }
+.link-card span { display: block; font-size: 0.7rem; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; font-weight: 700; }
+
+.site-footer { margin-top: 40px; padding: 24px 0; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.85rem; text-align: center; }
+
+.landing-page {
+  width: 100%;
+  padding: 12px 0 20px;
+}
+.landing-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.08fr) minmax(420px, 0.88fr);
+  gap: 48px;
+  align-items: start;
+  padding: 18px 0 30px;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--panel) 98%, white), color-mix(in srgb, var(--panel) 96%, var(--accent-soft)));
+}
+.landing-hero-inner {
+  max-width: none;
+}
+.landing-title {
+  margin: 0 0 18px;
+  font-size: clamp(2.35rem, 4.3vw, 3.6rem);
+  line-height: 0.96;
+  letter-spacing: -0.05em;
+}
+.landing-summary {
+  max-width: 72ch;
+  margin: 0;
+  font-size: 1.02rem;
+  line-height: 1.72;
+  color: var(--text);
+}
+.landing-search-panel {
+  padding-top: 12px;
+}
+.landing-search-panel h2 {
+  margin: 0 0 8px;
+  font-size: 1.15rem;
+  letter-spacing: -0.02em;
+}
+.landing-search-panel p {
+  margin: 0 0 16px;
+  font-size: 0.95rem;
+  line-height: 1.7;
+  color: var(--muted);
+}
+.landing-search-form {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  align-items: center;
+  max-width: 100%;
+}
+.landing-search-input {
+  flex: 1;
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1px solid var(--input-border);
+  border-radius: 14px;
+  background: var(--input-bg);
+  color: var(--input-text);
+  font: 500 1rem var(--font-sans);
+}
+.landing-search-input::placeholder {
+  color: var(--muted);
+}
+.landing-search-input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.landing-search-button {
+  min-height: 46px;
+  padding: 0 18px;
+  border: 1px solid var(--cta-border);
+  border-radius: 14px;
+  background: var(--cta-bg);
+  color: var(--cta-text);
+  font: 700 0.95rem var(--font-sans);
+  cursor: pointer;
+  flex: 0 0 auto;
+  align-self: center;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.15s;
+}
+.landing-search-button:hover {
+  background: color-mix(in srgb, var(--cta-bg) 84%, white);
+  border-color: color-mix(in srgb, var(--cta-border) 78%, white);
+}
+.landing-search-button:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.landing-search-button:active {
+  transform: translateY(1px);
+}
+.landing-sections {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 28px;
+  margin-top: 30px;
+  padding-top: 26px;
+  border-top: 1px solid var(--border);
+}
+.landing-section h2 {
+  margin: 0 0 10px;
+  font-size: 1.2rem;
+  letter-spacing: -0.02em;
+}
+.landing-section p {
+  margin: 0 0 18px;
+  font-size: 0.96rem;
+  line-height: 1.72;
+  color: var(--muted);
+}
+.landing-task-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0;
+}
+.landing-meta {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 28px;
+  align-items: start;
+  margin-top: 36px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+.landing-panel {
+  padding: 0;
+}
+.landing-panel h2 {
+  margin: 0 0 8px;
+  font-size: 0.92rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.landing-panel p {
+  margin: 0 0 14px;
+  font-size: 0.98rem;
+  line-height: 1.7;
+  color: var(--muted);
+}
+html[data-theme="dark"] .landing-hero {
+  background:
+    radial-gradient(circle at 14% 10%, rgba(255, 255, 255, 0.04), transparent 24%),
+    radial-gradient(circle at 82% 14%, rgba(170, 180, 191, 0.11), transparent 28%),
+    linear-gradient(180deg, #0b0f14 0%, #0d1218 58%, #10161d 100%);
+  border-bottom: 1px solid var(--border);
+}
+html[data-theme="dark"] .landing-search-panel {
+  padding: 18px 20px 20px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+html[data-theme="dark"] .landing-search-input::placeholder {
+  color: color-mix(in srgb, var(--muted) 82%, white);
+}
+html[data-theme="dark"] .landing-sections {
+  gap: 24px;
+}
+html[data-theme="dark"] .landing-section {
+  padding: 18px 20px 20px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+html[data-theme="dark"] .landing-task {
+  border-top-color: color-mix(in srgb, var(--border) 76%, white);
+}
+html[data-theme="dark"] .landing-meta {
+  border-top-color: var(--border);
+}
+.landing-link-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.landing-link-list a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0;
+  background: transparent;
+  color: var(--text);
+}
+.landing-task {
+  padding: 16px 0 18px;
+  border-top: 1px solid var(--border);
+}
+.landing-task:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.landing-task-title {
+  margin: 0 0 6px;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--heading);
+}
+.landing-task-copy {
+  margin: 0 0 10px;
+  font-size: 0.92rem;
+  line-height: 1.65;
+  color: var(--text);
+}
+.landing-task-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.landing-task-links a {
+  color: var(--accent);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+.landing-inline-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  margin: 0 0 18px;
+  padding: 0;
+  list-style: none;
+}
+.landing-inline-links a {
+  color: var(--text);
+  font-size: 0.92rem;
+  font-weight: 650;
+}
+
+.manpage-rendered { display: grid; min-width: 0; gap: 18px; }
+.manpage-rendered > p { margin: 0; }
+.manpage-rendered .man-section { min-width: 0; }
+.manpage-rendered .man-section h2 { margin: 0 0 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.manpage-rendered .man-section + .man-section { margin-top: 6px; }
+.manpage-rendered .man-bullets { margin: 0; padding-left: 1.2rem; }
+.manpage-rendered .man-bullets li + li { margin-top: 8px; }
+.manpage-rendered .man-definitions { display: grid; grid-template-columns: minmax(0, 220px) minmax(0, 1fr); gap: 10px 18px; margin: 0; }
+.manpage-rendered .man-definitions dt { font-weight: 700; color: var(--heading); }
+.manpage-rendered .man-definitions dd { min-width: 0; margin: 0; }
+.manpage-rendered pre.man-example { margin: 0; }
+.manpage-intro > p:first-child {
+  margin-top: 0;
+}
+
+@media (max-width: 860px) {
+  .landing-sections,
+  .landing-meta {
+    grid-template-columns: 1fr;
+  }
+  .landing-page {
+    width: 100%;
+    margin: 0;
+  }
+  .landing-hero {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    padding: 20px 0 24px;
+  }
+  .landing-hero-inner {
+    max-width: 100%;
+  }
+  .landing-summary {
+    font-size: 1.05rem;
+    white-space: normal;
+  }
+  .landing-search-form {
+    align-items: stretch;
+  }
+  .landing-search-button {
+    width: 100%;
+    align-self: stretch;
+  }
+  .landing-panel {
+    padding: 0;
+  }
+  .landing-meta {
+    grid-template-columns: 1fr;
+    gap: 18px;
+  }
+  .site.landing-shell {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+}
+
+code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font-family:var(--font-mono);font-size:1em;text-align:left;white-space:pre;word-spacing:normal;word-break:normal;word-wrap:normal;line-height:1.5;-moz-tab-size:4;-o-tab-size:4;tab-size:4;-webkit-hyphens:none;-moz-hyphens:none;-ms-hyphens:none;hyphens:none}
+.token.comment{color:#999}.token.punctuation{color:#ccc}.token.keyword{color:#cc99cd}.token.string{color:#7ec699}.token.function{color:#f08d49}.token.operator{color:#67cdcc}
+</style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" media="print" onload="this.media='all'">
+</head>
+<body>
+  <div class="site">
+    <div class="site-content">
+      <div class="topbar">
+  <a class="brand" href="../index.html">grafana-util docs</a>
+  <div class="themebar">
+    <select id="jump-select" aria-label="Jump"><option value="" selected>Jump to...</option><optgroup label="Handbook"><option value="../handbook/en/index.html">Overview</option><option value="../handbook/en/what-is-grafana-util.html">What grafana-util is for</option><option value="../handbook/en/getting-started.html">Getting Started</option><option value="../handbook/en/role-new-user.html">New User Handbook</option><option value="../handbook/en/role-sre-ops.html">SRE / Operator Handbook</option><option value="../handbook/en/role-automation-ci.html">Automation / CI Handbook</option><option value="../handbook/en/architecture.html">Architecture &amp; Design Principles</option><option value="../handbook/en/dashboard.html">Dashboard Operator Handbook</option><option value="../handbook/en/datasource.html">Datasource Operator Handbook</option><option value="../handbook/en/alert.html">Alert Operator Handbook</option><option value="../handbook/en/access.html">Access Management (Identity &amp; Access)</option><option value="../handbook/en/change-overview-status.html">Project Status &amp; Change Overview</option><option value="../handbook/en/scenarios.html">Operator Scenarios</option><option value="../handbook/en/recipes.html">Best Practices &amp; Real-World Recipes</option><option value="../handbook/en/reference.html">Technical Reference</option><option value="../handbook/en/troubleshooting.html">Troubleshooting &amp; Glossary</option></optgroup><optgroup label="Commands"><option value="../commands/en/dashboard.html">Dashboard</option><option value="../commands/en/alert.html">Alert</option><option value="../commands/en/datasource.html">Datasource</option><option value="../commands/en/access.html">Access</option><option value="../commands/en/profile.html">Profile</option><option value="../commands/en/status.html">Status</option><option value="../commands/en/overview.html">Overview</option><option value="../commands/en/change.html">Change</option><option value="../commands/en/snapshot.html">Snapshot</option></optgroup></select>
+    <select id="font-select" aria-label="Font Size">
+      <option value="0.9">Font: Compact</option>
+      <option value="1">Font: Default</option>
+      <option value="1.1">Font: Large</option>
+      <option value="1.2">Font: Extra Large</option>
+    </select>
+    <select id="theme-select" aria-label="Theme">
+      <option value="auto">Theme: Auto</option>
+      <option value="light">Theme: Light</option>
+      <option value="dark">Theme: Dark</option>
+    </select>
+  </div>
+</div>
+
+      <div class="layout">
+  <aside class="nav-sidebar">
+  <button class="sidebar-toggle sidebar-toggle-left" type="button" aria-expanded="true" aria-label="Toggle handbook navigation">◀</button>
+  <div class="nav-sidebar-content"><section class="nav-section"><h2>Guide Map</h2><div class="nav-group-block"><div class="nav-group-title">Start</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../handbook/en/index.html" class="nav-item">Overview</a></li><li class="nav-tree-node"><a href="../handbook/en/what-is-grafana-util.html" class="nav-item">What grafana-util is for</a></li><li class="nav-tree-node"><a href="../handbook/en/getting-started.html" class="nav-item">Getting Started</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">Role Paths</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../handbook/en/role-new-user.html" class="nav-item">New User Handbook</a></li><li class="nav-tree-node"><a href="../handbook/en/role-sre-ops.html" class="nav-item">SRE / Operator Handbook</a></li><li class="nav-tree-node"><a href="../handbook/en/role-automation-ci.html" class="nav-item">Automation / CI Handbook</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">Core Operations</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../handbook/en/dashboard.html" class="nav-item">Dashboard Operator Handbook</a></li><li class="nav-tree-node"><a href="../handbook/en/datasource.html" class="nav-item">Datasource Operator Handbook</a></li><li class="nav-tree-node"><a href="../handbook/en/alert.html" class="nav-item">Alert Operator Handbook</a></li><li class="nav-tree-node"><a href="../handbook/en/access.html" class="nav-item">Access Management (Identity &amp; Access)</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">Governance</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../handbook/en/architecture.html" class="nav-item">Architecture &amp; Design Principles</a></li><li class="nav-tree-node"><a href="../handbook/en/change-overview-status.html" class="nav-item">Project Status &amp; Change Overview</a></li></ul></div><div class="nav-group-block"><div class="nav-group-title">Scenarios &amp; Reference</div><ul class="nav-tree"><li class="nav-tree-node"><a href="../handbook/en/scenarios.html" class="nav-item">Operator Scenarios</a></li><li class="nav-tree-node"><a href="../handbook/en/recipes.html" class="nav-item">Best Practices &amp; Real-World Recipes</a></li><li class="nav-tree-node"><a href="../handbook/en/reference.html" class="nav-item">Technical Reference</a></li><li class="nav-tree-node"><a href="../handbook/en/troubleshooting.html" class="nav-item">Troubleshooting &amp; Glossary</a></li></ul></div></section><section class="nav-section"><h2>Command Entry</h2><a href="../commands/en/index.html" class="nav-command-entry">Open command docs</a></section></div>
+</aside>
+
+  <article class="article">
+    <div class="breadcrumbs"><a href="../index.html">Home</a> / <a href="index.html">Manpages</a> / grafana-util-change-inspect.1</div>
+
+    <h1><span class="hero-title-main">grafana-util-change-inspect.1</span></h1>
+<p class="hero-summary">Browser-readable rendering of a generated roff manpage.</p>
+
+    <div class="manpage-intro">
+  <p>This page renders the generated roff manpage into readable HTML for browser use. For richer per-subcommand detail, prefer the command-reference pages.</p>
+  <div class="manpage-rendered"><section class="man-section"><h2>NAME</h2><p>grafana-util-change-inspect - Inspect the staged change package from discovered or explicit inputs.</p></section><section class="man-section"><h2>SYNOPSIS</h2><p><strong>grafana-util change inspect [<em>OPTIONS</em>]</strong></p></section><section class="man-section"><h2>DESCRIPTION</h2><p>Inspect the staged change package from discovered or explicit inputs.</p><ul class="man-bullets"><li>Start here when you need the shortest path to understand what the staged package contains.</li><li>Use this before change check or change preview when you want to size the package first.</li><li>Prefer this over lower-level summary when the staged inputs may come from mixed workspace artifacts instead of only one desired.json.</li></ul></section><section class="man-section"><h2>BEFORE / AFTER</h2><ul class="man-bullets"><li>Before: the change package is still just a set of directories, files, or staged contracts on disk.</li><li>After: you have one overview-style document that tells you which sections were discovered and how large the change appears to be.</li></ul></section><section class="man-section"><h2>COMMON OPTIONS</h2><dl class="man-definitions"><dt><strong>--workspace</strong></dt><dd>auto-discover common staged inputs from the current repo, export tree, or provisioning tree.</dd><dt><strong>--desired-file</strong></dt><dd>inspect one explicit desired change file.</dd><dt><strong>--dashboard-export-dir, --dashboard-provisioning-dir</strong></dt><dd>inspect dashboard staged inputs directly.</dd><dt><strong>--alert-export-dir, --datasource-provisioning-file</strong></dt><dd>add alert and datasource staged inputs explicitly.</dd><dt><strong>--source-bundle</strong></dt><dd>inspect an existing source bundle instead of per-surface directories.</dd><dt><strong>--output-format</strong></dt><dd>render as text or json.</dd><dt><strong>--output-file, --also-stdout</strong></dt><dd>persist the rendered output if you want a review artifact.</dd></dl></section><section class="man-section"><h2>SUCCESS CRITERIA</h2><ul class="man-bullets"><li>the command tells you what staged surfaces were discovered</li><li>the package size looks plausible before you spend time on preview or apply</li><li>the JSON output is stable enough to hand to another operator or attach to review notes</li></ul></section><section class="man-section"><h2>FAILURE CHECKS</h2><ul class="man-bullets"><li>if discovery finds nothing, retry with an explicit input flag before assuming the files are broken</li><li>if the package looks unexpectedly small or large, verify that --workspace points at the right export tree or repo root</li><li>if JSON consumers read the result, validate kind and schemaVersion before deeper parsing</li></ul></section><section class="man-section"><h2>EXAMPLES</h2><p>Inspect the staged change package from discovered or explicit inputs.</p><pre class="man-example"><code>grafana-util change inspect --workspace .</code></pre></section><section class="man-section"><h2>SEE ALSO</h2><p><strong>grafana-util</strong>(1)</p></section></div>
+</div>
+
+    
+  </article>
+  <aside class="sidebar">
+  <button class="sidebar-toggle sidebar-toggle-right" type="button" aria-expanded="true" aria-label="Toggle page sidebar">▶</button>
+  <div class="sidebar-content">
+    <section class="sidebar-section"><h2>On This Page</h2><p>This page renders the generated manpage into readable HTML sections.</p></section><section class="sidebar-section"><h2>Related</h2><ul class="sidebar-meta-list"><li><a href="index.html" class="sidebar-meta-link">Manpage index</a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><p>English only. The manpage lane currently generates from English command docs.</p></section>
+  </div>
+</aside>
+
+</div>
+
+    </div>
+    <footer class="site-footer">Source: <code>docs/man/grafana-util-change-inspect.1</code><br>Generated by <code>scripts/generate_command_html.py</code>.</footer>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js" async></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js" async></script>
+  <script>
+(() => {
+  const root = document.documentElement;
+  const storageKey = "grafana-util-docs-theme";
+  const select = document.getElementById("theme-select");
+  const saved = localStorage.getItem(storageKey) || "auto";
+  const applyTheme = (val) => { if(val==="auto") root.removeAttribute("data-theme"); else root.setAttribute("data-theme", val); };
+  applyTheme(saved);
+  if(select) { select.value = saved; select.onchange = (e) => { localStorage.setItem(storageKey, e.target.value); applyTheme(e.target.value); }; }
+
+  const fontKey = "grafana-util-docs-font";
+  const fontSelect = document.getElementById("font-select");
+  const savedFont = localStorage.getItem(fontKey) || "1";
+  const applyFont = (val) => { root.style.setProperty("--font-scale", val); };
+  applyFont(savedFont);
+  if(fontSelect) { fontSelect.value = savedFont; fontSelect.onchange = (e) => { localStorage.setItem(fontKey, e.target.value); applyFont(e.target.value); }; }
+
+  const wrapKey = "grafana-util-docs-wrap";
+  let isWrapped = localStorage.getItem(wrapKey) === "true";
+  const updateWrap = (block, btn, wrapped) => {
+    if(!btn) return;
+    if(wrapped) { block.classList.add("wrapped"); btn.classList.add("active"); btn.innerText="Wrap: ON"; }
+    else { block.classList.remove("wrapped"); btn.classList.remove("active"); btn.innerText="Wrap: OFF"; }
+  };
+  document.querySelectorAll("pre").forEach(block => {
+    const controls = document.createElement("div"); controls.className = "code-controls";
+    const wrapBtn = document.createElement("button"); wrapBtn.className = "control-btn";
+    updateWrap(block, wrapBtn, isWrapped);
+    wrapBtn.onclick = () => { isWrapped = !isWrapped; localStorage.setItem(wrapKey, isWrapped); document.querySelectorAll("pre").forEach(b => updateWrap(b, b.querySelector(".control-btn"), isWrapped)); };
+    const copyBtn = document.createElement("button"); copyBtn.className = "control-btn"; copyBtn.innerText = "Copy";
+    copyBtn.onclick = () => {
+      const raw = block.querySelector("code").innerText;
+      navigator.clipboard.writeText(raw).then(() => { copyBtn.innerText="Copied!"; setTimeout(()=>copyBtn.innerText="Copy", 2000); });
+    };
+    controls.append(wrapBtn, copyBtn); block.append(controls);
+  });
+
+  document.querySelectorAll(".nav-group-header").forEach(header => {
+    header.onclick = () => { header.closest(".nav-group").classList.toggle("collapsed"); };
+  });
+
+  document.querySelectorAll(".sidebar-toggle-left").forEach((button) => {
+    button.addEventListener("click", () => {
+      const layout = button.closest(".layout");
+      if(!layout) return;
+      const collapsed = layout.classList.toggle("layout-collapsed-nav");
+      button.setAttribute("aria-expanded", String(!collapsed));
+      button.innerText = collapsed ? "▶" : "◀";
+    });
+  });
+
+  document.querySelectorAll(".sidebar-toggle-right").forEach((button) => {
+    button.addEventListener("click", () => {
+      const layout = button.closest(".layout");
+      if(!layout) return;
+      const collapsed = layout.classList.toggle("layout-collapsed-sidebar");
+      button.setAttribute("aria-expanded", String(!collapsed));
+      button.innerText = collapsed ? "◀" : "▶";
+    });
+  });
+
+  const jumpSelect = document.getElementById("jump-select");
+  if(jumpSelect) jumpSelect.onchange = (e) => { if(e.target.value) window.location.href = e.target.value; };
+  const pageLocaleSelect = document.getElementById("page-locale-select");
+  if(pageLocaleSelect) pageLocaleSelect.onchange = (e) => { if(e.target.value) window.location.href = e.target.value; };
+
+  const landingI18n = document.getElementById("landing-i18n");
+  const localeSelect = document.getElementById("locale-select");
+  const landingSearchForm = document.getElementById("landing-search-form");
+  const landingSearchInput = document.getElementById("landing-search");
+  const landingSearchButton = document.getElementById("landing-search-button");
+  const landingTitle = document.getElementById("landing-title");
+  const landingSummary = document.getElementById("landing-summary");
+  const landingSearchHeading = document.getElementById("landing-search-heading");
+  const landingSearchCopy = document.getElementById("landing-search-copy");
+  const landingSections = document.getElementById("landing-sections");
+  const landingMeta = document.getElementById("landing-meta");
+  if(landingI18n) {
+    const landingData = JSON.parse(landingI18n.textContent);
+    const landingLocaleKey = "grafana-util-docs-locale-mode";
+    const getBrowserLocale = () => {
+      const browserLocales = [...(navigator.languages || []), navigator.language || ""];
+      const preferredZh = browserLocales.some((locale) => locale && locale.toLowerCase().startsWith("zh"));
+      return preferredZh && landingData["zh-TW"] ? "zh-TW" : "en";
+    };
+    const readLandingModeFromHash = () => {
+      const hash = window.location.hash || "";
+      const match = hash.match(/(?:^#|&)lang=([^&]+)/);
+      if(!match) return null;
+      const value = decodeURIComponent(match[1]);
+      return ["auto", "en", "zh-TW"].includes(value) ? value : null;
+    };
+    const writeLandingModeToHash = (mode) => {
+      const url = new URL(window.location.href);
+      if(mode === "auto") {
+        url.hash = "lang=auto";
+      } else {
+        url.hash = `lang=${encodeURIComponent(mode)}`;
+      }
+      window.history.replaceState({}, "", url.toString());
+    };
+    const pickLandingMode = () => {
+      const hashMode = readLandingModeFromHash();
+      if(hashMode) return hashMode;
+      const saved = localStorage.getItem(landingLocaleKey);
+      if(saved && ["auto", "en", "zh-TW"].includes(saved)) return saved;
+      return "auto";
+    };
+    const applyLandingLocale = (mode, {persist = true, syncHash = true} = {}) => {
+      const locale = mode === "auto" ? getBrowserLocale() : mode;
+      const copy = landingData[locale] || landingData.en;
+      if(!copy) return;
+      document.documentElement.lang = copy.lang || locale;
+      if(localeSelect) localeSelect.value = mode;
+      if(landingTitle) landingTitle.textContent = copy.hero_title;
+      if(landingSummary) landingSummary.textContent = copy.hero_summary;
+      if(landingSearchHeading) landingSearchHeading.textContent = copy.search_heading;
+      if(landingSearchCopy) landingSearchCopy.textContent = copy.search_copy;
+      if(landingSearchInput) {
+        landingSearchInput.placeholder = copy.search_placeholder;
+        landingSearchInput.setAttribute("aria-label", copy.search_placeholder);
+      }
+      if(landingSearchButton) landingSearchButton.textContent = copy.search_button;
+      if(landingSections) landingSections.innerHTML = copy.sections_html;
+      if(landingMeta) landingMeta.innerHTML = copy.meta_html;
+      if(jumpSelect) jumpSelect.innerHTML = copy.jump_options_html;
+      if(persist) localStorage.setItem(landingLocaleKey, mode);
+      if(syncHash) writeLandingModeToHash(mode);
+    };
+    applyLandingLocale(pickLandingMode(), {persist: false, syncHash: false});
+    const initialMode = pickLandingMode();
+    if(localeSelect) localeSelect.value = initialMode;
+    writeLandingModeToHash(initialMode);
+    if(localeSelect) {
+      localeSelect.addEventListener("change", (event) => {
+        applyLandingLocale(event.target.value);
+      });
+    }
+    window.addEventListener("hashchange", () => {
+      const hashMode = readLandingModeFromHash();
+      if(hashMode) applyLandingLocale(hashMode, {persist: true, syncHash: false});
+    });
+  }
+
+  if(landingSearchForm && landingSearchInput && jumpSelect) {
+    landingSearchForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const query = landingSearchInput.value.trim().toLowerCase();
+      if(!query) return;
+      const options = [...jumpSelect.querySelectorAll("option")].filter((option) => option.value);
+      const exact = options.find((option) => option.textContent.toLowerCase().includes(query));
+      const fuzzy = options.find((option) => option.value.toLowerCase().includes(query.replace(/\s+/g, "-")));
+      const target = exact || fuzzy;
+      if(target) window.location.href = target.value;
+    });
+  }
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      const id = entry.target.id; if(!id) return;
+      const link = document.querySelector(`.sidebar a[href="#${id}"]`);
+      if(link && entry.isIntersecting) { document.querySelectorAll(".sidebar a").forEach(l => l.classList.remove("active")); link.classList.add("active"); }
+    });
+  }, { rootMargin: "-20px 0px -80% 0px" });
+  document.querySelectorAll(".article h2[id], .article h3[id]").forEach(el => observer.observe(el));
+})();
+</script>
+
+</body>
+</html>

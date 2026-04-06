@@ -783,14 +783,14 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="何時使用">何時使用</h2>
 <p>當您想在匯入或發佈儀表板 bundle 之前先看出會變更哪些內容時，使用這個指令。</p>
 <h2 id="重點旗標">重點旗標</h2>
-<ul><li><code>--import-dir</code>：拿這個匯出目錄與 Grafana 比對。</li><li><code>--input-format</code>：選擇 <code>raw</code> 或 <code>provisioning</code>。</li><li><code>--import-folder-uid</code>：覆寫比對時的目的資料夾 UID。</li><li><code>--context-lines</code>：統一 diff 的上下文行數。</li></ul>
+<ul><li><code>--input-dir</code>：拿這個匯出目錄與 Grafana 比對。</li><li><code>--input-format</code>：選擇 <code>raw</code> 或 <code>provisioning</code>。</li><li><code>--import-folder-uid</code>：覆寫比對時的目的資料夾 UID。</li><li><code>--context-lines</code>：統一 diff 的上下文行數。</li></ul>
 <h2 id="範例">範例</h2>
 <pre><code># 用途：比較本地儀表板檔案與線上 Grafana 儀表板的差異。
-grafana-util dashboard diff --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./dashboards/raw</code></pre>
+grafana-util dashboard diff --url http://localhost:3000 --basic-user admin --basic-password admin --input-dir ./dashboards/raw</code></pre>
 <pre><code># 用途：比較本地儀表板檔案與線上 Grafana 儀表板的差異。
-grafana-util dashboard diff --url http://localhost:3000 --basic-user admin --basic-password admin --org-id 2 --import-dir ./dashboards/raw --json</code></pre>
+grafana-util dashboard diff --url http://localhost:3000 --basic-user admin --basic-password admin --org-id 2 --input-dir ./dashboards/raw --json</code></pre>
 <h2 id="相關指令">相關指令</h2>
-<ul><li><a href="dashboard-export.html">dashboard export</a></li><li><a href="dashboard-import.html">dashboard import</a></li><li><a href="dashboard-inspect-export.html">dashboard inspect-export</a></li></ul>
+<ul><li><a href="dashboard-export.html">dashboard export</a></li><li><a href="dashboard-import.html">dashboard import</a></li><li><a href="dashboard-analyze-export.html">dashboard analyze（本地）</a></li></ul>
     
   </article>
   <aside class="sidebar">

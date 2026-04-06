@@ -174,6 +174,13 @@ make man-check
 make html-check
 ```
 
+Live dashboard authoring validation:
+
+- `make test-rust-live`
+  - runs the repo-owned Docker-backed Rust live smoke path
+  - now includes dashboard stdin review/patch/publish coverage plus `publish --watch` recovery behavior
+  - treat this as the maintained end-to-end validation entrypoint for the dashboard authoring lane instead of ad hoc one-off localhost checks
+
 Release and artifact guidance:
 
 - keep version bumps and release validation in the standard maintainer flow documented by the `Makefile`, repo scripts, and release notes
@@ -187,6 +194,12 @@ Browser-enabled build policy:
 - browser support is an explicit secondary build lane
 - only the `*-browser` build targets and release assets should include `headless_chrome`
 
+Dashboard watch implementation policy:
+
+- keep `dashboard publish --watch` as a repo-owned polling watcher for now
+- do not switch to an event-based watcher unless repeated live usage shows a concrete polling problem such as missed saves, unacceptable latency, or platform-specific instability
+- if that lane ever changes, preserve the current operator-facing behavior: local-file-only scope, stdin rejection, transient-failure recovery, and explicit status messages
+
 ## High-Signal Project Rules
 
 - Prefer updating Rust behavior and help text first; treat Python as legacy reference unless the task explicitly requires parity work there.
@@ -198,6 +211,7 @@ Browser-enabled build policy:
 - Keep facades thin: `cli.rs` and domain `mod.rs` files should route, normalize, and re-export, not absorb downstream contract logic.
 - Keep comments high-signal: explain ownership, invariants, and non-obvious behavior; do not narrate obvious control flow.
 - Keep trace/history notes in `docs/internal/ai-status.md` and `docs/internal/ai-changes.md`.
+- For new live workflow code, prefer adding one workflow-level helper under `rust/src/grafana_api/` and keep raw `"/api/..."` contract ownership there instead of reintroducing those paths inside command runtimes. Keep `with_request` style seams for tests and adapters, not as a second production main path.
 
 ## Maintainer Personas
 

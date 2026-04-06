@@ -22,7 +22,7 @@ grafana-util status staged --dashboard-export-dir ./dashboards/raw --desired-fil
 grafana-util status live --profile prod --output-format yaml
 ```
 
-Related commands: `grafana-util overview`, `grafana-util change preflight`, `grafana-util change apply`.
+Related commands: `grafana-util overview`, `grafana-util change check`, `grafana-util change apply`.
 
 ## `staged`
 
@@ -44,7 +44,7 @@ grafana-util status staged --dashboard-export-dir ./dashboards/raw --desired-fil
 grafana-util status staged --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts --output-format interactive
 ```
 
-Related commands: `grafana-util overview`, `grafana-util change summary`, `grafana-util change preflight`.
+Related commands: `grafana-util overview`, `grafana-util change inspect`, `grafana-util change check`.
 
 ## `live`
 

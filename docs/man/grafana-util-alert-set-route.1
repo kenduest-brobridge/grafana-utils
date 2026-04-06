@@ -10,6 +10,11 @@ Author or replace the tool\-owned staged notification route.
 Replace the managed route with a new receiver and matcher set.
 .IP \(bu 2
 Re\-run the command to fully replace the managed route instead of merging fields.
+.SH BEFORE / AFTER
+.IP \(bu 2
+Before: edit the managed route tree by hand and keep the matcher shape in your head.
+.IP \(bu 2
+After: write one staged route document that encodes the receiver and matcher set you want.
 .SH COMMON OPTIONS
 .IP \(bu 2
 \-\-desired\-dir points to the staged alert tree.
@@ -21,6 +26,20 @@ Re\-run the command to fully replace the managed route instead of merging fields
 \-\-severity adds a convenience severity matcher.
 .IP \(bu 2
 \-\-dry\-run renders the managed route document without writing files.
+.SH SUCCESS CRITERIA
+.IP \(bu 2
+The staged route tree contains the receiver and matcher values you intended.
+.IP \(bu 2
+A dry\-run shows the route document you would write before touching files.
+.IP \(bu 2
+The route is easy to compare against preview\-route output.
+.SH FAILURE CHECKS
+.IP \(bu 2
+Check that \-\-desired\-dir points at the correct staged tree before overwriting anything.
+.IP \(bu 2
+Verify the receiver and matcher labels before trusting the generated route.
+.IP \(bu 2
+If the dry\-run does not match the intended route, stop and correct the matcher set first.
 .SH EXAMPLES
 .PP
 Author or replace the tool\-owned staged notification route.

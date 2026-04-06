@@ -69,8 +69,18 @@ pub(super) fn render_frame(
                         Color::Blue,
                     ),
                     Span::raw("  "),
-                    tui_shell::label("URL "),
-                    tui_shell::accent(args.common.url.clone(), Color::White),
+                    tui_shell::label(if args.input_dir.is_some() {
+                        "BUNDLE "
+                    } else {
+                        "URL "
+                    }),
+                    tui_shell::accent(
+                        args.input_dir
+                            .as_ref()
+                            .map(|path| path.display().to_string())
+                            .unwrap_or_else(|| args.common.url.clone()),
+                        Color::White,
+                    ),
                 ]),
             ],
         ),
@@ -116,11 +126,43 @@ pub(super) fn render_frame(
                 control_line(&[
                     ("Up/Down", Color::Blue, "move"),
                     ("Tab", Color::Blue, "next pane"),
-                    ("g", Color::Magenta, "jump teams"),
-                    ("v", Color::Magenta, "view"),
+                    (
+                        "g",
+                        Color::Magenta,
+                        if args.input_dir.is_some() {
+                            "live-only jump"
+                        } else {
+                            "jump teams"
+                        },
+                    ),
+                    (
+                        "v",
+                        Color::Magenta,
+                        if args.input_dir.is_some() {
+                            "live-only view"
+                        } else {
+                            "view"
+                        },
+                    ),
                     ("c", Color::Magenta, "toggle all"),
-                    ("e", Color::Green, "edit"),
-                    ("d", Color::Red, "delete"),
+                    (
+                        "e",
+                        Color::Green,
+                        if args.input_dir.is_some() {
+                            "read-only"
+                        } else {
+                            "edit"
+                        },
+                    ),
+                    (
+                        "d",
+                        Color::Red,
+                        if args.input_dir.is_some() {
+                            "read-only"
+                        } else {
+                            "delete"
+                        },
+                    ),
                 ]),
                 control_line(&[
                     ("Shift+Tab", Color::Blue, "previous pane"),
@@ -128,7 +170,15 @@ pub(super) fn render_frame(
                     ("n", Color::Yellow, "next match"),
                     ("Home/End", Color::Blue, "jump"),
                     ("PgUp/PgDn", Color::Blue, "scroll detail"),
-                    ("l", Color::Cyan, "refresh"),
+                    (
+                        "l",
+                        Color::Cyan,
+                        if args.input_dir.is_some() {
+                            "reload bundle"
+                        } else {
+                            "refresh"
+                        },
+                    ),
                     ("i", Color::Magenta, "numbers"),
                 ]),
                 control_line(&[("q", Color::Gray, "exit"), ("Esc", Color::Gray, "exit")]),

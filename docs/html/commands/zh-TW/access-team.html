@@ -766,11 +766,11 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
     <section class="command-intro">
   <div class="command-intro-grid"><div class="command-intro-block">
   <p class="command-intro-label">這頁在說什麼</p>
-  <p class="command-intro-text">列出、瀏覽、建立、修改、匯出、匯入、比對或刪除 Grafana 團隊。</p>
+  <p class="command-intro-text">列出或瀏覽 live 與本機的 Grafana 團隊，以及建立、修改、匯出、匯入、比對或刪除 Grafana 團隊。</p>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">什麼時候看這頁</p>
-  <ul class="command-intro-list"><li>檢視團隊清單與團隊成員關係。</li><li>建立或更新團隊成員與管理員指派。</li><li>匯出或匯入團隊套件。</li><li>以 id 或精確名稱刪除團隊。</li></ul>
+  <ul class="command-intro-list"><li>檢視團隊清單與團隊成員關係。</li><li>從 live Grafana 或本機匯出套件中檢視團隊。</li><li>建立或更新團隊成員與管理員指派。</li><li>匯出或匯入團隊套件。</li><li>以 id 或精確名稱刪除團隊。</li></ul>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">適合誰</p>
@@ -779,9 +779,9 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 </section>
 <h2 id="目的">目的</h2>
-<p>列出、瀏覽、建立、修改、匯出、匯入、比對或刪除 Grafana 團隊。</p>
+<p>列出或瀏覽 live 與本機的 Grafana 團隊，以及建立、修改、匯出、匯入、比對或刪除 Grafana 團隊。</p>
 <h2 id="使用時機">使用時機</h2>
-<ul><li>檢視團隊清單與團隊成員關係。</li><li>建立或更新團隊成員與管理員指派。</li><li>匯出或匯入團隊套件。</li><li>以 id 或精確名稱刪除團隊。</li></ul>
+<ul><li>檢視團隊清單與團隊成員關係。</li><li>從 live Grafana 或本機匯出套件中檢視團隊。</li><li>建立或更新團隊成員與管理員指派。</li><li>匯出或匯入團隊套件。</li><li>以 id 或精確名稱刪除團隊。</li></ul>
 <h2 id="採用前後對照">採用前後對照</h2>
 <ul><li><strong>採用前</strong>：團隊成員關係常常散在 UI 側邊選單或零碎腳本裡。</li><li><strong>採用後</strong>：同一個命名空間就能處理 inventory、成員更新、匯出／匯入與刪除，而且認證方式一致。</li></ul>
 <h2 id="成功判準">成功判準</h2>
@@ -789,13 +789,15 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="失敗時先檢查">失敗時先檢查</h2>
 <ul><li>如果 list、add、modify 或 delete 失敗，先確認這個 team 在選到的 org 裡存在，而且認證範圍正確</li><li>如果成員看起來不完整，先核對精確的 member 名稱，以及是否有加上 <code>--with-members</code></li><li>如果匯入結果不如預期，先確認來源套件與目標環境，再重試</li></ul>
 <h2 id="主要旗標">主要旗標</h2>
-<ul><li><code>list</code>: <code>--query</code>, <code>--name</code>, <code>--with-members</code>, <code>--page</code>, <code>--per-page</code>, <code>--table</code>, <code>--csv</code>, <code>--json</code>, <code>--yaml</code>, <code>--output-format</code></li><li><code>browse</code>: <code>--query</code>, <code>--name</code>, <code>--with-members</code>, <code>--page</code>, <code>--per-page</code></li><li><code>add</code>: <code>--name</code>, <code>--email</code>, <code>--member</code>, <code>--admin</code>, <code>--json</code></li><li><code>modify</code>: <code>--team-id</code>, <code>--name</code>, <code>--add-member</code>, <code>--remove-member</code>, <code>--add-admin</code>, <code>--remove-admin</code>, <code>--json</code></li><li><code>export</code> 與 <code>diff</code>: <code>--export-dir</code> 或 <code>--diff-dir</code>, <code>--overwrite</code>, <code>--dry-run</code>, <code>--with-members</code></li><li><code>import</code>: <code>--import-dir</code>, <code>--replace-existing</code>, <code>--dry-run</code>, <code>--table</code>, <code>--json</code>, <code>--output-format</code>, <code>--yes</code></li><li><code>delete</code>: <code>--team-id</code>, <code>--name</code>, <code>--yes</code>, <code>--json</code></li></ul>
+<ul><li><code>list</code>: <code>--input-dir</code>, <code>--query</code>, <code>--name</code>, <code>--with-members</code>, <code>--page</code>, <code>--per-page</code>, <code>--table</code>, <code>--csv</code>, <code>--json</code>, <code>--yaml</code>, <code>--output-format</code></li><li><code>browse</code>: <code>--input-dir</code>, <code>--query</code>, <code>--name</code>, <code>--with-members</code>, <code>--page</code>, <code>--per-page</code></li><li><code>add</code>: <code>--name</code>, <code>--email</code>, <code>--member</code>, <code>--admin</code>, <code>--json</code></li><li><code>modify</code>: <code>--team-id</code>, <code>--name</code>, <code>--add-member</code>, <code>--remove-member</code>, <code>--add-admin</code>, <code>--remove-admin</code>, <code>--json</code></li><li><code>export</code> 與 <code>diff</code>: <code>--output-dir</code> 或 <code>--diff-dir</code>, <code>--overwrite</code>, <code>--dry-run</code>, <code>--with-members</code></li><li><code>import</code>: <code>--input-dir</code>, <code>--replace-existing</code>, <code>--dry-run</code>, <code>--table</code>, <code>--json</code>, <code>--output-format</code>, <code>--yes</code></li><li><code>delete</code>: <code>--team-id</code>, <code>--name</code>, <code>--yes</code>, <code>--json</code></li></ul>
 <h2 id="範例">範例</h2>
 <pre><code># 用途：在新增或移除成員前，先確認 team membership。
 grafana-util access team list --profile prod --output-format text</code></pre>
+<pre><code># 用途：先看本機存好的 team 套件。
+grafana-util access team list --input-dir ./access-teams --output-format table</code></pre>
+<pre><code># 用途：直接互動式瀏覽本機 team 套件，不碰 live Grafana。
+grafana-util access team browse --input-dir ./access-teams --name platform-team</code></pre>
 <pre><code># 用途：建立一個有明確成員與管理員指派的 team。
-grafana-util access team import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./access-teams --replace-existing --yes</code></pre>
-<pre><code># 用途：在切換環境前，先匯入 team 套件。
 grafana-util access team add --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --name platform-team --email platform@example.com --member alice --admin alice --json</code></pre>
 <h2 id="相關命令">相關命令</h2>
 <ul><li><a href="access.html">access</a></li><li><a href="access-user.html">access user</a></li><li><a href="access-org.html">access org</a></li><li><a href="access-service-account.html">access service-account</a></li></ul>

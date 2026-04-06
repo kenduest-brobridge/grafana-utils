@@ -766,11 +766,11 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
     <section class="command-intro">
   <div class="command-intro-grid"><div class="command-intro-block">
   <p class="command-intro-label">What this page covers</p>
-  <p class="command-intro-text">Open the live dashboard tree in an interactive terminal UI.</p>
+  <p class="command-intro-text">Open the live dashboard tree or a local export tree in an interactive terminal UI.</p>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">When to open this page</p>
-  <ul class="command-intro-list"><li>Use this when you want to explore folders, select a dashboard, or inspect the live tree before fetching, diffing, importing, or deleting.</li></ul>
+  <ul class="command-intro-list"><li>Use this when you want to explore folders, select a dashboard, inspect the live tree before fetching, diffing, importing, or deleting, or review a local export tree without calling Grafana.</li></ul>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">Who this page is for</p>
@@ -779,18 +779,20 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 </section>
 <h2 id="purpose">Purpose</h2>
-<p>Open the live dashboard tree in an interactive terminal UI.</p>
+<p>Open the live dashboard tree or a local export tree in an interactive terminal UI.</p>
 <h2 id="when-to-use">When to use</h2>
-<p>Use this when you want to explore folders, select a dashboard, or inspect the live tree before fetching, diffing, importing, or deleting.</p>
+<p>Use this when you want to explore folders, select a dashboard, inspect the live tree before fetching, diffing, importing, or deleting, or review a local export tree without calling Grafana.</p>
 <h2 id="key-flags">Key flags</h2>
-<ul><li><code>--path</code>: start at one folder subtree instead of the full tree.</li><li><code>--org-id</code>: browse one explicit Grafana org.</li><li><code>--all-orgs</code>: aggregate browse results across visible orgs. Requires Basic auth.</li><li>Shared live flags: <code>--url</code>, <code>--token</code>, <code>--basic-user</code>, <code>--basic-password</code>.</li></ul>
+<ul><li><code>--path</code>: start at one folder subtree instead of the full tree.</li><li><code>--input-dir</code>: browse a local raw export root, all-orgs export root, or provisioning tree.</li><li><code>--input-format</code>: interpret the local export tree as <code>raw</code> or <code>provisioning</code>.</li><li><code>--org-id</code>: browse one explicit Grafana org.</li><li><code>--all-orgs</code>: aggregate browse results across visible orgs. Requires Basic auth.</li><li>Shared live flags: <code>--url</code>, <code>--token</code>, <code>--basic-user</code>, <code>--basic-password</code>.</li></ul>
 <h2 id="examples">Examples</h2>
 <pre><code># Purpose: Open the live dashboard tree in an interactive terminal UI.
 grafana-util dashboard browse --url http://localhost:3000 --basic-user admin --basic-password admin</code></pre>
 <pre><code># Purpose: Open the live dashboard tree in an interactive terminal UI.
 grafana-util dashboard browse --url http://localhost:3000 --basic-user admin --basic-password admin --path &#x27;Platform / Infra&#x27;</code></pre>
+<pre><code># Purpose: Open a local raw export tree in an interactive terminal UI.
+grafana-util dashboard browse --input-dir ./dashboards/raw --path &#x27;Platform / Infra&#x27;</code></pre>
 <h2 id="related-commands">Related commands</h2>
-<ul><li><a href="dashboard-list.html">dashboard list</a></li><li><a href="dashboard-get.html">dashboard get</a></li><li><a href="dashboard-delete.html">dashboard delete</a></li></ul>
+<ul><li><a href="dashboard-list.html">dashboard list</a></li><li><a href="dashboard-fetch-live.html">dashboard fetch-live</a></li><li><a href="dashboard-delete.html">dashboard delete</a></li></ul>
     
   </article>
   <aside class="sidebar">

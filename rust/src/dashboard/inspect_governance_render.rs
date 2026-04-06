@@ -6,11 +6,11 @@ use super::ExportInspectionGovernanceDocument;
 /// Render the already-normalized governance document into text rows without recomputing
 /// risk logic or re-reading files.
 pub(crate) fn render_governance_table_report(
-    import_dir: &str,
+    input_dir: &str,
     document: &ExportInspectionGovernanceDocument,
 ) -> Vec<String> {
     let mut lines = vec![
-        format!("Export inspection governance: {import_dir}"),
+        format!("Export inspection governance: {input_dir}"),
         String::new(),
     ];
 

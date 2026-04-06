@@ -783,12 +783,12 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="何時使用">何時使用</h2>
 <p>當您需要一個本地 datasource bundle，供後續檢查、比對或匯入時，使用這個指令。</p>
 <h2 id="重點旗標">重點旗標</h2>
-<ul><li><code>--export-dir</code>：匯出樹的目標目錄。</li><li><code>--org-id</code>：匯出指定的 Grafana org。</li><li><code>--all-orgs</code>：把每個可見 org 匯出到各自的子目錄。需要 Basic auth。</li><li><code>--overwrite</code>：取代既有檔案。</li><li><code>--without-datasource-provisioning</code>：略過 provisioning 變體。</li><li><code>--dry-run</code>：預覽會寫出哪些內容。</li></ul>
+<ul><li><code>--output-dir</code>：匯出樹的目標目錄。</li><li><code>--org-id</code>：匯出指定的 Grafana org。</li><li><code>--all-orgs</code>：把每個可見 org 匯出到各自的子目錄。需要 Basic auth。</li><li><code>--overwrite</code>：取代既有檔案。</li><li><code>--without-datasource-provisioning</code>：略過 provisioning 變體。</li><li><code>--dry-run</code>：預覽會寫出哪些內容。</li></ul>
 <h2 id="範例">範例</h2>
 <pre><code># 用途：將線上 Grafana datasource inventory 匯出成標準化 JSON 與 provisioning 檔案。
-grafana-util datasource export --url http://localhost:3000 --basic-user admin --basic-password admin --export-dir ./datasources --overwrite</code></pre>
+grafana-util datasource export --url http://localhost:3000 --basic-user admin --basic-password admin --output-dir ./datasources --overwrite</code></pre>
 <pre><code># 用途：將線上 Grafana datasource inventory 匯出成標準化 JSON 與 provisioning 檔案。
-grafana-util datasource export --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --export-dir ./datasources --overwrite</code></pre>
+grafana-util datasource export --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --output-dir ./datasources --overwrite</code></pre>
 <h2 id="採用前後對照">採用前後對照</h2>
 <ul><li><strong>採用前</strong>：live datasource 狀態很容易散掉，因為匯出後的結構不夠標準，也不容易再利用。</li><li><strong>採用後</strong>：一個匯出就能得到本地 bundle，後續檢視、比對或匯入都能直接沿用。</li></ul>
 <h2 id="成功判準">成功判準</h2>
@@ -796,7 +796,7 @@ grafana-util datasource export --url http://localhost:3000 --basic-user admin --
 <h2 id="失敗時先檢查">失敗時先檢查</h2>
 <ul><li>如果匯出樹少了 org 資料，先確認 org 範圍與驗證資訊是否真的看得到它</li><li>如果 <code>--all-orgs</code> 失敗，先改用 Basic auth，並確認帳號是否能看見每個目標 org</li><li>如果 bundle 看起來像舊資料，先確認匯出目錄與 <code>--overwrite</code> 是否有刻意使用</li></ul>
 <h2 id="相關指令">相關指令</h2>
-<ul><li><a href="datasource-inspect-export.html">datasource inspect-export</a></li><li><a href="datasource-import.html">datasource import</a></li><li><a href="datasource-diff.html">datasource diff</a></li></ul>
+<ul><li><a href="datasource-list.html">datasource list</a></li><li><a href="datasource-import.html">datasource import</a></li><li><a href="datasource-diff.html">datasource diff</a></li></ul>
     
   </article>
   <aside class="sidebar">

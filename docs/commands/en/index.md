@@ -42,31 +42,36 @@ The checked-in `docs/html/commands/en/*.html` files are generated from the same 
 ## Dashboard
 - [dashboard](./dashboard.md)
 - [dashboard browse](./dashboard-browse.md)
-- [dashboard get](./dashboard-get.md)
+- [dashboard fetch-live](./dashboard-fetch-live.md)
 - [dashboard clone-live](./dashboard-clone-live.md)
 - [dashboard list](./dashboard-list.md)
 - [dashboard export](./dashboard-export.md)
 - [dashboard raw-to-prompt](./dashboard-raw-to-prompt.md)
 - [dashboard import](./dashboard-import.md)
 - [dashboard patch-file](./dashboard-patch-file.md)
+- [dashboard serve](./dashboard-serve.md)
+- [dashboard edit-live](./dashboard-edit-live.md)
 - [dashboard review](./dashboard-review.md)
 - [dashboard publish](./dashboard-publish.md)
 - [dashboard delete](./dashboard-delete.md)
 - [dashboard diff](./dashboard-diff.md)
-- [dashboard inspect-export](./dashboard-inspect-export.md)
-- [dashboard inspect-live](./dashboard-inspect-live.md)
-- [dashboard inspect-vars](./dashboard-inspect-vars.md)
+- [dashboard list-vars](./dashboard-list-vars.md)
 - [dashboard governance-gate](./dashboard-governance-gate.md)
 - [dashboard topology](./dashboard-topology.md)
 - [dashboard impact](./dashboard-impact.md)
+- [dashboard history](./dashboard-history.md)
 - [dashboard screenshot](./dashboard-screenshot.md)
+
+### Compatibility Alias Pages
+
+- [dashboard analyze (local alias)](./dashboard-analyze-export.md)
+- [dashboard analyze (live alias)](./dashboard-analyze-live.md)
 
 ## Datasource
 - [datasource](./datasource.md)
 - [datasource types](./datasource-types.md)
 - [datasource list](./datasource-list.md)
 - [datasource browse](./datasource-browse.md)
-- [datasource inspect-export](./datasource-inspect-export.md)
 - [datasource export](./datasource-export.md)
 - [datasource import](./datasource-import.md)
 - [datasource diff](./datasource-diff.md)
@@ -108,16 +113,12 @@ The checked-in `docs/html/commands/en/*.html` files are generated from the same 
 ## Shared Surfaces
 
 - [change](./change.md)
-- [change summary](./change.md#summary)
-- [change plan](./change.md#plan)
-- [change review](./change.md#review)
-- [change apply](./change.md#apply)
-- [change audit](./change.md#audit)
-- [change preflight](./change.md#preflight)
-- [change assess-alerts](./change.md#assess-alerts)
-- [change bundle](./change.md#bundle)
-- [change bundle-preflight](./change.md#bundle-preflight)
-- [change promotion-preflight](./change.md#promotion-preflight)
+- [change inspect](./change-inspect.md)
+- [change check](./change-check.md)
+- [change preview](./change-preview.md)
+- [change apply](./change-apply.md)
+- [change advanced](./change.md#advanced)
+- [change advanced subcommands (summary, plan, review, audit, bundle, promotion handoff)](./change.md#advanced)
 - [overview](./overview.md)
 - [overview live](./overview.md#live)
 - [status](./status.md)
@@ -132,5 +133,13 @@ The checked-in `docs/html/commands/en/*.html` files are generated from the same 
 - [snapshot](./snapshot.md)
 - [snapshot export](./snapshot.md#export)
 - [snapshot review](./snapshot.md#review)
+
+## Generic Resource Query
+
+- [resource](./resource.md)
+- [resource describe](./resource-describe.md)
+- [resource kinds](./resource-kinds.md)
+- [resource list](./resource-list.md)
+- [resource get](./resource-get.md)
 
 The matching manpages live under `docs/man/grafana-util-*.1`.

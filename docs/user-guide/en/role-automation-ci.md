@@ -65,7 +65,7 @@ grafana-util status staged --desired-file ./desired.json --output-format json
 
 ```bash
 # Purpose: First commands to run.
-grafana-util change preflight --desired-file ./desired.json --fetch-live --output-format json
+grafana-util change check --desired-file ./desired.json --fetch-live --output-format json
 ```
 
 ```bash

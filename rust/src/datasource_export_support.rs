@@ -21,6 +21,9 @@ use crate::datasource_secret::{
     build_inline_secret_placeholder_token, inline_secret_provider_contract,
     summarize_secret_provider_contract,
 };
+use crate::export_metadata::{
+    build_export_metadata_common, export_metadata_common_map, EXPORT_BUNDLE_KIND_ROOT,
+};
 use crate::http::JsonHttpClient;
 
 use super::{
@@ -131,8 +134,32 @@ pub(crate) fn describe_datasource_import_mode(
     }
 }
 
-pub(crate) fn build_datasource_export_metadata(count: usize) -> Value {
-    Value::Object(Map::from_iter(vec![
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn build_datasource_export_metadata(
+    source_url: &str,
+    source_profile: Option<&str>,
+    org_scope: Option<&str>,
+    org_id: Option<&str>,
+    org_name: Option<&str>,
+    artifact_path: &Path,
+    count: usize,
+) -> Value {
+    let common = build_export_metadata_common(
+        "datasource",
+        "datasources",
+        EXPORT_BUNDLE_KIND_ROOT,
+        "live",
+        Some(source_url),
+        None,
+        source_profile,
+        org_scope,
+        org_id,
+        org_name,
+        artifact_path,
+        &artifact_path.join(EXPORT_METADATA_FILENAME),
+        count,
+    );
+    let mut metadata = Map::from_iter(vec![
         (
             "schemaVersion".to_string(),
             Value::Number(TOOL_SCHEMA_VERSION.into()),
@@ -197,7 +224,9 @@ pub(crate) fn build_datasource_export_metadata(count: usize) -> Value {
                     .to_string(),
             ),
         ),
-    ]))
+    ]);
+    metadata.extend(export_metadata_common_map(&common));
+    Value::Object(metadata)
 }
 
 fn data_source_rows_include_org_scope(datasources: &[Map<String, Value>]) -> bool {
@@ -552,8 +581,30 @@ pub(crate) fn build_all_orgs_export_index(items: &[Map<String, Value>]) -> Value
     ]))
 }
 
-pub(crate) fn build_all_orgs_export_metadata(org_count: usize, datasource_count: usize) -> Value {
-    Value::Object(Map::from_iter(vec![
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn build_all_orgs_export_metadata(
+    source_url: &str,
+    source_profile: Option<&str>,
+    artifact_path: &Path,
+    org_count: usize,
+    datasource_count: usize,
+) -> Value {
+    let common = build_export_metadata_common(
+        "datasource",
+        "datasources",
+        EXPORT_BUNDLE_KIND_ROOT,
+        "live",
+        Some(source_url),
+        None,
+        source_profile,
+        Some("all-orgs"),
+        None,
+        None,
+        artifact_path,
+        &artifact_path.join(EXPORT_METADATA_FILENAME),
+        org_count,
+    );
+    let mut metadata = Map::from_iter(vec![
         (
             "schemaVersion".to_string(),
             Value::Number(TOOL_SCHEMA_VERSION.into()),
@@ -621,7 +672,9 @@ pub(crate) fn build_all_orgs_export_metadata(org_count: usize, datasource_count:
                     .to_string(),
             ),
         ),
-    ]))
+    ]);
+    metadata.extend(export_metadata_common_map(&common));
+    Value::Object(metadata)
 }
 
 pub(crate) fn build_export_records(client: &JsonHttpClient) -> Result<Vec<Map<String, Value>>> {
@@ -709,6 +762,8 @@ pub(crate) fn export_datasource_scope(
     overwrite: bool,
     dry_run: bool,
     write_provisioning: bool,
+    source_url: &str,
+    source_profile: Option<&str>,
 ) -> Result<usize> {
     let records = build_export_records(client)?;
     let datasources_path = output_dir.join(DATASOURCE_EXPORT_FILENAME);
@@ -726,7 +781,15 @@ pub(crate) fn export_datasource_scope(
         write_json_file(&index_path, &build_export_index(&records), overwrite)?;
         write_json_file(
             &metadata_path,
-            &build_datasource_export_metadata(records.len()),
+            &build_datasource_export_metadata(
+                source_url,
+                source_profile,
+                Some("org"),
+                None,
+                None,
+                output_dir,
+                records.len(),
+            ),
             overwrite,
         )?;
         if write_provisioning {
@@ -933,7 +996,15 @@ mod tests {
 
     #[test]
     fn build_export_metadata_marks_masked_recovery_contract() {
-        let metadata = build_datasource_export_metadata(2);
+        let metadata = build_datasource_export_metadata(
+            "http://127.0.0.1:3000",
+            Some("dev"),
+            Some("org"),
+            Some("1"),
+            Some("Main Org"),
+            Path::new("/tmp/export"),
+            2,
+        );
 
         assert_eq!(
             metadata["format"],
@@ -949,6 +1020,25 @@ mod tests {
             metadata["provisioningProjection"],
             Value::String("derived-projection".to_string())
         );
+        assert_eq!(metadata["metadataVersion"], Value::Number(2.into()));
+        assert_eq!(metadata["domain"], Value::String("datasource".to_string()));
+        assert_eq!(
+            metadata["resourceKind"],
+            Value::String("datasources".to_string())
+        );
+        assert_eq!(
+            metadata["bundleKind"],
+            Value::String("export-root".to_string())
+        );
+        assert_eq!(
+            metadata["source"]["kind"],
+            Value::String("live".to_string())
+        );
+        assert_eq!(
+            metadata["source"]["url"],
+            Value::String("http://127.0.0.1:3000".to_string())
+        );
+        assert_eq!(metadata["capture"]["recordCount"], Value::Number(2.into()));
         assert_eq!(
             metadata["secretPlaceholderProvider"]["kind"],
             Value::String("inline-placeholder-map".to_string())

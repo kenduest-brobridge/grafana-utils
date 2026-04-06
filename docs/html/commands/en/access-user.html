@@ -766,11 +766,11 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
     <section class="command-intro">
   <div class="command-intro-grid"><div class="command-intro-block">
   <p class="command-intro-label">What this page covers</p>
-  <p class="command-intro-text">List, browse, create, modify, export, import, diff, or delete Grafana users.</p>
+  <p class="command-intro-text">List or browse live and local Grafana users, create, modify, export, import, diff, or delete Grafana users.</p>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">When to open this page</p>
-  <ul class="command-intro-list"><li>Inspect users in the current org or in global admin scope.</li><li>Create or update users with login, email, role, and admin settings.</li><li>Export and import user inventory bundles.</li><li>Remove users from the org membership or from the global registry.</li></ul>
+  <ul class="command-intro-list"><li>Inspect users in the current org or in global admin scope.</li><li>Inspect users from a live Grafana server or from a local export bundle.</li><li>Create or update users with login, email, role, and admin settings.</li><li>Export and import user inventory bundles.</li><li>Remove users from the org membership or from the global registry.</li></ul>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">Who this page is for</p>
@@ -779,9 +779,9 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 </section>
 <h2 id="purpose">Purpose</h2>
-<p>List, browse, create, modify, export, import, diff, or delete Grafana users.</p>
+<p>List or browse live and local Grafana users, create, modify, export, import, diff, or delete Grafana users.</p>
 <h2 id="when-to-use">When to use</h2>
-<ul><li>Inspect users in the current org or in global admin scope.</li><li>Create or update users with login, email, role, and admin settings.</li><li>Export and import user inventory bundles.</li><li>Remove users from the org membership or from the global registry.</li></ul>
+<ul><li>Inspect users in the current org or in global admin scope.</li><li>Inspect users from a live Grafana server or from a local export bundle.</li><li>Create or update users with login, email, role, and admin settings.</li><li>Export and import user inventory bundles.</li><li>Remove users from the org membership or from the global registry.</li></ul>
 <h2 id="before-after">Before / After</h2>
 <ul><li><strong>Before</strong>: user lifecycle work is often split across org settings, admin screens, and one-off export or import scripts.</li><li><strong>After</strong>: one namespace covers inventory, create/update, export/import, and targeted removal with the same auth model.</li></ul>
 <h2 id="what-success-looks-like">What success looks like</h2>
@@ -789,10 +789,14 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="failure-checks">Failure checks</h2>
 <ul><li>if list, add, or delete looks empty or wrong, confirm the selected profile or auth token has the right org or admin scope</li><li>if create or modify fails, recheck login or email uniqueness and whether the selected scope is org or global</li><li>if an import does not behave as expected, verify the bundle source and the target scope before retrying</li></ul>
 <h2 id="key-flags">Key flags</h2>
-<ul><li><code>list</code>: <code>--scope</code>, <code>--all-orgs</code>, <code>--query</code>, <code>--login</code>, <code>--email</code>, <code>--org-role</code>, <code>--grafana-admin</code>, <code>--with-teams</code>, <code>--page</code>, <code>--per-page</code>, <code>--table</code>, <code>--csv</code>, <code>--json</code>, <code>--yaml</code>, <code>--output-format</code></li><li><code>browse</code>: <code>--scope</code>, <code>--all-orgs</code>, <code>--current-org</code>, <code>--query</code>, <code>--login</code>, <code>--email</code>, <code>--org-role</code>, <code>--grafana-admin</code>, <code>--page</code>, <code>--per-page</code></li><li><code>add</code>: <code>--login</code>, <code>--email</code>, <code>--name</code>, <code>--password</code> or <code>--password-file</code> or <code>--prompt-user-password</code>, <code>--org-role</code>, <code>--grafana-admin</code>, <code>--json</code></li><li><code>modify</code>: <code>--user-id</code>, <code>--login</code>, <code>--email</code>, <code>--set-login</code>, <code>--set-email</code>, <code>--set-name</code>, <code>--set-password</code> or <code>--set-password-file</code> or <code>--prompt-set-password</code>, <code>--set-org-role</code>, <code>--set-grafana-admin</code>, <code>--json</code></li><li><code>export</code> and <code>diff</code>: <code>--export-dir</code> or <code>--diff-dir</code>, <code>--overwrite</code>, <code>--dry-run</code>, <code>--scope</code>, <code>--with-teams</code></li><li><code>import</code>: <code>--import-dir</code>, <code>--scope</code>, <code>--replace-existing</code>, <code>--dry-run</code>, <code>--table</code>, <code>--json</code>, <code>--output-format</code>, <code>--yes</code></li><li><code>delete</code>: <code>--user-id</code>, <code>--login</code>, <code>--email</code>, <code>--scope</code>, <code>--yes</code>, <code>--json</code></li></ul>
+<ul><li><code>list</code>: <code>--input-dir</code>, <code>--scope</code>, <code>--all-orgs</code>, <code>--query</code>, <code>--login</code>, <code>--email</code>, <code>--org-role</code>, <code>--grafana-admin</code>, <code>--with-teams</code>, <code>--page</code>, <code>--per-page</code>, <code>--table</code>, <code>--csv</code>, <code>--json</code>, <code>--yaml</code>, <code>--output-format</code></li><li><code>browse</code>: <code>--input-dir</code>, <code>--scope</code>, <code>--all-orgs</code>, <code>--current-org</code>, <code>--query</code>, <code>--login</code>, <code>--email</code>, <code>--org-role</code>, <code>--grafana-admin</code>, <code>--page</code>, <code>--per-page</code></li><li><code>add</code>: <code>--login</code>, <code>--email</code>, <code>--name</code>, <code>--password</code> or <code>--password-file</code> or <code>--prompt-user-password</code>, <code>--org-role</code>, <code>--grafana-admin</code>, <code>--json</code></li><li><code>modify</code>: <code>--user-id</code>, <code>--login</code>, <code>--email</code>, <code>--set-login</code>, <code>--set-email</code>, <code>--set-name</code>, <code>--set-password</code> or <code>--set-password-file</code> or <code>--prompt-set-password</code>, <code>--set-org-role</code>, <code>--set-grafana-admin</code>, <code>--json</code></li><li><code>export</code> and <code>diff</code>: <code>--output-dir</code> or <code>--diff-dir</code>, <code>--overwrite</code>, <code>--dry-run</code>, <code>--scope</code>, <code>--with-teams</code></li><li><code>import</code>: <code>--input-dir</code>, <code>--scope</code>, <code>--replace-existing</code>, <code>--dry-run</code>, <code>--table</code>, <code>--json</code>, <code>--output-format</code>, <code>--yes</code></li><li><code>delete</code>: <code>--user-id</code>, <code>--login</code>, <code>--email</code>, <code>--scope</code>, <code>--yes</code>, <code>--json</code></li></ul>
 <h2 id="examples">Examples</h2>
 <pre><code># Purpose: Inspect users in one org before changing membership or roles.
 grafana-util access user list --url http://localhost:3000 --basic-user admin --basic-password admin --scope org --output-format text</code></pre>
+<pre><code># Purpose: Review a saved user bundle without touching Grafana.
+grafana-util access user list --input-dir ./access-users --output-format table</code></pre>
+<pre><code># Purpose: Browse one saved user bundle interactively without touching Grafana.
+grafana-util access user browse --input-dir ./access-users --login alice</code></pre>
 <pre><code># Purpose: Create one user with explicit auth and org scope.
 grafana-util access user add --url http://localhost:3000 --basic-user admin --basic-password admin --login alice --email alice@example.com --name Alice --password secret</code></pre>
 <pre><code># Purpose: Delete one account after checking the current org users.

@@ -15,14 +15,13 @@ use reqwest::Method;
 use serde_json::{Map, Value};
 
 use crate::common::{string_field, Result};
+use crate::grafana_api::project_status_live as project_status_live_support;
 use crate::project_status::{
     status_finding, ProjectDomainStatus, ProjectStatusFinding, PROJECT_STATUS_PARTIAL,
     PROJECT_STATUS_READY,
 };
 
-use super::{
-    list_dashboard_summaries_with_request, list_datasources_with_request, DEFAULT_PAGE_SIZE,
-};
+use super::DEFAULT_PAGE_SIZE;
 
 const DASHBOARD_DOMAIN_ID: &str = "dashboard";
 const DASHBOARD_SCOPE: &str = "live";
@@ -240,13 +239,10 @@ pub(crate) fn collect_live_dashboard_project_status_inputs_with_request<F>(
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
-    let dashboard_summaries =
-        list_dashboard_summaries_with_request(&mut *request_json, DEFAULT_PAGE_SIZE)?;
-    let datasources = list_datasources_with_request(&mut *request_json)?;
-    Ok(LiveDashboardProjectStatusInputs {
-        dashboard_summaries,
-        datasources,
-    })
+    project_status_live_support::collect_live_dashboard_project_status_inputs_with_request(
+        request_json,
+        DEFAULT_PAGE_SIZE,
+    )
 }
 
 pub(crate) fn build_live_dashboard_domain_status(

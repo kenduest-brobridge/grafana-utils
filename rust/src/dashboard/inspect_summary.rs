@@ -50,7 +50,7 @@ pub(crate) struct MixedDashboardSummary {
 /// Struct definition for ExportInspectionSummary.
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub(crate) struct ExportInspectionSummary {
-    pub(crate) import_dir: String,
+    pub(crate) input_dir: String,
     pub(crate) export_org: Option<String>,
     pub(crate) export_org_id: Option<String>,
     pub(crate) dashboard_count: usize,

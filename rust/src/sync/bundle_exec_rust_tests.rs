@@ -211,6 +211,46 @@ fn run_sync_cli_bundle_writes_source_bundle_artifact() {
 }
 
 #[test]
+fn run_sync_cli_bundle_keeps_plain_file_output_when_also_stdout_is_enabled() {
+    let temp = tempdir().unwrap();
+    let dashboard_export_dir = temp.path().join("dashboards").join("raw");
+    let output_file = temp.path().join("bundle.json");
+    fs::create_dir_all(&dashboard_export_dir).unwrap();
+    fs::write(
+        dashboard_export_dir.join("cpu.json"),
+        serde_json::to_string_pretty(&json!({
+            "dashboard": {
+                "uid": "cpu-main",
+                "title": "CPU Main",
+                "panels": []
+            }
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+
+    let result = run_sync_cli(SyncGroupCommand::Bundle(SyncBundleArgs {
+        dashboard_export_dir: Some(dashboard_export_dir.clone()),
+        dashboard_provisioning_dir: None,
+        alert_export_dir: None,
+        datasource_export_file: None,
+        datasource_provisioning_file: None,
+        metadata_file: None,
+        output_file: Some(output_file.clone()),
+        also_stdout: true,
+        output_format: SyncOutputFormat::Json,
+    }));
+
+    assert!(result.is_ok(), "{result:?}");
+    let raw = fs::read_to_string(&output_file).unwrap();
+    assert!(!raw.contains('\u{1b}'));
+    assert!(raw.ends_with('\n'));
+    let bundle: serde_json::Value = serde_json::from_str(&raw).unwrap();
+    assert_eq!(bundle["kind"], json!("grafana-utils-sync-source-bundle"));
+    assert_eq!(bundle["summary"]["dashboardCount"], json!(1));
+}
+
+#[test]
 fn run_sync_cli_bundle_preserves_alert_export_artifact_metadata() {
     let temp = tempdir().unwrap();
     let alert_export_dir = temp.path().join("alerts").join("raw");

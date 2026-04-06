@@ -1,6 +1,7 @@
 //! Shared render/format helpers for access CLI output.
 //! Centralizes table/csv/json field normalization and human-facing value formatting.
 use serde_json::{Map, Value};
+use std::collections::BTreeSet;
 
 use crate::common::{render_json_value, string_field};
 pub(crate) use crate::tabular_output::render_yaml;
@@ -142,6 +143,16 @@ pub(crate) fn render_csv(headers: &[&str], rows: &[Vec<String>]) -> Vec<String> 
 // Build a normalized user row shape expected by access list renderers.
 /// Purpose: implementation note.
 pub(crate) fn normalize_user_row(user: &Map<String, Value>, scope: &Scope) -> Map<String, Value> {
+    let teams = match user.get("teams") {
+        Some(Value::Array(values)) => values
+            .iter()
+            .filter_map(Value::as_str)
+            .map(str::trim)
+            .filter(|team| !team.is_empty())
+            .map(|team| Value::String(team.to_string()))
+            .collect::<Vec<Value>>(),
+        _ => Vec::new(),
+    };
     Map::from_iter(vec![
         (
             "id".to_string(),
@@ -168,25 +179,46 @@ pub(crate) fn normalize_user_row(user: &Map<String, Value>, scope: &Scope) -> Ma
         ),
         (
             "orgRole".to_string(),
-            Value::String(normalize_org_role(user.get("role"))),
+            Value::String(normalize_org_role(
+                user.get("role").or_else(|| user.get("orgRole")),
+            )),
         ),
         (
             "grafanaAdmin".to_string(),
             Value::String(bool_label(
-                value_bool(user.get("isGrafanaAdmin")).or_else(|| value_bool(user.get("isAdmin"))),
+                value_bool(user.get("grafanaAdmin"))
+                    .or_else(|| value_bool(user.get("isGrafanaAdmin")))
+                    .or_else(|| value_bool(user.get("isAdmin"))),
             )),
         ),
         (
             "scope".to_string(),
             Value::String(user_scope_text(scope).to_string()),
         ),
-        ("teams".to_string(), Value::Array(Vec::new())),
+        ("teams".to_string(), Value::Array(teams)),
     ])
 }
 
 // Build a normalized team row shape expected by team list renderers.
 /// Purpose: implementation note.
 pub(crate) fn normalize_team_row(team: &Map<String, Value>) -> Map<String, Value> {
+    let mut members = Vec::new();
+    let mut seen = BTreeSet::new();
+    for key in ["members", "admins"] {
+        if let Some(Value::Array(values)) = team.get(key) {
+            for item in values {
+                if let Some(identity) = item.as_str() {
+                    let identity = identity.trim();
+                    if identity.is_empty() {
+                        continue;
+                    }
+                    if seen.insert(identity.to_ascii_lowercase()) {
+                        members.push(Value::String(identity.to_string()));
+                    }
+                }
+            }
+        }
+    }
     Map::from_iter(vec![
         ("id".to_string(), Value::String(scalar_text(team.get("id")))),
         (
@@ -202,13 +234,13 @@ pub(crate) fn normalize_team_row(team: &Map<String, Value>) -> Map<String, Value
             Value::String({
                 let value = scalar_text(team.get("memberCount"));
                 if value.is_empty() {
-                    "0".to_string()
+                    members.len().to_string()
                 } else {
                     value
                 }
             }),
         ),
-        ("members".to_string(), Value::Array(Vec::new())),
+        ("members".to_string(), Value::Array(members)),
     ])
 }
 
@@ -231,7 +263,9 @@ pub(crate) fn normalize_service_account_row(team: &Map<String, Value>) -> Map<St
         ),
         (
             "disabled".to_string(),
-            Value::String(bool_label(value_bool(team.get("isDisabled")))),
+            Value::String(bool_label(
+                value_bool(team.get("disabled")).or_else(|| value_bool(team.get("isDisabled"))),
+            )),
         ),
         (
             "tokens".to_string(),

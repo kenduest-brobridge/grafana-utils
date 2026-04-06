@@ -382,7 +382,7 @@ mod tests {
 
     fn sample_state() -> InspectWorkbenchState {
         let summary = ExportInspectionSummary {
-            import_dir: "/tmp/raw".to_string(),
+            input_dir: "/tmp/raw".to_string(),
             export_org: Some("Main Org.".to_string()),
             export_org_id: Some("1".to_string()),
             dashboard_count: 1,
@@ -399,7 +399,7 @@ mod tests {
             mixed_dashboards: Vec::new(),
         };
         let report = ExportInspectionQueryReport {
-            import_dir: "/tmp/raw".to_string(),
+            input_dir: "/tmp/raw".to_string(),
             summary: QueryReportSummary {
                 dashboard_count: 1,
                 panel_count: 1,

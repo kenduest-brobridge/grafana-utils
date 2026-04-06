@@ -767,7 +767,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="適用對象">適用對象</h2>
 <ul><li>值班 SRE、平台維運、Grafana operator</li><li>需要做健康檢查、盤點、回放或漂移比對的人</li><li>需要在變更前後做檢查把關的人</li></ul>
 <h2 id="主要目標">主要目標</h2>
-<ul><li>先用 <code>status live</code> 和 <code>overview live</code> 確認現況</li><li>先在 <code>change summary</code> 與 <code>change preflight</code> 擋掉不合理的變更包</li><li>先用 <code>--dry-run</code> 看匯入結果，再決定要不要真的套用</li><li>需要時才用 direct Basic auth 做 break-glass</li></ul>
+<ul><li>先用 <code>status live</code> 和 <code>overview live</code> 確認現況</li><li>先在 <code>change inspect</code>、<code>change check</code>、<code>change preview</code> 擋掉不合理的變更包</li><li>先用 <code>--dry-run</code> 看匯入結果，再決定要不要真的套用</li><li>需要時才用 direct Basic auth 做 break-glass</li></ul>
 <h2 id="採用前後對照">採用前後對照</h2>
 <ul><li>以前：SRE 要靠一串零散指令自己拼出 readiness、scope 與 replay 風險。</li><li>現在：先用可重複的 profile，接著走 live check、staged review，最後才進 apply。</li></ul>
 <h2 id="成功判準">成功判準</h2>
@@ -775,7 +775,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="失敗時先檢查">失敗時先檢查</h2>
 <ul><li>如果 token scope 比任務還窄，先停下來換一張真的看得到該範圍的憑證。</li><li>如果 live check 成功、apply 失敗，先檢查寫入權限與 staged input，不要先懷疑 renderer。</li><li>如果你還說不出任務屬於哪條 lane，先回去看工作流章節，不要直接改 live。</li></ul>
 <h2 id="典型維運任務">典型維運任務</h2>
-<ul><li>維護前先做即時整備度檢查</li><li>盤點跨 org 的 dashboard、data source 或 alert</li><li>在 apply 之前先做 staged summary、preflight 與 dry-run</li><li>在備份、漂移檢查或災難復原時做匯出與比對</li></ul>
+<ul><li>維護前先做即時整備度檢查</li><li>盤點跨 org 的 dashboard、data source 或 alert</li><li>在 apply 之前先做 staged inspect、check、preview 與 dry-run</li><li>在備份、漂移檢查或災難復原時做匯出與比對</li></ul>
 <h2 id="建議的連線與秘密資料處理方式">建議的連線與秘密資料處理方式</h2>
 <ol><li>日常維運優先用 <code>--profile</code>，並把密碼或 token 放在環境變數或 secret store。</li><li>出現緊急處理或尚未建立 profile 時，再用 direct Basic auth。</li><li>token 只適合權限範圍很清楚的讀取或單一 org 自動化，不要假設它能完成所有管理動作。</li><li>跨 org、管理員層級與 service account 類作業，通常還是需要更完整的管理員憑證。</li></ol>
 <h2 id="建議先跑的-5-個指令">建議先跑的 5 個指令</h2>
@@ -784,11 +784,13 @@ grafana-util status live --profile prod --output-format table</code></pre>
 <pre><code># 用途：建議先跑的 5 個指令。
 grafana-util overview live --profile prod --output-format interactive</code></pre>
 <pre><code># 用途：建議先跑的 5 個指令。
-grafana-util change summary --desired-file ./desired.json</code></pre>
+grafana-util change inspect --workspace .</code></pre>
 <pre><code># 用途：建議先跑的 5 個指令。
-grafana-util change preflight --desired-file ./desired.json --fetch-live --output-format json</code></pre>
+grafana-util change check --workspace . --fetch-live --output-format json</code></pre>
 <pre><code># 用途：建議先跑的 5 個指令。
-grafana-util dashboard export --export-dir ./backups --overwrite --progress</code></pre>
+grafana-util change preview --workspace . --fetch-live --output-format json</code></pre>
+<pre><code># 用途：建議先跑的 5 個指令。
+grafana-util dashboard export --output-dir ./backups --overwrite --progress</code></pre>
 <p>如果你要先處理存取層資產，可以把 <code>dashboard export</code> 換成：</p>
 <pre><code># 用途：如果你要先處理存取層資產，可以把 dashboard export 換成。
 grafana-util access org list --table</code></pre>
@@ -797,7 +799,7 @@ grafana-util access org list --table</code></pre>
 <h2 id="建議同時開著哪些指令頁">建議同時開著哪些指令頁</h2>
 <ul><li><a href="../../commands/zh-TW/status.html">status</a></li><li><a href="../../commands/zh-TW/overview.html">overview</a></li><li><a href="../../commands/zh-TW/change.html">change</a></li><li><a href="../../commands/zh-TW/dashboard.html">dashboard</a></li><li><a href="../../commands/zh-TW/alert.html">alert</a></li><li><a href="../../commands/zh-TW/access.html">access</a></li><li><a href="../../commands/zh-TW/index.html">指令詳細說明總索引</a></li></ul>
 <h2 id="常見錯誤與限制">常見錯誤與限制</h2>
-<ul><li>不要把 <code>status live</code> 當成部署前的唯一檢查；<code>change preflight</code> 和 staged 驗證還是要跑。</li><li>不要在匯入前略過 <code>--dry-run</code>，尤其是會覆寫既有資產時。</li><li>不要假設 token 看得到所有 org，<code>--all-orgs</code> 與管理操作常會受 scope 限制。</li><li>不要把 <code>tokens.json</code> 當一般輸出檔；它包含敏感資訊。</li><li>不要直接進行破壞性操作，先看摘要、再看 preflight、最後才套用。</li></ul>
+<ul><li>不要把 <code>status live</code> 當成部署前的唯一檢查；<code>change check</code> 和 staged 驗證還是要跑。</li><li>不要在匯入前略過 <code>--dry-run</code>，尤其是會覆寫既有資產時。</li><li>不要假設 token 看得到所有 org，<code>--all-orgs</code> 與管理操作常會受 scope 限制。</li><li>不要把 <code>tokens.json</code> 當一般輸出檔；它包含敏感資訊。</li><li>不要直接進行破壞性操作，先 inspect、再 check、再 preview，最後才套用。</li></ul>
 <h2 id="什麼叫做處於良好的維運姿勢">什麼叫做處於良好的維運姿勢</h2>
 <ul><li>你知道目前的 credential 到底能不能看見要處理的 org 或管理範圍</li><li>你能分清楚即時讀取、staged review 與真正 apply 是三種不同流程</li><li>重大變更前會先跑 preflight 或 dry-run</li><li>問題一旦從 status 轉進 dashboard、alert 或 access，你知道要切到哪一頁</li></ul>
 <h2 id="什麼時候切到更深的文件">什麼時候切到更深的文件</h2>

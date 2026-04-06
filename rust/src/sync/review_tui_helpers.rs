@@ -1,4 +1,5 @@
 //! Terminal interaction layer for Sync operations and command-driven review flows.
+#![cfg_attr(not(feature = "tui"), allow(dead_code, unused_imports))]
 
 use crate::common::Result;
 #[cfg(feature = "tui")]
@@ -11,8 +12,11 @@ use super::super::plan_builder::{
     build_sync_alert_assessment_document, build_sync_plan_summary_document,
 };
 
+#[cfg(feature = "tui")]
 use ratatui::style::{Color, Modifier, Style};
+#[cfg(feature = "tui")]
 use ratatui::text::{Line, Span};
+#[cfg(feature = "tui")]
 use ratatui::widgets::ListItem;
 
 #[cfg(any(feature = "tui", test))]

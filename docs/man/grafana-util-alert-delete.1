@@ -10,6 +10,11 @@ Delete one explicit alert resource identity.
 Remove a single rule, contact point, mute timing, policy tree, or template by identity.
 .IP \(bu 2
 Reset the managed notification policy tree only when you intend to allow it.
+.SH BEFORE / AFTER
+.IP \(bu 2
+Before: clean up a resource manually through the UI and hope you target the right object.
+.IP \(bu 2
+After: delete exactly one named alert resource by kind and identity.
 .SH COMMON OPTIONS
 .IP \(bu 2
 \-\-kind selects the resource kind to delete.
@@ -19,6 +24,20 @@ Reset the managed notification policy tree only when you intend to allow it.
 \-\-allow\-policy\-reset permits policy\-tree reset.
 .IP \(bu 2
 \-\-output\-format renders delete preview or execution output as text or json.
+.SH SUCCESS CRITERIA
+.IP \(bu 2
+The target kind and identity are the only things affected.
+.IP \(bu 2
+A preview or execution result clearly shows the resource you meant to remove.
+.IP \(bu 2
+Policy\-tree resets only happen when \-\-allow\-policy\-reset is present.
+.SH FAILURE CHECKS
+.IP \(bu 2
+Confirm the kind matches the identity you intend to remove.
+.IP \(bu 2
+Check the org/profile context before deleting if the resource is not where you expect.
+.IP \(bu 2
+If you are touching the policy tree, make sure \-\-allow\-policy\-reset is present and intentional.
 .SH EXAMPLES
 .PP
 Delete one explicit alert resource identity.

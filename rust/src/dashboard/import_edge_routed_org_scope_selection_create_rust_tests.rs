@@ -103,7 +103,7 @@ fn import_dashboards_with_use_export_org_filters_selected_orgs_and_creates_missi
         |target_org_id, scoped_args| {
             import_calls.push((
                 target_org_id,
-                scoped_args.import_dir.clone(),
+                scoped_args.input_dir.clone(),
                 scoped_args.org_id,
             ));
             assert!(!scoped_args.use_export_org);
@@ -114,7 +114,7 @@ fn import_dashboards_with_use_export_org_filters_selected_orgs_and_creates_missi
         |_target_org_id, scoped_args| {
             Ok(test_support::import::ImportDryRunReport {
                 mode: "create-only".to_string(),
-                import_dir: scoped_args.import_dir.clone(),
+                input_dir: scoped_args.input_dir.clone(),
                 folder_statuses: Vec::new(),
                 dashboard_records: Vec::new(),
                 skipped_missing_count: 0,
@@ -344,7 +344,7 @@ fn import_dashboards_with_use_export_org_round_trips_combined_export_root_into_s
         move |target_org_id, scoped_args| {
             routed_scopes_for_import
                 .borrow_mut()
-                .push((target_org_id, scoped_args.import_dir.clone()));
+                .push((target_org_id, scoped_args.input_dir.clone()));
             let imported_dashboards = std::rc::Rc::clone(&imported_dashboards_for_import);
             import_dashboards_with_request(
                 with_dashboard_import_live_preflight(
@@ -398,7 +398,7 @@ fn import_dashboards_with_use_export_org_round_trips_combined_export_root_into_s
     );
     assert_eq!(imported_dashboards.borrow().len(), 2);
 
-    for (target_org_id, import_dir) in routed_scopes.borrow().iter() {
+    for (target_org_id, input_dir) in routed_scopes.borrow().iter() {
         let stored = imported_dashboards
             .borrow()
             .get(target_org_id)
@@ -411,10 +411,11 @@ fn import_dashboards_with_use_export_org_round_trips_combined_export_root_into_s
         };
         let diff_args = DiffArgs {
             common: make_common_args("http://127.0.0.1:3000".to_string()),
-            import_dir: import_dir.clone(),
+            input_dir: input_dir.clone(),
             input_format: crate::dashboard::DashboardImportInputFormat::Raw,
             import_folder_uid: Some(folder_uid.to_string()),
             context_lines: 3,
+            output_format: crate::common::DiffOutputFormat::Text,
         };
         let differences = diff_dashboards_with_request(
             |_method, path, _params, _payload| {

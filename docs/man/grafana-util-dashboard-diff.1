@@ -10,7 +10,7 @@ Compare local dashboard files against live Grafana dashboards.
 Use this when you want to see what would change before importing or publishing a dashboard bundle.
 .SH COMMON OPTIONS
 .TP
-.B \-\-import\-dir
+.B \-\-input\-dir
 compare this export directory against Grafana.
 .TP
 .B \-\-input\-format
@@ -25,7 +25,7 @@ unified diff context.
 .PP
 Compare local dashboard files against live Grafana dashboards.
 .EX
-grafana-util dashboard diff --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./dashboards/raw
+grafana-util dashboard diff --url http://localhost:3000 --basic-user admin --basic-password admin --input-dir ./dashboards/raw
 .EE
 .SH SEE ALSO
 \fBgrafana-util\fR(1),

@@ -43,12 +43,12 @@ This chapter provides practical solutions for common Grafana operational headach
 
 **Solution**: Use the **`prompt/` lane** for a clean promotion handoff.
 
-1. **Export from Dev**: `grafana-util dashboard export --export-dir ./dev-assets`
+1. **Export from Dev**: `grafana-util dashboard export --output-dir ./dev-assets`
 2. **Locate Clean Source**: Use files in `./dev-assets/prompt/`. These have environment-specific metadata stripped.
 3. **Import to Prod**:
    ```bash
 # Purpose: Import to Prod.
-   grafana-util dashboard import --import-dir ./dev-assets/prompt --url https://prod-grafana --replace-existing
+   grafana-util dashboard import --input-dir ./dev-assets/prompt --url https://prod-grafana --replace-existing
    ```
 
 **Use this when**: the source and target environments share dashboard intent, but you do not want to replay every source-specific field literally.
@@ -81,10 +81,10 @@ This chapter provides practical solutions for common Grafana operational headach
 
 ```bash
 # Generate a report of all required datasources in your export tree
-grafana-util dashboard inspect-export --import-dir ./backups/raw --output-format report-table
+grafana-util dashboard analyze --input-dir ./backups/raw --input-format raw --output-format dependency
 ```
 
-**What to check**: Ensure every `UID` listed in the "Sources" column exists in your target Grafana's `datasource list`.
+**What to check**: Ensure every datasource listed in the dependency report exists in your target Grafana's `datasource list`.
 
 **Use this when**: you are preparing an import, validating a promotion bundle, or checking whether a dashboard export is portable enough for another environment.
 
@@ -118,7 +118,7 @@ for file in ./dashboards/raw/*.json; do
   grafana-util dashboard patch-file --input "$file" --tag "ManagedBySRE" --output "$file"
 done
 
-grafana-util dashboard import --import-dir ./dashboards/raw --replace-existing --dry-run --table
+grafana-util dashboard import --input-dir ./dashboards/raw --replace-existing --dry-run --table
 ```
 
 **Use this when**: the structural change is local and mechanical, and you want to keep the update reviewable.

@@ -32,10 +32,10 @@ use super::super::{
 };
 
 pub(crate) fn load_access_import_records(
-    import_dir: &Path,
+    input_dir: &Path,
     expected_kind: &str,
 ) -> Result<Vec<Map<String, Value>>> {
-    let path = import_dir.join(ACCESS_USER_EXPORT_FILENAME);
+    let path = input_dir.join(ACCESS_USER_EXPORT_FILENAME);
     if !path.is_file() {
         return Err(message(format!(
             "Access import file not found: {}",
@@ -96,7 +96,7 @@ pub(crate) fn load_access_import_records(
         }
     };
 
-    let metadata_path = import_dir.join(ACCESS_EXPORT_METADATA_FILENAME);
+    let metadata_path = input_dir.join(ACCESS_EXPORT_METADATA_FILENAME);
     if metadata_path.is_file() {
         let _metadata = load_json_object_file(&metadata_path, "Access import metadata")?;
     }
@@ -198,7 +198,7 @@ where
 {
     let _auth_mode = build_auth_context(&args.common)?.auth_mode;
     validate_user_import_dry_run_output(args)?;
-    let records = load_access_import_records(&args.import_dir, ACCESS_EXPORT_KIND_USERS)?;
+    let records = load_access_import_records(&args.input_dir, ACCESS_EXPORT_KIND_USERS)?;
 
     let mut created = 0usize;
     let mut updated = 0usize;
@@ -220,7 +220,7 @@ where
             return Err(message(format!(
                 "Access user import record {} in {} lacks login or email.",
                 index + 1,
-                args.import_dir.display()
+                args.input_dir.display()
             )));
         }
 
@@ -597,7 +597,7 @@ where
                     created,
                     updated,
                     skipped,
-                    &args.import_dir,
+                    &args.input_dir,
                 ))?
             );
             return Ok(0);
@@ -610,7 +610,7 @@ where
         created,
         updated,
         skipped,
-        args.import_dir.display()
+        args.input_dir.display()
     );
     Ok(processed)
 }

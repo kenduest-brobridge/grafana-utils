@@ -1,7 +1,5 @@
 //! Live inspect core-family parity regressions.
-use super::super::test_support::{
-    self, InspectExportArgs, InspectExportReportFormat, InspectLiveArgs,
-};
+use super::super::test_support::{self, InspectExportArgs, InspectLiveArgs, InspectOutputFormat};
 use super::{
     assert_governance_documents_match, assert_json_query_report_row_parity,
     core_family_inspect_live_request_fixture, make_common_args,
@@ -25,8 +23,7 @@ fn inspect_live_dashboards_with_request_reports_live_json_via_temp_raw_export() 
         json: false,
         table: false,
         yaml: false,
-        report: Some(InspectExportReportFormat::Json),
-        output_format: None,
+        output_format: Some(InspectOutputFormat::QueriesJson),
         report_columns: Vec::new(),
         report_filter_datasource: Some("prom-main".to_string()),
         report_filter_panel_id: Some("7".to_string()),
@@ -319,7 +316,7 @@ fn inspect_live_dashboards_with_request_matches_export_output_files_for_core_fam
 
     let export_report_output = temp.path().join("export-report.json");
     let export_report_args = InspectExportArgs {
-        import_dir: export_root.clone(),
+        input_dir: export_root.clone(),
         input_type: None,
         input_format: crate::dashboard::DashboardImportInputFormat::Raw,
         text: false,
@@ -327,8 +324,7 @@ fn inspect_live_dashboards_with_request_matches_export_output_files_for_core_fam
         json: false,
         table: false,
         yaml: false,
-        report: Some(InspectExportReportFormat::Json),
-        output_format: None,
+        output_format: Some(InspectOutputFormat::QueriesJson),
         report_columns: Vec::new(),
         report_filter_datasource: None,
         report_filter_panel_id: None,
@@ -352,8 +348,7 @@ fn inspect_live_dashboards_with_request_matches_export_output_files_for_core_fam
         json: false,
         table: false,
         yaml: false,
-        report: Some(InspectExportReportFormat::Json),
-        output_format: None,
+        output_format: Some(InspectOutputFormat::QueriesJson),
         report_columns: Vec::new(),
         report_filter_datasource: None,
         report_filter_panel_id: None,
@@ -397,7 +392,7 @@ fn inspect_live_dashboards_with_request_matches_export_output_files_for_core_fam
 
     let export_governance_output = temp.path().join("export-governance.json");
     let export_governance_args = InspectExportArgs {
-        import_dir: export_root.clone(),
+        input_dir: export_root.clone(),
         input_type: None,
         input_format: crate::dashboard::DashboardImportInputFormat::Raw,
         text: false,
@@ -405,8 +400,7 @@ fn inspect_live_dashboards_with_request_matches_export_output_files_for_core_fam
         json: false,
         table: false,
         yaml: false,
-        report: Some(InspectExportReportFormat::GovernanceJson),
-        output_format: None,
+        output_format: Some(InspectOutputFormat::GovernanceJson),
         report_columns: Vec::new(),
         report_filter_datasource: None,
         report_filter_panel_id: None,
@@ -432,8 +426,7 @@ fn inspect_live_dashboards_with_request_matches_export_output_files_for_core_fam
         json: false,
         table: false,
         yaml: false,
-        report: Some(InspectExportReportFormat::GovernanceJson),
-        output_format: None,
+        output_format: Some(InspectOutputFormat::GovernanceJson),
         report_columns: Vec::new(),
         report_filter_datasource: None,
         report_filter_panel_id: None,
@@ -456,7 +449,7 @@ fn inspect_live_dashboards_with_request_matches_export_output_files_for_core_fam
 
     let export_dependency_output = temp.path().join("export-dependency.json");
     let export_dependency_args = InspectExportArgs {
-        import_dir: export_root.clone(),
+        input_dir: export_root.clone(),
         input_type: None,
         input_format: crate::dashboard::DashboardImportInputFormat::Raw,
         text: false,
@@ -464,8 +457,7 @@ fn inspect_live_dashboards_with_request_matches_export_output_files_for_core_fam
         json: false,
         table: false,
         yaml: false,
-        report: Some(InspectExportReportFormat::DependencyJson),
-        output_format: None,
+        output_format: Some(InspectOutputFormat::DependencyJson),
         report_columns: Vec::new(),
         report_filter_datasource: None,
         report_filter_panel_id: None,
@@ -491,8 +483,7 @@ fn inspect_live_dashboards_with_request_matches_export_output_files_for_core_fam
         json: false,
         table: false,
         yaml: false,
-        report: Some(InspectExportReportFormat::DependencyJson),
-        output_format: None,
+        output_format: Some(InspectOutputFormat::DependencyJson),
         report_columns: Vec::new(),
         report_filter_datasource: None,
         report_filter_panel_id: None,

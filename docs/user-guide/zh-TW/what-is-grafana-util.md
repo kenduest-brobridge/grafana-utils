@@ -22,7 +22,7 @@
 
 | 原本常見情況 | 改用 `grafana-util` 後 |
 | :--- | :--- |
-| 想知道現在 Grafana 環境長什麼樣，只能一直切 UI 或查 API。 | 先用 `overview`、`status` 或 `change summary` 建立第一個審查面。 |
+| 想知道現在 Grafana 環境長什麼樣，只能一直切 UI 或查 API。 | 先用 `overview`、`status` 或 `change inspect` 建立第一個審查面。 |
 | 匯出/匯入像一次性的動作，缺少中間檢查點。 | 先匯出、再 inspect、再 dry-run，最後才決定要不要回放。 |
 | 告警或權限變更很難在套用前說清楚。 | 先看 summary、plan 與結構化輸出，再進入 apply。 |
 | 認證與 secret 容易散落在命令列與腳本裡。 | 用 profile 與 secret 模式把重複設定收起來。 |
@@ -53,7 +53,7 @@
 
 - **盤點與觀察**：用 `status`、`overview` 先看目前狀態
 - **資產操作**：用 `dashboard`、`datasource`、`alert`、`access` 管理不同類型的 Grafana 資產
-- **變更審查**：用 `change` 先看摘要、preflight 與 plan，再決定要不要套用
+- **變更審查**：用 `change` 走 `inspect`、`check`、`preview`、`apply` 這條 task-first 路徑
 - **連線與憑證**：用 `profile` 把 URL、驗證方式與 secret 來源整理起來
 
 重點不是記住每個 command，而是先知道自己在做哪一種工作。
@@ -67,6 +67,13 @@
 - `grafana-util` 比較偏向可審查操作、inspection/governance 流程，以及較安全的搬移或回放路徑。
 
 它們會有重疊，但真正有用的判斷方式，是你現在需要哪一種工作形狀。
+
+## 哪些放首頁，哪些放目錄
+
+README 和手冊首頁要短，先露出大家最常用的工作流；更細的 command 樹放在 docs index 和各自的指令頁。
+
+- 放在 README / 首頁：`dashboard export/import/raw-to-prompt/review/publish`、`datasource export/import/diff`、`change inspect/check/preview/apply`、`status`、`overview`、`profile`、`alert plan/apply`、`access`、`secrets`。
+- 放在 docs index 和逐指令頁：`dashboard browse/fetch-live/clone-live/serve/edit-live/delete/history/list-vars/governance-gate/topology/impact/screenshot`、`datasource browse/types/list/add/modify/delete`、`snapshot`、`resource`、以及相容別名頁面。
 
 ## 主要目標
 
@@ -86,7 +93,7 @@
 | Data source 維運 | `datasource` | data source 盤點、匯出、匯入、diff、修改與恢復 |
 | 告警治理 | `alert` | 告警規則、通知路由、contact point、plan / apply |
 | 身分與存取 | `access` | org、user、team、service account 與 token 管理 |
-| 變更審查 | `change` | 先看 summary、preflight、plan、review，再決定要不要套用 |
+| 變更審查 | `change` | 先 inspect、check、preview，再決定要不要 apply |
 | 連線與憑證設定 | `profile` | 把 URL、驗證方式與 secret 來源整理成可重複使用的設定 |
 
 如果你只想知道「現在該從哪裡開始」，可以先用這個表判斷自己遇到的是哪一類問題，再往對應章節走。
@@ -121,7 +128,7 @@
 - staged 輸入是不是完整？
 - 權限、secret、路由、依賴是否合理？
 
-這時 `change summary`、`change preflight`、`alert plan` 這些流程就很重要。
+這時 `change inspect`、`change check`、`change preview`、`alert plan` 這些流程就很重要。
 
 ### 4. 自動化與 CI/CD
 

@@ -9,6 +9,7 @@ fn service_account_list_with_request_reads_search() {
         query: Some("svc".to_string()),
         page: 1,
         per_page: 100,
+        input_dir: None,
         table: false,
         csv: false,
         json: false,
@@ -70,7 +71,7 @@ fn service_account_export_with_request_writes_bundle() {
     let temp_dir = tempdir().unwrap();
     let args = ServiceAccountExportArgs {
         common: make_token_common(),
-        export_dir: temp_dir.path().to_path_buf(),
+        output_dir: temp_dir.path().to_path_buf(),
         overwrite: true,
         dry_run: false,
     };
@@ -114,6 +115,15 @@ fn service_account_export_with_request_writes_bundle() {
         metadata.get("sourceDir"),
         Some(&json!(temp_dir.path().to_string_lossy().to_string()))
     );
+    assert_eq!(metadata.get("metadataVersion"), Some(&json!(2)));
+    assert_eq!(metadata.get("domain"), Some(&json!("access")));
+    assert_eq!(
+        metadata.get("resourceKind"),
+        Some(&json!("service-accounts"))
+    );
+    assert_eq!(metadata.get("bundleKind"), Some(&json!("export-root")));
+    assert_eq!(metadata["source"]["kind"], json!("live"));
+    assert_eq!(metadata["capture"]["recordCount"], json!(1));
 }
 
 #[test]
@@ -131,7 +141,7 @@ fn service_account_import_rejects_kind_mismatch_and_future_version_bundle_contra
     .unwrap();
     let args = ServiceAccountImportArgs {
         common: make_token_common(),
-        import_dir: temp_dir.path().to_path_buf(),
+        input_dir: temp_dir.path().to_path_buf(),
         replace_existing: true,
         dry_run: true,
         table: false,
@@ -193,7 +203,7 @@ fn access_import_rejects_kind_mismatch_and_future_version_from_shared_fixture() 
                 |_method, _path, _params, _payload| Ok(None),
                 &UserImportArgs {
                     common: make_basic_common(),
-                    import_dir: temp_dir.path().to_path_buf(),
+                    input_dir: temp_dir.path().to_path_buf(),
                     scope: Scope::Global,
                     replace_existing: true,
                     dry_run: true,
@@ -209,7 +219,7 @@ fn access_import_rejects_kind_mismatch_and_future_version_from_shared_fixture() 
                 |_method, _path, _params, _payload| Ok(None),
                 &TeamImportArgs {
                     common: make_token_common(),
-                    import_dir: temp_dir.path().to_path_buf(),
+                    input_dir: temp_dir.path().to_path_buf(),
                     replace_existing: true,
                     dry_run: true,
                     table: false,
@@ -224,7 +234,7 @@ fn access_import_rejects_kind_mismatch_and_future_version_from_shared_fixture() 
                 |_method, _path, _params, _payload| Ok(None),
                 &OrgImportArgs {
                     common: make_basic_common_no_org_id(),
-                    import_dir: temp_dir.path().to_path_buf(),
+                    input_dir: temp_dir.path().to_path_buf(),
                     replace_existing: true,
                     dry_run: true,
                     yes: false,
@@ -236,7 +246,7 @@ fn access_import_rejects_kind_mismatch_and_future_version_from_shared_fixture() 
                 |_method, _path, _params, _payload| Ok(None),
                 &ServiceAccountImportArgs {
                     common: make_token_common(),
-                    import_dir: temp_dir.path().to_path_buf(),
+                    input_dir: temp_dir.path().to_path_buf(),
                     replace_existing: true,
                     dry_run: true,
                     table: false,
@@ -267,7 +277,7 @@ fn access_import_rejects_kind_mismatch_and_future_version_from_shared_fixture() 
                 |_method, _path, _params, _payload| Ok(None),
                 &UserImportArgs {
                     common: make_basic_common(),
-                    import_dir: temp_dir.path().to_path_buf(),
+                    input_dir: temp_dir.path().to_path_buf(),
                     scope: Scope::Global,
                     replace_existing: true,
                     dry_run: true,
@@ -283,7 +293,7 @@ fn access_import_rejects_kind_mismatch_and_future_version_from_shared_fixture() 
                 |_method, _path, _params, _payload| Ok(None),
                 &TeamImportArgs {
                     common: make_token_common(),
-                    import_dir: temp_dir.path().to_path_buf(),
+                    input_dir: temp_dir.path().to_path_buf(),
                     replace_existing: true,
                     dry_run: true,
                     table: false,
@@ -298,7 +308,7 @@ fn access_import_rejects_kind_mismatch_and_future_version_from_shared_fixture() 
                 |_method, _path, _params, _payload| Ok(None),
                 &OrgImportArgs {
                     common: make_basic_common_no_org_id(),
-                    import_dir: temp_dir.path().to_path_buf(),
+                    input_dir: temp_dir.path().to_path_buf(),
                     replace_existing: true,
                     dry_run: true,
                     yes: false,
@@ -310,7 +320,7 @@ fn access_import_rejects_kind_mismatch_and_future_version_from_shared_fixture() 
                 |_method, _path, _params, _payload| Ok(None),
                 &ServiceAccountImportArgs {
                     common: make_token_common(),
-                    import_dir: temp_dir.path().to_path_buf(),
+                    input_dir: temp_dir.path().to_path_buf(),
                     replace_existing: true,
                     dry_run: true,
                     table: false,
@@ -344,7 +354,7 @@ fn service_account_import_rejects_structured_output_without_dry_run() {
     .unwrap();
     let args = ServiceAccountImportArgs {
         common: make_token_common(),
-        import_dir: temp_dir.path().to_path_buf(),
+        input_dir: temp_dir.path().to_path_buf(),
         replace_existing: true,
         dry_run: false,
         table: false,
@@ -379,7 +389,7 @@ fn service_account_import_with_request_creates_missing_when_replace_existing_is_
     .unwrap();
     let args = ServiceAccountImportArgs {
         common: make_token_common(),
-        import_dir: temp_dir.path().to_path_buf(),
+        input_dir: temp_dir.path().to_path_buf(),
         replace_existing: true,
         dry_run: false,
         table: false,
@@ -444,7 +454,7 @@ fn service_account_import_with_request_updates_existing() {
     .unwrap();
     let args = ServiceAccountImportArgs {
         common: make_token_common(),
-        import_dir: temp_dir.path().to_path_buf(),
+        input_dir: temp_dir.path().to_path_buf(),
         replace_existing: true,
         dry_run: false,
         table: false,
@@ -695,6 +705,7 @@ fn list_orgs_with_request_reads_orgs_and_memberships() {
         name: None,
         query: None,
         with_users: true,
+        input_dir: None,
         table: false,
         csv: false,
         json: false,

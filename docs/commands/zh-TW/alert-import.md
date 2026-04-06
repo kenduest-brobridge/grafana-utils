@@ -12,7 +12,7 @@
 
 ## 主要旗標
 
-- `--import-dir` 指向 `raw/` 匯出目錄。
+- `--input-dir` 指向 `raw/` 匯出目錄。
 - `--replace-existing` 會更新識別相符的資源。
 - `--dry-run` 預覽匯入流程。
 - `--json` 將 dry-run 輸出呈現為結構化 JSON。
@@ -31,7 +31,7 @@
 
 ## 失敗時先檢查
 
-- `--import-dir` 要指向 `raw/` 目錄，不要只指到上層匯出資料夾。
+- `--input-dir` 要指向 `raw/` 目錄，不要只指到上層匯出資料夾。
 - 如果 dashboard 連動規則有搬動，匯入前先補上 dashboard / panel 對應表。
 - 需要覆蓋既有資源時，記得加 `--replace-existing`。
 
@@ -39,12 +39,12 @@
 
 ```bash
 # 用途：透過 Grafana API 匯入 alert 資源 JSON 檔。
-grafana-util alert import --url http://localhost:3000 --import-dir ./alerts/raw --replace-existing
+grafana-util alert import --url http://localhost:3000 --input-dir ./alerts/raw --replace-existing
 ```
 
 ```bash
 # 用途：透過 Grafana API 匯入 alert 資源 JSON 檔。
-grafana-util alert import --url http://localhost:3000 --import-dir ./alerts/raw --replace-existing --dry-run --json
+grafana-util alert import --url http://localhost:3000 --input-dir ./alerts/raw --replace-existing --dry-run --json
 ```
 
 ## 相關命令

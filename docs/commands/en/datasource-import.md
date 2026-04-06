@@ -7,7 +7,7 @@ Import datasource inventory through the Grafana API.
 Use this when you have a local datasource bundle or provisioning tree and want to push it into Grafana, either live or as a dry run.
 
 ## Key flags
-- `--import-dir`: source path for inventory or provisioning input.
+- `--input-dir`: source path for inventory or provisioning input.
 - `--input-format`: choose `inventory` or `provisioning`.
 - `--org-id`, `--use-export-org`, `--only-org-id`, `--create-missing-orgs`: control cross-org routing.
 - `--replace-existing`, `--update-existing-only`, `--require-matching-export-org`: import safety and reconciliation controls.
@@ -17,12 +17,12 @@ Use this when you have a local datasource bundle or provisioning tree and want t
 ## Examples
 ```bash
 # Purpose: Import datasource inventory through the Grafana API.
-grafana-util datasource import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./datasources --dry-run --table
+grafana-util datasource import --url http://localhost:3000 --basic-user admin --basic-password admin --input-dir ./datasources --dry-run --table
 ```
 
 ```bash
 # Purpose: Import datasource inventory through the Grafana API.
-grafana-util datasource import --url http://localhost:3000 --basic-user admin --basic-password admin --import-dir ./datasources --use-export-org --only-org-id 2 --create-missing-orgs --dry-run --json
+grafana-util datasource import --url http://localhost:3000 --basic-user admin --basic-password admin --input-dir ./datasources --use-export-org --only-org-id 2 --create-missing-orgs --dry-run --json
 ```
 
 ## Before / After
@@ -43,6 +43,6 @@ grafana-util datasource import --url http://localhost:3000 --basic-user admin --
 - if secrets stay unresolved, check the placeholder map and the provided secret values
 
 ## Related commands
+- [datasource list](./datasource-list.md)
 - [datasource export](./datasource-export.md)
 - [datasource diff](./datasource-diff.md)
-- [datasource inspect-export](./datasource-inspect-export.md)
