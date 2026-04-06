@@ -66,7 +66,7 @@ grafana-util overview live --url http://my-grafana:3000 --basic-user admin --pro
 
 ```bash
 # 用途：安裝固定版本。
-VERSION=0.9.0 \
+VERSION=0.9.1 \
   curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh
 ```
 

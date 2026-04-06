@@ -65,7 +65,7 @@ Pinned release:
 
 ```bash
 # Install a specific pinned release.
-VERSION=0.9.0 \
+VERSION=0.9.1 \
   curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh
 ```
 

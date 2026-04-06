@@ -788,7 +788,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh</code></pre>
 <p>If you want one fixed release or one explicit install directory, the same script also supports:</p>
 <pre><code># Purpose: Install one pinned release into one explicit binary directory.
-VERSION=0.9.0 BIN_DIR=&quot;$HOME/.local/bin&quot; \
+VERSION=0.9.1 BIN_DIR=&quot;$HOME/.local/bin&quot; \
   curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh</code></pre>
 <p>The installer uses <code>BIN_DIR</code> when you set it. Otherwise it tries <code>/usr/local/bin</code> when that directory is writable, then falls back to <code>$HOME/.local/bin</code>.</p>
 <p>If the chosen install directory is not already on <code>PATH</code>, the installer prints the exact shell snippet to add it for <code>zsh</code> or <code>bash</code>. You can also inspect the contract first with:</p>
@@ -798,7 +798,7 @@ sh ./scripts/install.sh --help</code></pre>
 <pre><code># Purpose: Verify Version.
 grafana-util --version</code></pre>
 <p><strong>Expected Output:</strong></p>
-<pre><code>grafana-util 0.9.0</code></pre>
+<pre><code>grafana-util 0.9.1</code></pre>
 <p>This confirms that the binary is on your <code>PATH</code> and matches the checked-in release.</p>
 <h2 id="step-2-connection-patterns-and-profile-files">Step 2: Connection Patterns And Profile Files</h2>
 <p>Profile workflows are repo-local. <code>grafana-util profile</code> works against <code>grafana-util.yaml</code> in the current working directory by default, or against the file pointed to by <code>GRAFANA_UTIL_CONFIG</code>.</p>

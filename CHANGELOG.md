@@ -14,6 +14,23 @@ Format rule going forward:
 - keep older tagged releases below
 - use commit/tag history as the source of truth
 
+## [0.9.1] - 2026-04-07
+
+### Highlights
+
+- `main` now includes the Rust quality-gate cleanup so the CI lint path stays green again.
+- Public install and getting-started examples were bumped to `0.9.1` so the pinned-release guidance matches the tagged release.
+- The release metadata and generated docs were refreshed after the version bump.
+
+### Changed
+
+- `VERSION`, package manifests, install examples, and getting-started docs now point at `0.9.1`.
+- Generated manpage and HTML docs were regenerated for the `0.9.1` line.
+
+### Fixed
+
+- The `main` branch quality gate no longer fails on the clippy warnings that were blocking the release lane.
+
 ## [0.9.0] - 2026-04-07
 
 ### Highlights
