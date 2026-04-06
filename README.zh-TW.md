@@ -9,15 +9,9 @@
 
 **標準化 Grafana 維運流程：包含儀表板、告警、資料源、存取控制與操作審查。**
 
-`grafana-util` 是一款專為 Grafana 日常維運設計的 Rust CLI 工具。它將儀表板、告警、資料源、存取控制與狀態檢查整合在一起，讓 SRE 與平台工程師可以更有把握地進行盤點、審查、搬移與變更。
+`grafana-util` 是一款專為 Grafana 日常維運設計的 Rust CLI 工具。它把盤點、匯出/匯入、比對、回放、profile 管理與 secret 處理整理在一起，讓 SRE 與平台工程師可以先看清楚，再決定要不要變更。
 
-如果您已在使用 `grafanactl`、Git Sync 或 Terraform 等工具，`grafana-util` 可以補上**先審查再動手**的操作層，幫忙檢查相依關係、確認結構，並提供安全的環境回放路徑。
-
-### 在生態系中的定位：
-- `grafanactl`：通用的 Grafana 資源與 API 導向 CLI。
-- `grafana-import`：專注於儀表板匯入與匯出。
-- `grizzly`：宣告式 Grafana-as-code 管理工具。
-- **`grafana-util`**：專注於**維運流程**、檢查與治理，以及安全的環境搬移與回放。
+它的重點是先審查再動手、把儀表板匯入/匯出的不同路徑分清楚，以及用可重複的 profile 讓日常操作保持簡短、穩定。
 
 ---
 

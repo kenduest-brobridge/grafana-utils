@@ -9,15 +9,9 @@ English | [繁體中文](./README.zh-TW.md)
 
 **Standardized Grafana workflows for dashboards, alerts, datasources, access control, and operational review.**
 
-`grafana-util` is a Rust-based CLI designed for day-to-day Grafana operations. It consolidates management of dashboards, alerts, datasources, and access control into a single tool, enabling SREs and platform engineers to inspect, review, and migrate changes with higher confidence.
+`grafana-util` is a Rust-based CLI designed for day-to-day Grafana operations. It focuses on reviewable inventory, export/import, diff, replay, profile management, and secret handling so SREs and platform engineers can inspect changes before they apply them.
 
-If you already use tools like `grafanactl`, Git Sync, or Terraform, `grafana-util` provides an additional **review-first layer** for auditing dependencies, validating structure, and managing safe replay paths.
-
-### How it fits in the ecosystem:
-- `grafanactl`: General resource and API-oriented CLI.
-- `grafana-import`: Focused specifically on dashboard import/export.
-- `grizzly`: Declarative Grafana-as-code management.
-- **`grafana-util`**: Focused on **operational workflows**, governance checks, and secure migration/replay paths.
+Its main strengths are a review-first workflow, separate paths for dashboard import/export formats, and reusable connection profiles that keep repeatable operations short and predictable.
 
 ---
 
