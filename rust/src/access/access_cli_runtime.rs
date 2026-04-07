@@ -158,7 +158,7 @@ pub fn build_auth_context(common: &super::CommonCliArgs) -> Result<AccessAuthCon
         common.profile.as_deref(),
         ConnectionMergeInput {
             url: &common.url,
-            url_default: super::DEFAULT_URL,
+            url_default: "",
             api_token: common.api_token.as_deref(),
             username: common.username.as_deref(),
             password: common.password.as_deref(),
@@ -195,7 +195,7 @@ pub fn build_auth_context_no_org_id(
         common.profile.as_deref(),
         ConnectionMergeInput {
             url: &common.url,
-            url_default: super::DEFAULT_URL,
+            url_default: "",
             api_token: common.api_token.as_deref(),
             username: common.username.as_deref(),
             password: common.password.as_deref(),
@@ -240,7 +240,7 @@ fn build_connection(common: &super::CommonCliArgs) -> Result<GrafanaConnection> 
         common.profile.as_deref(),
         ConnectionMergeInput {
             url: &common.url,
-            url_default: super::DEFAULT_URL,
+            url_default: "",
             api_token: common.api_token.as_deref(),
             username: common.username.as_deref(),
             password: common.password.as_deref(),
@@ -267,7 +267,7 @@ fn build_connection_no_org_id(common: &super::CommonCliArgsNoOrgId) -> Result<Gr
         common.profile.as_deref(),
         ConnectionMergeInput {
             url: &common.url,
-            url_default: super::DEFAULT_URL,
+            url_default: "",
             api_token: common.api_token.as_deref(),
             username: common.username.as_deref(),
             password: common.password.as_deref(),

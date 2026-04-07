@@ -207,12 +207,19 @@ pub fn resolve_connection_settings(
     selected_profile: Option<&SelectedProfile>,
 ) -> Result<ResolvedConnectionSettings> {
     let profile = selected_profile.map(|selected| &selected.profile);
-    let url = if input.url != input.url_default {
-        input.url.to_string()
+    let cli_or_env_url = if input.url != input.url_default && !input.url.trim().is_empty() {
+        Some(input.url.to_string())
     } else {
-        profile
-            .and_then(|item| item.url.clone())
-            .unwrap_or_else(|| input.url.to_string())
+        env_value("GRAFANA_URL")
+    };
+    let url = if let Some(url) = cli_or_env_url {
+        url
+    } else if let Some(url) = profile.and_then(|item| item.url.clone()) {
+        url
+    } else {
+        return Err(validation(
+            "Grafana base URL is required. Pass --url, set GRAFANA_URL, or configure a profile with url.",
+        ));
     };
     let api_token = resolve_credential_value(
         input.api_token,
@@ -535,6 +542,57 @@ mod tests {
         env::remove_var("TEST_GRAFANA_PROFILE_TOKEN");
 
         assert_eq!(resolved.api_token.as_deref(), Some("token-from-env"));
+    }
+
+    #[test]
+    fn resolve_connection_settings_supports_grafana_url_env() {
+        env::set_var("GRAFANA_URL", "https://env-grafana.example.com");
+        let resolved = resolve_connection_settings(
+            ConnectionMergeInput {
+                url: "",
+                url_default: "",
+                api_token: None,
+                username: None,
+                password: None,
+                org_id: None,
+                timeout: 30,
+                timeout_default: 30,
+                verify_ssl: false,
+                insecure: false,
+                ca_cert: None,
+            },
+            None,
+        )
+        .unwrap();
+        env::remove_var("GRAFANA_URL");
+
+        assert_eq!(resolved.url, "https://env-grafana.example.com");
+    }
+
+    #[test]
+    fn resolve_connection_settings_requires_url_when_cli_env_and_profile_are_missing() {
+        env::remove_var("GRAFANA_URL");
+        let error = resolve_connection_settings(
+            ConnectionMergeInput {
+                url: "",
+                url_default: "",
+                api_token: None,
+                username: None,
+                password: None,
+                org_id: None,
+                timeout: 30,
+                timeout_default: 30,
+                verify_ssl: false,
+                insecure: false,
+                ca_cert: None,
+            },
+            None,
+        )
+        .unwrap_err();
+
+        assert!(error
+            .to_string()
+            .contains("Grafana base URL is required. Pass --url, set GRAFANA_URL, or configure a profile with url."));
     }
 
     #[test]

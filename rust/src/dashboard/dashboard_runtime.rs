@@ -2,7 +2,7 @@
 use clap::Parser;
 
 use crate::common::Result;
-use crate::dashboard::{DEFAULT_TIMEOUT, DEFAULT_URL};
+use crate::dashboard::DEFAULT_TIMEOUT;
 use crate::grafana_api::{AuthInputs, GrafanaApiClient, GrafanaConnection};
 use crate::http::JsonHttpClient;
 use crate::profile_config::ConnectionMergeInput;
@@ -186,7 +186,7 @@ pub fn build_auth_context(common: &CommonCliArgs) -> Result<DashboardAuthContext
         common.profile.as_deref(),
         ConnectionMergeInput {
             url: &common.url,
-            url_default: DEFAULT_URL,
+            url_default: "",
             api_token: common.api_token.as_deref(),
             username: common.username.as_deref(),
             password: common.password.as_deref(),
@@ -242,7 +242,7 @@ fn build_connection(common: &CommonCliArgs) -> Result<GrafanaConnection> {
         common.profile.as_deref(),
         ConnectionMergeInput {
             url: &common.url,
-            url_default: DEFAULT_URL,
+            url_default: "",
             api_token: common.api_token.as_deref(),
             username: common.username.as_deref(),
             password: common.password.as_deref(),

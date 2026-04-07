@@ -238,7 +238,7 @@ Options:
       --profile <PROFILE>
           Load connection defaults from the selected repo-local profile in grafana-util.yaml.
       --url <URL>
-          Grafana base URL. [default: http://localhost:3000]
+          Grafana base URL. Required unless supplied by --profile or GRAFANA_URL.
 ```
 `status live` queries Grafana directly, and it now uses `--output-format` for format selection.
 

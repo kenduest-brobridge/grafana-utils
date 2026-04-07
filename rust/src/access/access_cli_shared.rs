@@ -76,7 +76,13 @@ pub struct CommonCliArgs {
         help_heading = "Authentication Options"
     )]
     pub profile: Option<String>,
-    #[arg(long, default_value = DEFAULT_URL, help = "Grafana base URL.", help_heading = "Authentication Options")]
+    #[arg(
+        long,
+        default_value = "",
+        hide_default_value = true,
+        help = "Grafana base URL. Required unless supplied by --profile or GRAFANA_URL.",
+        help_heading = "Authentication Options"
+    )]
     pub url: String,
     #[arg(
         long = "token",
@@ -152,7 +158,13 @@ pub struct CommonCliArgsNoOrgId {
         help_heading = "Authentication Options"
     )]
     pub profile: Option<String>,
-    #[arg(long, default_value = DEFAULT_URL, help = "Grafana base URL.", help_heading = "Authentication Options")]
+    #[arg(
+        long,
+        default_value = "",
+        hide_default_value = true,
+        help = "Grafana base URL. Required unless supplied by --profile or GRAFANA_URL.",
+        help_heading = "Authentication Options"
+    )]
     pub url: String,
     #[arg(
         long = "token",

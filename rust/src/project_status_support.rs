@@ -20,7 +20,7 @@ fn resolve_live_project_status_connection(
         args.profile.as_deref(),
         ConnectionMergeInput {
             url: &args.url,
-            url_default: "http://localhost:3000",
+            url_default: "",
             api_token: args.api_token.as_deref(),
             username: args.username.as_deref(),
             password: args.password.as_deref(),

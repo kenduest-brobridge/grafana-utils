@@ -3,7 +3,7 @@
 use crate::common::CliColorChoice;
 use clap::{Args, ValueEnum};
 
-use super::super::{DEFAULT_TIMEOUT, DEFAULT_URL};
+use super::super::DEFAULT_TIMEOUT;
 
 /// Shared tabular/list output selectors for dashboard commands.
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
@@ -109,7 +109,12 @@ pub struct CommonCliArgs {
         help = "Load connection defaults from the selected repo-local profile in grafana-util.yaml."
     )]
     pub profile: Option<String>,
-    #[arg(long, default_value = DEFAULT_URL, help = "Grafana base URL.")]
+    #[arg(
+        long,
+        default_value = "",
+        hide_default_value = true,
+        help = "Grafana base URL. Required unless supplied by --profile or GRAFANA_URL."
+    )]
     pub url: String,
     #[arg(
         long = "token",

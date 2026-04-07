@@ -58,7 +58,12 @@ pub struct AlertCommonArgs {
         help = "Load connection defaults from the selected repo-local profile in grafana-util.yaml."
     )]
     pub profile: Option<String>,
-    #[arg(long, default_value = DEFAULT_URL, help = "Grafana base URL.")]
+    #[arg(
+        long,
+        default_value = "",
+        hide_default_value = true,
+        help = "Grafana base URL. Required unless supplied by --profile or GRAFANA_URL."
+    )]
     pub url: String,
     #[arg(
         long = "token",
@@ -1284,7 +1289,7 @@ pub fn build_auth_context(args: &AlertCliArgs) -> Result<AlertAuthContext> {
         args.profile.as_deref(),
         ConnectionMergeInput {
             url: &args.url,
-            url_default: DEFAULT_URL,
+            url_default: "",
             api_token: args.api_token.as_deref(),
             username: args.username.as_deref(),
             password: args.password.as_deref(),

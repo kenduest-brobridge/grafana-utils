@@ -135,8 +135,9 @@ pub struct ProjectStatusLiveArgs {
     pub profile: Option<String>,
     #[arg(
         long,
-        default_value = "http://localhost:3000",
-        help = "Grafana base URL."
+        default_value = "",
+        hide_default_value = true,
+        help = "Grafana base URL. Required unless supplied by --profile or GRAFANA_URL."
     )]
     pub url: String,
     #[arg(
