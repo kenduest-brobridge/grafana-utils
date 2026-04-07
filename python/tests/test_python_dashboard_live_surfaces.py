@@ -66,6 +66,20 @@ class DashboardLiveSurfaceTests(unittest.TestCase):
         self.assertEqual(args.input, "./dashboards/raw")
         self.assertTrue(args.open_browser)
 
+    def test_dashboard_parse_args_supports_browse(self):
+        args = dashboard_cli.parse_args(
+            [
+                "browse",
+                "--input",
+                "./dashboards/raw",
+                "--open-browser",
+            ]
+        )
+
+        self.assertEqual(args.command, "browse")
+        self.assertEqual(args.input, "./dashboards/raw")
+        self.assertTrue(args.open_browser)
+
     def test_build_live_dashboard_authoring_document_preserves_wrapper_metadata(self):
         document = dashboard_authoring.build_live_dashboard_authoring_document(
             {
@@ -198,6 +212,17 @@ class DashboardLiveSurfaceTests(unittest.TestCase):
         self.assertEqual(payload["folderUid"], "infra")
         self.assertEqual(payload["message"], "Keep current")
         self.assertIn("Applied edited dashboard cpu-main back to Grafana.", stdout.getvalue())
+
+    def test_browse_command_reuses_preview_server(self):
+        args = dashboard_cli.parse_args(
+            ["browse", "--input", "./dashboards/raw", "--open-browser"]
+        )
+
+        with mock.patch.object(dashboard_cli, "run_dashboard_serve", return_value=0) as mocked:
+            result = dashboard_cli.browse_command(args)
+
+        self.assertEqual(result, 0)
+        mocked.assert_called_once_with(args)
 
 
 if __name__ == "__main__":

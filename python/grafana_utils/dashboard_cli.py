@@ -216,6 +216,7 @@ __all__ = [
     "TOOL_SCHEMA_VERSION",
     "add_analyze_cli_args",
     "add_clone_live_cli_args",
+    "add_browse_cli_args",
     "add_edit_live_cli_args",
     "add_fetch_live_cli_args",
     "add_history_export_cli_args",
@@ -266,6 +267,7 @@ __all__ = [
     "topology_dashboards",
     "analyze_command",
     "clone_live_dashboard_command",
+    "browse_command",
     "edit_live_dashboard_command",
     "patch_file_command",
     "publish_command",
@@ -1509,6 +1511,11 @@ def add_clone_live_cli_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def add_browse_cli_args(parser: argparse.ArgumentParser) -> None:
+    """Add browse cli args implementation."""
+    add_serve_cli_args(parser)
+
+
 def add_edit_live_cli_args(parser: argparse.ArgumentParser) -> None:
     """Add edit-live cli args implementation."""
     add_common_cli_args(parser)
@@ -2023,6 +2030,11 @@ def clone_live_dashboard_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def browse_command(args: argparse.Namespace) -> int:
+    """Browse one local dashboard tree in a local preview server."""
+    return run_dashboard_serve(args)
+
+
 def edit_live_dashboard_command(args: argparse.Namespace) -> int:
     """Edit one live dashboard in an external editor and optionally apply it live."""
     client = build_client(args)
@@ -2267,6 +2279,8 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
             '--token "$GRAFANA_API_TOKEN" --export-dir ./dashboards --overwrite\n\n'
             "  Edit one live dashboard through your editor:\n"
             "    grafana-util dashboard edit-live --url http://localhost:3000 --basic-user admin --basic-password admin --dashboard-uid cpu-main\n\n"
+            "  Browse a local dashboard tree in a preview server:\n"
+            "    grafana-util dashboard browse --input ./dashboards/raw --open-browser\n\n"
             "  Compare raw dashboard exports against local Grafana:\n"
             "    grafana-util dashboard diff --url http://localhost:3000 "
             "--basic-user admin --basic-password admin --import-dir ./dashboards/raw\n\n"
@@ -2421,6 +2435,13 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     add_clone_live_cli_args(clone_live_parser)
+
+    browse_parser = subparsers.add_parser(
+        "browse",
+        help="Browse one local dashboard tree in a preview server.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    add_browse_cli_args(browse_parser)
 
     edit_live_parser = subparsers.add_parser(
         "edit-live",
@@ -3303,6 +3324,8 @@ def main(argv: Optional[list[str]] = None) -> int:
             return fetch_live_dashboard_command(args)
         if args.command == "clone-live":
             return clone_live_dashboard_command(args)
+        if args.command == "browse":
+            return browse_command(args)
         if args.command == "edit-live":
             return edit_live_dashboard_command(args)
         if args.command == "patch-file":

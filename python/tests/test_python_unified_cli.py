@@ -36,6 +36,7 @@ class UnifiedCliTests(unittest.TestCase):
         help_text = stdout.getvalue()
         self.assertIn("dashboard", help_text)
         self.assertIn("export", help_text)
+        self.assertIn("browse", help_text)
         self.assertIn("serve", help_text)
         self.assertIn("edit-live", help_text)
         self.assertIn("alert", help_text)
@@ -78,6 +79,7 @@ class UnifiedCliTests(unittest.TestCase):
         self.assertIn("grafana-util dashboard", help_text)
         self.assertIn("list", help_text)
         self.assertIn("raw-to-prompt", help_text)
+        self.assertIn("browse", help_text)
         self.assertIn("edit-live", help_text)
         self.assertIn("serve", help_text)
         self.assertIn("list-vars", help_text)
@@ -156,6 +158,14 @@ class UnifiedCliTests(unittest.TestCase):
             args.forwarded_argv,
             ["edit-live", "--dashboard-uid", "cpu-main"],
         )
+
+    def test_unified_parse_args_supports_dashboard_browse_namespace(self):
+        args = unified_cli.parse_args(
+            ["dashboard", "browse", "--input", "./dashboards/raw"]
+        )
+
+        self.assertEqual(args.entrypoint, "dashboard")
+        self.assertEqual(args.forwarded_argv, ["browse", "--input", "./dashboards/raw"])
 
     def test_unified_parse_args_supports_dashboard_serve_namespace(self):
         args = unified_cli.parse_args(
@@ -471,6 +481,15 @@ class UnifiedCliTests(unittest.TestCase):
 
         self.assertEqual(result, 7)
         mocked.assert_called_once_with(["list-dashboard", "--json"])
+
+    def test_unified_main_dispatches_dashboard_browse_namespace(self):
+        with mock.patch.object(
+            unified_cli.dashboard_cli, "main", return_value=13
+        ) as mocked:
+            result = unified_cli.main(["dashboard", "browse", "--input", "./dashboards/raw"])
+
+        self.assertEqual(result, 13)
+        mocked.assert_called_once_with(["browse", "--input", "./dashboards/raw"])
 
     def test_unified_main_dispatches_dashboard_governance_gate_namespace(self):
         with tempfile.TemporaryDirectory() as tmpdir:

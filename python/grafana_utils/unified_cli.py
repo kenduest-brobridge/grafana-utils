@@ -43,6 +43,7 @@ from . import (
 DASHBOARD_COMMAND_HELP = {
     "fetch-live": "Fetch one live dashboard into a local draft file.",
     "clone-live": "Clone one live dashboard into a local draft file.",
+    "browse": "Browse one local dashboard tree in a preview server.",
     "edit-live": "Edit one live dashboard in an external editor and optionally apply it live.",
     "patch-file": "Patch one local dashboard JSON file in place or to a new path.",
     "serve": "Run one local dashboard preview server.",
@@ -71,6 +72,7 @@ DASHBOARD_COMMAND_HELP = {
 UNIFIED_DASHBOARD_COMMAND_MAP = {
     "fetch-live": "fetch-live",
     "clone-live": "clone-live",
+    "browse": "browse",
     "edit-live": "edit-live",
     "patch-file": "patch-file",
     "serve": "serve",
@@ -123,6 +125,7 @@ def _print_dashboard_group_help() -> None:
         "Commands:\n"
         "  fetch-live         Fetch one live dashboard into a local draft file.\n"
         "  clone-live         Clone one live dashboard into a local draft file.\n"
+        "  browse             Browse one local dashboard tree in a preview server.\n"
         "  edit-live          Edit one live dashboard in an external editor and optionally apply it live.\n"
         "  patch-file         Patch one local dashboard JSON file in place or to a new path.\n"
         "  serve              Run one local dashboard preview server.\n"
@@ -160,6 +163,7 @@ def build_parser() -> argparse.ArgumentParser:
             "Examples:\n\n"
     "  grafana-util dashboard export --url http://localhost:3000 --export-dir ./dashboards\n"
     "  grafana-util dashboard raw-to-prompt --input-dir ./dashboards/raw --output-dir ./dashboards/prompt\n"
+    "  grafana-util dashboard browse --input ./dashboards/raw --open-browser\n"
     "  grafana-util dashboard edit-live --url http://localhost:3000 --basic-user admin --basic-password admin --dashboard-uid cpu-main\n"
     "  grafana-util alert export --url http://localhost:3000 --output-dir ./alerts\n"
     '  grafana-util access user list --url http://localhost:3000 --token "$GRAFANA_API_TOKEN"\n'
