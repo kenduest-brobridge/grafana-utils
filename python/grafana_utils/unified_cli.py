@@ -43,7 +43,9 @@ from . import (
 DASHBOARD_COMMAND_HELP = {
     "fetch-live": "Fetch one live dashboard into a local draft file.",
     "clone-live": "Clone one live dashboard into a local draft file.",
+    "edit-live": "Edit one live dashboard in an external editor and optionally apply it live.",
     "patch-file": "Patch one local dashboard JSON file in place or to a new path.",
+    "serve": "Run one local dashboard preview server.",
     "review": "Review one local dashboard JSON file without touching Grafana.",
     "publish": "Publish one local dashboard JSON file through the import pipeline.",
     "raw-to-prompt": "Convert raw dashboard JSON into prompt-lane artifacts.",
@@ -69,7 +71,9 @@ DASHBOARD_COMMAND_HELP = {
 UNIFIED_DASHBOARD_COMMAND_MAP = {
     "fetch-live": "fetch-live",
     "clone-live": "clone-live",
+    "edit-live": "edit-live",
     "patch-file": "patch-file",
+    "serve": "serve",
     "review": "review",
     "publish": "publish",
     "raw-to-prompt": "raw-to-prompt",
@@ -119,7 +123,9 @@ def _print_dashboard_group_help() -> None:
         "Commands:\n"
         "  fetch-live         Fetch one live dashboard into a local draft file.\n"
         "  clone-live         Clone one live dashboard into a local draft file.\n"
+        "  edit-live          Edit one live dashboard in an external editor and optionally apply it live.\n"
         "  patch-file         Patch one local dashboard JSON file in place or to a new path.\n"
+        "  serve              Run one local dashboard preview server.\n"
         "  review             Review one local dashboard JSON file without touching Grafana.\n"
         "  publish            Publish one local dashboard JSON file through the import pipeline.\n"
         "  raw-to-prompt      Convert raw dashboard JSON into prompt-lane artifacts.\n"
@@ -152,11 +158,13 @@ def build_parser() -> argparse.ArgumentParser:
         ),
         epilog=(
             "Examples:\n\n"
-            "  grafana-util dashboard export --url http://localhost:3000 --export-dir ./dashboards\n"
-            "  grafana-util dashboard raw-to-prompt --input-dir ./dashboards/raw --output-dir ./dashboards/prompt\n"
-            "  grafana-util alert export --url http://localhost:3000 --output-dir ./alerts\n"
-            '  grafana-util access user list --url http://localhost:3000 --token "$GRAFANA_API_TOKEN"\n'
-            "  grafana-util datasource export --url http://localhost:3000 --export-dir ./datasources\n"
+    "  grafana-util dashboard export --url http://localhost:3000 --export-dir ./dashboards\n"
+    "  grafana-util dashboard raw-to-prompt --input-dir ./dashboards/raw --output-dir ./dashboards/prompt\n"
+    "  grafana-util dashboard edit-live --url http://localhost:3000 --basic-user admin --basic-password admin --dashboard-uid cpu-main\n"
+    "  grafana-util alert export --url http://localhost:3000 --output-dir ./alerts\n"
+    '  grafana-util access user list --url http://localhost:3000 --token "$GRAFANA_API_TOKEN"\n'
+    "  grafana-util datasource export --url http://localhost:3000 --export-dir ./datasources\n"
+    "  grafana-util dashboard serve --input ./dashboards/raw --open-browser\n"
             "  grafana-util profile list\n"
             "  grafana-util change preview --workspace .\n"
             "  grafana-util overview live --profile prod\n"

@@ -36,6 +36,8 @@ class UnifiedCliTests(unittest.TestCase):
         help_text = stdout.getvalue()
         self.assertIn("dashboard", help_text)
         self.assertIn("export", help_text)
+        self.assertIn("serve", help_text)
+        self.assertIn("edit-live", help_text)
         self.assertIn("alert", help_text)
         self.assertIn("access", help_text)
         self.assertIn("datasource", help_text)
@@ -76,6 +78,8 @@ class UnifiedCliTests(unittest.TestCase):
         self.assertIn("grafana-util dashboard", help_text)
         self.assertIn("list", help_text)
         self.assertIn("raw-to-prompt", help_text)
+        self.assertIn("edit-live", help_text)
+        self.assertIn("serve", help_text)
         self.assertIn("list-vars", help_text)
         self.assertIn("inspect-export", help_text)
         self.assertIn("inspect-export --input-format provisioning", help_text)
@@ -136,6 +140,30 @@ class UnifiedCliTests(unittest.TestCase):
             args.forwarded_argv,
             ["export-dashboard", "--export-dir", "dashboards"],
         )
+
+    def test_unified_parse_args_supports_dashboard_edit_live_namespace(self):
+        args = unified_cli.parse_args(
+            [
+                "dashboard",
+                "edit-live",
+                "--dashboard-uid",
+                "cpu-main",
+            ]
+        )
+
+        self.assertEqual(args.entrypoint, "dashboard")
+        self.assertEqual(
+            args.forwarded_argv,
+            ["edit-live", "--dashboard-uid", "cpu-main"],
+        )
+
+    def test_unified_parse_args_supports_dashboard_serve_namespace(self):
+        args = unified_cli.parse_args(
+            ["dashboard", "serve", "--input", "./dashboards/raw"]
+        )
+
+        self.assertEqual(args.entrypoint, "dashboard")
+        self.assertEqual(args.forwarded_argv, ["serve", "--input", "./dashboards/raw"])
 
     def test_unified_parse_args_supports_dashboard_inspect_live_namespace(self):
         args = unified_cli.parse_args(

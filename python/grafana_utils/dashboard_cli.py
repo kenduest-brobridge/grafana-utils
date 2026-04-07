@@ -172,6 +172,8 @@ from .dashboard_authoring import (
     preview_dashboard_publish,
     preview_dashboard_history_restore,
     restore_dashboard_history_version,
+    run_dashboard_edit_live,
+    run_dashboard_serve,
     validate_dashboard_export_tree,
 )
 from .dashboards.screenshot import (
@@ -214,6 +216,7 @@ __all__ = [
     "TOOL_SCHEMA_VERSION",
     "add_analyze_cli_args",
     "add_clone_live_cli_args",
+    "add_edit_live_cli_args",
     "add_fetch_live_cli_args",
     "add_history_export_cli_args",
     "add_history_list_cli_args",
@@ -223,6 +226,7 @@ __all__ = [
     "add_raw_to_prompt_cli_args",
     "add_patch_file_cli_args",
     "add_publish_cli_args",
+    "add_serve_cli_args",
     "add_review_cli_args",
     "add_validate_export_cli_args",
     "add_inspect_export_cli_args",
@@ -262,6 +266,7 @@ __all__ = [
     "topology_dashboards",
     "analyze_command",
     "clone_live_dashboard_command",
+    "edit_live_dashboard_command",
     "patch_file_command",
     "publish_command",
     "review_command",
@@ -285,6 +290,7 @@ __all__ = [
     "resolve_auth",
     "resolve_folder_inventory_record_for_dashboard",
     "sanitize_path_component",
+    "serve_command",
     "write_json_document",
 ]
 
@@ -1503,6 +1509,84 @@ def add_clone_live_cli_args(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def add_edit_live_cli_args(parser: argparse.ArgumentParser) -> None:
+    """Add edit-live cli args implementation."""
+    add_common_cli_args(parser)
+    parser.add_argument(
+        "--dashboard-uid",
+        required=True,
+        help="Live Grafana dashboard UID to edit.",
+    )
+    parser.add_argument(
+        "--output",
+        default=None,
+        help="Write the edited dashboard draft to this file path instead of using ./<uid>.edited.json.",
+    )
+    parser.add_argument(
+        "--apply-live",
+        action="store_true",
+        help="Apply the edited dashboard back to Grafana immediately instead of writing a local draft file.",
+    )
+    parser.add_argument(
+        "--message",
+        default="Imported by grafana-utils",
+        help="Revision message to use when --apply-live writes the edited dashboard back to Grafana.",
+    )
+    parser.add_argument(
+        "--yes",
+        action="store_true",
+        help="Acknowledge the live writeback when --apply-live is set.",
+    )
+
+
+def add_serve_cli_args(parser: argparse.ArgumentParser) -> None:
+    """Add serve cli args implementation."""
+    input_group = parser.add_mutually_exclusive_group(required=True)
+    input_group.add_argument(
+        "--input",
+        default=None,
+        help="Load one dashboard draft file or a directory of dashboard draft files into the preview server.",
+    )
+    input_group.add_argument(
+        "--script",
+        default=None,
+        help="Run this local script and treat stdout as one dashboard document or an array of dashboard documents.",
+    )
+    parser.add_argument(
+        "--script-format",
+        choices=("json", "yaml"),
+        default="json",
+        help="Interpret --script stdout as json or yaml.",
+    )
+    parser.add_argument(
+        "--address",
+        default="127.0.0.1",
+        help="Address for the local preview server to bind.",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8080,
+        help="Port for the local preview server to bind.",
+    )
+    parser.add_argument(
+        "--no-watch",
+        action="store_true",
+        help="Do not watch input paths for changes after the initial preview is loaded.",
+    )
+    parser.add_argument(
+        "--watch",
+        action="append",
+        default=None,
+        help="Extra local paths to watch for preview reloads. Repeat --watch for multiple paths.",
+    )
+    parser.add_argument(
+        "--open-browser",
+        action="store_true",
+        help="Open the preview URL in your default browser after the server starts.",
+    )
+
+
 def add_patch_file_cli_args(parser: argparse.ArgumentParser) -> None:
     """Add patch-file cli args implementation."""
     input_group = parser.add_argument_group("Input Options")
@@ -1939,6 +2023,19 @@ def clone_live_dashboard_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def edit_live_dashboard_command(args: argparse.Namespace) -> int:
+    """Edit one live dashboard in an external editor and optionally apply it live."""
+    client = build_client(args)
+    if getattr(args, "org_id", None):
+        client = client.with_org_id(args.org_id)
+    return run_dashboard_edit_live(client, args)
+
+
+def serve_command(args: argparse.Namespace) -> int:
+    """Run one local dashboard preview server."""
+    return run_dashboard_serve(args)
+
+
 def patch_file_command(args: argparse.Namespace) -> int:
     """Patch one local dashboard JSON file in place or to a new path."""
     source_path = Path(args.input)
@@ -2168,9 +2265,13 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
             "    export GRAFANA_API_TOKEN='your-token'\n"
             "    grafana-util dashboard export --url http://localhost:3000 "
             '--token "$GRAFANA_API_TOKEN" --export-dir ./dashboards --overwrite\n\n'
+            "  Edit one live dashboard through your editor:\n"
+            "    grafana-util dashboard edit-live --url http://localhost:3000 --basic-user admin --basic-password admin --dashboard-uid cpu-main\n\n"
             "  Compare raw dashboard exports against local Grafana:\n"
             "    grafana-util dashboard diff --url http://localhost:3000 "
             "--basic-user admin --basic-password admin --import-dir ./dashboards/raw\n\n"
+            "  Run a local dashboard preview server:\n"
+            "    grafana-util dashboard serve --input ./dashboards/raw --open-browser\n\n"
             "  Inspect a Grafana file-provisioning tree separately:\n"
             "    grafana-util dashboard inspect-export --import-dir ./dashboards/provisioning "
             "--input-format provisioning --report tree-table"
@@ -2321,12 +2422,26 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     )
     add_clone_live_cli_args(clone_live_parser)
 
+    edit_live_parser = subparsers.add_parser(
+        "edit-live",
+        help="Edit one live dashboard in an external editor and optionally apply it live.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    add_edit_live_cli_args(edit_live_parser)
+
     patch_file_parser = subparsers.add_parser(
         "patch-file",
         help="Patch one local dashboard JSON file in place or to a new path.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     add_patch_file_cli_args(patch_file_parser)
+
+    serve_parser = subparsers.add_parser(
+        "serve",
+        help="Run one local dashboard preview server.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    add_serve_cli_args(serve_parser)
 
     review_parser = subparsers.add_parser(
         "review",
@@ -3188,8 +3303,12 @@ def main(argv: Optional[list[str]] = None) -> int:
             return fetch_live_dashboard_command(args)
         if args.command == "clone-live":
             return clone_live_dashboard_command(args)
+        if args.command == "edit-live":
+            return edit_live_dashboard_command(args)
         if args.command == "patch-file":
             return patch_file_command(args)
+        if args.command == "serve":
+            return serve_command(args)
         if args.command == "review":
             return review_command(args)
         if args.command == "publish":
