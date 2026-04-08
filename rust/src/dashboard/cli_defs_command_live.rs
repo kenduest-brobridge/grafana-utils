@@ -177,7 +177,14 @@ pub struct BrowseArgs {
     #[command(flatten)]
     pub common: CommonCliArgs,
     #[arg(
+        long,
+        conflicts_with = "input_dir",
+        help = "Browse dashboards from this repo/workspace root instead of pointing directly at one local export tree. Use this for a repo-backed Git Sync tree or a workspace export root that contains dashboards/."
+    )]
+    pub workspace: Option<PathBuf>,
+    #[arg(
         long = "input-dir",
+        conflicts_with = "workspace",
         help = "Browse dashboards from this local export tree instead of live Grafana. Point this at a raw export root, an all-orgs export root, or a provisioning root when you want to inspect files without calling Grafana."
     )]
     pub input_dir: Option<PathBuf>,
@@ -185,8 +192,7 @@ pub struct BrowseArgs {
         long,
         value_enum,
         default_value_t = super::DashboardImportInputFormat::Raw,
-        requires = "input_dir",
-        help = "Interpret --input-dir as raw export files or Grafana file-provisioning artifacts. Use provisioning to accept either the provisioning/ root or its dashboards/ subdirectory."
+        help = "Interpret --workspace or --input-dir as raw export files or Grafana file-provisioning artifacts. Use provisioning to accept either the provisioning/ root or its dashboards/ subdirectory."
     )]
     pub input_format: super::DashboardImportInputFormat,
     #[arg(

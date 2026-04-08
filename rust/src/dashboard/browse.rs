@@ -19,7 +19,7 @@ pub(crate) fn browse_dashboards_with_client(
     client: &JsonHttpClient,
     args: &BrowseArgs,
 ) -> Result<usize> {
-    if args.input_dir.is_some() {
+    if args.input_dir.is_some() || args.workspace.is_some() {
         return browse_dashboards_with_local_args(args);
     }
     ensure_interactive_terminal()?;
@@ -31,7 +31,7 @@ pub(crate) fn browse_dashboards_with_client(
 
 #[cfg(feature = "tui")]
 pub(crate) fn browse_dashboards_with_org_client(args: &BrowseArgs) -> Result<usize> {
-    if args.input_dir.is_some() {
+    if args.input_dir.is_some() || args.workspace.is_some() {
         return browse_dashboards_with_local_args(args);
     }
     let client = if args.all_orgs {

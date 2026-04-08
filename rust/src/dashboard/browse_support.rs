@@ -76,7 +76,7 @@ pub(crate) fn load_dashboard_browse_document_for_args<F>(
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
-    if let Some(input_dir) = args.input_dir.as_deref() {
+    if let Some(input_dir) = args.input_dir.as_deref().or(args.workspace.as_deref()) {
         return load_dashboard_browse_document_from_local_import_dir(
             input_dir,
             args.input_format,
@@ -151,12 +151,50 @@ fn resolve_local_browse_source(
                     metadata_dir: dashboard_dir,
                 });
             }
+            if let Some(workspace_dir) = resolve_dashboard_workspace_variant_dir(input_dir, "raw") {
+                return resolve_dashboard_import_source(&workspace_dir, input_format);
+            }
             resolve_dashboard_import_source(input_dir, input_format)
         }
         DashboardImportInputFormat::Provisioning => {
+            if let Some(workspace_dir) =
+                resolve_dashboard_workspace_variant_dir(input_dir, "provisioning")
+            {
+                return resolve_dashboard_import_source(&workspace_dir, input_format);
+            }
             resolve_dashboard_import_source(input_dir, input_format)
         }
     }
+}
+
+fn resolve_dashboard_workspace_variant_dir(
+    input_dir: &Path,
+    variant_dir_name: &str,
+) -> Option<PathBuf> {
+    let direct_candidate = input_dir.join(variant_dir_name);
+    if direct_candidate.is_dir() {
+        return Some(direct_candidate);
+    }
+
+    let dashboards_dir =
+        if input_dir.file_name().and_then(|name| name.to_str()) == Some("dashboards") {
+            input_dir.to_path_buf()
+        } else {
+            input_dir.join("dashboards")
+        };
+    let direct_dashboards_candidate = dashboards_dir.join(variant_dir_name);
+    if direct_dashboards_candidate.is_dir() {
+        return Some(direct_dashboards_candidate);
+    }
+
+    let git_sync_dir =
+        if input_dir.file_name().and_then(|name| name.to_str()) == Some("git-sync") {
+            input_dir.to_path_buf()
+        } else {
+            dashboards_dir.join("git-sync")
+        };
+    let wrapped_candidate = git_sync_dir.join(variant_dir_name);
+    wrapped_candidate.is_dir().then_some(wrapped_candidate)
 }
 
 fn build_local_dashboard_summaries(
@@ -850,6 +888,7 @@ mod tests {
                 timeout: 30,
                 verify_ssl: false,
             },
+            workspace: None,
             input_dir: Some(input_dir),
             input_format: DashboardImportInputFormat::Raw,
             page_size: 500,
@@ -916,5 +955,40 @@ mod tests {
             .details
             .iter()
             .any(|line| line.contains("Local browse: live details are unavailable.")));
+    }
+
+    #[test]
+    fn workspace_root_browse_resolves_git_sync_raw_tree() {
+        let temp = tempdir().unwrap();
+        let workspace = temp.path();
+        let raw_dir = workspace.join("dashboards/git-sync/raw");
+        let dashboard_dir = raw_dir.join("Platform/Infra");
+        fs::create_dir_all(&dashboard_dir).unwrap();
+        fs::write(
+            dashboard_dir.join("cpu-main.json"),
+            serde_json::to_string_pretty(&json!({
+                "dashboard": {
+                    "uid": "cpu-main",
+                    "title": "CPU Main"
+                }
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+
+        let mut args = make_browse_args(PathBuf::from("."));
+        args.input_dir = None;
+        args.workspace = Some(workspace.to_path_buf());
+        let document = load_dashboard_browse_document_for_args(
+            &mut |_method, _path, _params, _payload| {
+                Err(message("local browse should not call Grafana"))
+            },
+            &args,
+        )
+        .unwrap();
+
+        assert_eq!(document.summary.dashboard_count, 1);
+        assert_eq!(document.summary.scope_label, format!("Local export tree ({})", raw_dir.display()));
+        assert_eq!(document.nodes.last().map(|node| node.title.as_str()), Some("CPU Main"));
     }
 }

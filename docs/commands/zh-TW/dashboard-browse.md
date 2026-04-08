@@ -8,6 +8,7 @@
 
 ## 重點旗標
 - `--path`：從某個資料夾子樹開始，而不是從整棵樹開始。
+- `--workspace`：從 repo root 或 workspace root 開始找可瀏覽的 dashboard 樹，適合 `dashboards/git-sync/...` 這類 repo-backed layout。
 - `--input-dir`：瀏覽本機 raw 匯出根目錄、all-orgs 匯出根目錄，或 provisioning 樹。
 - `--input-format`：將本機匯出樹視為 `raw` 或 `provisioning`。
 - `--org-id`：瀏覽指定的 Grafana org。
@@ -28,6 +29,11 @@ grafana-util dashboard browse --url http://localhost:3000 --basic-user admin --b
 ```bash
 # 用途：在互動式終端機 UI 中開啟本機 raw 匯出樹。
 grafana-util dashboard browse --input-dir ./dashboards/raw --path 'Platform / Infra'
+```
+
+```bash
+# 用途：從 repo-backed workspace root 開啟本機 dashboard 樹。
+grafana-util dashboard browse --workspace ./grafana-oac-repo --path 'Platform / Infra'
 ```
 
 ```bash

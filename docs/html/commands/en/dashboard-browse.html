@@ -783,7 +783,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="when-to-use">When to use</h2>
 <p>Use this when you want to explore folders, select a dashboard, inspect the live tree before fetching, diffing, importing, or deleting, review raw JSON edits inside the live TUI flow, or review a local export tree without calling Grafana.</p>
 <h2 id="key-flags">Key flags</h2>
-<ul><li><code>--path</code>: start at one folder subtree instead of the full tree.</li><li><code>--input-dir</code>: browse a local raw export root, all-orgs export root, or provisioning tree.</li><li><code>--input-format</code>: interpret the local export tree as <code>raw</code> or <code>provisioning</code>.</li><li><code>--org-id</code>: browse one explicit Grafana org.</li><li><code>--all-orgs</code>: aggregate browse results across visible orgs. Requires Basic auth.</li><li>Shared live flags: <code>--url</code>, <code>--token</code>, <code>--basic-user</code>, <code>--basic-password</code>.</li></ul>
+<ul><li><code>--path</code>: start at one folder subtree instead of the full tree.</li><li><code>--workspace</code>: start from a repo root or workspace root and resolve the browsable dashboard tree from there. Use this for repo-backed <code>dashboards/git-sync/...</code> layouts.</li><li><code>--input-dir</code>: browse a local raw export root, all-orgs export root, or provisioning tree.</li><li><code>--input-format</code>: interpret the local export tree as <code>raw</code> or <code>provisioning</code>.</li><li><code>--org-id</code>: browse one explicit Grafana org.</li><li><code>--all-orgs</code>: aggregate browse results across visible orgs. Requires Basic auth.</li><li>Shared live flags: <code>--url</code>, <code>--token</code>, <code>--basic-user</code>, <code>--basic-password</code>.</li></ul>
 <h2 id="live-tui-actions">Live TUI actions</h2>
 <ul><li><code>e</code>: open the metadata edit dialog for the selected live dashboard row.</li><li><code>E</code>: open the selected live dashboard JSON in your external editor, then return to a TUI review modal where you can preview publish, save a draft, apply live, or discard.</li><li><code>h</code>: inspect live revision history for the selected dashboard.</li><li><code>d</code> / <code>D</code>: preview delete actions for the selected dashboard or subtree.</li><li>Local browse stays read-only and does not offer these live actions.</li></ul>
 <h2 id="examples">Examples</h2>
@@ -793,6 +793,8 @@ grafana-util dashboard browse --url http://localhost:3000 --basic-user admin --b
 grafana-util dashboard browse --url http://localhost:3000 --basic-user admin --basic-password admin --path &#x27;Platform / Infra&#x27;</code></pre>
 <pre><code># Purpose: Open a local raw export tree in an interactive terminal UI.
 grafana-util dashboard browse --input-dir ./dashboards/raw --path &#x27;Platform / Infra&#x27;</code></pre>
+<pre><code># Purpose: Open a repo-backed workspace root in an interactive terminal UI.
+grafana-util dashboard browse --workspace ./grafana-oac-repo --path &#x27;Platform / Infra&#x27;</code></pre>
 <h2 id="related-commands">Related commands</h2>
 <ul><li><a href="dashboard-list.html">dashboard list</a></li><li><a href="dashboard-fetch-live.html">dashboard fetch-live</a></li><li><a href="dashboard-delete.html">dashboard delete</a></li></ul>
     

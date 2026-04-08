@@ -783,7 +783,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="何時使用">何時使用</h2>
 <p>當您想要瀏覽資料夾、選取某個儀表板、在抓取、比對、匯入、刪除之前先檢視線上樹狀結構，或在不連線 Grafana 的情況下檢視本機匯出樹時，使用這個指令。</p>
 <h2 id="重點旗標">重點旗標</h2>
-<ul><li><code>--path</code>：從某個資料夾子樹開始，而不是從整棵樹開始。</li><li><code>--input-dir</code>：瀏覽本機 raw 匯出根目錄、all-orgs 匯出根目錄，或 provisioning 樹。</li><li><code>--input-format</code>：將本機匯出樹視為 <code>raw</code> 或 <code>provisioning</code>。</li><li><code>--org-id</code>：瀏覽指定的 Grafana org。</li><li><code>--all-orgs</code>：彙整所有可見 org 的瀏覽結果。需要 Basic auth。</li><li>共用線上旗標：<code>--url</code>、<code>--token</code>、<code>--basic-user</code>、<code>--basic-password</code>。</li></ul>
+<ul><li><code>--path</code>：從某個資料夾子樹開始，而不是從整棵樹開始。</li><li><code>--workspace</code>：從 repo root 或 workspace root 開始找可瀏覽的 dashboard 樹，適合 <code>dashboards/git-sync/...</code> 這類 repo-backed layout。</li><li><code>--input-dir</code>：瀏覽本機 raw 匯出根目錄、all-orgs 匯出根目錄，或 provisioning 樹。</li><li><code>--input-format</code>：將本機匯出樹視為 <code>raw</code> 或 <code>provisioning</code>。</li><li><code>--org-id</code>：瀏覽指定的 Grafana org。</li><li><code>--all-orgs</code>：彙整所有可見 org 的瀏覽結果。需要 Basic auth。</li><li>共用線上旗標：<code>--url</code>、<code>--token</code>、<code>--basic-user</code>、<code>--basic-password</code>。</li></ul>
 <h2 id="範例">範例</h2>
 <pre><code># 用途：在互動式終端機 UI 中開啟線上儀表板樹狀結構。
 grafana-util dashboard browse --profile prod</code></pre>
@@ -791,6 +791,8 @@ grafana-util dashboard browse --profile prod</code></pre>
 grafana-util dashboard browse --url http://localhost:3000 --basic-user admin --basic-password admin --path &#x27;Platform / Infra&#x27;</code></pre>
 <pre><code># 用途：在互動式終端機 UI 中開啟本機 raw 匯出樹。
 grafana-util dashboard browse --input-dir ./dashboards/raw --path &#x27;Platform / Infra&#x27;</code></pre>
+<pre><code># 用途：從 repo-backed workspace root 開啟本機 dashboard 樹。
+grafana-util dashboard browse --workspace ./grafana-oac-repo --path &#x27;Platform / Infra&#x27;</code></pre>
 <pre><code># 用途：在互動式終端機 UI 中開啟線上儀表板樹狀結構。
 grafana-util dashboard browse --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot;</code></pre>
 <h2 id="相關指令">相關指令</h2>
