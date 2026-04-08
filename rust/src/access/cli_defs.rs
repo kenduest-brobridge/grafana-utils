@@ -396,7 +396,13 @@ pub struct OrgDeleteArgs {
     #[arg(
         long,
         default_value_t = false,
-        help = "Skip the interactive confirmation prompt."
+        help = "Prompt for the target organization, show a terminal confirmation, and then delete."
+    )]
+    pub prompt: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Skip the terminal confirmation prompt in non-prompt mode."
     )]
     pub yes: bool,
     #[arg(

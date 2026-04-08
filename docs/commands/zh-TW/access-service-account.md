@@ -34,9 +34,9 @@
 - `add`: `--name`, `--role`, `--disabled`, `--json`
 - `export` 與 `diff`: `--output-dir` 或 `--diff-dir`, `--overwrite`, `--dry-run`
 - `import`: `--input-dir`, `--replace-existing`, `--dry-run`, `--table`, `--json`, `--output-format`, `--yes`
-- `delete`: `--name`, `--yes`, `--json`
+- `delete`: `--name`, `--service-account-id`, `--prompt`, `--yes`, `--json`
 - `token add`: `--service-account-id` 或 `--name`, `--token-name`, `--seconds-to-live`, `--json`
-- `token delete`: `--service-account-id` 或 `--name`, `--token-name`, `--yes`, `--json`
+- `token delete`: `--service-account-id` 或 `--name`, `--token-id` 或 `--token-name`, `--prompt`, `--yes`, `--json`
 
 ## 範例
 
@@ -58,6 +58,11 @@ grafana-util access service-account add --url http://localhost:3000 --basic-user
 ```bash
 # 用途：替單一 service account 建立一個有名稱的 token。
 grafana-util access service-account token add --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --name deploy-bot --token-name nightly
+```
+
+```bash
+# 用途：在終端機中選一個 service account、確認目標，然後刪除。
+grafana-util access service-account delete --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --prompt
 ```
 
 ## 相關命令

@@ -34,9 +34,9 @@ List live or local Grafana service accounts, create, export, import, diff, or de
 - `add`: `--name`, `--role`, `--disabled`, `--json`
 - `export` and `diff`: `--output-dir` or `--diff-dir`, `--overwrite`, `--dry-run`
 - `import`: `--input-dir`, `--replace-existing`, `--dry-run`, `--table`, `--json`, `--output-format`, `--yes`
-- `delete`: `--name`, `--yes`, `--json`
+- `delete`: `--name`, `--service-account-id`, `--prompt`, `--yes`, `--json`
 - `token add`: `--service-account-id` or `--name`, `--token-name`, `--seconds-to-live`, `--json`
-- `token delete`: `--service-account-id` or `--name`, `--token-name`, `--yes`, `--json`
+- `token delete`: `--service-account-id` or `--name`, `--token-id` or `--token-name`, `--prompt`, `--yes`, `--json`
 
 ## Examples
 
@@ -58,6 +58,11 @@ grafana-util access service-account add --url http://localhost:3000 --basic-user
 ```bash
 # Purpose: Issue a named token for one service account.
 grafana-util access service-account token add --profile prod --name deploy-bot --token-name nightly
+```
+
+```bash
+# Purpose: Prompt for one service account, confirm it, and then delete it.
+grafana-util access service-account delete --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --prompt
 ```
 
 ## Related commands

@@ -783,12 +783,14 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="何時使用">何時使用</h2>
 <p>當您需要移除單一儀表板、某個資料夾子樹，或連同相符資料夾一起刪除子樹時，使用這個指令。</p>
 <h2 id="重點旗標">重點旗標</h2>
-<ul><li><code>--uid</code>：依 UID 刪除單一儀表板。</li><li><code>--path</code>：刪除某個資料夾子樹底下的儀表板。</li><li><code>--delete-folders</code>：搭配 <code>--path</code> 時，也一併移除相符的資料夾。</li><li><code>--yes</code>：確認這次線上刪除。</li><li><code>--interactive</code>：以互動方式預覽並確認。</li><li><code>--dry-run</code>、<code>--table</code>、<code>--json</code>、<code>--output-format</code>、<code>--no-header</code>：預覽輸出控制。</li></ul>
+<ul><li><code>--uid</code>：依 UID 刪除單一儀表板。</li><li><code>--path</code>：刪除某個資料夾子樹底下的儀表板。</li><li><code>--delete-folders</code>：搭配 <code>--path</code> 時，也一併移除相符的資料夾。</li><li><code>--yes</code>：確認這次線上刪除。</li><li><code>--prompt</code>：在終端機中提示 selector、預覽刪除計畫，並確認執行。</li><li><code>--dry-run</code>、<code>--table</code>、<code>--json</code>、<code>--output-format</code>、<code>--no-header</code>：預覽輸出控制。</li></ul>
 <h2 id="範例">範例</h2>
 <pre><code># 用途：依 UID 或資料夾路徑刪除線上儀表板。
 grafana-util dashboard delete --profile prod --uid cpu-main --dry-run --json</code></pre>
 <pre><code># 用途：依 UID 或資料夾路徑刪除線上儀表板。
 grafana-util dashboard delete --url http://localhost:3000 --basic-user admin --basic-password admin --path &#x27;Platform / Infra&#x27; --yes</code></pre>
+<pre><code># 用途：在終端機中提示刪除 selector、預覽刪除計畫，並確認執行。
+grafana-util dashboard delete --url http://localhost:3000 --prompt</code></pre>
 <pre><code># 用途：依 UID 或資料夾路徑刪除線上儀表板。
 grafana-util dashboard delete --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --uid cpu-main --dry-run --json</code></pre>
 <h2 id="相關指令">相關指令</h2>

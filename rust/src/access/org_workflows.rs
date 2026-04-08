@@ -11,6 +11,11 @@ use serde_json::{Map, Value};
 
 use crate::common::{message, string_field, value_as_object, write_json_file, Result};
 
+use super::super::pending_delete::{
+    format_prompt_row,
+    print_delete_confirmation_summary, prompt_confirm_delete, prompt_select_indexes,
+    validate_delete_prompt,
+};
 use super::super::render::{
     format_table, render_csv, render_objects_json, render_yaml, scalar_text,
 };
@@ -203,35 +208,91 @@ where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
     validate_basic_auth_only(&args.common)?;
-    // Keep delete confirmation local to the destructive entrypoint so callers do
-    // not accidentally bypass it through shared lookup helpers.
-    if !args.yes {
+    validate_delete_prompt(args.prompt, args.json, "Org")?;
+    if !args.prompt && !args.yes {
         return Err(message("Org delete requires --yes."));
     }
-    let org = lookup_org_by_identity(&mut request_json, args.org_id, args.name.as_deref())?;
-    let org_id = scalar_text(org.get("id"));
-    let delete_payload = delete_organization_with_request(&mut request_json, &org_id)?;
-    let row = Map::from_iter(vec![
-        ("id".to_string(), Value::String(org_id.clone())),
-        (
-            "name".to_string(),
-            Value::String(string_field(&org, "name", "")),
-        ),
-        (
-            "message".to_string(),
-            Value::String(string_field(&delete_payload, "message", "")),
-        ),
-    ]);
-    if args.json {
-        println!("{}", render_objects_json(&[row])?);
+    let orgs = if args.prompt && args.org_id.is_none() && args.name.is_none() {
+        let orgs = list_organizations_with_request(&mut request_json)?
+            .into_iter()
+            .map(|org| normalize_org_row(&org))
+            .collect::<Vec<_>>();
+        if orgs.is_empty() {
+            return Err(message(
+                "Org delete --prompt did not find any matching organizations.",
+            ));
+        }
+        let labels = orgs
+            .iter()
+            .map(org_delete_prompt_label)
+            .collect::<Vec<_>>();
+        let Some(indexes) =
+            prompt_select_indexes("Organizations To Delete", &labels)?
+        else {
+            println!("Cancelled org delete.");
+            return Ok(0);
+        };
+        indexes
+            .into_iter()
+            .filter_map(|index| orgs.get(index).cloned())
+            .collect::<Vec<Map<String, Value>>>()
     } else {
-        println!(
-            "Deleted org {} -> id={}",
-            string_field(&org, "name", ""),
-            org_id
-        );
+        vec![lookup_org_by_identity(
+            &mut request_json,
+            args.org_id,
+            args.name.as_deref(),
+        )?]
+    };
+    if args.prompt {
+        let labels = orgs
+            .iter()
+            .map(org_delete_prompt_label)
+            .collect::<Vec<_>>();
+        print_delete_confirmation_summary("The following organizations will be deleted:", &labels);
     }
-    Ok(0)
+    if args.prompt
+        && !prompt_confirm_delete(&format!("Delete {} organization(s)?", orgs.len()))?
+    {
+        println!("Cancelled org delete.");
+        return Ok(0);
+    }
+    let mut rows = Vec::new();
+    for org in &orgs {
+        let org_id = scalar_text(org.get("id"));
+        let delete_payload = delete_organization_with_request(&mut request_json, &org_id)?;
+        rows.push(Map::from_iter(vec![
+            ("id".to_string(), Value::String(org_id.clone())),
+            (
+                "name".to_string(),
+                Value::String(string_field(org, "name", "")),
+            ),
+            (
+                "message".to_string(),
+                Value::String(string_field(&delete_payload, "message", "")),
+            ),
+        ]));
+    }
+    if args.json {
+        println!("{}", render_objects_json(&rows)?);
+    } else {
+        for row in &rows {
+            println!(
+                "Deleted org {} -> id={}",
+                string_field(row, "name", ""),
+                scalar_text(row.get("id"))
+            );
+        }
+        if rows.len() > 1 {
+            println!("Deleted {} organization(s).", rows.len());
+        }
+    }
+    Ok(rows.len())
+}
+
+fn org_delete_prompt_label(org: &Map<String, Value>) -> String {
+    let name = string_field(org, "name", "-");
+    let id = scalar_text(org.get("id"));
+    format_prompt_row(&[(&name, 32)], &format!("id={id}"))
 }
 
 pub(crate) fn export_orgs_with_request<F>(

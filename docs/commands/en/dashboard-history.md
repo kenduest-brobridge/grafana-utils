@@ -29,7 +29,8 @@ Restore creates a new latest revision instead of overwriting the historical vers
 - `--base-input-dir` / `--new-input-dir`: export trees to compare, which lets you compare history exports from different dates.
 - `--base-version` / `--new-version`: the historical version numbers to compare.
 - `--limit`: how many recent versions to include in list or export views.
-- `--version`: the historical version number to restore.
+- `--version`: the historical version number to restore. Required unless `--prompt` is used.
+- `--prompt`: prompt for one recent historical version, preview it, and confirm the restore in the terminal.
 - `--message`: revision message for the new restored revision.
 - `--dry-run`: preview a restore without changing Grafana.
 - `--yes`: confirm a real restore.
@@ -42,7 +43,7 @@ Restore creates a new latest revision instead of overwriting the historical vers
 - The selected historical version is copied forward as a new current revision.
 - The original historical version remains in the dashboard history chain.
 - `--dry-run` shows the restore intent without changing Grafana.
-- A real restore requires confirmation with `--yes`.
+- A real restore requires confirmation with `--yes` unless you use `--prompt`.
 
 ## JSON contracts for CI
 
@@ -96,6 +97,11 @@ grafana-util dashboard history list --input-dir ./dashboards --dashboard-uid cpu
 ```bash
 # Purpose: Restore one historical dashboard revision as a new latest Grafana version.
 grafana-util dashboard history restore --url http://localhost:3000 --basic-user admin --basic-password admin --dashboard-uid cpu-main --version 17 --message "Restore known good CPU dashboard after regression" --dry-run --output-format table
+```
+
+```bash
+# Purpose: Prompt for one recent historical version, preview it, and confirm the restore.
+grafana-util dashboard history restore --url http://localhost:3000 --basic-user admin --basic-password admin --dashboard-uid cpu-main --prompt
 ```
 
 ```bash

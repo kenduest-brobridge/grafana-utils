@@ -783,12 +783,14 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="when-to-use">When to use</h2>
 <p>Use this when you need to remove one dashboard, a folder subtree, or a subtree plus the matched folders themselves.</p>
 <h2 id="key-flags">Key flags</h2>
-<ul><li><code>--uid</code>: delete one dashboard by UID.</li><li><code>--path</code>: delete dashboards under one folder subtree.</li><li><code>--delete-folders</code>: with <code>--path</code>, also remove matched folders.</li><li><code>--yes</code>: acknowledge the live delete.</li><li><code>--interactive</code>: preview and confirm interactively.</li><li><code>--dry-run</code>, <code>--table</code>, <code>--json</code>, <code>--output-format</code>, <code>--no-header</code>: preview output controls.</li></ul>
+<ul><li><code>--uid</code>: delete one dashboard by UID.</li><li><code>--path</code>: delete dashboards under one folder subtree.</li><li><code>--delete-folders</code>: with <code>--path</code>, also remove matched folders.</li><li><code>--yes</code>: acknowledge the live delete.</li><li><code>--prompt</code>: prompt for the selector, preview the delete plan, and confirm in the terminal.</li><li><code>--dry-run</code>, <code>--table</code>, <code>--json</code>, <code>--output-format</code>, <code>--no-header</code>: preview output controls.</li></ul>
 <h2 id="examples">Examples</h2>
 <pre><code># Purpose: Delete live dashboards by UID or folder path.
 grafana-util dashboard delete --url http://localhost:3000 --basic-user admin --basic-password admin --uid cpu-main --dry-run --json</code></pre>
 <pre><code># Purpose: Delete live dashboards by UID or folder path.
 grafana-util dashboard delete --url http://localhost:3000 --basic-user admin --basic-password admin --path &#x27;Platform / Infra&#x27; --yes</code></pre>
+<pre><code># Purpose: Prompt for a delete selector, preview the delete plan, and confirm in the terminal.
+grafana-util dashboard delete --url http://localhost:3000 --prompt</code></pre>
 <h2 id="related-commands">Related commands</h2>
 <ul><li><a href="dashboard-browse.html">dashboard browse</a></li><li><a href="dashboard-list.html">dashboard list</a></li><li><a href="dashboard-import.html">dashboard import</a></li></ul>
     

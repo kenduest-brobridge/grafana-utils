@@ -29,7 +29,8 @@
 - `--base-input-dir` / `--new-input-dir`：要比對的 export tree，可直接比較不同日期的 history exports。
 - `--base-version` / `--new-version`：要比對的歷史版本號。
 - `--limit`：list 或 export 要包含多少個最近版本。
-- `--version`：要還原的歷史版本號。
+- `--version`：要還原的歷史版本號。未使用 `--prompt` 時必填。
+- `--prompt`：在終端機中提示最近的歷史版本、預覽還原內容，並確認執行。
 - `--message`：新還原 revision 要附帶的版本訊息。
 - `--dry-run`：預覽還原，但不會真的變更 Grafana。
 - `--yes`：確認真的執行還原。
@@ -42,7 +43,7 @@
 - 被選到的歷史版本會被複製成新的最新 revision。
 - 原本那個歷史版本仍然會保留在 dashboard history 中。
 - `--dry-run` 只會顯示還原意圖，不會真的變更 Grafana。
-- 真正要還原時，必須加上 `--yes`。
+- 真正要還原時，必須加上 `--yes`，除非您使用 `--prompt`。
 
 ## 給 CI 用的 JSON contract
 
@@ -96,6 +97,11 @@ grafana-util dashboard history list --input-dir ./dashboards --dashboard-uid cpu
 ```bash
 # 用途：把某個歷史 dashboard revision 還原成新的最新 Grafana 版本。
 grafana-util dashboard history restore --url http://localhost:3000 --basic-user admin --basic-password admin --dashboard-uid cpu-main --version 17 --message "Restore known good CPU dashboard after regression" --dry-run --output-format table
+```
+
+```bash
+# 用途：在終端機中選擇最近的歷史版本、預覽內容，並確認還原。
+grafana-util dashboard history restore --url http://localhost:3000 --basic-user admin --basic-password admin --dashboard-uid cpu-main --prompt
 ```
 
 ```bash

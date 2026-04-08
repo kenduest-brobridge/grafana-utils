@@ -37,7 +37,7 @@
 - `modify`: `--team-id`, `--name`, `--add-member`, `--remove-member`, `--add-admin`, `--remove-admin`, `--json`
 - `export` 與 `diff`: `--output-dir` 或 `--diff-dir`, `--overwrite`, `--dry-run`, `--with-members`
 - `import`: `--input-dir`, `--replace-existing`, `--dry-run`, `--table`, `--json`, `--output-format`, `--yes`
-- `delete`: `--team-id`, `--name`, `--yes`, `--json`
+- `delete`: `--team-id`, `--name`, `--prompt`, `--yes`, `--json`
 
 ## 範例
 
@@ -59,6 +59,11 @@ grafana-util access team browse --input-dir ./access-teams --name platform-team
 ```bash
 # 用途：建立一個有明確成員與管理員指派的 team。
 grafana-util access team add --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --name platform-team --email platform@example.com --member alice --admin alice --json
+```
+
+```bash
+# 用途：在終端機中選一個 team、確認目標，然後刪除。
+grafana-util access team delete --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --prompt
 ```
 
 ## 相關命令

@@ -36,7 +36,7 @@ List live or local Grafana organizations, create, modify, export, import, diff, 
 - `modify`: `--org-id`, `--name`, `--set-name`, `--json`
 - `export` and `diff`: `--org-id`, `--name`, `--output-dir` or `--diff-dir`, `--overwrite`, `--dry-run`, `--with-users`
 - `import`: `--input-dir`, `--replace-existing`, `--dry-run`, `--yes`
-- `delete`: `--org-id`, `--name`, `--yes`, `--json`
+- `delete`: `--org-id`, `--name`, `--prompt`, `--yes`, `--json`
 
 ## Notes
 
@@ -68,6 +68,11 @@ grafana-util access org modify --url http://localhost:3000 --basic-user admin --
 ```bash
 # Purpose: Remove one org only after checking the exact name.
 grafana-util access org delete --url http://localhost:3000 --basic-user admin --basic-password admin --name platform --yes
+```
+
+```bash
+# Purpose: Prompt for one organization, confirm it, and then delete it.
+grafana-util access org delete --url http://localhost:3000 --basic-user admin --basic-password admin --prompt
 ```
 
 ## Related commands

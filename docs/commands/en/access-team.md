@@ -37,7 +37,7 @@ List or browse live and local Grafana teams, create, modify, export, import, dif
 - `modify`: `--team-id`, `--name`, `--add-member`, `--remove-member`, `--add-admin`, `--remove-admin`, `--json`
 - `export` and `diff`: `--output-dir` or `--diff-dir`, `--overwrite`, `--dry-run`, `--with-members`
 - `import`: `--input-dir`, `--replace-existing`, `--dry-run`, `--table`, `--json`, `--output-format`, `--yes`
-- `delete`: `--team-id`, `--name`, `--yes`, `--json`
+- `delete`: `--team-id`, `--name`, `--prompt`, `--yes`, `--json`
 
 ## Examples
 
@@ -64,6 +64,11 @@ grafana-util access team add --url http://localhost:3000 --basic-user admin --ba
 ```bash
 # Purpose: Import a team bundle before switching environments.
 grafana-util access team import --url http://localhost:3000 --basic-user admin --basic-password admin --input-dir ./access-teams --replace-existing --yes
+```
+
+```bash
+# Purpose: Prompt for one team, confirm it, and then delete it.
+grafana-util access team delete --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --prompt
 ```
 
 ## Related commands

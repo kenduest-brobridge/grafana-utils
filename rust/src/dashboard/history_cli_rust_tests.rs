@@ -118,7 +118,8 @@ fn dashboard_history_restore_requires_yes_without_dry_run() {
     let args = HistoryRestoreArgs {
         common: make_history_common_args(),
         dashboard_uid: "cpu-main".to_string(),
-        version: 17,
+        version: Some(17),
+        prompt: false,
         dry_run: false,
         output_format: HistoryOutputFormat::Text,
         message: None,

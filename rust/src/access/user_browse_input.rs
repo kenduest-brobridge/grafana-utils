@@ -508,7 +508,8 @@ where
         user_id: Some(map_get_text(&row, "id")),
         login: None,
         email: None,
-        scope: args.scope.clone(),
+        scope: Some(args.scope.clone()),
+        prompt: false,
         yes: true,
         json: false,
     };

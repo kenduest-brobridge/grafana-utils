@@ -29,7 +29,7 @@
 ## 主要旗標
 
 - `add`: `--service-account-id` 或 `--name`, `--token-name`, `--seconds-to-live`, `--json`
-- `delete`: `--service-account-id` 或 `--name`, `--token-name`, `--yes`, `--json`
+- `delete`: `--service-account-id` 或 `--name`, `--token-id` 或 `--token-name`, `--prompt`, `--yes`, `--json`
 
 ## 範例
 
@@ -41,6 +41,11 @@ grafana-util access service-account token add --profile prod --name deploy-bot -
 ```bash
 # 用途：審核後刪除一個 token。
 grafana-util access service-account token delete --url http://localhost:3000 --basic-user admin --basic-password admin --name deploy-bot --token-name nightly --yes --json
+```
+
+```bash
+# 用途：在終端機中先選 service account，再選 token，最後確認刪除。
+grafana-util access service-account token delete --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --prompt
 ```
 
 ```bash

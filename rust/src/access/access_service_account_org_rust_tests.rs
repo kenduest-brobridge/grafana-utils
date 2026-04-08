@@ -600,6 +600,7 @@ fn team_delete_with_request_deletes_resolved_team() {
         common: make_token_common(),
         team_id: None,
         name: Some("Ops".to_string()),
+        prompt: false,
         yes: true,
         json: true,
     };
@@ -632,6 +633,7 @@ fn service_account_delete_with_request_deletes_by_name() {
         common: make_token_common(),
         service_account_id: None,
         name: Some("svc".to_string()),
+        prompt: false,
         yes: true,
         json: false,
     };
@@ -669,6 +671,7 @@ fn service_account_token_delete_with_request_resolves_token_name() {
         name: None,
         token_id: None,
         token_name: Some("automation".to_string()),
+        prompt: false,
         yes: true,
         json: true,
     };
@@ -778,6 +781,7 @@ fn delete_org_with_request_deletes_resolved_org() {
         common: make_basic_common_no_org_id(),
         org_id: None,
         name: Some("Main Org".to_string()),
+        prompt: false,
         yes: true,
         json: true,
     };

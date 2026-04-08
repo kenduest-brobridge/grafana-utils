@@ -237,7 +237,7 @@ fn build_delete_args(
         path: (node.kind == DashboardBrowseNodeKind::Folder).then(|| node.path.clone()),
         delete_folders,
         yes: false,
-        interactive: false,
+        prompt: false,
         dry_run: true,
         table: false,
         json: false,

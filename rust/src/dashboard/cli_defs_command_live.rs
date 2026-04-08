@@ -121,17 +121,18 @@ pub struct DeleteArgs {
     #[arg(
         long,
         default_value_t = false,
-        help = "Acknowledge the live dashboard delete. Required unless --dry-run or --interactive is set.",
+        help = "Acknowledge the live dashboard delete. Required unless --dry-run or --prompt is set.",
         help_heading = "Safety Options"
     )]
     pub yes: bool,
     #[arg(
-        long,
+        long = "prompt",
+        alias = "interactive",
         default_value_t = false,
-        help = "Prompt for the delete selector, preview the delete plan, and confirm interactively.",
+        help = "Prompt for the delete selector, preview the delete plan, and confirm in the terminal.",
         help_heading = "Safety Options"
     )]
-    pub interactive: bool,
+    pub prompt: bool,
     #[arg(
         long,
         default_value_t = false,

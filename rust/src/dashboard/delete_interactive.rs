@@ -1,4 +1,4 @@
-//! Prompt operators for interactive dashboard delete resolution.
+//! Prompt operators for terminal dashboard delete resolution.
 //! This module checks for a usable TTY, asks whether deletion should target a UID or
 //! a folder path, and requests the extra confirmation needed before running a live
 //! delete. It only gathers and validates inputs; the delete request happens elsewhere.
@@ -9,9 +9,9 @@ use crate::common::{message, Result};
 
 use super::DeleteArgs;
 
-pub(crate) fn prepare_interactive_delete_args(args: &DeleteArgs) -> Result<DeleteArgs> {
+pub(crate) fn prepare_prompt_delete_args(args: &DeleteArgs) -> Result<DeleteArgs> {
     if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
-        return Err(message("Dashboard delete interactive mode requires a TTY."));
+        return Err(message("Dashboard delete --prompt requires a TTY."));
     }
     let mut resolved = args.clone();
     if resolved.uid.as_deref().unwrap_or("").trim().is_empty()
@@ -27,7 +27,7 @@ pub(crate) fn prepare_interactive_delete_args(args: &DeleteArgs) -> Result<Delet
             }
             _ => {
                 return Err(message(
-                    "Interactive dashboard delete expected uid or path.",
+                    "Dashboard delete --prompt expected uid or path.",
                 ))
             }
         }

@@ -5,10 +5,12 @@ use crate::common::{
     value_as_object, DiffOutputFormat, Result, SharedDiffSummary,
 };
 use crate::tabular_output::{render_table, render_yaml};
+use dialoguer::{theme::ColorfulTheme, Confirm, Select};
 use reqwest::Method;
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value};
 use std::fs;
+use std::io::{self, IsTerminal};
 use std::path::{Path, PathBuf};
 
 use super::{
@@ -32,6 +34,7 @@ pub(crate) const DASHBOARD_HISTORY_EXPORT_KIND: &str = "grafana-util-dashboard-h
 pub(crate) const DASHBOARD_HISTORY_INVENTORY_KIND: &str =
     "grafana-util-dashboard-history-inventory";
 pub(crate) const DASHBOARD_HISTORY_DIFF_KIND: &str = "grafana-util-dashboard-history-diff";
+const HISTORY_RESTORE_PROMPT_LIMIT: usize = 20;
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct DashboardHistoryVersion {
@@ -314,6 +317,52 @@ where
     })
 }
 
+fn prompt_dashboard_history_restore_version(
+    uid: &str,
+    versions: &[DashboardHistoryVersion],
+) -> Result<Option<i64>> {
+    if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
+        return Err(message("Dashboard history restore --prompt requires a TTY."));
+    }
+    if versions.is_empty() {
+        return Err(message(format!(
+            "Dashboard history restore --prompt did not find any versions for {uid}."
+        )));
+    }
+    let labels = versions
+        .iter()
+        .map(|item| {
+            let mut line = format!(
+                "v{}  {}  {}",
+                item.version, item.created, item.created_by
+            );
+            if !item.message.is_empty() {
+                line.push_str("  ");
+                line.push_str(&item.message);
+            }
+            line
+        })
+        .collect::<Vec<_>>();
+    let selection = Select::with_theme(&ColorfulTheme::default())
+        .with_prompt(format!("Select a dashboard history version to restore for {uid}"))
+        .items(&labels)
+        .default(0)
+        .interact_opt()
+        .map_err(|error| message(format!("Dashboard history restore prompt failed: {error}")))?;
+    Ok(selection.and_then(|index| versions.get(index).map(|item| item.version)))
+}
+
+fn confirm_dashboard_history_restore(uid: &str, version: i64) -> Result<bool> {
+    Confirm::with_theme(&ColorfulTheme::default())
+        .with_prompt(format!(
+            "Restore dashboard {uid} to version {version} and create a new latest revision?"
+        ))
+        .default(false)
+        .interact_opt()
+        .map(|choice| choice.unwrap_or(false))
+        .map_err(|error| message(format!("Dashboard history restore confirmation failed: {error}")))
+}
+
 fn build_dashboard_history_restore_document(
     uid: &str,
     version: i64,
@@ -586,20 +635,36 @@ pub(crate) fn run_dashboard_history_restore<F>(
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
+    let version = if let Some(version) = args.version {
+        version
+    } else if args.prompt {
+        let versions = list_dashboard_history_versions_with_request(
+            &mut request_json,
+            &args.dashboard_uid,
+            HISTORY_RESTORE_PROMPT_LIMIT,
+        )?;
+        let Some(version) = prompt_dashboard_history_restore_version(&args.dashboard_uid, &versions)?
+        else {
+            println!("Cancelled dashboard history restore.");
+            return Ok(());
+        };
+        version
+    } else {
+        return Err(message(
+            "Dashboard history restore requires --version unless --prompt is used.",
+        ));
+    };
     let preview = build_dashboard_restore_preview_with_request(
         &mut request_json,
         &args.dashboard_uid,
-        args.version,
+        version,
     )?;
     let message_text = args.message.clone().unwrap_or_else(|| {
-        format!(
-            "{DASHBOARD_HISTORY_RESTORE_MESSAGE} to version {}",
-            args.version
-        )
+        format!("{DASHBOARD_HISTORY_RESTORE_MESSAGE} to version {version}")
     });
     let document = build_dashboard_history_restore_document(
         &args.dashboard_uid,
-        args.version,
+        version,
         &preview,
         &message_text,
         args.dry_run,
@@ -614,15 +679,21 @@ where
         println!("{rendered}");
         return Ok(());
     }
-    if !args.yes {
+    if args.prompt {
+        println!("{rendered}");
+        if !confirm_dashboard_history_restore(&args.dashboard_uid, version)? {
+            println!("Cancelled dashboard history restore.");
+            return Ok(());
+        }
+    } else if !args.yes {
         return Err(message(
-            "Dashboard history restore requires --yes unless --dry-run is set.",
+            "Dashboard history restore requires --yes unless --dry-run or --prompt is set.",
         ));
     }
     restore_dashboard_history_version_with_request_and_message(
         &mut request_json,
         &args.dashboard_uid,
-        args.version,
+        version,
         &message_text,
     )?;
     println!("{rendered}");

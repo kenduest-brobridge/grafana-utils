@@ -343,7 +343,8 @@ fn user_mutation_help_mentions_target_and_json_flags() {
 
     let delete_help = render_access_subcommand_help(&["user", "delete"]);
     assert!(delete_help.contains("--yes"));
-    assert!(delete_help.contains("Skip the interactive confirmation prompt"));
+    assert!(delete_help.contains("Skip the terminal confirmation prompt"));
+    assert!(delete_help.contains("--prompt"));
 }
 
 #[test]

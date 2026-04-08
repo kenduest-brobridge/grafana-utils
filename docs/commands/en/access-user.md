@@ -37,7 +37,7 @@ List or browse live and local Grafana users, create, modify, export, import, dif
 - `modify`: `--user-id`, `--login`, `--email`, `--set-login`, `--set-email`, `--set-name`, `--set-password` or `--set-password-file` or `--prompt-set-password`, `--set-org-role`, `--set-grafana-admin`, `--json`
 - `export` and `diff`: `--output-dir` or `--diff-dir`, `--overwrite`, `--dry-run`, `--scope`, `--with-teams`
 - `import`: `--input-dir`, `--scope`, `--replace-existing`, `--dry-run`, `--table`, `--json`, `--output-format`, `--yes`
-- `delete`: `--user-id`, `--login`, `--email`, `--scope`, `--yes`, `--json`
+- `delete`: `--user-id`, `--login`, `--email`, optional `--scope`, `--prompt`, `--yes`, `--json`
 
 ## Examples
 
@@ -64,6 +64,16 @@ grafana-util access user add --url http://localhost:3000 --basic-user admin --ba
 ```bash
 # Purpose: Delete one account after checking the current org users.
 grafana-util access user delete --url http://localhost:3000 --basic-user admin --basic-password admin --login temp-user --scope global --yes --json
+```
+
+```bash
+# Purpose: Prompt for one user, confirm the target, and then delete it.
+grafana-util access user delete --url http://localhost:3000 --basic-user admin --basic-password admin --scope global --prompt
+```
+
+```bash
+# Purpose: Prompt for the delete scope first, then select one user and confirm the delete.
+grafana-util access user delete --url http://localhost:3000 --basic-user admin --basic-password admin --prompt
 ```
 
 ## Related commands

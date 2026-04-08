@@ -789,7 +789,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="失敗時先檢查">失敗時先檢查</h2>
 <ul><li>如果建立、重新命名、匯出、匯入或刪除失敗，先確認選到的 profile 具備必要的管理員權限</li><li>如果以名稱查詢卻對到錯的 org，先核對精確的 org id 或精確名稱，再重試</li><li>如果套件匯出或匯入看起來不完整，先確認目標環境是否選對</li></ul>
 <h2 id="主要旗標">主要旗標</h2>
-<ul><li><code>list</code>: <code>--input-dir</code>, <code>--org-id</code>, <code>--name</code>, <code>--query</code>, <code>--with-users</code>, <code>--table</code>, <code>--csv</code>, <code>--json</code>, <code>--yaml</code>, <code>--output-format</code></li><li><code>add</code>: <code>--name</code>, <code>--json</code></li><li><code>modify</code>: <code>--org-id</code>, <code>--name</code>, <code>--set-name</code>, <code>--json</code></li><li><code>export</code> 與 <code>diff</code>: <code>--org-id</code>, <code>--name</code>, <code>--output-dir</code> 或 <code>--diff-dir</code>, <code>--overwrite</code>, <code>--dry-run</code>, <code>--with-users</code></li><li><code>import</code>: <code>--input-dir</code>, <code>--replace-existing</code>, <code>--dry-run</code>, <code>--yes</code></li><li><code>delete</code>: <code>--org-id</code>, <code>--name</code>, <code>--yes</code>, <code>--json</code></li></ul>
+<ul><li><code>list</code>: <code>--input-dir</code>, <code>--org-id</code>, <code>--name</code>, <code>--query</code>, <code>--with-users</code>, <code>--table</code>, <code>--csv</code>, <code>--json</code>, <code>--yaml</code>, <code>--output-format</code></li><li><code>add</code>: <code>--name</code>, <code>--json</code></li><li><code>modify</code>: <code>--org-id</code>, <code>--name</code>, <code>--set-name</code>, <code>--json</code></li><li><code>export</code> 與 <code>diff</code>: <code>--org-id</code>, <code>--name</code>, <code>--output-dir</code> 或 <code>--diff-dir</code>, <code>--overwrite</code>, <code>--dry-run</code>, <code>--with-users</code></li><li><code>import</code>: <code>--input-dir</code>, <code>--replace-existing</code>, <code>--dry-run</code>, <code>--yes</code></li><li><code>delete</code>: <code>--org-id</code>, <code>--name</code>, <code>--prompt</code>, <code>--yes</code>, <code>--json</code></li></ul>
 <h2 id="說明">說明</h2>
 <ul><li>只要 profile 具備必要管理員權限，就可優先用 <code>--profile</code> 做可重複的 org inventory。</li><li>org 管理面通常比窄權限 API token 更廣。建立、重新命名、匯出、匯入與刪除流程，較建議使用 Basic auth 或管理員憑證支援的 profile。</li></ul>
 <h2 id="範例">範例</h2>
@@ -803,6 +803,8 @@ grafana-util access org modify --url http://localhost:3000 --basic-user admin --
 grafana-util access org list --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --json</code></pre>
 <pre><code># 用途：只在確認精確名稱後，才刪除這個 org。
 grafana-util access org delete --url http://localhost:3000 --basic-user admin --basic-password admin --name platform --yes</code></pre>
+<pre><code># 用途：在終端機中選一個 org、確認目標，然後刪除。
+grafana-util access org delete --url http://localhost:3000 --basic-user admin --basic-password admin --prompt</code></pre>
 <h2 id="相關命令">相關命令</h2>
 <ul><li><a href="access.html">access</a></li><li><a href="access-user.html">access user</a></li><li><a href="access-team.html">access team</a></li></ul>
     

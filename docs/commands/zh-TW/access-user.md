@@ -37,7 +37,7 @@
 - `modify`: `--user-id`, `--login`, `--email`, `--set-login`, `--set-email`, `--set-name`, `--set-password` 或 `--set-password-file` 或 `--prompt-set-password`, `--set-org-role`, `--set-grafana-admin`, `--json`
 - `export` 與 `diff`: `--output-dir` 或 `--diff-dir`, `--overwrite`, `--dry-run`, `--scope`, `--with-teams`
 - `import`: `--input-dir`, `--scope`, `--replace-existing`, `--dry-run`, `--table`, `--json`, `--output-format`, `--yes`
-- `delete`: `--user-id`, `--login`, `--email`, `--scope`, `--yes`, `--json`
+- `delete`: `--user-id`, `--login`, `--email`, 可選的 `--scope`, `--prompt`, `--yes`, `--json`
 
 ## 範例
 
@@ -64,6 +64,16 @@ grafana-util access user add --url http://localhost:3000 --basic-user admin --ba
 ```bash
 # 用途：先看清楚目前 org 裡的使用者，再刪除這個帳號。
 grafana-util access user list --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --scope org --json
+```
+
+```bash
+# 用途：在終端機中選一個使用者、確認目標，然後刪除。
+grafana-util access user delete --url http://localhost:3000 --basic-user admin --basic-password admin --scope global --prompt
+```
+
+```bash
+# 用途：先在終端機中選刪除範圍，再選使用者並確認刪除。
+grafana-util access user delete --url http://localhost:3000 --basic-user admin --basic-password admin --prompt
 ```
 
 ## 相關命令

@@ -36,7 +36,7 @@
 - `modify`: `--org-id`, `--name`, `--set-name`, `--json`
 - `export` 與 `diff`: `--org-id`, `--name`, `--output-dir` 或 `--diff-dir`, `--overwrite`, `--dry-run`, `--with-users`
 - `import`: `--input-dir`, `--replace-existing`, `--dry-run`, `--yes`
-- `delete`: `--org-id`, `--name`, `--yes`, `--json`
+- `delete`: `--org-id`, `--name`, `--prompt`, `--yes`, `--json`
 
 ## 說明
 
@@ -68,6 +68,11 @@ grafana-util access org list --url http://localhost:3000 --token "$GRAFANA_API_T
 ```bash
 # 用途：只在確認精確名稱後，才刪除這個 org。
 grafana-util access org delete --url http://localhost:3000 --basic-user admin --basic-password admin --name platform --yes
+```
+
+```bash
+# 用途：在終端機中選一個 org、確認目標，然後刪除。
+grafana-util access org delete --url http://localhost:3000 --basic-user admin --basic-password admin --prompt
 ```
 
 ## 相關命令

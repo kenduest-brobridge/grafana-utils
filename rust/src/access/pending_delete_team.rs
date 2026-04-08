@@ -12,7 +12,9 @@ use crate::common::{message, render_json_value, string_field, Result};
 use super::super::render::{map_get_text, scalar_text};
 use super::super::{request_object, request_object_list_field, DEFAULT_PAGE_SIZE};
 use super::pending_delete_support::{
-    validate_confirmation, validate_exactly_one_identity, TeamDeleteArgs,
+    format_prompt_row,
+    print_delete_confirmation_summary, prompt_confirm_delete, prompt_select_indexes,
+    validate_confirmation, validate_delete_prompt, validate_exactly_one_identity, TeamDeleteArgs,
 };
 
 /// List one page of teams for delete resolution.
@@ -135,6 +137,13 @@ fn team_delete_summary_line(result: &Map<String, Value>) -> String {
     parts.join(" ")
 }
 
+fn team_delete_prompt_label(team: &Map<String, Value>) -> String {
+    let name = string_field(team, "name", "-");
+    let email = string_field(team, "email", "-");
+    let id = scalar_text(team.get("id"));
+    format_prompt_row(&[(&name, 24), (&email, 30)], &format!("id={id}"))
+}
+
 /// Delete one team after resolving identity and confirmation constraints.
 pub(crate) fn delete_team_with_request<F>(
     mut request_json: F,
@@ -143,25 +152,74 @@ pub(crate) fn delete_team_with_request<F>(
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
-    validate_exactly_one_identity(
-        args.team_id.is_some(),
-        args.name.is_some(),
-        "Team",
-        "--team-id",
-    )?;
-    validate_confirmation(args.yes, "Team")?;
-    let team = if let Some(team_id) = &args.team_id {
-        get_team_with_request(&mut request_json, team_id)?
-    } else {
-        lookup_team_by_name(&mut request_json, args.name.as_deref().unwrap_or(""))?
-    };
-    let team_id = scalar_text(team.get("id"));
-    let response = delete_team_api_with_request(&mut request_json, &team_id)?;
-    let result = team_delete_result(&team, &response);
-    if args.json {
-        println!("{}", render_json_value(&Value::Object(result))?);
-    } else {
-        println!("{}", team_delete_summary_line(&result));
+    validate_delete_prompt(args.prompt, args.json, "Team")?;
+    if !args.prompt {
+        validate_exactly_one_identity(
+            args.team_id.is_some(),
+            args.name.is_some(),
+            "Team",
+            "--team-id",
+        )?;
+        validate_confirmation(args.yes, "Team")?;
     }
-    Ok(0)
+    let teams = if args.prompt && args.team_id.is_none() && args.name.is_none() {
+        let teams = list_teams_with_request(&mut request_json, None, 1, DEFAULT_PAGE_SIZE)?;
+        if teams.is_empty() {
+            return Err(message("Team delete --prompt did not find any matching teams."));
+        }
+        let labels = teams
+            .iter()
+            .map(team_delete_prompt_label)
+            .collect::<Vec<_>>();
+        let Some(indexes) = prompt_select_indexes("Teams To Delete", &labels)? else {
+            println!("Cancelled team delete.");
+            return Ok(0);
+        };
+        indexes
+            .into_iter()
+            .filter_map(|index| teams.get(index).cloned())
+            .collect::<Vec<_>>()
+    } else if let Some(team_id) = &args.team_id {
+        vec![get_team_with_request(&mut request_json, team_id)?]
+    } else {
+        vec![lookup_team_by_name(
+            &mut request_json,
+            args.name.as_deref().unwrap_or(""),
+        )?]
+    };
+    if args.prompt {
+        let labels = teams
+            .iter()
+            .map(team_delete_prompt_label)
+            .collect::<Vec<_>>();
+        print_delete_confirmation_summary("The following teams will be deleted:", &labels);
+    }
+    if args.prompt
+        && !prompt_confirm_delete(&format!("Delete {} team(s)?", teams.len()))?
+    {
+        println!("Cancelled team delete.");
+        return Ok(0);
+    }
+    let mut results = Vec::new();
+    for team in &teams {
+        let team_id = scalar_text(team.get("id"));
+        let response = delete_team_api_with_request(&mut request_json, &team_id)?;
+        results.push(team_delete_result(team, &response));
+    }
+    if args.json {
+        println!(
+            "{}",
+            render_json_value(&Value::Array(
+                results.iter().cloned().map(Value::Object).collect()
+            ))?
+        );
+    } else {
+        for result in &results {
+            println!("{}", team_delete_summary_line(result));
+        }
+        if results.len() > 1 {
+            println!("Deleted {} team(s).", results.len());
+        }
+    }
+    Ok(results.len())
 }

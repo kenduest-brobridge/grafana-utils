@@ -1285,9 +1285,20 @@ fn parse_cli_supports_delete_by_uid() {
             assert_eq!(delete_args.uid.as_deref(), Some("cpu-main"));
             assert_eq!(delete_args.path, None);
             assert!(!delete_args.delete_folders);
-            assert!(!delete_args.interactive);
+            assert!(!delete_args.prompt);
         }
         _ => panic!("expected delete command"),
+    }
+}
+
+#[test]
+fn parse_cli_supports_delete_prompt_and_interactive_alias() {
+    for flag in ["--prompt", "--interactive"] {
+        let args = parse_cli_from(["grafana-util", "delete", flag]);
+        match args.command {
+            DashboardCommand::Delete(delete_args) => assert!(delete_args.prompt),
+            _ => panic!("expected delete command"),
+        }
     }
 }
 
@@ -1312,11 +1323,44 @@ fn parse_cli_supports_delete_output_format_json() {
 }
 
 #[test]
-fn delete_help_mentions_interactive_and_delete_folders() {
+fn delete_help_mentions_prompt_and_delete_folders() {
     let help = render_dashboard_subcommand_help("delete");
-    assert!(help.contains("--interactive"));
+    assert!(help.contains("--prompt"));
+    assert!(!help.contains("--interactive"));
     assert!(help.contains("--delete-folders"));
     assert!(help.contains("--yes"));
+}
+
+#[test]
+fn parse_cli_supports_history_restore_prompt_without_version() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "history",
+        "restore",
+        "--dashboard-uid",
+        "cpu-main",
+        "--prompt",
+    ]);
+
+    match args.command {
+        DashboardCommand::History(history_args) => match history_args.command {
+            DashboardHistorySubcommand::Restore(restore_args) => {
+                assert_eq!(restore_args.dashboard_uid, "cpu-main");
+                assert!(restore_args.prompt);
+                assert_eq!(restore_args.version, None);
+            }
+            _ => panic!("expected history restore command"),
+        },
+        _ => panic!("expected history command"),
+    }
+}
+
+#[test]
+fn history_restore_help_mentions_prompt() {
+    let help = render_dashboard_history_subcommand_help("restore");
+    assert!(help.contains("--prompt"));
+    assert!(help.contains("--version"));
+    assert!(help.contains("Required unless --prompt is used"));
 }
 
 #[test]

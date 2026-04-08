@@ -372,6 +372,7 @@ where
         common: args.common.clone(),
         team_id: Some(map_get_text(&row, "id")),
         name: None,
+        prompt: false,
         yes: true,
         json: false,
     };

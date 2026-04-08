@@ -22,6 +22,8 @@ fn run_access_cli_with_request_routes_user_export() {
         "grafana-util access",
         "user",
         "export",
+        "--url",
+        "https://grafana.example.com",
         "--scope",
         "global",
         "--basic-user",
@@ -46,7 +48,14 @@ fn run_access_cli_with_request_routes_user_export() {
 
 #[test]
 fn run_access_cli_with_request_routes_team_export() {
-    let args = parse_cli_from(["grafana-util access", "team", "export", "--dry-run"]);
+    let args = parse_cli_from([
+        "grafana-util access",
+        "team",
+        "export",
+        "--url",
+        "https://grafana.example.com",
+        "--dry-run",
+    ]);
     let result = run_access_cli_with_request(
         |method, path, _params, _payload| {
             assert_eq!(method.to_string(), Method::GET.to_string());
@@ -107,6 +116,8 @@ fn run_access_cli_with_request_routes_org_export() {
         "grafana-util access",
         "org",
         "export",
+        "--url",
+        "https://grafana.example.com",
         "--basic-user",
         "admin",
         "--basic-password",
@@ -152,6 +163,8 @@ fn run_access_cli_with_request_routes_org_import() {
         "grafana-util access",
         "org",
         "import",
+        "--url",
+        "https://grafana.example.com",
         "--basic-user",
         "admin",
         "--basic-password",
@@ -217,6 +230,8 @@ fn run_access_cli_with_request_routes_org_diff() {
         "grafana-util access",
         "org",
         "diff",
+        "--url",
+        "https://grafana.example.com",
         "--basic-user",
         "admin",
         "--basic-password",

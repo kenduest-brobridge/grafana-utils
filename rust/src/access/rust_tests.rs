@@ -65,6 +65,33 @@ fn render_access_root_help() -> String {
     String::from_utf8(output).unwrap()
 }
 
+#[test]
+fn access_delete_help_mentions_prompt() {
+    assert!(render_access_subcommand_help(&["user", "delete"]).contains("--prompt"));
+    assert!(render_access_subcommand_help(&["team", "delete"]).contains("--prompt"));
+    assert!(render_access_subcommand_help(&["org", "delete"]).contains("--prompt"));
+    assert!(render_access_subcommand_help(&["service-account", "delete"]).contains("--prompt"));
+    assert!(render_access_subcommand_help(&["service-account", "token", "delete"]).contains("--prompt"));
+}
+
+#[test]
+fn parse_cli_supports_access_delete_prompt_flags() {
+    let user_args = parse_cli_from(["grafana-util access", "user", "delete", "--prompt"]);
+    match user_args.command {
+        AccessCommand::User { command: UserCommand::Delete(inner) } => {
+            assert!(inner.prompt);
+            assert_eq!(inner.scope, None);
+        }
+        _ => panic!("expected access user delete"),
+    }
+
+    let org_args = parse_cli_from(["grafana-util access", "org", "delete", "--prompt"]);
+    match org_args.command {
+        AccessCommand::Org { command: OrgCommand::Delete(inner) } => assert!(inner.prompt),
+        _ => panic!("expected access org delete"),
+    }
+}
+
 fn make_token_common() -> CommonCliArgs {
     CommonCliArgs {
         profile: None,
@@ -1070,7 +1097,8 @@ fn user_delete_with_request_requires_yes_and_deletes() {
         user_id: Some("9".to_string()),
         login: None,
         email: None,
-        scope: Scope::Global,
+        scope: Some(Scope::Global),
+        prompt: false,
         yes: true,
         json: true,
     };
@@ -1282,6 +1310,8 @@ fn run_access_cli_with_request_routes_user_list() {
         "grafana-util access",
         "user",
         "list",
+        "--url",
+        "https://grafana.example.com",
         "--json",
         "--token",
         "abc",

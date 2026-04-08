@@ -241,12 +241,22 @@ pub struct UserDeleteArgs {
     pub login: Option<String>,
     #[arg(long, conflicts_with_all = ["user_id", "login"], help = "Delete one user by exact email address.")]
     pub email: Option<String>,
-    #[arg(long, value_enum, default_value_t = Scope::Global, help = "Delete from the org membership only or from the Grafana global user registry.")]
-    pub scope: Scope,
+    #[arg(
+        long,
+        value_enum,
+        help = "Delete from the org membership or from the Grafana global user registry. Defaults to global in non-prompt mode."
+    )]
+    pub scope: Option<Scope>,
     #[arg(
         long,
         default_value_t = false,
-        help = "Skip the interactive confirmation prompt."
+        help = "Prompt for the target user, show a terminal confirmation, and then delete."
+    )]
+    pub prompt: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Skip the terminal confirmation prompt in non-prompt mode."
     )]
     pub yes: bool,
     #[arg(

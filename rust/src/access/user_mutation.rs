@@ -8,13 +8,19 @@ use std::path::Path;
 
 use crate::common::{message, string_field, Result};
 
+use super::super::pending_delete::{
+    format_prompt_row,
+    print_delete_confirmation_summary, prompt_confirm_delete, prompt_select_index,
+    prompt_select_indexes, validate_delete_prompt,
+};
 use super::render::{
     bool_label, map_get_text, normalize_org_role, render_objects_json, scalar_text,
     user_scope_text, value_bool,
 };
 use super::{
-    build_auth_context, lookup_global_user_by_identity, lookup_org_user_by_identity,
-    request_object, Scope, UserAddArgs, UserDeleteArgs, UserModifyArgs,
+    build_auth_context, iter_global_users_with_request, list_org_users_with_request,
+    lookup_global_user_by_identity, lookup_org_user_by_identity, request_object, Scope,
+    UserAddArgs, UserDeleteArgs, UserModifyArgs, DEFAULT_PAGE_SIZE,
 };
 
 pub(crate) fn get_user_with_request<F>(
@@ -250,15 +256,80 @@ fn resolve_user_modify_password(args: &UserModifyArgs) -> Result<Option<String>>
 }
 
 fn validate_user_delete_args(args: &UserDeleteArgs) -> Result<()> {
-    if !args.yes {
+    validate_delete_prompt(args.prompt, args.json, "User")?;
+    if !args.prompt && !args.yes {
         return Err(message("User delete requires --yes."));
     }
-    if args.user_id.is_none() && args.login.is_none() && args.email.is_none() {
+    if !args.prompt && args.user_id.is_none() && args.login.is_none() && args.email.is_none() {
         return Err(message(
             "User delete requires one of --user-id, --login, or --email.",
         ));
     }
     Ok(())
+}
+
+fn resolved_user_delete_scope(args: &UserDeleteArgs) -> Scope {
+    args.scope.clone().unwrap_or(Scope::Global)
+}
+
+fn prompt_user_delete_scope() -> Result<Option<Scope>> {
+    let labels = vec![
+        "Org membership only".to_string(),
+        "Global user registry".to_string(),
+    ];
+    let Some(index) = prompt_select_index("Delete Scope", &labels)? else {
+        return Ok(None);
+    };
+    Ok(Some(match index {
+        0 => Scope::Org,
+        _ => Scope::Global,
+    }))
+}
+
+fn user_delete_prompt_label(user: &Map<String, Value>) -> String {
+    let login = string_field(user, "login", "-");
+    let email = string_field(user, "email", "-");
+    let name = string_field(user, "name", "-");
+    let id = scalar_text(user.get("userId"));
+    let id = if id.is_empty() {
+        scalar_text(user.get("id"))
+    } else {
+        id
+    };
+    format_prompt_row(
+        &[(&login, 18), (&email, 30), (&name, 18)],
+        &format!("id={id}"),
+    )
+}
+
+fn prompt_resolve_user_delete_targets<F>(
+    mut request_json: F,
+    scope: &Scope,
+) -> Result<Option<Vec<Map<String, Value>>>>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    let candidates = match scope {
+        Scope::Org => list_org_users_with_request(&mut request_json)?,
+        Scope::Global => iter_global_users_with_request(&mut request_json, DEFAULT_PAGE_SIZE)?,
+    };
+    if candidates.is_empty() {
+        return Err(message("User delete --prompt did not find any matching users."));
+    }
+    let labels = candidates
+        .iter()
+        .map(user_delete_prompt_label)
+        .collect::<Vec<_>>();
+    let prompt = format!("Users To Delete ({})", user_scope_text(scope));
+    let Some(indexes) = prompt_select_indexes(&prompt, &labels)? else {
+        return Ok(None);
+    };
+    Ok(Some(
+        indexes
+            .into_iter()
+            .filter_map(|index| candidates.get(index).cloned())
+            .collect::<Vec<Map<String, Value>>>(),
+    ))
 }
 
 pub(crate) fn add_user_with_request<F>(mut request_json: F, args: &UserAddArgs) -> Result<usize>
@@ -425,10 +496,26 @@ where
 {
     let auth_mode = build_auth_context(&args.common)?.auth_mode;
     validate_user_delete_args(args)?;
-    if args.scope == Scope::Global {
+    let scope = if args.prompt && args.scope.is_none() {
+        let Some(scope) = prompt_user_delete_scope()? else {
+            println!("Cancelled user delete.");
+            return Ok(0);
+        };
+        scope
+    } else {
+        resolved_user_delete_scope(args)
+    };
+    if scope == Scope::Global {
         validate_basic_auth_only(&auth_mode, "User delete with --scope global")?;
     }
-    let base_user = match args.scope {
+    let base_users = if args.prompt && args.user_id.is_none() && args.login.is_none() && args.email.is_none() {
+        let Some(users) = prompt_resolve_user_delete_targets(&mut request_json, &scope)? else {
+            println!("Cancelled user delete.");
+            return Ok(0);
+        };
+        users
+    } else {
+        vec![match scope {
         Scope::Org => {
             if let Some(user_id) = &args.user_id {
                 lookup_org_user_by_identity(&mut request_json, user_id)?
@@ -453,43 +540,74 @@ where
                 )?
             }
         }
+        }]
     };
-    let user_id = {
-        let user_id = scalar_text(base_user.get("userId"));
-        if user_id.is_empty() {
-            scalar_text(base_user.get("id"))
-        } else {
-            user_id
-        }
-    };
-    match args.scope {
-        Scope::Org => {
-            let _ = delete_org_user_with_request(&mut request_json, &user_id)?;
-        }
-        Scope::Global => {
-            let _ = delete_global_user_with_request(&mut request_json, &user_id)?;
-        }
+    if args.prompt {
+        let labels = base_users
+            .iter()
+            .map(user_delete_prompt_label)
+            .collect::<Vec<_>>();
+        print_delete_confirmation_summary("The following users will be deleted:", &labels);
     }
-    let row = Map::from_iter(vec![
-        ("id".to_string(), Value::String(user_id.clone())),
-        (
-            "login".to_string(),
-            Value::String(string_field(&base_user, "login", "")),
-        ),
-        (
-            "scope".to_string(),
-            Value::String(user_scope_text(&args.scope).to_string()),
-        ),
-    ]);
+    if args.prompt
+        && !prompt_confirm_delete(&format!(
+            "Delete {} user(s) from {} scope?",
+            base_users.len(),
+            user_scope_text(&scope)
+        ))?
+    {
+        println!("Cancelled user delete.");
+        return Ok(0);
+    }
+    let mut rows = Vec::new();
+    for base_user in &base_users {
+        let user_id = {
+            let user_id = scalar_text(base_user.get("userId"));
+            if user_id.is_empty() {
+                scalar_text(base_user.get("id"))
+            } else {
+                user_id
+            }
+        };
+        match scope {
+            Scope::Org => {
+                let _ = delete_org_user_with_request(&mut request_json, &user_id)?;
+            }
+            Scope::Global => {
+                let _ = delete_global_user_with_request(&mut request_json, &user_id)?;
+            }
+        }
+        let row = Map::from_iter(vec![
+            ("id".to_string(), Value::String(user_id.clone())),
+            (
+                "login".to_string(),
+                Value::String(string_field(base_user, "login", "")),
+            ),
+            (
+                "scope".to_string(),
+                Value::String(user_scope_text(&scope).to_string()),
+            ),
+        ]);
+        rows.push(row);
+    }
     if args.json {
-        println!("{}", render_objects_json(&[row])?);
+        println!("{}", render_objects_json(&rows)?);
     } else {
-        println!(
-            "Deleted user {} -> id={} scope={}",
-            map_get_text(&row, "login"),
-            user_id,
-            user_scope_text(&args.scope)
-        );
+        for row in &rows {
+            println!(
+                "Deleted user {} -> id={} scope={}",
+                map_get_text(row, "login"),
+                map_get_text(row, "id"),
+                user_scope_text(&scope)
+            );
+        }
+        if rows.len() > 1 {
+            println!(
+                "Deleted {} user(s) from {} scope.",
+                rows.len(),
+                user_scope_text(&scope)
+            );
+        }
     }
-    Ok(0)
+    Ok(rows.len())
 }

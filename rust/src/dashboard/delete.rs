@@ -9,7 +9,7 @@ use serde_json::Value;
 use crate::common::Result;
 use crate::http::JsonHttpClient;
 
-use super::delete_interactive::{confirm_live_delete, prepare_interactive_delete_args};
+use super::delete_interactive::{confirm_live_delete, prepare_prompt_delete_args};
 use super::delete_render::{
     format_live_dashboard_delete_line, format_live_folder_delete_line, render_delete_dry_run_json,
     render_delete_dry_run_table, render_delete_dry_run_text,
@@ -40,8 +40,8 @@ pub(crate) fn delete_dashboards_with_request<F>(
 where
     F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
 {
-    let effective_args = if args.interactive {
-        prepare_interactive_delete_args(args)?
+    let effective_args = if args.prompt {
+        prepare_prompt_delete_args(args)?
     } else {
         args.clone()
     };
@@ -63,7 +63,7 @@ where
         return Ok(plan.dashboards.len() + plan.folders.len());
     }
 
-    if effective_args.interactive {
+    if effective_args.prompt {
         for line in render_delete_dry_run_text(&plan) {
             println!("{line}");
         }

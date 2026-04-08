@@ -52,8 +52,17 @@ pub struct HistoryRestoreArgs {
     pub common: CommonCliArgs,
     #[arg(long, help = "Dashboard UID to restore from Grafana history.")]
     pub dashboard_uid: String,
-    #[arg(long, help = "Dashboard history version number to restore.")]
-    pub version: i64,
+    #[arg(
+        long,
+        help = "Dashboard history version number to restore. Required unless --prompt is used."
+    )]
+    pub version: Option<i64>,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Prompt for the history version, preview the restore, and confirm in the terminal."
+    )]
+    pub prompt: bool,
     #[arg(
         long,
         default_value_t = false,
@@ -187,7 +196,7 @@ pub enum DashboardHistorySubcommand {
     #[command(
         name = "restore",
         about = "Restore a previous live dashboard revision from Grafana history.",
-        after_help = "Examples:\n\n  Preview a restore without changing Grafana:\n    grafana-util dashboard history restore --url http://localhost:3000 --basic-user admin --basic-password admin --dashboard-uid cpu-main --version 17 --dry-run --output-format table\n\n  Restore a historical version and record a new revision message:\n    grafana-util dashboard history restore --url http://localhost:3000 --basic-user admin --basic-password admin --dashboard-uid cpu-main --version 17 --message 'Restore known good CPU dashboard after regression' --yes"
+        after_help = "Examples:\n\n  Preview a restore without changing Grafana:\n    grafana-util dashboard history restore --url http://localhost:3000 --basic-user admin --basic-password admin --dashboard-uid cpu-main --version 17 --dry-run --output-format table\n\n  Prompt for one recent version, preview it, and confirm the restore:\n    grafana-util dashboard history restore --url http://localhost:3000 --basic-user admin --basic-password admin --dashboard-uid cpu-main --prompt\n\n  Restore a historical version and record a new revision message:\n    grafana-util dashboard history restore --url http://localhost:3000 --basic-user admin --basic-password admin --dashboard-uid cpu-main --version 17 --message 'Restore known good CPU dashboard after regression' --yes"
     )]
     Restore(HistoryRestoreArgs),
     #[command(

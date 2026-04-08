@@ -29,7 +29,7 @@ Add or delete tokens for a Grafana service account.
 ## Key flags
 
 - `add`: `--service-account-id` or `--name`, `--token-name`, `--seconds-to-live`, `--json`
-- `delete`: `--service-account-id` or `--name`, `--token-name`, `--yes`, `--json`
+- `delete`: `--service-account-id` or `--name`, `--token-id` or `--token-name`, `--prompt`, `--yes`, `--json`
 
 ## Examples
 
@@ -41,6 +41,11 @@ grafana-util access service-account token add --profile prod --name deploy-bot -
 ```bash
 # Purpose: Delete a token after review.
 grafana-util access service-account token delete --profile prod --name deploy-bot --token-name nightly --yes --json
+```
+
+```bash
+# Purpose: Prompt for a service account, then a token, then confirm the delete.
+grafana-util access service-account token delete --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --prompt
 ```
 
 ## Related commands

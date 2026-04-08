@@ -77,17 +77,17 @@ pub(crate) fn validate_delete_args(args: &DeleteArgs) -> Result<()> {
             "--no-header is only supported with --dry-run --table for dashboard delete.",
         ));
     }
-    if args.interactive {
+    if args.prompt {
         if args.table || args.json || args.output_format.is_some() {
             return Err(message(
-                "--interactive cannot be combined with machine-readable dashboard delete output.",
+                "--prompt cannot be combined with machine-readable dashboard delete output.",
             ));
         }
         return Ok(());
     }
     if uid.is_empty() && path.is_empty() {
         return Err(message(
-            "Dashboard delete requires --uid or --path unless --interactive is used.",
+            "Dashboard delete requires --uid or --path unless --prompt is used.",
         ));
     }
     if !args.dry_run && !args.yes {
