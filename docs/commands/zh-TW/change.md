@@ -585,7 +585,7 @@ grafana-util change bundle --dashboard-provisioning-dir ./dashboards/provisionin
 grafana-util change bundle --workspace ./grafana-oac-repo --output-file ./sync-source-bundle.json
 ```
 
-這條 bundle 路徑就是把前面 inspect、check、preview 已經發現的同一個 mixed workspace tree，整理成可交接的 bundle artifact。
+這條 bundle 路徑就是把前面 inspect、check、preview 已經發現的同一個 mixed workspace tree，整理成可交接的 bundle artifact，而且也會保留同樣的 top-level `discovery` 區塊作為 provenance。
 
 **預期輸出：**
 ```json

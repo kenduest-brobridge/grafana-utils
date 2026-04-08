@@ -938,6 +938,15 @@ fn run_sync_cli_bundle_accepts_mixed_git_sync_workspace_root() {
         json!(workspace.display().to_string())
     );
     assert_eq!(
+        bundle["discovery"]["workspaceRoot"],
+        json!(workspace.display().to_string())
+    );
+    assert_eq!(bundle["discovery"]["inputCount"], json!(3));
+    assert_eq!(
+        bundle["discovery"]["inputs"]["dashboardExportDir"],
+        json!(workspace.join("dashboards/git-sync/raw").display().to_string())
+    );
+    assert_eq!(
         bundle["metadata"]["dashboardExportDir"],
         json!(workspace.join("dashboards/git-sync/raw").display().to_string())
     );

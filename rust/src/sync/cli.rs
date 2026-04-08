@@ -525,7 +525,7 @@ pub(crate) fn execute_sync_bundle(args: &SyncBundleArgs) -> Result<SyncCommandOu
             metadata.extend(object.clone());
         }
     }
-    let document = build_sync_source_bundle_document(
+    let mut document = build_sync_source_bundle_document(
         &dashboards,
         &datasources,
         &folders,
@@ -533,6 +533,64 @@ pub(crate) fn execute_sync_bundle(args: &SyncBundleArgs) -> Result<SyncCommandOu
         Some(&alerting),
         Some(&Value::Object(metadata)),
     )?;
+    let discovery = {
+        let mut inputs = Map::new();
+        if let Some(path) = dashboard_export_dir.as_ref() {
+            inputs.insert(
+                "dashboardExportDir".to_string(),
+                Value::String(path.display().to_string()),
+            );
+        }
+        if let Some(path) = dashboard_provisioning_dir.as_ref() {
+            inputs.insert(
+                "dashboardProvisioningDir".to_string(),
+                Value::String(path.display().to_string()),
+            );
+        }
+        if let Some(path) = alert_export_dir.as_ref() {
+            inputs.insert(
+                "alertExportDir".to_string(),
+                Value::String(path.display().to_string()),
+            );
+        }
+        if let Some(path) = datasource_export_file.as_ref() {
+            inputs.insert(
+                "datasourceExportFile".to_string(),
+                Value::String(path.display().to_string()),
+            );
+        }
+        if let Some(path) = datasource_provisioning_file.as_ref() {
+            inputs.insert(
+                "datasourceProvisioningFile".to_string(),
+                Value::String(path.display().to_string()),
+            );
+        }
+        if let Some(path) = args.metadata_file.as_ref() {
+            inputs.insert(
+                "metadataFile".to_string(),
+                Value::String(path.display().to_string()),
+            );
+        }
+        if inputs.is_empty() {
+            None
+        } else {
+            let mut discovery = Map::new();
+            if let Some(workspace) = args.workspace.as_ref() {
+                discovery.insert(
+                    "workspaceRoot".to_string(),
+                    Value::String(workspace.display().to_string()),
+                );
+            }
+            discovery.insert("inputCount".to_string(), Value::from(inputs.len() as i64));
+            discovery.insert("inputs".to_string(), Value::Object(inputs));
+            Some(Value::Object(discovery))
+        }
+    };
+    if let Some(discovery) = discovery {
+        if let Some(object) = document.as_object_mut() {
+            object.insert("discovery".to_string(), discovery);
+        }
+    }
     let text_lines = render_sync_source_bundle_text(&document)?;
     Ok(sync_command_output(document, text_lines))
 }

@@ -513,7 +513,7 @@ grafana-util change bundle --dashboard-provisioning-dir ./dashboards/provisionin
 grafana-util change bundle --workspace ./grafana-oac-repo --output-file ./sync-source-bundle.json
 ```
 
-This bundle path is the handoff step for the same mixed workspace tree that inspect, check, and preview discovered earlier.
+This bundle path is the handoff step for the same mixed workspace tree that inspect, check, and preview discovered earlier, and it now carries the same top-level `discovery` block for provenance.
 
 **Expected Output:**
 ```json
