@@ -759,7 +759,17 @@ fn user_export_with_request_writes_global_bundle() {
             (Method::GET, "/api/users") => {
                 assert_eq!(params[0], ("page".to_string(), "1".to_string()));
                 Ok(Some(json!([
-                    {"id": 7, "login": "alice", "email": "alice@example.com", "name": "Alice", "isGrafanaAdmin": false}
+                    {
+                        "id": 7,
+                        "login": "alice",
+                        "email": "alice@example.com",
+                        "name": "Alice",
+                        "isGrafanaAdmin": false,
+                        "isExternal": true,
+                        "authLabels": ["oauth"],
+                        "lastSeenAt": "2026-04-09T08:12:00Z",
+                        "lastSeenAtAge": "2m"
+                    }
                 ])))
             }
             _ => panic!("unexpected path {path}"),
@@ -781,6 +791,22 @@ fn user_export_with_request_writes_global_bundle() {
         .expect("expected user export records");
     assert_eq!(records.len(), 1);
     assert_eq!(records[0].get("login"), Some(&json!("alice")));
+    assert_eq!(
+        records[0].get("origin"),
+        Some(&json!({
+            "kind": "external",
+            "external": true,
+            "provisioned": false,
+            "labels": ["oauth"]
+        }))
+    );
+    assert_eq!(
+        records[0].get("lastActive"),
+        Some(&json!({
+            "at": "2026-04-09T08:12:00Z",
+            "age": "2m"
+        }))
+    );
     let metadata = read_json_file(&temp_dir.path().join("export-metadata.json"));
     assert_eq!(
         metadata.get("kind"),

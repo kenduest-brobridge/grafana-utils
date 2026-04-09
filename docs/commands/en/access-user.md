@@ -22,6 +22,7 @@ List or browse live and local Grafana users, create, modify, export, import, dif
 - created or modified users have the expected login, email, and role
 - inventory and bundles can be diffed before deletion or migration
 - membership scope stays explicit, so you do not accidentally manage the wrong org or global registry
+- machine-readable `list` / export output includes structured `origin` and `lastActive` user metadata for automation and audits
 
 ## Failure checks
 

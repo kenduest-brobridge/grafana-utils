@@ -2,11 +2,13 @@
 
 use super::*;
 use crate::access::{
+    render::normalize_user_row,
     build_auth_context, ACCESS_EXPORT_KIND_ORGS, ACCESS_EXPORT_KIND_SERVICE_ACCOUNTS,
     ACCESS_EXPORT_KIND_TEAMS, ACCESS_EXPORT_KIND_USERS, ACCESS_ORG_EXPORT_FILENAME,
     ACCESS_SERVICE_ACCOUNT_EXPORT_FILENAME, ACCESS_TEAM_EXPORT_FILENAME,
     ACCESS_USER_EXPORT_FILENAME,
 };
+use serde_json::json;
 
 #[test]
 fn parse_cli_supports_user_list() {
@@ -1204,6 +1206,80 @@ fn user_list_render_shows_account_scope_for_shared_global_identity() {
 
     assert_eq!(user_table_rows(&rows)[0][7], "global-shared");
     assert!(user_summary_line(&rows[0]).contains("accountScope=global-shared"));
+}
+
+#[test]
+fn normalize_user_row_includes_origin_and_last_active_metadata() {
+    let row = normalize_user_row(
+        &serde_json::from_value(json!({
+            "id": 7,
+            "login": "alice",
+            "email": "alice@example.com",
+            "name": "Alice",
+            "isGrafanaAdmin": true,
+            "isExternal": true,
+            "authLabels": ["oauth"],
+            "lastSeenAt": "2026-04-09T08:12:00Z",
+            "lastSeenAtAge": "2m"
+        }))
+        .unwrap(),
+        &Scope::Global,
+    );
+
+    assert_eq!(row.get("origin"), Some(&json!({
+        "kind": "external",
+        "external": true,
+        "provisioned": false,
+        "labels": ["oauth"]
+    })));
+    assert_eq!(row.get("lastActive"), Some(&json!({
+        "at": "2026-04-09T08:12:00Z",
+        "age": "2m"
+    })));
+}
+
+#[test]
+fn normalize_user_row_marks_provisioned_origin_when_present() {
+    let row = normalize_user_row(
+        &serde_json::from_value(json!({
+            "id": 9,
+            "login": "bootstrap-admin",
+            "provisioned": true
+        }))
+        .unwrap(),
+        &Scope::Global,
+    );
+
+    assert_eq!(row["origin"]["kind"], json!("provisioned"));
+    assert_eq!(row["origin"]["provisioned"], json!(true));
+    assert_eq!(row["origin"]["external"], json!(false));
+}
+
+#[test]
+fn normalize_user_row_preserves_existing_structured_origin_and_last_active() {
+    let row = normalize_user_row(
+        &serde_json::from_value(json!({
+            "id": "7",
+            "login": "alice",
+            "origin": {
+                "kind": "external",
+                "external": true,
+                "provisioned": false,
+                "labels": ["oauth"]
+            },
+            "lastActive": {
+                "at": "2026-04-09T08:12:00Z",
+                "age": "2m"
+            }
+        }))
+        .unwrap(),
+        &Scope::Global,
+    );
+
+    assert_eq!(row["origin"]["kind"], json!("external"));
+    assert_eq!(row["origin"]["labels"], json!(["oauth"]));
+    assert_eq!(row["lastActive"]["at"], json!("2026-04-09T08:12:00Z"));
+    assert_eq!(row["lastActive"]["age"], json!("2m"));
 }
 
 #[test]

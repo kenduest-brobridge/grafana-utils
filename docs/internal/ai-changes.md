@@ -8,6 +8,12 @@ Current AI change log only.
 - Keep this file limited to the latest active architecture and maintenance changes.
 - Detailed 2026-03-29 through 2026-03-31 entries moved to [`archive/ai-changes-archive-2026-03-31.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-changes-archive-2026-03-31.md).
 
+## 2026-04-09 - Add structured origin and last-active metadata to access user machine output
+- Summary: extended the normalized `access user` row contract so machine-readable `list` output and exported `users.json` bundles now include structured `origin` and `lastActive` metadata. `origin` records a stable `kind` plus `external`, `provisioned`, and `labels` details derived from Grafana user fields, while `lastActive` preserves both the timestamp and relative age from Grafana's last-seen fields. Human-facing text/table/csv output remains unchanged.
+- Tests: `cargo test --manifest-path rust/Cargo.toml access_cli_rust_tests --quiet`; `cargo test --manifest-path rust/Cargo.toml access_runtime_org_rust_tests --quiet`
+- Impact: `rust/src/access/{render.rs,access_cli_rust_tests.rs,access_runtime_org_rust_tests.rs}`, `docs/commands/{en,zh-TW}/access-user.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Rollback/Risk: low to moderate. This widens the machine-readable user-row shape but does not alter human-facing default columns; consumers that assumed a minimal fixed key set should tolerate the additive fields.
+
 ## 2026-04-09 - Tighten dashboard browse workspace resolution
 - Summary: changed `dashboard browse --workspace` so it behaves as a strict workspace/repo-root entrypoint instead of a permissive raw-import fallback. The browse loader still recognizes valid dashboard repo layouts, workspace roots, `dashboards/` roots, and direct `raw` or `provisioning` directories, but if the supplied path does not contain a browsable dashboard tree it now exits with a targeted error rather than scanning unrelated JSON files under that path.
 - Tests: `cargo test --manifest-path rust/Cargo.toml browse_support --quiet`; `cargo test --manifest-path rust/Cargo.toml dashboard_cli_parser_help_rust_tests --quiet`; `cargo run --manifest-path rust/Cargo.toml -- dashboard browse --workspace .`

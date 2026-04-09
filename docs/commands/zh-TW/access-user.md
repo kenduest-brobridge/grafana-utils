@@ -22,6 +22,7 @@
 - 建立或修改後的使用者會有預期的 login、email 與 role
 - inventory 與套件可以在刪除或搬移前先比對
 - 成員關係的範圍一直很清楚，不會不小心動到錯的 org 或全域登錄
+- 給 automation / audit 用的 machine-readable `list` 與 export 輸出會包含結構化的 `origin` 與 `lastActive` 使用者中繼資料
 
 ## 失敗時先檢查
 

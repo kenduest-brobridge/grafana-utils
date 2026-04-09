@@ -45,6 +45,91 @@ pub(crate) fn value_bool(value: Option<&Value>) -> Option<bool> {
     }
 }
 
+fn value_string(value: Option<&Value>) -> Option<String> {
+    match value {
+        Some(Value::String(text)) => {
+            let trimmed = text.trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed.to_string())
+            }
+        }
+        _ => None,
+    }
+}
+
+fn value_string_array(value: Option<&Value>) -> Vec<Value> {
+    match value {
+        Some(Value::Array(values)) => values
+            .iter()
+            .filter_map(Value::as_str)
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .map(|value| Value::String(value.to_string()))
+            .collect(),
+        _ => Vec::new(),
+    }
+}
+
+fn value_object<'a>(value: Option<&'a Value>) -> Option<&'a Map<String, Value>> {
+    match value {
+        Some(Value::Object(map)) => Some(map),
+        _ => None,
+    }
+}
+
+fn normalized_user_origin(user: &Map<String, Value>) -> Value {
+    let origin = value_object(user.get("origin"));
+    let labels = if let Some(existing) = origin.and_then(|value| value.get("labels")) {
+        value_string_array(Some(existing))
+    } else {
+        value_string_array(user.get("authLabels"))
+    };
+    let external = origin
+        .and_then(|value| value_bool(value.get("external")))
+        .or_else(|| value_bool(user.get("isExternal")))
+        .unwrap_or(false);
+    let provisioned = origin
+        .and_then(|value| value_bool(value.get("provisioned")))
+        .or_else(|| value_bool(user.get("isProvisioned")))
+        .or_else(|| value_bool(user.get("provisioned")))
+        .unwrap_or(false);
+    let kind = if let Some(kind) = origin.and_then(|value| value_string(value.get("kind"))) {
+        kind
+    } else if provisioned {
+        "provisioned".to_string()
+    } else if external {
+        "external".to_string()
+    } else {
+        "local".to_string()
+    };
+
+    Value::Object(Map::from_iter(vec![
+        ("kind".to_string(), Value::String(kind)),
+        ("external".to_string(), Value::Bool(external)),
+        ("provisioned".to_string(), Value::Bool(provisioned)),
+        ("labels".to_string(), Value::Array(labels)),
+    ]))
+}
+
+fn normalized_user_last_active(user: &Map<String, Value>) -> Value {
+    let last_active = value_object(user.get("lastActive"));
+    let at = last_active
+        .and_then(|value| value_string(value.get("at")))
+        .or_else(|| value_string(user.get("lastSeenAt")))
+        .unwrap_or_default();
+    let age = last_active
+        .and_then(|value| value_string(value.get("age")))
+        .or_else(|| value_string(user.get("lastSeenAtAge")))
+        .unwrap_or_default();
+
+    Value::Object(Map::from_iter(vec![
+        ("at".to_string(), Value::String(at)),
+        ("age".to_string(), Value::String(age)),
+    ]))
+}
+
 // Normalize user/team role payloads into a canonical display/case convention used by
 // list output and diffing.
 /// Purpose: implementation note.
@@ -195,6 +280,8 @@ pub(crate) fn normalize_user_row(user: &Map<String, Value>, scope: &Scope) -> Ma
             "scope".to_string(),
             Value::String(user_scope_text(scope).to_string()),
         ),
+        ("origin".to_string(), normalized_user_origin(user)),
+        ("lastActive".to_string(), normalized_user_last_active(user)),
         ("teams".to_string(), Value::Array(teams)),
     ])
 }

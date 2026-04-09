@@ -8,6 +8,13 @@ Current AI-maintained status only.
 - Keep this file short and current. Additive historical detail belongs in `docs/internal/archive/`.
 - Detailed 2026-03-29 through 2026-03-31 entries moved to [`archive/ai-status-archive-2026-03-31.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-status-archive-2026-03-31.md).
 
+## 2026-04-09 - Add structured origin and last-active metadata to access user machine output
+- State: Done
+- Scope: `rust/src/access/{render.rs,access_cli_rust_tests.rs,access_runtime_org_rust_tests.rs}`, `docs/commands/{en,zh-TW}/access-user.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
+- Baseline: `access user list` and `access user export` normalized rows only carried basic identity and role fields, so JSON/YAML/export consumers could not inspect how a user was sourced or when Grafana last saw that account without re-reading the raw API payload shape.
+- Current Update: extended normalized access-user records with structured `origin` and `lastActive` objects. `origin` now preserves a stable `kind` plus `external`, `provisioned`, and `labels` details derived from Grafana user fields such as `isExternal`, `authLabels`, and forward-compatible `provisioned` flags. `lastActive` now carries both the timestamp and relative age from `lastSeenAt` / `lastSeenAtAge`. Human-facing table/text output stays unchanged.
+- Result: machine-readable `access user list` output, local bundles, and exported `users.json` now carry the extra user provenance and activity metadata automation needs, while existing human-oriented list output remains compact.
+
 ## 2026-04-09 - Tighten dashboard browse workspace root detection
 - State: Done
 - Scope: `rust/src/dashboard/browse_support.rs`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
