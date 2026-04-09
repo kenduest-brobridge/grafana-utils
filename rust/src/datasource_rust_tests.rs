@@ -206,6 +206,187 @@ fn render_import_table_supports_all_columns() {
 }
 
 #[test]
+fn render_datasource_list_table_supports_all_columns() {
+    let rows = vec![json!({
+        "uid": "prom-main",
+        "name": "Prometheus Main",
+        "type": "prometheus",
+        "access": "proxy",
+        "url": "http://prometheus:9090",
+        "isDefault": true,
+        "database": "metrics",
+        "jsonData": {
+            "organization": "acme",
+            "defaultBucket": "main"
+        },
+        "org": "Main Org.",
+        "orgId": "1"
+    })
+    .as_object()
+    .unwrap()
+    .clone()];
+
+    let lines = render_data_source_table(&rows, true, Some(&["all".to_string()]));
+
+    assert!(lines[0].contains("UID"));
+    assert!(lines[0].contains("NAME"));
+    assert!(lines[0].contains("TYPE"));
+    assert!(lines[0].contains("URL"));
+    assert!(lines[0].contains("IS_DEFAULT"));
+    assert!(lines[0].contains("DATABASE"));
+    assert!(lines[0].contains("JSONDATA.ORGANIZATION"));
+    assert!(lines[0].contains("ORG"));
+    assert!(lines[0].contains("ORG_ID"));
+}
+
+#[test]
+fn render_datasource_list_csv_honors_selected_columns() {
+    let rows = vec![json!({
+        "uid": "prom-main",
+        "name": "Prometheus Main",
+        "type": "prometheus",
+        "url": "http://prometheus:9090",
+        "isDefault": true,
+        "jsonData": {
+            "organization": "acme"
+        }
+    })
+    .as_object()
+    .unwrap()
+    .clone()];
+
+    let lines = render_data_source_csv(
+        &rows,
+        Some(&["uid".to_string(), "jsonData.organization".to_string()]),
+    );
+
+    assert_eq!(lines[0], "uid,jsonData.organization");
+    assert_eq!(lines[1], "prom-main,acme");
+}
+
+#[test]
+fn render_datasource_list_json_defaults_to_full_records() {
+    let rows = vec![
+        json!({
+            "uid": "influx-main",
+            "name": "Influx Main",
+            "type": "influxdb",
+            "access": "proxy",
+            "url": "http://influx:8086",
+            "database": "metrics",
+            "user": "influx-user",
+            "isDefault": true,
+            "jsonData": {
+                "version": "Flux",
+                "organization": "acme",
+                "defaultBucket": "main"
+            },
+            "secureJsonFields": {
+                "token": true
+            }
+        })
+        .as_object()
+        .unwrap()
+        .clone(),
+        json!({
+            "uid": "prom-auth",
+            "name": "Prometheus Auth",
+            "type": "prometheus",
+            "access": "proxy",
+            "url": "http://prometheus:9090",
+            "basicAuth": true,
+            "basicAuthUser": "metrics-user",
+            "withCredentials": true,
+            "isDefault": false,
+            "jsonData": {
+                "httpMethod": "POST",
+                "timeInterval": "30s"
+            },
+            "secureJsonFields": {
+                "basicAuthPassword": true,
+                "httpHeaderValue1": true
+            }
+        })
+        .as_object()
+        .unwrap()
+        .clone(),
+    ];
+
+    let json_value = render_data_source_json(&rows, None);
+
+    assert_eq!(json_value[0]["database"], Value::String("metrics".to_string()));
+    assert_eq!(json_value[0]["user"], Value::String("influx-user".to_string()));
+    assert_eq!(
+        json_value[0]["jsonData"]["organization"],
+        Value::String("acme".to_string())
+    );
+    assert_eq!(json_value[0]["secureJsonFields"]["token"], Value::Bool(true));
+    assert_eq!(json_value[1]["basicAuth"], Value::Bool(true));
+    assert_eq!(
+        json_value[1]["basicAuthUser"],
+        Value::String("metrics-user".to_string())
+    );
+    assert_eq!(json_value[1]["withCredentials"], Value::Bool(true));
+    assert_eq!(
+        json_value[1]["jsonData"]["httpMethod"],
+        Value::String("POST".to_string())
+    );
+    assert_eq!(
+        json_value[1]["secureJsonFields"]["basicAuthPassword"],
+        Value::Bool(true)
+    );
+    assert_eq!(
+        json_value[1]["secureJsonFields"]["httpHeaderValue1"],
+        Value::Bool(true)
+    );
+}
+
+#[test]
+fn render_datasource_list_json_honors_selected_columns() {
+    let rows = vec![json!({
+        "uid": "influx-main",
+        "name": "Influx Main",
+        "type": "influxdb",
+        "access": "proxy",
+        "url": "http://influx:8086",
+        "database": "metrics",
+        "isDefault": true,
+        "basicAuth": true,
+        "basicAuthUser": "metrics-user",
+        "jsonData": {
+            "organization": "acme",
+            "defaultBucket": "main"
+        }
+    })
+    .as_object()
+    .unwrap()
+    .clone()];
+
+    let json_value = render_data_source_json(
+        &rows,
+        Some(&[
+            "uid".to_string(),
+            "database".to_string(),
+            "basicAuthUser".to_string(),
+            "jsonData.organization".to_string(),
+        ]),
+    );
+
+    assert_eq!(json_value[0]["uid"], Value::String("influx-main".to_string()));
+    assert_eq!(json_value[0]["database"], Value::String("metrics".to_string()));
+    assert_eq!(
+        json_value[0]["basicAuthUser"],
+        Value::String("metrics-user".to_string())
+    );
+    assert_eq!(
+        json_value[0]["jsonData"]["organization"],
+        Value::String("acme".to_string())
+    );
+    assert!(json_value[0].get("type").is_none());
+    assert!(json_value[0].get("basicAuth").is_none());
+}
+
+#[test]
 fn parse_datasource_import_preserves_requested_path() {
     let args = DatasourceCliArgs::parse_normalized_from([
         "grafana-util",
@@ -227,6 +408,49 @@ fn parse_datasource_import_preserves_requested_path() {
             assert!(inner.table);
         }
         _ => panic!("expected datasource import"),
+    }
+}
+
+#[test]
+fn parse_datasource_list_supports_output_columns_all_and_list_columns() {
+    let args = DatasourceCliArgs::parse_from([
+        "grafana-util datasource",
+        "list",
+        "--input-dir",
+        "./datasources",
+        "--output-columns",
+        "all",
+        "--list-columns",
+    ]);
+
+    match args.command {
+        crate::datasource::DatasourceGroupCommand::List(inner) => {
+            assert_eq!(inner.output_columns, vec!["all"]);
+            assert!(inner.list_columns);
+        }
+        _ => panic!("expected datasource list"),
+    }
+}
+
+#[test]
+fn parse_datasource_list_supports_nested_output_columns() {
+    let args = DatasourceCliArgs::parse_from([
+        "grafana-util datasource",
+        "list",
+        "--input-dir",
+        "./datasources",
+        "--output-columns",
+        "uid,jsonData.organization,orgId",
+    ]);
+
+    match args.command {
+        crate::datasource::DatasourceGroupCommand::List(inner) => {
+            assert_eq!(
+                inner.output_columns,
+                vec!["uid", "jsonData.organization", "org_id"]
+            );
+        }
+        _ => panic!("expected datasource list"),
     }
 }
 

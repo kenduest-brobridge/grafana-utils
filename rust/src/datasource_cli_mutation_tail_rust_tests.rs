@@ -207,7 +207,7 @@ fn render_data_source_table_includes_org_columns_when_present() {
     .unwrap()
     .clone()];
 
-    let lines = render_data_source_table(&datasources, true);
+    let lines = render_data_source_table(&datasources, true, None);
 
     assert!(lines[0].contains("ORG"));
     assert!(lines[0].contains("ORG_ID"));
@@ -230,8 +230,8 @@ fn render_data_source_csv_and_json_include_org_fields_when_present() {
     .unwrap()
     .clone()];
 
-    let csv = render_data_source_csv(&datasources);
-    let json_value = render_data_source_json(&datasources);
+    let csv = render_data_source_csv(&datasources, None);
+    let json_value = render_data_source_json(&datasources, None);
 
     assert_eq!(csv[0], "uid,name,type,url,isDefault,org,orgId");
     assert!(csv[1].contains("Main Org."));

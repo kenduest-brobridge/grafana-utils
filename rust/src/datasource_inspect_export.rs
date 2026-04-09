@@ -493,6 +493,7 @@ fn build_datasource_inspect_export_document(source: &DatasourceInspectExportSour
 pub(crate) fn render_datasource_inspect_export_output(
     source: &DatasourceInspectExportSource,
     format: DatasourceInspectExportRenderFormat,
+    selected_columns: Option<&[String]>,
 ) -> Result<String> {
     let mut output = String::new();
     let document = build_datasource_inspect_export_document(source);
@@ -529,7 +530,7 @@ pub(crate) fn render_datasource_inspect_export_output(
             }
             output.push_str(&format!("Datasource count: {}\n", source.records.len()));
             output.push('\n');
-            for line in render_data_source_table(&source.records, true) {
+            for line in render_data_source_table(&source.records, true, selected_columns) {
                 output.push_str(&line);
                 output.push('\n');
             }
@@ -541,13 +542,13 @@ pub(crate) fn render_datasource_inspect_export_output(
                 datasource_inspect_export_output_layer(format)
             ));
             output.push_str(&format!("Mode: {}\n\n", source.input_mode));
-            for line in render_data_source_table(&source.records, true) {
+            for line in render_data_source_table(&source.records, true, selected_columns) {
                 output.push_str(&line);
                 output.push('\n');
             }
         }
         DatasourceInspectExportRenderFormat::Csv => {
-            for line in render_data_source_csv(&source.records) {
+            for line in render_data_source_csv(&source.records, selected_columns) {
                 output.push_str(&line);
                 output.push('\n');
             }
