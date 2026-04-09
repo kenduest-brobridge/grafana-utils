@@ -1400,6 +1400,49 @@ fn diff_datasources_with_live_supports_provisioning_root_directory_and_file() {
     fs::remove_dir_all(diff_root).unwrap();
 }
 
+#[test]
+fn diff_datasources_with_live_supports_workspace_root_inventory_directory() {
+    let temp = tempdir().unwrap();
+    let workspace_root = temp.path().join("workspace");
+    let datasource_export_root = write_diff_fixture(&[json!({
+        "uid": "prom-main",
+        "name": "Prometheus Main",
+        "type": "prometheus",
+        "access": "proxy",
+        "url": "http://prometheus:9090",
+        "isDefault": true,
+        "orgId": "1"
+    })]);
+    fs::create_dir_all(&workspace_root).unwrap();
+    let datasource_root = workspace_root.join("datasources");
+    fs::rename(&datasource_export_root, &datasource_root).unwrap();
+    fs::create_dir_all(workspace_root.join("dashboards")).unwrap();
+
+    let live = vec![json!({
+        "id": 7,
+        "uid": "prom-main",
+        "name": "Prometheus Main",
+        "type": "prometheus",
+        "access": "proxy",
+        "url": "http://prometheus:9090",
+        "isDefault": true,
+        "orgId": "1"
+    })
+    .as_object()
+    .unwrap()
+    .clone()];
+
+    let (compared_count, differences) = diff_datasources_with_live(
+        &workspace_root,
+        DatasourceImportInputFormat::Inventory,
+        &live,
+        crate::common::DiffOutputFormat::Text,
+    )
+    .unwrap();
+
+    assert_eq!((compared_count, differences), (1, 0));
+}
+
 fn write_diff_fixture(records: &[Value]) -> std::path::PathBuf {
     let unique = SystemTime::now()
         .duration_since(UNIX_EPOCH)

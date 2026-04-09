@@ -704,7 +704,8 @@ pub(crate) fn load_diff_record_values(
 ) -> Result<Vec<Value>> {
     match input_format {
         DatasourceImportInputFormat::Inventory => {
-            let metadata_path = diff_dir.join(EXPORT_METADATA_FILENAME);
+            let resolved_diff_dir = resolve_datasource_export_root_dir(diff_dir)?;
+            let metadata_path = resolved_diff_dir.join(EXPORT_METADATA_FILENAME);
             if !metadata_path.is_file() {
                 return Err(message(format!(
                     "Datasource diff directory is missing {}: {}",
@@ -720,7 +721,7 @@ pub(crate) fn load_diff_record_values(
                 )));
             }
             let metadata = root_manifest.metadata;
-            let datasources_path = diff_dir.join(&metadata.datasources_file);
+            let datasources_path = resolved_diff_dir.join(&metadata.datasources_file);
             let raw = fs::read_to_string(&datasources_path)?;
             let value: Value = serde_json::from_str(&raw)?;
             let items = value.as_array().ok_or_else(|| {
