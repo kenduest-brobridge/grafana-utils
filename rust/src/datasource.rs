@@ -82,15 +82,14 @@ pub use datasource_cli_defs::{
 pub(crate) use datasource_import_export::{
     build_all_orgs_export_index, build_all_orgs_export_metadata, build_all_orgs_output_dir,
     build_datasource_export_metadata, build_datasource_provisioning_document, build_export_index,
-    build_export_records, build_list_records, datasource_list_column_ids,
-    fetch_current_org, import_datasources_by_export_org, import_datasources_with_client, list_orgs,
+    build_export_records, build_list_records, datasource_list_column_ids, fetch_current_org,
+    import_datasources_by_export_org, import_datasources_with_client, list_orgs,
     load_datasource_export_root_manifest, load_datasource_inventory_records_from_export_root,
-    load_diff_record_values, load_import_records, render_data_source_csv,
-    render_data_source_json, render_data_source_summary_line, render_data_source_table,
-    resolve_datasource_export_root_dir, resolve_target_client, validate_import_org_auth,
-    write_yaml_file, DatasourceExportRootScopeKind,
-    DatasourceImportRecord, DATASOURCE_EXPORT_FILENAME, DATASOURCE_PROVISIONING_FILENAME,
-    DATASOURCE_PROVISIONING_SUBDIR, EXPORT_METADATA_FILENAME,
+    load_diff_record_values, load_import_records, render_data_source_csv, render_data_source_json,
+    render_data_source_summary_line, render_data_source_table, resolve_datasource_export_root_dir,
+    resolve_target_client, validate_import_org_auth, write_yaml_file,
+    DatasourceExportRootScopeKind, DatasourceImportRecord, DATASOURCE_EXPORT_FILENAME,
+    DATASOURCE_PROVISIONING_FILENAME, DATASOURCE_PROVISIONING_SUBDIR, EXPORT_METADATA_FILENAME,
 };
 #[cfg(test)]
 #[allow(unused_imports)]
@@ -119,14 +118,16 @@ pub(crate) use datasource_inspect_export::{
 };
 #[cfg(test)]
 pub(crate) use datasource_mutation_support::parse_json_object_argument;
-pub(crate) use datasource_mutation_support::{fetch_datasource_by_uid_if_exists, resolve_match};
 use datasource_mutation_support::{
-    build_add_payload, build_modify_payload, build_modify_updates,
-    render_import_table, render_live_mutation_json, render_live_mutation_table,
-    resolve_delete_match, resolve_live_mutation_match,
-    validate_live_mutation_dry_run_args,
+    build_add_payload, build_modify_payload, build_modify_updates, render_import_table,
+    render_live_mutation_json, render_live_mutation_table, resolve_delete_match,
+    resolve_live_mutation_match, validate_live_mutation_dry_run_args,
 };
-fn render_datasource_text(records: &[Map<String, Value>], selected_columns: &[String]) -> Vec<String> {
+pub(crate) use datasource_mutation_support::{fetch_datasource_by_uid_if_exists, resolve_match};
+fn render_datasource_text(
+    records: &[Map<String, Value>],
+    selected_columns: &[String],
+) -> Vec<String> {
     records
         .iter()
         .map(|record| {
@@ -354,7 +355,15 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
     }
     if let DatasourceGroupCommand::Import(args) = &command {
         if args.list_columns {
-            print_supported_columns(&["uid", "name", "type", "destination", "action", "org_id", "file"]);
+            print_supported_columns(&[
+                "uid",
+                "name",
+                "type",
+                "destination",
+                "action",
+                "org_id",
+                "file",
+            ]);
             return Ok(());
         }
         if !args.output_columns.is_empty() && !args.table {
@@ -455,8 +464,7 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
                     "{}",
                     render_yaml(&render_data_source_json(
                         &datasources,
-                        (!args.output_columns.is_empty())
-                            .then_some(args.output_columns.as_slice()),
+                        (!args.output_columns.is_empty()).then_some(args.output_columns.as_slice()),
                     ))?
                 );
             } else if args.csv {
@@ -898,7 +906,11 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
                     )?;
                 }
             }
-            let summary_verb = if args.dry_run { "Would export" } else { "Exported" };
+            let summary_verb = if args.dry_run {
+                "Would export"
+            } else {
+                "Exported"
+            };
             println!(
                 "{summary_verb} {} datasource(s). Datasources: {} Index: {} Manifest: {}{}",
                 records.len(),

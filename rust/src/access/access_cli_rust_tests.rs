@@ -2,11 +2,11 @@
 
 use super::*;
 use crate::access::{
+    build_auth_context,
     render::{normalize_user_row, user_table_headers},
-    build_auth_context, ACCESS_EXPORT_KIND_ORGS, ACCESS_EXPORT_KIND_SERVICE_ACCOUNTS,
-    ACCESS_EXPORT_KIND_TEAMS, ACCESS_EXPORT_KIND_USERS, ACCESS_ORG_EXPORT_FILENAME,
-    ACCESS_SERVICE_ACCOUNT_EXPORT_FILENAME, ACCESS_TEAM_EXPORT_FILENAME,
-    ACCESS_USER_EXPORT_FILENAME,
+    ACCESS_EXPORT_KIND_ORGS, ACCESS_EXPORT_KIND_SERVICE_ACCOUNTS, ACCESS_EXPORT_KIND_TEAMS,
+    ACCESS_EXPORT_KIND_USERS, ACCESS_ORG_EXPORT_FILENAME, ACCESS_SERVICE_ACCOUNT_EXPORT_FILENAME,
+    ACCESS_TEAM_EXPORT_FILENAME, ACCESS_USER_EXPORT_FILENAME,
 };
 use serde_json::json;
 
@@ -1252,16 +1252,22 @@ fn normalize_user_row_includes_origin_and_last_active_metadata() {
         &Scope::Global,
     );
 
-    assert_eq!(row.get("origin"), Some(&json!({
-        "kind": "external",
-        "external": true,
-        "provisioned": false,
-        "labels": ["oauth"]
-    })));
-    assert_eq!(row.get("lastActive"), Some(&json!({
-        "at": "2026-04-09T08:12:00Z",
-        "age": "2m"
-    })));
+    assert_eq!(
+        row.get("origin"),
+        Some(&json!({
+            "kind": "external",
+            "external": true,
+            "provisioned": false,
+            "labels": ["oauth"]
+        }))
+    );
+    assert_eq!(
+        row.get("lastActive"),
+        Some(&json!({
+            "at": "2026-04-09T08:12:00Z",
+            "age": "2m"
+        }))
+    );
 }
 
 #[test]

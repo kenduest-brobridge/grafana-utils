@@ -151,19 +151,19 @@ pub(crate) fn render_import_table(
                 (6usize, "FILE"),
             ]
         } else {
-        selected
-            .iter()
-            .map(|column| match column.as_str() {
-                "uid" => (0usize, "UID"),
-                "name" => (1usize, "NAME"),
-                "type" => (2usize, "TYPE"),
-                "destination" => (3usize, "DESTINATION"),
-                "action" => (4usize, "ACTION"),
-                "org_id" => (5usize, "ORG_ID"),
-                "file" => (6usize, "FILE"),
-                _ => unreachable!("validated datasource import output column"),
-            })
-            .collect::<Vec<(usize, &str)>>()
+            selected
+                .iter()
+                .map(|column| match column.as_str() {
+                    "uid" => (0usize, "UID"),
+                    "name" => (1usize, "NAME"),
+                    "type" => (2usize, "TYPE"),
+                    "destination" => (3usize, "DESTINATION"),
+                    "action" => (4usize, "ACTION"),
+                    "org_id" => (5usize, "ORG_ID"),
+                    "file" => (6usize, "FILE"),
+                    _ => unreachable!("validated datasource import output column"),
+                })
+                .collect::<Vec<(usize, &str)>>()
         }
     } else {
         vec![

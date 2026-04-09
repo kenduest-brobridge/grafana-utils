@@ -314,13 +314,22 @@ fn render_datasource_list_json_defaults_to_full_records() {
 
     let json_value = render_data_source_json(&rows, None);
 
-    assert_eq!(json_value[0]["database"], Value::String("metrics".to_string()));
-    assert_eq!(json_value[0]["user"], Value::String("influx-user".to_string()));
+    assert_eq!(
+        json_value[0]["database"],
+        Value::String("metrics".to_string())
+    );
+    assert_eq!(
+        json_value[0]["user"],
+        Value::String("influx-user".to_string())
+    );
     assert_eq!(
         json_value[0]["jsonData"]["organization"],
         Value::String("acme".to_string())
     );
-    assert_eq!(json_value[0]["secureJsonFields"]["token"], Value::Bool(true));
+    assert_eq!(
+        json_value[0]["secureJsonFields"]["token"],
+        Value::Bool(true)
+    );
     assert_eq!(json_value[1]["basicAuth"], Value::Bool(true));
     assert_eq!(
         json_value[1]["basicAuthUser"],
@@ -372,8 +381,14 @@ fn render_datasource_list_json_honors_selected_columns() {
         ]),
     );
 
-    assert_eq!(json_value[0]["uid"], Value::String("influx-main".to_string()));
-    assert_eq!(json_value[0]["database"], Value::String("metrics".to_string()));
+    assert_eq!(
+        json_value[0]["uid"],
+        Value::String("influx-main".to_string())
+    );
+    assert_eq!(
+        json_value[0]["database"],
+        Value::String("metrics".to_string())
+    );
     assert_eq!(
         json_value[0]["basicAuthUser"],
         Value::String("metrics-user".to_string())

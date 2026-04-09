@@ -578,17 +578,17 @@ pub(crate) fn render_data_source_csv(
         .join(",")];
     lines.extend(datasources.iter().map(|datasource| {
         columns
-        .iter()
-        .map(|column| lookup_datasource_column_text(datasource, column))
-        .map(|value| {
-            if value.contains(',') || value.contains('"') || value.contains('\n') {
-                format!("\"{}\"", value.replace('"', "\"\""))
-            } else {
-                value
-            }
-        })
-        .collect::<Vec<String>>()
-        .join(",")
+            .iter()
+            .map(|column| lookup_datasource_column_text(datasource, column))
+            .map(|value| {
+                if value.contains(',') || value.contains('"') || value.contains('\n') {
+                    format!("\"{}\"", value.replace('"', "\"\""))
+                } else {
+                    value
+                }
+            })
+            .collect::<Vec<String>>()
+            .join(",")
     }));
     lines
 }
@@ -597,7 +597,8 @@ pub(crate) fn render_data_source_json(
     datasources: &[Map<String, Value>],
     selected_columns: Option<&[String]>,
 ) -> Value {
-    if selected_columns.is_none() || requested_columns_include_all(selected_columns.unwrap_or(&[])) {
+    if selected_columns.is_none() || requested_columns_include_all(selected_columns.unwrap_or(&[]))
+    {
         return Value::Array(
             datasources
                 .iter()
@@ -900,7 +901,8 @@ pub(crate) fn build_export_records(client: &JsonHttpClient) -> Result<Vec<Map<St
             .flatten()
             .unwrap_or(datasource);
         records.push(
-            build_export_record_from_datasource(&resolved, &org_name, &org_id).to_inventory_record(),
+            build_export_record_from_datasource(&resolved, &org_name, &org_id)
+                .to_inventory_record(),
         );
     }
     records.sort_by_key(|record| string_field(record, "uid", ""));

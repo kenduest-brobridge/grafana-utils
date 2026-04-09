@@ -36,10 +36,10 @@ pub(crate) use datasource_export_support::{
     build_all_orgs_export_index, build_all_orgs_export_metadata, build_all_orgs_output_dir,
     build_datasource_export_metadata, build_datasource_provisioning_document, build_export_index,
     build_export_records, build_list_records, datasource_list_column_ids,
-    describe_datasource_import_mode, render_data_source_csv,
-    render_data_source_json, render_data_source_summary_line, render_data_source_table,
-    resolve_target_client, validate_import_org_auth, write_yaml_file,
-    DATASOURCE_PROVISIONING_FILENAME, DATASOURCE_PROVISIONING_SUBDIR,
+    describe_datasource_import_mode, render_data_source_csv, render_data_source_json,
+    render_data_source_summary_line, render_data_source_table, resolve_target_client,
+    validate_import_org_auth, write_yaml_file, DATASOURCE_PROVISIONING_FILENAME,
+    DATASOURCE_PROVISIONING_SUBDIR,
 };
 pub(crate) use datasource_import_export_routed::{
     build_routed_datasource_import_dry_run_json, format_routed_datasource_scope_summary_fields,
@@ -148,7 +148,10 @@ fn parse_secret_values_inputs(
             path.display()
         ))
     })?;
-    Ok(Some(parse_secret_values_json(&raw, "--secret-values-file")?))
+    Ok(Some(parse_secret_values_json(
+        &raw,
+        "--secret-values-file",
+    )?))
 }
 
 // This preflight plan is intentionally side-effect free so import validation,

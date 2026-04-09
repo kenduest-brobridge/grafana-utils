@@ -10,8 +10,8 @@ use crate::common::{message, string_field, Result};
 
 use super::render::{
     format_table, map_get_text, normalize_user_row, paginate_rows, render_csv, render_objects_json,
-    render_yaml, scalar_text, user_account_scope_text, user_matches, user_scope_text,
-    user_list_column_ids, user_summary_line, user_table_headers, user_table_rows,
+    render_yaml, scalar_text, user_account_scope_text, user_list_column_ids, user_matches,
+    user_scope_text, user_summary_line, user_table_headers, user_table_rows,
 };
 use super::user_workflows::load_access_import_records;
 use super::{build_auth_context, request_array, Scope, UserListArgs, DEFAULT_PAGE_SIZE};
@@ -192,18 +192,12 @@ where
         println!("{}", render_yaml(&rows)?);
     } else if args.csv {
         let headers = user_table_headers(&args.output_columns);
-        for line in render_csv(
-            &headers,
-            &user_table_rows(&rows, &args.output_columns),
-        ) {
+        for line in render_csv(&headers, &user_table_rows(&rows, &args.output_columns)) {
             println!("{line}");
         }
     } else if args.table {
         let headers = user_table_headers(&args.output_columns);
-        for line in format_table(
-            &headers,
-            &user_table_rows(&rows, &args.output_columns),
-        ) {
+        for line in format_table(&headers, &user_table_rows(&rows, &args.output_columns)) {
             println!("{line}");
         }
         println!();
@@ -271,18 +265,12 @@ pub(crate) fn list_users_from_input_dir(args: &UserListArgs) -> Result<usize> {
         println!("{}", render_yaml(&rows)?);
     } else if args.csv {
         let headers = user_table_headers(&args.output_columns);
-        for line in render_csv(
-            &headers,
-            &user_table_rows(&rows, &args.output_columns),
-        ) {
+        for line in render_csv(&headers, &user_table_rows(&rows, &args.output_columns)) {
             println!("{line}");
         }
     } else if args.table {
         let headers = user_table_headers(&args.output_columns);
-        for line in format_table(
-            &headers,
-            &user_table_rows(&rows, &args.output_columns),
-        ) {
+        for line in format_table(&headers, &user_table_rows(&rows, &args.output_columns)) {
             println!("{line}");
         }
         println!();

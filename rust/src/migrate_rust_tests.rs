@@ -3,11 +3,9 @@ use clap::Parser;
 
 #[test]
 fn migrate_root_help_full_mentions_dashboard_namespace() {
-    let help = maybe_render_migrate_help_from_os_args(
-        ["grafana-util", "migrate", "--help-full"],
-        false,
-    )
-    .expect("migrate root help");
+    let help =
+        maybe_render_migrate_help_from_os_args(["grafana-util", "migrate", "--help-full"], false)
+            .expect("migrate root help");
     assert!(help.contains("grafana-util migrate dashboard raw-to-prompt"));
     assert!(help.contains("Repair a raw dashboard file with explicit datasource mapping"));
 }

@@ -7,9 +7,8 @@ use crate::common::{message, Result};
 
 use super::super::super::render::{
     format_table, map_get_text, normalize_service_account_row, paginate_rows, render_csv,
-    render_objects_json, render_yaml, service_account_list_column_ids,
-    service_account_role_to_api, service_account_summary_line, service_account_table_headers,
-    service_account_table_rows,
+    render_objects_json, render_yaml, service_account_list_column_ids, service_account_role_to_api,
+    service_account_summary_line, service_account_table_headers, service_account_table_rows,
 };
 use super::super::super::{
     ServiceAccountAddArgs, ServiceAccountListArgs, ServiceAccountTokenAddArgs,
@@ -88,7 +87,10 @@ where
         );
     } else {
         for row in &rows {
-            println!("{}", service_account_summary_line(row, &args.output_columns));
+            println!(
+                "{}",
+                service_account_summary_line(row, &args.output_columns)
+            );
         }
         println!();
         println!(
@@ -159,7 +161,10 @@ pub(crate) fn list_service_accounts_from_input_dir(args: &ServiceAccountListArgs
         );
     } else {
         for row in &rows {
-            println!("{}", service_account_summary_line(row, &args.output_columns));
+            println!(
+                "{}",
+                service_account_summary_line(row, &args.output_columns)
+            );
         }
         println!();
         println!(

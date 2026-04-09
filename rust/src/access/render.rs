@@ -511,7 +511,9 @@ pub(crate) fn team_list_column_ids() -> &'static [&'static str] {
 }
 
 pub(crate) fn service_account_list_column_ids() -> &'static [&'static str] {
-    &["id", "name", "login", "role", "disabled", "tokens", "org_id"]
+    &[
+        "id", "name", "login", "role", "disabled", "tokens", "org_id",
+    ]
 }
 
 /// Purpose: implementation note.
@@ -522,7 +524,10 @@ pub(crate) fn render_objects_json(rows: &[Map<String, Value>]) -> super::Result<
 }
 
 /// user table rows.
-pub(crate) fn user_table_rows(rows: &[Map<String, Value>], requested_columns: &[String]) -> Vec<Vec<String>> {
+pub(crate) fn user_table_rows(
+    rows: &[Map<String, Value>],
+    requested_columns: &[String],
+) -> Vec<Vec<String>> {
     let columns = resolve_list_columns(&USER_LIST_COLUMNS, requested_columns);
     build_table_rows_for_columns(rows, &columns)
 }
@@ -535,7 +540,10 @@ pub(crate) fn user_table_headers(requested_columns: &[String]) -> Vec<&'static s
 }
 
 /// team table rows.
-pub(crate) fn team_table_rows(rows: &[Map<String, Value>], requested_columns: &[String]) -> Vec<Vec<String>> {
+pub(crate) fn team_table_rows(
+    rows: &[Map<String, Value>],
+    requested_columns: &[String],
+) -> Vec<Vec<String>> {
     let columns = resolve_list_columns(&TEAM_LIST_COLUMNS, requested_columns);
     build_table_rows_for_columns(rows, &columns)
 }

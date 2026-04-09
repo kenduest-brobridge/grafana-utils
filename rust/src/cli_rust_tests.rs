@@ -241,9 +241,8 @@ fn unified_help_mentions_screenshot_and_dashboard_analysis_examples() {
     assert!(help.contains("[Dashboard Export] Export dashboards with Basic auth"));
     assert!(help.contains("[Dashboard Export] Export dashboards across all visible orgs"));
     assert!(help.contains("[Migrate Raw To Prompt]"));
-    assert!(help.contains(
-        "migrate dashboard raw-to-prompt --input-file ./dashboards/raw/cpu-main.json"
-    ));
+    assert!(help
+        .contains("migrate dashboard raw-to-prompt --input-file ./dashboards/raw/cpu-main.json"));
     assert!(help.contains("--basic-user admin --basic-password admin"));
     assert!(help.contains("--all-orgs"));
     assert!(help.contains("dashboard screenshot"));

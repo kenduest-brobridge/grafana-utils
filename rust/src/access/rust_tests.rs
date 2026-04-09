@@ -1192,9 +1192,9 @@ fn team_list_all_output_columns_are_accepted() {
 
     let result = list_teams_command_with_request(
         |method, path, _params, _payload| match (method, path) {
-            (Method::GET, "/api/teams/search") => {
-                Ok(Some(json!({"teams": [{"id": 5, "name": "Ops", "memberCount": 1}]})))
-            }
+            (Method::GET, "/api/teams/search") => Ok(Some(
+                json!({"teams": [{"id": 5, "name": "Ops", "memberCount": 1}]}),
+            )),
             _ => panic!("unexpected path {path}"),
         },
         &args,

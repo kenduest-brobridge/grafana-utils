@@ -558,15 +558,24 @@ fn datasource_inspect_export_renders_inventory_root_in_multiple_output_modes() {
         None,
     )
     .unwrap();
-    let text =
-        render_datasource_inspect_export_output(&source, DatasourceInspectExportRenderFormat::Text, None)
-            .unwrap();
-    let json_output =
-        render_datasource_inspect_export_output(&source, DatasourceInspectExportRenderFormat::Json, None)
-            .unwrap();
-    let yaml_output =
-        render_datasource_inspect_export_output(&source, DatasourceInspectExportRenderFormat::Yaml, None)
-            .unwrap();
+    let text = render_datasource_inspect_export_output(
+        &source,
+        DatasourceInspectExportRenderFormat::Text,
+        None,
+    )
+    .unwrap();
+    let json_output = render_datasource_inspect_export_output(
+        &source,
+        DatasourceInspectExportRenderFormat::Json,
+        None,
+    )
+    .unwrap();
+    let yaml_output = render_datasource_inspect_export_output(
+        &source,
+        DatasourceInspectExportRenderFormat::Yaml,
+        None,
+    )
+    .unwrap();
 
     assert!(table.contains("UID"));
     assert!(table.contains("Layer: operator-summary"));
@@ -601,12 +610,18 @@ fn datasource_inspect_export_renders_provisioning_yaml_file_as_csv_and_yaml() {
         DatasourceImportInputFormat::Provisioning,
     )
     .unwrap();
-    let csv_output =
-        render_datasource_inspect_export_output(&source, DatasourceInspectExportRenderFormat::Csv, None)
-            .unwrap();
-    let yaml_output =
-        render_datasource_inspect_export_output(&source, DatasourceInspectExportRenderFormat::Yaml, None)
-            .unwrap();
+    let csv_output = render_datasource_inspect_export_output(
+        &source,
+        DatasourceInspectExportRenderFormat::Csv,
+        None,
+    )
+    .unwrap();
+    let yaml_output = render_datasource_inspect_export_output(
+        &source,
+        DatasourceInspectExportRenderFormat::Yaml,
+        None,
+    )
+    .unwrap();
 
     assert!(csv_output.contains("uid,name,type,url,isDefault"));
     assert!(csv_output.contains("Prometheus Main"));
@@ -834,9 +849,12 @@ fn datasource_inspect_export_accepts_all_orgs_root_inventory() {
     let source =
         load_datasource_inspect_export_source(&root, DatasourceImportInputFormat::Inventory)
             .unwrap();
-    let text =
-        render_datasource_inspect_export_output(&source, DatasourceInspectExportRenderFormat::Text, None)
-            .unwrap();
+    let text = render_datasource_inspect_export_output(
+        &source,
+        DatasourceInspectExportRenderFormat::Text,
+        None,
+    )
+    .unwrap();
 
     assert!(text.contains("Datasource count: 2"));
     assert!(text.contains("Bundle: recovery-capable masked export"));
@@ -916,9 +934,12 @@ fn datasource_inspect_export_resolves_workspace_root_inventory() {
         DatasourceImportInputFormat::Inventory,
     )
     .unwrap();
-    let text =
-        render_datasource_inspect_export_output(&source, DatasourceInspectExportRenderFormat::Text, None)
-            .unwrap();
+    let text = render_datasource_inspect_export_output(
+        &source,
+        DatasourceInspectExportRenderFormat::Text,
+        None,
+    )
+    .unwrap();
 
     assert!(text.contains("Variant: all-orgs-root"));
     assert!(text.contains("Datasource count: 2"));
@@ -961,9 +982,12 @@ datasources:
     assert_eq!(mode, DatasourceImportInputFormat::Inventory);
 
     let source = load_datasource_inspect_export_source(&root, mode).unwrap();
-    let text =
-        render_datasource_inspect_export_output(&source, DatasourceInspectExportRenderFormat::Text, None)
-            .unwrap();
+    let text = render_datasource_inspect_export_output(
+        &source,
+        DatasourceInspectExportRenderFormat::Text,
+        None,
+    )
+    .unwrap();
     assert!(text.contains("Prometheus Main"));
     assert!(!text.contains("Provisioned Loki"));
 
