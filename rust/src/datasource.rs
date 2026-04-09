@@ -210,17 +210,44 @@ fn run_local_datasource_list(args: &DatasourceListArgs) -> Result<()> {
 }
 
 fn render_diff_identity(entry: &DatasourceDiffEntry) -> String {
+    let diff_type = entry
+        .export_record
+        .as_ref()
+        .map(|record| record.datasource_type.as_str())
+        .or_else(|| {
+            entry
+                .live_record
+                .as_ref()
+                .map(|record| record.datasource_type.as_str())
+        })
+        .unwrap_or_default();
     if let Some(record) = &entry.export_record {
         if !record.uid.is_empty() {
-            return format!("uid={} name={}", record.uid, record.name);
+            return if diff_type.is_empty() {
+                format!("uid={} name={}", record.uid, record.name)
+            } else {
+                format!("uid={} name={} type={}", record.uid, record.name, diff_type)
+            };
         }
-        return format!("name={}", record.name);
+        return if diff_type.is_empty() {
+            format!("name={}", record.name)
+        } else {
+            format!("name={} type={}", record.name, diff_type)
+        };
     }
     if let Some(record) = &entry.live_record {
         if !record.uid.is_empty() {
-            return format!("uid={} name={}", record.uid, record.name);
+            return if diff_type.is_empty() {
+                format!("uid={} name={}", record.uid, record.name)
+            } else {
+                format!("uid={} name={} type={}", record.uid, record.name, diff_type)
+            };
         }
-        return format!("name={}", record.name);
+        return if diff_type.is_empty() {
+            format!("name={}", record.name)
+        } else {
+            format!("name={} type={}", record.name, diff_type)
+        };
     }
     entry.key.clone()
 }
@@ -278,10 +305,22 @@ fn datasource_diff_summary(report: &DatasourceDiffReport) -> SharedDiffSummary {
 
 fn datasource_diff_row(entry: &DatasourceDiffEntry) -> Value {
     let identity = render_diff_identity(entry);
+    let datasource_type = entry
+        .export_record
+        .as_ref()
+        .map(|record| record.datasource_type.clone())
+        .or_else(|| {
+            entry
+                .live_record
+                .as_ref()
+                .map(|record| record.datasource_type.clone())
+        })
+        .unwrap_or_default();
     serde_json::json!({
         "domain": "datasource",
         "resourceKind": "datasource",
         "identity": identity,
+        "type": datasource_type,
         "status": entry.status.as_str(),
         "path": Value::Null,
         "changedFields": entry
@@ -1035,6 +1074,60 @@ fn materialize_datasource_command_auth(
         DatasourceGroupCommand::Types(_) => {}
     }
     Ok(command)
+}
+
+#[cfg(test)]
+mod datasource_operator_text_tests {
+    use super::*;
+
+    #[test]
+    fn diff_identity_and_row_include_datasource_type() {
+        let export_record = DatasourceImportRecord::from_generic_map(
+            &serde_json::json!({
+                "uid": "prom-main",
+                "name": "Prometheus Main",
+                "type": "prometheus",
+                "access": "proxy",
+                "url": "http://prometheus:9090",
+                "isDefault": "true",
+                "orgId": "1"
+            })
+            .as_object()
+            .unwrap()
+            .clone(),
+        );
+        let live_record = DatasourceImportRecord::from_generic_map(
+            &serde_json::json!({
+                "id": 7,
+                "uid": "prom-main",
+                "name": "Prometheus Main",
+                "type": "loki",
+                "access": "direct",
+                "url": "http://loki:3100",
+                "isDefault": false,
+                "orgId": 1
+            })
+            .as_object()
+            .unwrap()
+            .clone(),
+        );
+        let entry = DatasourceDiffEntry {
+            key: "uid:prom-main".to_string(),
+            status: DatasourceDiffStatus::Different,
+            export_record: Some(export_record),
+            live_record: Some(live_record),
+            differences: vec![],
+        };
+
+        let identity = render_diff_identity(&entry);
+        let row = datasource_diff_row(&entry);
+
+        assert!(identity.contains("uid=prom-main"));
+        assert!(identity.contains("name=Prometheus Main"));
+        assert!(identity.contains("type=prometheus"));
+        assert_eq!(row["type"], serde_json::json!("prometheus"));
+        assert_eq!(row["identity"], serde_json::json!(identity));
+    }
 }
 
 #[cfg(test)]
