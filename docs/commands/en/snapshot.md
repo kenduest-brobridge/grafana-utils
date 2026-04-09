@@ -58,7 +58,7 @@ What gets written:
 - `snapshot/access/service-accounts/`
 - `snapshot/snapshot-metadata.json`
 
-Key flags: `--output-dir`, `--overwrite`, `--prompt`, plus the shared Grafana connection and auth flags. `--prompt` opens a terminal multi-select prompt so you can choose which lanes to export before the snapshot starts.
+Key flags: `--output-dir`, `--overwrite`, `--prompt`, plus the shared Grafana connection and auth flags. `--prompt` opens a terminal multi-select prompt so you can choose which lanes to export before the snapshot starts. The datasource lane exports config and any `secureJsonDataPlaceholders`, but it does not export datasource plaintext secrets because Grafana live APIs do not return them.
 
 Examples:
 

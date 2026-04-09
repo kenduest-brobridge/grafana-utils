@@ -41,6 +41,7 @@ grafana-util datasource export --url http://localhost:3000 --basic-user admin --
 - if the export tree is missing org data, confirm the org scope and whether the credentials can see it
 - if `--all-orgs` fails, use Basic auth and verify that the account can see each target org
 - if the bundle looks stale, verify the export directory and whether `--overwrite` was used intentionally
+- if you expected secret plaintext in the export, remember that Grafana live datasource APIs do not return it; export only captures config and `secureJsonDataPlaceholders`
 
 ## Related commands
 - [datasource list](./datasource-list.md)

@@ -41,6 +41,7 @@ grafana-util datasource export --url http://localhost:3000 --basic-user admin --
 - 如果匯出樹少了 org 資料，先確認 org 範圍與驗證資訊是否真的看得到它
 - 如果 `--all-orgs` 失敗，先改用 Basic auth，並確認帳號是否能看見每個目標 org
 - 如果 bundle 看起來像舊資料，先確認匯出目錄與 `--overwrite` 是否有刻意使用
+- 如果你原本期待匯出裡直接有 secret 明文，先記得 Grafana live datasource API 不會回這些值；export 只會保留 config 與 `secureJsonDataPlaceholders`
 
 ## 相關指令
 - [datasource list](./datasource-list.md)

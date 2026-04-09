@@ -43,8 +43,7 @@ pub(crate) use self::snapshot_support::{
 pub(crate) use self::snapshot_support::{
     build_snapshot_overview_args, build_snapshot_paths, build_snapshot_root_metadata,
     materialize_snapshot_common_auth_with_prompt, run_snapshot_export_selected_with_handlers,
-    run_snapshot_export_with_handlers,
-    run_snapshot_review_document_with_handler,
+    run_snapshot_export_with_handlers, run_snapshot_review_document_with_handler,
 };
 
 pub const SNAPSHOT_DASHBOARD_DIR: &str = "dashboards";
@@ -160,9 +159,9 @@ pub(crate) fn prompt_snapshot_export_selection() -> Result<Option<SnapshotExport
         .items(&labels)
         .defaults(&[true, true, true, true, true, true])
         .interact_opt()
-        .map_err(|error| crate::common::message(format!(
-            "Snapshot export prompt failed: {error}"
-        )))?;
+        .map_err(|error| {
+            crate::common::message(format!("Snapshot export prompt failed: {error}"))
+        })?;
     let Some(indexes) = selections else {
         return Ok(None);
     };

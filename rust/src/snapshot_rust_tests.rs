@@ -16,12 +16,11 @@ use crate::snapshot::{
     build_snapshot_overview_args, build_snapshot_paths, build_snapshot_review_browser_items,
     build_snapshot_review_document, build_snapshot_review_summary_lines,
     build_snapshot_root_metadata, render_snapshot_review_text,
-    run_snapshot_export_selected_with_handlers,
-    run_snapshot_export_with_handlers, run_snapshot_review_document_with_handler, SnapshotCliArgs,
-    SnapshotExportArgs, SnapshotExportLane, SnapshotExportSelection, SnapshotReviewArgs,
-    SNAPSHOT_DATASOURCE_EXPORT_FILENAME,
-    SNAPSHOT_DATASOURCE_EXPORT_METADATA_FILENAME, SNAPSHOT_DATASOURCE_ROOT_INDEX_KIND,
-    SNAPSHOT_DATASOURCE_TOOL_SCHEMA_VERSION,
+    run_snapshot_export_selected_with_handlers, run_snapshot_export_with_handlers,
+    run_snapshot_review_document_with_handler, SnapshotCliArgs, SnapshotExportArgs,
+    SnapshotExportLane, SnapshotExportSelection, SnapshotReviewArgs,
+    SNAPSHOT_DATASOURCE_EXPORT_FILENAME, SNAPSHOT_DATASOURCE_EXPORT_METADATA_FILENAME,
+    SNAPSHOT_DATASOURCE_ROOT_INDEX_KIND, SNAPSHOT_DATASOURCE_TOOL_SCHEMA_VERSION,
 };
 use crate::staged_export_scopes::{
     resolve_dashboard_export_scope_dirs, resolve_datasource_export_scope_dirs,
@@ -575,14 +574,12 @@ fn snapshot_export_selected_with_handlers_runs_only_selected_lanes() {
             dashboard_calls.borrow_mut().push("dashboard".to_string());
             Ok(())
         },
-        move |command| {
-            match command {
-                DatasourceGroupCommand::Export(_) => {
-                    datasource_calls.borrow_mut().push("datasource".to_string());
-                    Ok(())
-                }
-                other => panic!("unexpected datasource command: {:?}", other),
+        move |command| match command {
+            DatasourceGroupCommand::Export(_) => {
+                datasource_calls.borrow_mut().push("datasource".to_string());
+                Ok(())
             }
+            other => panic!("unexpected datasource command: {:?}", other),
         },
         move |cli| {
             match cli.command {

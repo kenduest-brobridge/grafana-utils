@@ -12,6 +12,7 @@
 - `--org-id`、`--use-export-org`、`--only-org-id`、`--create-missing-orgs`：控制跨 org 路由。
 - `--replace-existing`、`--update-existing-only`、`--require-matching-export-org`：匯入安全與重整控制。
 - `--secret-values`：在匯入時解析佔位秘密值。
+- `--secret-values-file`：從 JSON 檔提供佔位秘密值，供匯入時解析。
 - `--dry-run`、`--table`、`--json`、`--output-format`、`--no-header`、`--output-columns`、`--list-columns`、`--progress`、`--verbose`：預覽與回報控制。若想看完整 dry-run 表格欄位，可用 `--output-columns all`。
 
 ## 範例
@@ -45,7 +46,7 @@ grafana-util datasource import --url http://localhost:3000 --token "$GRAFANA_API
 
 - 如果匯入碰到錯的 org，先確認路由旗標再重跑
 - 如果計畫看起來不完整，先確認 `--input-format` 與 bundle 是 inventory 還是 provisioning
-- 如果 secrets 還沒解開，先檢查 placeholder 對照與提供的 secret 值
+- 如果 secrets 還沒解開，先檢查 `secureJsonDataPlaceholders` 裡的 placeholder 名稱，以及 `--secret-values` 或 `--secret-values-file` 提供的 key 是否對得上
 
 ## 相關指令
 - [datasource list](./datasource-list.md)

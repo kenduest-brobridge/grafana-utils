@@ -1157,9 +1157,15 @@ fn parse_cli_supports_dashboard_group_impact_command() {
         UnifiedCommand::Dashboard { command } => match command {
             super::DashboardGroupCommand::Impact(inner) => {
                 assert_eq!(inner.input_dir, Some(PathBuf::from("./grafana-oac-repo")));
-                assert_eq!(inner.input_format, crate::dashboard::DashboardImportInputFormat::Raw);
+                assert_eq!(
+                    inner.input_format,
+                    crate::dashboard::DashboardImportInputFormat::Raw
+                );
                 assert_eq!(inner.datasource_uid, "smoke-prom");
-                assert_eq!(inner.output_format, crate::dashboard::ImpactOutputFormat::Json);
+                assert_eq!(
+                    inner.output_format,
+                    crate::dashboard::ImpactOutputFormat::Json
+                );
             }
             _ => panic!("expected dashboard impact"),
         },
@@ -1184,7 +1190,10 @@ fn parse_cli_supports_dashboard_group_validate_export_command() {
         UnifiedCommand::Dashboard { command } => match command {
             super::DashboardGroupCommand::ValidateExport(inner) => {
                 assert_eq!(inner.input_dir, PathBuf::from("./grafana-oac-repo"));
-                assert_eq!(inner.input_format, crate::dashboard::DashboardImportInputFormat::Raw);
+                assert_eq!(
+                    inner.input_format,
+                    crate::dashboard::DashboardImportInputFormat::Raw
+                );
                 assert!(inner.reject_custom_plugins);
             }
             _ => panic!("expected dashboard validate-export"),

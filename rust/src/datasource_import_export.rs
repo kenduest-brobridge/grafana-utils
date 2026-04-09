@@ -9,6 +9,7 @@
 
 use reqwest::Method;
 use serde_json::{Map, Value};
+use std::fs;
 use std::path::Path;
 
 use crate::common::{message, render_json_value, Result};
@@ -35,7 +36,7 @@ pub(crate) use datasource_export_support::{
     build_all_orgs_export_index, build_all_orgs_export_metadata, build_all_orgs_output_dir,
     build_datasource_export_metadata, build_datasource_provisioning_document, build_export_index,
     build_export_records, build_list_records, datasource_list_column_ids,
-    describe_datasource_import_mode, export_datasource_scope, render_data_source_csv,
+    describe_datasource_import_mode, render_data_source_csv,
     render_data_source_json, render_data_source_summary_line, render_data_source_table,
     resolve_target_client, validate_import_org_auth, write_yaml_file,
     DATASOURCE_PROVISIONING_FILENAME, DATASOURCE_PROVISIONING_SUBDIR,
@@ -114,6 +115,40 @@ fn build_import_secret_visibility_entries(
         }
     }
     entries
+}
+
+fn parse_secret_values_json(raw: &str, label: &str) -> Result<Map<String, Value>> {
+    let value: Value = serde_json::from_str(raw)
+        .map_err(|error| message(format!("Invalid JSON for {label}: {error}")))?;
+    let object = value
+        .as_object()
+        .cloned()
+        .ok_or_else(|| message(format!("{label} must decode to a JSON object.")))?;
+    Ok(object)
+}
+
+fn parse_secret_values_inputs(
+    value: Option<&str>,
+    file_path: Option<&Path>,
+) -> Result<Option<Map<String, Value>>> {
+    if value.is_some() && file_path.is_some() {
+        return Err(message(
+            "Choose either --secret-values or --secret-values-file, not both.",
+        ));
+    }
+    if let Some(raw) = value {
+        return Ok(Some(parse_secret_values_json(raw, "--secret-values")?));
+    }
+    let Some(path) = file_path else {
+        return Ok(None);
+    };
+    let raw = fs::read_to_string(path).map_err(|error| {
+        message(format!(
+            "Failed to read datasource secret values file {}: {error}",
+            path.display()
+        ))
+    })?;
+    Ok(Some(parse_secret_values_json(&raw, "--secret-values-file")?))
 }
 
 // This preflight plan is intentionally side-effect free so import validation,
@@ -390,19 +425,6 @@ pub(crate) fn build_import_payload(record: &DatasourceImportRecord) -> Value {
         .expect("import payload without secret values should remain valid")
 }
 
-fn parse_secret_values_argument(value: Option<&str>) -> Result<Option<Map<String, Value>>> {
-    let Some(raw) = value else {
-        return Ok(None);
-    };
-    let value: Value = serde_json::from_str(raw)
-        .map_err(|error| message(format!("Invalid JSON for --secret-values: {error}")))?;
-    let object = value
-        .as_object()
-        .cloned()
-        .ok_or_else(|| message("--secret-values must decode to a JSON object."))?;
-    Ok(Some(object))
-}
-
 #[cfg(test)]
 pub(crate) fn build_import_payload_with_secret_values(
     record: &DatasourceImportRecord,
@@ -493,7 +515,10 @@ pub(crate) fn import_datasources_with_client(
     }
     let replace_existing = args.replace_existing || args.update_existing_only;
     let (_metadata, records) = load_import_records(&args.input_dir, args.input_format)?;
-    let secret_values = parse_secret_values_argument(args.secret_values.as_deref())?;
+    let secret_values = parse_secret_values_inputs(
+        args.secret_values.as_deref(),
+        args.secret_values_file.as_deref(),
+    )?;
     validate_matching_export_org(client, args, &records)?;
     let live = DatasourceResourceClient::new(client).list_datasources()?;
     // Build the full request set first so match errors or missing secrets do not
@@ -784,6 +809,7 @@ mod tests {
             replace_existing: false,
             update_existing_only: false,
             secret_values: Some(r#"{"loki-basic-auth":"secret-value"}"#.to_string()),
+            secret_values_file: None,
             dry_run: false,
             table: false,
             json: false,
@@ -932,6 +958,7 @@ mod tests {
                 r#"{"loki-basic-auth":"secret-value","loki-tenant-token":"tenant-token"}"#
                     .to_string(),
             ),
+            secret_values_file: None,
             dry_run: false,
             table: false,
             json: false,
@@ -949,5 +976,18 @@ mod tests {
 
         assert_eq!(imported, 2);
         assert!(saw_write.load(Ordering::SeqCst));
+    }
+
+    #[test]
+    fn parse_secret_values_inputs_reads_json_file() {
+        let temp = tempdir().unwrap();
+        let path = temp.path().join("secret-values.json");
+        fs::write(&path, "{\n  \"loki-basic-auth\": \"secret-value\"\n}\n").unwrap();
+
+        let values = parse_secret_values_inputs(None, Some(&path))
+            .unwrap()
+            .expect("values");
+
+        assert_eq!(values["loki-basic-auth"], json!("secret-value"));
     }
 }

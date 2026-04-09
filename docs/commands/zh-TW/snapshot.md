@@ -63,7 +63,7 @@ grafana-util snapshot export --url http://localhost:3000 --token "$GRAFANA_API_T
 - `snapshot/access/service-accounts/`
 - `snapshot/snapshot-metadata.json`
 
-主要旗標：`--output-dir`、`--overwrite`、`--prompt`，以及共用的 Grafana 連線與驗證旗標。`--prompt` 會先開一個 terminal multi-select prompt，讓你在匯出前勾選要包含哪些 lane。
+主要旗標：`--output-dir`、`--overwrite`、`--prompt`，以及共用的 Grafana 連線與驗證旗標。`--prompt` 會先開一個 terminal multi-select prompt，讓你在匯出前勾選要包含哪些 lane。datasource lane 會匯出 config 與 `secureJsonDataPlaceholders`，但不會匯出 datasource secret 明文，因為 Grafana live API 本身不會回這些值。
 
 範例：
 

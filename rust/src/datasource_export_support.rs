@@ -7,16 +7,19 @@
 
 use serde::Serialize;
 use serde_json::{Map, Value};
+use std::collections::BTreeSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::common::{
-    message, sanitize_path_component, string_field, tool_version, write_json_file, Result,
+    message, requested_columns_include_all, sanitize_path_component, string_field, tool_version,
+    write_json_file, Result,
 };
 use crate::dashboard::{
     build_auth_context, build_http_client, build_http_client_for_org, list_datasources,
     CommonCliArgs, DEFAULT_ORG_ID,
 };
+use crate::datasource::fetch_datasource_by_uid_if_exists;
 use crate::datasource_secret::{
     build_inline_secret_placeholder_token, inline_secret_provider_contract,
     summarize_secret_provider_contract,
@@ -236,19 +239,222 @@ fn data_source_rows_include_org_scope(datasources: &[Map<String, Value>]) -> boo
         .any(|record| !record.org_name.is_empty() || !record.org_id.is_empty())
 }
 
-fn build_data_source_row(record: &DatasourceImportRecord, include_org_scope: bool) -> Vec<String> {
-    let mut row = vec![
-        record.uid.clone(),
-        record.name.clone(),
-        record.datasource_type.clone(),
-        record.url.clone(),
-        record.is_default.to_string(),
-    ];
-    if include_org_scope {
-        row.push(record.org_name.clone());
-        row.push(record.org_id.clone());
+const DATASOURCE_LIST_DEFAULT_COLUMNS: [&str; 5] = ["uid", "name", "type", "url", "is_default"];
+const DATASOURCE_LIST_ORG_COLUMNS: [&str; 2] = ["org", "org_id"];
+const DATASOURCE_LIST_DISCOVERABLE_COLUMNS: [&str; 14] = [
+    "uid",
+    "name",
+    "type",
+    "access",
+    "url",
+    "is_default",
+    "basicAuth",
+    "basicAuthUser",
+    "database",
+    "user",
+    "withCredentials",
+    "org",
+    "org_id",
+    "jsonData.<key>",
+];
+
+pub(crate) fn datasource_list_column_ids() -> &'static [&'static str] {
+    &DATASOURCE_LIST_DISCOVERABLE_COLUMNS
+}
+
+fn normalize_datasource_column_id(id: &str) -> String {
+    match id {
+        "isDefault" => "is_default".to_string(),
+        "orgId" => "org_id".to_string(),
+        other => other.to_string(),
     }
-    row
+}
+
+fn datasource_record_path_segments(column: &str) -> Vec<String> {
+    column
+        .split('.')
+        .map(|segment| match segment {
+            "is_default" => "isDefault".to_string(),
+            "org_id" => "orgId".to_string(),
+            other => other.to_string(),
+        })
+        .collect()
+}
+
+fn datasource_column_header(column: &str) -> String {
+    column.to_ascii_uppercase()
+}
+
+fn datasource_json_scalar_text(value: &Value) -> String {
+    match value {
+        Value::Null => String::new(),
+        Value::Bool(boolean) => boolean.to_string(),
+        Value::Number(number) => number.to_string(),
+        Value::String(text) => text.clone(),
+        Value::Array(_) | Value::Object(_) => serde_json::to_string(value).unwrap_or_default(),
+    }
+}
+
+fn lookup_datasource_column_value<'a>(
+    datasource: &'a Map<String, Value>,
+    column: &str,
+) -> Option<&'a Value> {
+    let path = datasource_record_path_segments(column);
+    let mut current = datasource.get(path.first()?)?;
+    for segment in path.iter().skip(1) {
+        current = current.as_object()?.get(segment)?;
+    }
+    Some(current)
+}
+
+fn lookup_datasource_column_text(datasource: &Map<String, Value>, column: &str) -> String {
+    lookup_datasource_column_value(datasource, column)
+        .map(datasource_json_scalar_text)
+        .unwrap_or_default()
+}
+
+fn insert_projected_datasource_value(
+    target: &mut Map<String, Value>,
+    path: &[String],
+    value: Value,
+) {
+    if path.is_empty() {
+        return;
+    }
+    if path.len() == 1 {
+        target.insert(path[0].clone(), value);
+        return;
+    }
+    let entry = target
+        .entry(path[0].clone())
+        .or_insert_with(|| Value::Object(Map::new()));
+    if !entry.is_object() {
+        *entry = Value::Object(Map::new());
+    }
+    if let Some(object) = entry.as_object_mut() {
+        insert_projected_datasource_value(object, &path[1..], value);
+    }
+}
+
+fn project_datasource_record(
+    datasource: &Map<String, Value>,
+    selected_columns: &[String],
+) -> Map<String, Value> {
+    let mut projected = Map::new();
+    for column in selected_columns {
+        let path = datasource_record_path_segments(column);
+        if let Some(value) = lookup_datasource_column_value(datasource, column).cloned() {
+            insert_projected_datasource_value(&mut projected, &path, value);
+        }
+    }
+    projected
+}
+
+fn collect_datasource_leaf_columns_from_value(
+    prefix: &str,
+    value: &Value,
+    columns: &mut BTreeSet<String>,
+) {
+    match value {
+        Value::Object(object) => {
+            for (key, child) in object {
+                let normalized_key = normalize_datasource_column_id(key);
+                let child_prefix = if prefix.is_empty() {
+                    normalized_key
+                } else {
+                    format!("{prefix}.{normalized_key}")
+                };
+                collect_datasource_leaf_columns_from_value(&child_prefix, child, columns);
+            }
+        }
+        _ => {
+            if !prefix.is_empty() {
+                columns.insert(prefix.to_string());
+            }
+        }
+    }
+}
+
+fn discover_all_datasource_columns(
+    datasources: &[Map<String, Value>],
+    include_org_scope: bool,
+) -> Vec<String> {
+    let mut discovered = BTreeSet::new();
+    for datasource in datasources {
+        for (key, value) in datasource {
+            let normalized_key = normalize_datasource_column_id(key);
+            collect_datasource_leaf_columns_from_value(&normalized_key, value, &mut discovered);
+        }
+    }
+    let mut columns = DATASOURCE_LIST_DEFAULT_COLUMNS
+        .iter()
+        .map(|value| value.to_string())
+        .collect::<Vec<String>>();
+    if include_org_scope {
+        columns.extend(
+            DATASOURCE_LIST_ORG_COLUMNS
+                .iter()
+                .map(|value| value.to_string()),
+        );
+    }
+    for column in discovered {
+        if !columns.iter().any(|item| item == &column) {
+            columns.push(column);
+        }
+    }
+    columns
+}
+
+fn resolve_datasource_list_columns(
+    datasources: &[Map<String, Value>],
+    include_org_scope: bool,
+    selected_columns: Option<&[String]>,
+) -> Vec<String> {
+    match selected_columns {
+        None => {
+            let mut columns = DATASOURCE_LIST_DEFAULT_COLUMNS
+                .iter()
+                .map(|value| value.to_string())
+                .collect::<Vec<String>>();
+            if include_org_scope {
+                columns.extend(
+                    DATASOURCE_LIST_ORG_COLUMNS
+                        .iter()
+                        .map(|value| value.to_string()),
+                );
+            }
+            columns
+        }
+        Some(selected) if requested_columns_include_all(selected) => {
+            discover_all_datasource_columns(datasources, include_org_scope)
+        }
+        Some(selected) => selected.to_vec(),
+    }
+}
+
+pub(crate) fn render_data_source_summary_line(
+    datasource: &Map<String, Value>,
+    selected_columns: Option<&[String]>,
+) -> String {
+    let include_org_scope = !string_field(datasource, "org", "").is_empty()
+        || !string_field(datasource, "orgId", "").is_empty();
+    let columns = resolve_datasource_list_columns(
+        std::slice::from_ref(datasource),
+        include_org_scope,
+        selected_columns,
+    );
+    let values = columns
+        .iter()
+        .filter_map(|column| {
+            let value = lookup_datasource_column_text(datasource, column);
+            if value.is_empty() {
+                None
+            } else {
+                Some(format!("{column}={value}"))
+            }
+        })
+        .collect::<Vec<String>>();
+    format!("- {}", values.join(" "))
 }
 
 fn placeholder_identity(datasource: &Map<String, Value>) -> String {
@@ -315,26 +521,21 @@ fn build_export_record_from_datasource(
 pub(crate) fn render_data_source_table(
     datasources: &[Map<String, Value>],
     include_header: bool,
+    selected_columns: Option<&[String]>,
 ) -> Vec<String> {
     let include_org_scope = data_source_rows_include_org_scope(datasources);
-    let mut headers = vec![
-        "UID".to_string(),
-        "NAME".to_string(),
-        "TYPE".to_string(),
-        "URL".to_string(),
-        "IS_DEFAULT".to_string(),
-    ];
-    if include_org_scope {
-        headers.push("ORG".to_string());
-        headers.push("ORG_ID".to_string());
-    }
+    let columns = resolve_datasource_list_columns(datasources, include_org_scope, selected_columns);
+    let headers = columns
+        .iter()
+        .map(|column| datasource_column_header(column))
+        .collect::<Vec<String>>();
     let rows: Vec<Vec<String>> = datasources
         .iter()
         .map(|datasource| {
-            build_data_source_row(
-                &DatasourceImportRecord::from_generic_map(datasource),
-                include_org_scope,
-            )
+            columns
+                .iter()
+                .map(|column| lookup_datasource_column_text(datasource, column))
+                .collect::<Vec<String>>()
         })
         .collect();
     let mut widths: Vec<usize> = headers.iter().map(|header| header.len()).collect();
@@ -360,19 +561,25 @@ pub(crate) fn render_data_source_table(
     lines
 }
 
-pub(crate) fn render_data_source_csv(datasources: &[Map<String, Value>]) -> Vec<String> {
+pub(crate) fn render_data_source_csv(
+    datasources: &[Map<String, Value>],
+    selected_columns: Option<&[String]>,
+) -> Vec<String> {
     let include_org_scope = data_source_rows_include_org_scope(datasources);
-    let mut lines = vec![if include_org_scope {
-        "uid,name,type,url,isDefault,org,orgId".to_string()
-    } else {
-        "uid,name,type,url,isDefault".to_string()
-    }];
+    let columns = resolve_datasource_list_columns(datasources, include_org_scope, selected_columns);
+    let mut lines = vec![columns
+        .iter()
+        .map(|column| match column.as_str() {
+            "is_default" => "isDefault".to_string(),
+            "org_id" => "orgId".to_string(),
+            other => other.to_string(),
+        })
+        .collect::<Vec<String>>()
+        .join(",")];
     lines.extend(datasources.iter().map(|datasource| {
-        build_data_source_row(
-            &DatasourceImportRecord::from_generic_map(datasource),
-            include_org_scope,
-        )
-        .into_iter()
+        columns
+        .iter()
+        .map(|column| lookup_datasource_column_text(datasource, column))
         .map(|value| {
             if value.contains(',') || value.contains('"') || value.contains('\n') {
                 format!("\"{}\"", value.replace('"', "\"\""))
@@ -386,28 +593,25 @@ pub(crate) fn render_data_source_csv(datasources: &[Map<String, Value>]) -> Vec<
     lines
 }
 
-pub(crate) fn render_data_source_json(datasources: &[Map<String, Value>]) -> Value {
-    let include_org_scope = data_source_rows_include_org_scope(datasources);
+pub(crate) fn render_data_source_json(
+    datasources: &[Map<String, Value>],
+    selected_columns: Option<&[String]>,
+) -> Value {
+    if selected_columns.is_none() || requested_columns_include_all(selected_columns.unwrap_or(&[])) {
+        return Value::Array(
+            datasources
+                .iter()
+                .cloned()
+                .map(Value::Object)
+                .collect::<Vec<Value>>(),
+        );
+    }
+    let selected_columns = selected_columns.unwrap_or(&[]);
     Value::Array(
         datasources
             .iter()
             .map(|datasource| {
-                let record = DatasourceImportRecord::from_generic_map(datasource);
-                let mut object = Map::from_iter(vec![
-                    ("uid".to_string(), Value::String(record.uid)),
-                    ("name".to_string(), Value::String(record.name)),
-                    ("type".to_string(), Value::String(record.datasource_type)),
-                    ("url".to_string(), Value::String(record.url)),
-                    (
-                        "isDefault".to_string(),
-                        Value::String(record.is_default.to_string()),
-                    ),
-                ]);
-                if include_org_scope {
-                    object.insert("org".to_string(), Value::String(record.org_name));
-                    object.insert("orgId".to_string(), Value::String(record.org_id));
-                }
-                Value::Object(object)
+                Value::Object(project_datasource_record(datasource, selected_columns))
             })
             .collect(),
     )
@@ -685,13 +889,22 @@ pub(crate) fn build_export_records(client: &JsonHttpClient) -> Result<Vec<Map<St
         .map(|value| value.to_string())
         .unwrap_or_else(|| DEFAULT_ORG_ID.to_string());
     let datasources = list_datasources(client)?;
-    Ok(datasources
-        .into_iter()
-        .map(|datasource| {
-            build_export_record_from_datasource(&datasource, &org_name, &org_id)
-                .to_inventory_record()
-        })
-        .collect())
+    let mut records = Vec::with_capacity(datasources.len());
+    for datasource in datasources {
+        let resolved = datasource
+            .get("uid")
+            .and_then(Value::as_str)
+            .filter(|uid| !uid.trim().is_empty())
+            .map(|uid| fetch_datasource_by_uid_if_exists(client, uid))
+            .transpose()?
+            .flatten()
+            .unwrap_or(datasource);
+        records.push(
+            build_export_record_from_datasource(&resolved, &org_name, &org_id).to_inventory_record(),
+        );
+    }
+    records.sort_by_key(|record| string_field(record, "uid", ""));
+    Ok(records)
 }
 
 pub(crate) fn build_datasource_provisioning_document(
@@ -756,6 +969,7 @@ pub(crate) fn write_yaml_file<T: Serialize>(
     Ok(())
 }
 
+#[allow(dead_code)]
 pub(crate) fn export_datasource_scope(
     client: &JsonHttpClient,
     output_dir: &Path,

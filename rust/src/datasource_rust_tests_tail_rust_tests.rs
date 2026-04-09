@@ -555,16 +555,17 @@ fn datasource_inspect_export_renders_inventory_root_in_multiple_output_modes() {
     let table = render_datasource_inspect_export_output(
         &source,
         DatasourceInspectExportRenderFormat::Table,
+        None,
     )
     .unwrap();
     let text =
-        render_datasource_inspect_export_output(&source, DatasourceInspectExportRenderFormat::Text)
+        render_datasource_inspect_export_output(&source, DatasourceInspectExportRenderFormat::Text, None)
             .unwrap();
     let json_output =
-        render_datasource_inspect_export_output(&source, DatasourceInspectExportRenderFormat::Json)
+        render_datasource_inspect_export_output(&source, DatasourceInspectExportRenderFormat::Json, None)
             .unwrap();
     let yaml_output =
-        render_datasource_inspect_export_output(&source, DatasourceInspectExportRenderFormat::Yaml)
+        render_datasource_inspect_export_output(&source, DatasourceInspectExportRenderFormat::Yaml, None)
             .unwrap();
 
     assert!(table.contains("UID"));
@@ -601,10 +602,10 @@ fn datasource_inspect_export_renders_provisioning_yaml_file_as_csv_and_yaml() {
     )
     .unwrap();
     let csv_output =
-        render_datasource_inspect_export_output(&source, DatasourceInspectExportRenderFormat::Csv)
+        render_datasource_inspect_export_output(&source, DatasourceInspectExportRenderFormat::Csv, None)
             .unwrap();
     let yaml_output =
-        render_datasource_inspect_export_output(&source, DatasourceInspectExportRenderFormat::Yaml)
+        render_datasource_inspect_export_output(&source, DatasourceInspectExportRenderFormat::Yaml, None)
             .unwrap();
 
     assert!(csv_output.contains("uid,name,type,url,isDefault"));
@@ -834,7 +835,7 @@ fn datasource_inspect_export_accepts_all_orgs_root_inventory() {
         load_datasource_inspect_export_source(&root, DatasourceImportInputFormat::Inventory)
             .unwrap();
     let text =
-        render_datasource_inspect_export_output(&source, DatasourceInspectExportRenderFormat::Text)
+        render_datasource_inspect_export_output(&source, DatasourceInspectExportRenderFormat::Text, None)
             .unwrap();
 
     assert!(text.contains("Datasource count: 2"));
@@ -916,7 +917,7 @@ fn datasource_inspect_export_resolves_workspace_root_inventory() {
     )
     .unwrap();
     let text =
-        render_datasource_inspect_export_output(&source, DatasourceInspectExportRenderFormat::Text)
+        render_datasource_inspect_export_output(&source, DatasourceInspectExportRenderFormat::Text, None)
             .unwrap();
 
     assert!(text.contains("Variant: all-orgs-root"));
@@ -961,7 +962,7 @@ datasources:
 
     let source = load_datasource_inspect_export_source(&root, mode).unwrap();
     let text =
-        render_datasource_inspect_export_output(&source, DatasourceInspectExportRenderFormat::Text)
+        render_datasource_inspect_export_output(&source, DatasourceInspectExportRenderFormat::Text, None)
             .unwrap();
     assert!(text.contains("Prometheus Main"));
     assert!(!text.contains("Provisioned Loki"));
@@ -1030,6 +1031,7 @@ fn discover_export_org_import_scopes_reads_selected_multi_org_root() {
         replace_existing: false,
         update_existing_only: false,
         secret_values: None,
+        secret_values_file: None,
         dry_run: true,
         table: false,
         json: false,
@@ -1107,6 +1109,7 @@ fn discover_export_org_import_scopes_accepts_workspace_root_and_sorts_children()
         replace_existing: false,
         update_existing_only: false,
         secret_values: None,
+        secret_values_file: None,
         dry_run: true,
         table: false,
         json: false,
@@ -1157,6 +1160,7 @@ fn discover_export_org_import_scopes_errors_when_selected_org_missing() {
         replace_existing: false,
         update_existing_only: false,
         secret_values: None,
+        secret_values_file: None,
         dry_run: true,
         table: false,
         json: false,

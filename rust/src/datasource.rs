@@ -17,8 +17,8 @@ use serde_json::{Map, Value};
 use std::path::Path;
 
 use crate::common::{
-    build_shared_diff_document, message, render_json_value, string_field, write_json_file,
-    DiffOutputFormat, Result, SharedDiffSummary,
+    build_shared_diff_document, message, print_supported_columns, render_json_value, string_field,
+    write_json_file, DiffOutputFormat, Result, SharedDiffSummary,
 };
 use crate::dashboard::{
     build_api_client, build_auth_context, build_http_client, build_http_client_for_org,
@@ -82,12 +82,13 @@ pub use datasource_cli_defs::{
 pub(crate) use datasource_import_export::{
     build_all_orgs_export_index, build_all_orgs_export_metadata, build_all_orgs_output_dir,
     build_datasource_export_metadata, build_datasource_provisioning_document, build_export_index,
-    build_export_records, build_list_records, export_datasource_scope, fetch_current_org,
-    import_datasources_by_export_org, import_datasources_with_client, list_orgs,
+    build_export_records, build_list_records, datasource_list_column_ids,
+    fetch_current_org, import_datasources_by_export_org, import_datasources_with_client, list_orgs,
     load_datasource_export_root_manifest, load_datasource_inventory_records_from_export_root,
-    load_diff_record_values, load_import_records, render_data_source_csv, render_data_source_json,
-    render_data_source_table, resolve_datasource_export_root_dir, resolve_target_client,
-    validate_import_org_auth, write_yaml_file, DatasourceExportRootScopeKind,
+    load_diff_record_values, load_import_records, render_data_source_csv,
+    render_data_source_json, render_data_source_summary_line, render_data_source_table,
+    resolve_datasource_export_root_dir, resolve_target_client, validate_import_org_auth,
+    write_yaml_file, DatasourceExportRootScopeKind,
     DatasourceImportRecord, DATASOURCE_EXPORT_FILENAME, DATASOURCE_PROVISIONING_FILENAME,
     DATASOURCE_PROVISIONING_SUBDIR, EXPORT_METADATA_FILENAME,
 };
@@ -118,38 +119,23 @@ pub(crate) use datasource_inspect_export::{
 };
 #[cfg(test)]
 pub(crate) use datasource_mutation_support::parse_json_object_argument;
-pub(crate) use datasource_mutation_support::resolve_match;
+pub(crate) use datasource_mutation_support::{fetch_datasource_by_uid_if_exists, resolve_match};
 use datasource_mutation_support::{
     build_add_payload, build_modify_payload, build_modify_updates,
-    fetch_datasource_by_uid_if_exists, render_import_table, render_live_mutation_json,
-    render_live_mutation_table, resolve_delete_match, resolve_live_mutation_match,
+    render_import_table, render_live_mutation_json, render_live_mutation_table,
+    resolve_delete_match, resolve_live_mutation_match,
     validate_live_mutation_dry_run_args,
 };
-fn render_datasource_text(records: &[Map<String, Value>]) -> Vec<String> {
-    let mut lines = Vec::new();
-    for record in records {
-        let mut line = format!(
-            "- name={} type={} uid={}",
-            string_field(record, "name", ""),
-            string_field(record, "type", ""),
-            string_field(record, "uid", "")
-        );
-        let url = string_field(record, "url", "");
-        if !url.is_empty() {
-            line.push_str(&format!(" url={url}"));
-        }
-        let is_default = string_field(record, "isDefault", "");
-        if !is_default.is_empty() {
-            line.push_str(&format!(" default={is_default}"));
-        }
-        let org = string_field(record, "org", "");
-        let org_id = string_field(record, "orgId", "");
-        if !org.is_empty() || !org_id.is_empty() {
-            line.push_str(&format!(" org={} ({})", org, org_id));
-        }
-        lines.push(line);
-    }
-    lines
+fn render_datasource_text(records: &[Map<String, Value>], selected_columns: &[String]) -> Vec<String> {
+    records
+        .iter()
+        .map(|record| {
+            render_data_source_summary_line(
+                record,
+                (!selected_columns.is_empty()).then_some(selected_columns),
+            )
+        })
+        .collect()
 }
 
 fn resolve_local_datasource_list_format(
@@ -173,6 +159,10 @@ fn run_local_datasource_list(args: &DatasourceListArgs) -> Result<()> {
         return Err(message(
             "Datasource list with --input-dir does not support --org-id or --all-orgs.",
         ));
+    }
+    if args.list_columns {
+        print_supported_columns(datasource_list_column_ids());
+        return Ok(());
     }
     let input_dir = args
         .input_dir
@@ -209,7 +199,11 @@ fn run_local_datasource_list(args: &DatasourceListArgs) -> Result<()> {
     }
     let source = load_datasource_inspect_export_source(input_dir, input_format)?;
     let format = resolve_local_datasource_list_format(args);
-    let rendered = render_datasource_inspect_export_output(&source, format)?;
+    let rendered = render_datasource_inspect_export_output(
+        &source,
+        format,
+        (!args.output_columns.is_empty()).then_some(args.output_columns.as_slice()),
+    )?;
     print!("{rendered}");
     Ok(())
 }
@@ -352,9 +346,15 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
     // Downstream callees: common.rs:message, common.rs:write_json_file, dashboard_cli_defs.rs:build_http_client_for_org, dashboard_live.rs:list_datasources, datasource.rs:build_add_payload, datasource.rs:build_all_orgs_export_index, datasource.rs:build_all_orgs_export_metadata, datasource.rs:build_all_orgs_output_dir, datasource.rs:build_datasource_export_metadata, datasource.rs:build_export_index, datasource.rs:build_export_records, datasource.rs:build_list_records ...
 
     let command = normalize_datasource_group_command(command);
+    if let DatasourceGroupCommand::List(args) = &command {
+        if args.list_columns {
+            print_supported_columns(datasource_list_column_ids());
+            return Ok(());
+        }
+    }
     if let DatasourceGroupCommand::Import(args) = &command {
         if args.list_columns {
-            println!("uid\nname\ntype\ndestination\naction\norg_id\nfile");
+            print_supported_columns(&["uid", "name", "type", "destination", "action", "org_id", "file"]);
             return Ok(());
         }
         if !args.output_columns.is_empty() && !args.table {
@@ -445,22 +445,39 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
             if args.json {
                 print!(
                     "{}",
-                    render_json_value(&render_data_source_json(&datasources))?
+                    render_json_value(&render_data_source_json(
+                        &datasources,
+                        (!args.output_columns.is_empty()).then_some(args.output_columns.as_slice()),
+                    ))?
                 );
             } else if args.yaml {
-                print!("{}", render_yaml(&render_data_source_json(&datasources))?);
+                print!(
+                    "{}",
+                    render_yaml(&render_data_source_json(
+                        &datasources,
+                        (!args.output_columns.is_empty())
+                            .then_some(args.output_columns.as_slice()),
+                    ))?
+                );
             } else if args.csv {
-                for line in render_data_source_csv(&datasources) {
+                for line in render_data_source_csv(
+                    &datasources,
+                    (!args.output_columns.is_empty()).then_some(args.output_columns.as_slice()),
+                ) {
                     println!("{line}");
                 }
             } else if args.text {
-                for line in render_datasource_text(&datasources) {
+                for line in render_datasource_text(&datasources, &args.output_columns) {
                     println!("{line}");
                 }
                 println!();
                 println!("Listed {} data source(s).", datasources.len());
             } else {
-                for line in render_data_source_table(&datasources, !args.no_header) {
+                for line in render_data_source_table(
+                    &datasources,
+                    !args.no_header,
+                    (!args.output_columns.is_empty()).then_some(args.output_columns.as_slice()),
+                ) {
                     println!("{line}");
                 }
                 println!();
@@ -845,15 +862,55 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
                 return Ok(());
             }
             let client = resolve_target_client(&args.common, args.org_id)?;
-            export_datasource_scope(
-                &client,
-                &args.output_dir,
-                args.overwrite,
-                args.dry_run,
-                !args.without_datasource_provisioning,
-                &args.common.url,
-                args.common.profile.as_deref(),
-            )?;
+            let records = build_export_records(&client)?;
+            let datasources_path = args.output_dir.join(DATASOURCE_EXPORT_FILENAME);
+            let index_path = args.output_dir.join("index.json");
+            let metadata_path = args.output_dir.join(EXPORT_METADATA_FILENAME);
+            let provisioning_path = args
+                .output_dir
+                .join(DATASOURCE_PROVISIONING_SUBDIR)
+                .join(DATASOURCE_PROVISIONING_FILENAME);
+            if !args.dry_run {
+                write_json_file(
+                    &datasources_path,
+                    &Value::Array(records.clone().into_iter().map(Value::Object).collect()),
+                    args.overwrite,
+                )?;
+                write_json_file(&index_path, &build_export_index(&records), args.overwrite)?;
+                write_json_file(
+                    &metadata_path,
+                    &build_datasource_export_metadata(
+                        &args.common.url,
+                        args.common.profile.as_deref(),
+                        Some("org"),
+                        None,
+                        None,
+                        &args.output_dir,
+                        records.len(),
+                    ),
+                    args.overwrite,
+                )?;
+                if !args.without_datasource_provisioning {
+                    write_yaml_file(
+                        &provisioning_path,
+                        &build_datasource_provisioning_document(&records),
+                        args.overwrite,
+                    )?;
+                }
+            }
+            let summary_verb = if args.dry_run { "Would export" } else { "Exported" };
+            println!(
+                "{summary_verb} {} datasource(s). Datasources: {} Index: {} Manifest: {}{}",
+                records.len(),
+                datasources_path.display(),
+                index_path.display(),
+                metadata_path.display(),
+                if args.without_datasource_provisioning {
+                    String::new()
+                } else {
+                    format!(" Provisioning: {}", provisioning_path.display())
+                }
+            );
             Ok(())
         }
         DatasourceGroupCommand::Import(args) => {

@@ -9,7 +9,7 @@ contract.
   the masked-recovery datasource contract.
 - `provisioning/datasources.yaml` is a derived provisioning projection only.
 - The contract is recovery-capable but does not export plaintext secret
-  material.
+  material from Grafana live export.
 
 ## Stable Root Contract
 
@@ -28,6 +28,13 @@ contract.
 - Recovery-only enrichment fields such as `basicAuth`, `basicAuthUser`,
   `database`, `jsonData`, `user`, and `withCredentials` are allowed on input.
 - Those fields are compatibility data, not the core replay contract.
+
+## Secret Resolution Rule
+
+- Export writes `secureJsonDataPlaceholders`, not plaintext datasource secrets.
+- Import resolves those placeholders only from external secret input such as
+  `--secret-values` or `--secret-values-file`.
+- Export metadata does not carry datasource secret companion discovery fields.
 
 ## Compatibility Rule
 

@@ -38,6 +38,21 @@ pub enum DryRunOutputFormat {
     Json,
 }
 
+pub(crate) fn parse_datasource_list_output_column(
+    value: &str,
+) -> std::result::Result<String, String> {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return Err("--output-columns values must not be empty.".to_string());
+    }
+    Ok(match trimmed {
+        "all" => "all".to_string(),
+        "isDefault" => "is_default".to_string(),
+        "orgId" => "org_id".to_string(),
+        other => other.to_string(),
+    })
+}
+
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
 pub enum DatasourceImportInputFormat {
     Inventory,
@@ -118,6 +133,21 @@ pub struct DatasourceListArgs {
         help_heading = "Output Options"
     )]
     pub no_header: bool,
+    #[arg(
+        long,
+        value_delimiter = ',',
+        value_parser = parse_datasource_list_output_column,
+        help = "Render only these comma-separated datasource fields. Use all to expand every discovered field in human-readable output. Common ids include uid, name, type, access, url, is_default, database, org, org_id, plus nested paths such as jsonData.organization or secureJsonFields.basicAuthPassword. JSON-style aliases like isDefault and orgId are also accepted.",
+        help_heading = "Output Options"
+    )]
+    pub output_columns: Vec<String>,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Print the supported --output-columns values and exit.",
+        help_heading = "Output Options"
+    )]
+    pub list_columns: bool,
 }
 
 #[derive(Debug, Clone, Args)]
@@ -251,6 +281,12 @@ pub struct DatasourceImportArgs {
         help_heading = "Secrets"
     )]
     pub secret_values: Option<String>,
+    #[arg(
+        long = "secret-values-file",
+        help = "Path to a JSON file containing the datasource secret placeholder map for import.",
+        help_heading = "Secrets"
+    )]
+    pub secret_values_file: Option<PathBuf>,
     #[arg(
         long,
         default_value_t = false,
