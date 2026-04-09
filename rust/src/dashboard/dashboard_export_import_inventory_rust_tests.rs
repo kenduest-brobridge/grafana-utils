@@ -119,7 +119,10 @@ fn resolve_dashboard_import_source_accepts_provisioning_root() {
         resolved.dashboard_dir,
         temp.path().join("provisioning/dashboards")
     );
-    assert_eq!(resolved.source_kind, DashboardSourceKind::ProvisioningExport);
+    assert_eq!(
+        resolved.source_kind,
+        DashboardSourceKind::ProvisioningExport
+    );
 }
 
 #[test]
@@ -135,7 +138,10 @@ fn resolve_dashboard_import_source_accepts_provisioning_dashboards_dir() {
 
     assert_eq!(resolved.metadata_dir, provisioning_root);
     assert_eq!(resolved.dashboard_dir, dashboards_dir);
-    assert_eq!(resolved.source_kind, DashboardSourceKind::ProvisioningExport);
+    assert_eq!(
+        resolved.source_kind,
+        DashboardSourceKind::ProvisioningExport
+    );
 }
 
 #[test]
@@ -187,7 +193,10 @@ fn dashboard_source_kind_helpers_cover_workspace_and_variant_round_trips() {
     );
     assert!(DashboardSourceKind::RawExport.is_file_backed());
     assert!(DashboardSourceKind::ProvisioningExport.is_file_backed());
-    assert_eq!(DashboardSourceKind::RawExport.expected_variant(), Some("raw"));
+    assert_eq!(
+        DashboardSourceKind::RawExport.expected_variant(),
+        Some("raw")
+    );
     assert_eq!(
         DashboardSourceKind::ProvisioningExport.expected_variant(),
         Some("provisioning")

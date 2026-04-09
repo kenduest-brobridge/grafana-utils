@@ -25,11 +25,7 @@ pub(crate) fn prepare_prompt_delete_args(args: &DeleteArgs) -> Result<DeleteArgs
             "path" => {
                 resolved.path = Some(prompt_line("Folder path: ")?.trim().to_string());
             }
-            _ => {
-                return Err(message(
-                    "Dashboard delete --prompt expected uid or path.",
-                ))
-            }
+            _ => return Err(message("Dashboard delete --prompt expected uid or path.")),
         }
     }
     if !resolved.path.as_deref().unwrap_or("").trim().is_empty() && !resolved.delete_folders {

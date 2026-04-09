@@ -322,7 +322,9 @@ fn prompt_dashboard_history_restore_version(
     versions: &[DashboardHistoryVersion],
 ) -> Result<Option<i64>> {
     if !io::stdin().is_terminal() || !io::stdout().is_terminal() {
-        return Err(message("Dashboard history restore --prompt requires a TTY."));
+        return Err(message(
+            "Dashboard history restore --prompt requires a TTY.",
+        ));
     }
     if versions.is_empty() {
         return Err(message(format!(
@@ -332,10 +334,7 @@ fn prompt_dashboard_history_restore_version(
     let labels = versions
         .iter()
         .map(|item| {
-            let mut line = format!(
-                "v{}  {}  {}",
-                item.version, item.created, item.created_by
-            );
+            let mut line = format!("v{}  {}  {}", item.version, item.created, item.created_by);
             if !item.message.is_empty() {
                 line.push_str("  ");
                 line.push_str(&item.message);
@@ -344,7 +343,9 @@ fn prompt_dashboard_history_restore_version(
         })
         .collect::<Vec<_>>();
     let selection = Select::with_theme(&ColorfulTheme::default())
-        .with_prompt(format!("Select a dashboard history version to restore for {uid}"))
+        .with_prompt(format!(
+            "Select a dashboard history version to restore for {uid}"
+        ))
         .items(&labels)
         .default(0)
         .interact_opt()
@@ -360,7 +361,11 @@ fn confirm_dashboard_history_restore(uid: &str, version: i64) -> Result<bool> {
         .default(false)
         .interact_opt()
         .map(|choice| choice.unwrap_or(false))
-        .map_err(|error| message(format!("Dashboard history restore confirmation failed: {error}")))
+        .map_err(|error| {
+            message(format!(
+                "Dashboard history restore confirmation failed: {error}"
+            ))
+        })
 }
 
 fn build_dashboard_history_restore_document(
@@ -643,7 +648,8 @@ where
             &args.dashboard_uid,
             HISTORY_RESTORE_PROMPT_LIMIT,
         )?;
-        let Some(version) = prompt_dashboard_history_restore_version(&args.dashboard_uid, &versions)?
+        let Some(version) =
+            prompt_dashboard_history_restore_version(&args.dashboard_uid, &versions)?
         else {
             println!("Cancelled dashboard history restore.");
             return Ok(());
@@ -659,9 +665,10 @@ where
         &args.dashboard_uid,
         version,
     )?;
-    let message_text = args.message.clone().unwrap_or_else(|| {
-        format!("{DASHBOARD_HISTORY_RESTORE_MESSAGE} to version {version}")
-    });
+    let message_text = args
+        .message
+        .clone()
+        .unwrap_or_else(|| format!("{DASHBOARD_HISTORY_RESTORE_MESSAGE} to version {version}"));
     let document = build_dashboard_history_restore_document(
         &args.dashboard_uid,
         version,

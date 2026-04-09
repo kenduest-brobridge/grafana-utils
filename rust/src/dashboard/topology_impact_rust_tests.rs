@@ -100,7 +100,10 @@ fn parse_cli_supports_dashboard_governance_gate_git_sync_input_dir() {
 
     match args.command {
         DashboardCommand::GovernanceGate(gate_args) => {
-            assert_eq!(gate_args.input_dir, Some(PathBuf::from("./grafana-oac-repo")));
+            assert_eq!(
+                gate_args.input_dir,
+                Some(PathBuf::from("./grafana-oac-repo"))
+            );
             assert_eq!(
                 gate_args.input_format,
                 crate::dashboard::DashboardImportInputFormat::Raw
@@ -280,7 +283,10 @@ fn parse_cli_supports_dashboard_topology_git_sync_input_dir() {
 
     match args.command {
         DashboardCommand::Topology(topology_args) => {
-            assert_eq!(topology_args.input_dir, Some(PathBuf::from("./grafana-oac-repo")));
+            assert_eq!(
+                topology_args.input_dir,
+                Some(PathBuf::from("./grafana-oac-repo"))
+            );
             assert_eq!(
                 topology_args.input_format,
                 crate::dashboard::DashboardImportInputFormat::Raw
@@ -412,7 +418,10 @@ fn parse_cli_supports_dashboard_impact_git_sync_input_dir_source() {
 
     match args.command {
         DashboardCommand::Impact(impact_args) => {
-            assert_eq!(impact_args.input_dir, Some(PathBuf::from("./grafana-oac-repo")));
+            assert_eq!(
+                impact_args.input_dir,
+                Some(PathBuf::from("./grafana-oac-repo"))
+            );
             assert_eq!(
                 impact_args.input_format,
                 crate::dashboard::DashboardImportInputFormat::Raw

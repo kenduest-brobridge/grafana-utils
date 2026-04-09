@@ -58,17 +58,19 @@ fn dashboard_source_kind_for_variant(expected_variant: &str) -> Option<Dashboard
     DashboardSourceKind::from_expected_variant(expected_variant)
 }
 
-fn future_git_sync_variant_root(input_dir: &Path, variant_dir_name: &'static str) -> Option<PathBuf> {
+fn future_git_sync_variant_root(
+    input_dir: &Path,
+    variant_dir_name: &'static str,
+) -> Option<PathBuf> {
     DashboardRepoLayoutKind::from_root_dir(input_dir)
         .and_then(|layout| layout.resolve_dashboard_variant_root(input_dir, variant_dir_name))
         .or_else(|| {
-            let dashboards_dir = if input_dir.file_name().and_then(|name| name.to_str())
-                == Some("dashboards")
-            {
-                input_dir.to_path_buf()
-            } else {
-                input_dir.join("dashboards")
-            };
+            let dashboards_dir =
+                if input_dir.file_name().and_then(|name| name.to_str()) == Some("dashboards") {
+                    input_dir.to_path_buf()
+                } else {
+                    input_dir.join("dashboards")
+                };
             let direct_candidate = dashboards_dir.join(variant_dir_name);
             if direct_candidate.is_dir() {
                 return Some(direct_candidate);
@@ -205,43 +207,49 @@ fn resolve_raw_inspect_input(
             },
             (None, true, true) => RAW_EXPORT_SUBDIR,
         };
-        let (selected_dirs, selected_input_dir) = match DashboardSourceKind::from_expected_variant(selected_variant) {
-            Some(DashboardSourceKind::RawExport) => {
-                if raw_dirs.is_empty() {
-                    if let Some(root) = future_raw_root {
-                        (discover_org_variant_export_dirs(&root, RAW_EXPORT_SUBDIR)?, root)
+        let (selected_dirs, selected_input_dir) =
+            match DashboardSourceKind::from_expected_variant(selected_variant) {
+                Some(DashboardSourceKind::RawExport) => {
+                    if raw_dirs.is_empty() {
+                        if let Some(root) = future_raw_root {
+                            (
+                                discover_org_variant_export_dirs(&root, RAW_EXPORT_SUBDIR)?,
+                                root,
+                            )
+                        } else {
+                            (raw_dirs, input_dir.clone())
+                        }
                     } else {
                         (raw_dirs, input_dir.clone())
                     }
-                } else {
-                    (raw_dirs, input_dir.clone())
                 }
-            }
-            Some(DashboardSourceKind::ProvisioningExport) => {
-                if source_dirs.is_empty() {
-                    if let Some(root) = future_source_root {
-                        (discover_org_variant_export_dirs(&root, PROMPT_EXPORT_SUBDIR)?, root)
+                Some(DashboardSourceKind::ProvisioningExport) => {
+                    if source_dirs.is_empty() {
+                        if let Some(root) = future_source_root {
+                            (
+                                discover_org_variant_export_dirs(&root, PROMPT_EXPORT_SUBDIR)?,
+                                root,
+                            )
+                        } else {
+                            (source_dirs, input_dir.clone())
+                        }
                     } else {
                         (source_dirs, input_dir.clone())
                     }
-                } else {
-                    (source_dirs, input_dir.clone())
                 }
-            }
-            _ => unreachable!("inspect source variant must be raw or provisioning"),
-        };
+                _ => unreachable!("inspect source variant must be raw or provisioning"),
+            };
         if selected_dirs.is_empty() {
             return Err(message(format!(
                 "Import path {} does not contain any org-scoped {selected_variant}/ dashboard exports.",
                 input_dir.display()
             )));
         }
-        let inspect_variant_dir =
-            prepare_inspect_export_import_dir_for_variant(
-                temp_root,
-                &selected_input_dir,
-                selected_variant,
-            )?;
+        let inspect_variant_dir = prepare_inspect_export_import_dir_for_variant(
+            temp_root,
+            &selected_input_dir,
+            selected_variant,
+        )?;
         return Ok(ResolvedInspectExportInput {
             input_dir: inspect_variant_dir,
             expected_variant: selected_variant,
@@ -342,7 +350,7 @@ fn render_interactive_loading_frame(
                         tui_shell::key_chip("RAW", Color::Rgb(78, 161, 255))
                     }
                     _ => tui_shell::key_chip("SOURCE", Color::Rgb(73, 182, 133)),
-                }
+                },
             ]),
             Line::from("Building inspection artifacts before opening the interactive browser."),
         ])
@@ -423,7 +431,13 @@ fn draw_interactive_loading_step(
     active_step: usize,
 ) -> Result<()> {
     session.terminal.draw(|frame| {
-        render_interactive_loading_frame(frame, input_dir, expected_variant, source_kind, active_step)
+        render_interactive_loading_frame(
+            frame,
+            input_dir,
+            expected_variant,
+            source_kind,
+            active_step,
+        )
     })?;
     Ok(())
 }

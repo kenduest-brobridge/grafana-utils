@@ -104,12 +104,12 @@ impl DashboardRepoLayoutKind {
         if !self.is_git_sync_repo() {
             return None;
         }
-        let dashboards_dir = if input_dir.file_name().and_then(|name| name.to_str()) == Some("dashboards")
-        {
-            input_dir.to_path_buf()
-        } else {
-            input_dir.join("dashboards")
-        };
+        let dashboards_dir =
+            if input_dir.file_name().and_then(|name| name.to_str()) == Some("dashboards") {
+                input_dir.to_path_buf()
+            } else {
+                input_dir.join("dashboards")
+            };
         let direct_candidate = dashboards_dir.join(variant_dir_name);
         if direct_candidate.is_dir() {
             return Some(direct_candidate);
