@@ -34,6 +34,7 @@ pub const ALERT_PLAN_KIND: &str = "grafana-util-alert-plan";
 pub const ALERT_PLAN_SCHEMA_VERSION: i64 = 1;
 pub const ALERT_DELETE_PREVIEW_KIND: &str = "grafana-util-alert-delete-preview";
 pub const ALERT_DELETE_PREVIEW_SCHEMA_VERSION: i64 = 1;
+pub const ALERT_MANAGED_POLICY_PREVIEW_SCHEMA_VERSION: i64 = 1;
 type AlertDesiredOperation = (PathBuf, String, Map<String, Value>);
 
 fn row_object<'a>(row: &'a Value, label: &str) -> Result<&'a Map<String, Value>> {
@@ -361,6 +362,8 @@ pub fn build_managed_policy_edit_preview_document(
     };
     Ok(json!({
         "kind": "grafana-util-alert-managed-policy-preview",
+        "schemaVersion": ALERT_MANAGED_POLICY_PREVIEW_SCHEMA_VERSION,
+        "toolVersion": tool_version(),
         "reviewRequired": true,
         "reviewed": false,
         "routeName": route_name,

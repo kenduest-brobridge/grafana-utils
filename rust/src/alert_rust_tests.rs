@@ -1835,6 +1835,8 @@ fn runtime_managed_policy_helpers_produce_idempotent_documents() {
         preview["kind"],
         json!("grafana-util-alert-managed-policy-preview")
     );
+    assert_eq!(preview["schemaVersion"], json!(1));
+    assert_eq!(preview["toolVersion"], json!(TOOL_VERSION));
     assert_eq!(preview["reviewRequired"], json!(true));
     assert_eq!(preview["reviewed"], json!(false));
     assert_eq!(preview["preview"]["action"], json!("created"));
