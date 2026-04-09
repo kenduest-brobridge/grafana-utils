@@ -163,10 +163,30 @@ fn service_account_prompt_label(service_account: &Map<String, Value>) -> String 
     format_prompt_row(&[(&name, 22), (&login, 22)], &format!("id={id}"))
 }
 
-fn service_account_token_prompt_label(token: &Map<String, Value>) -> String {
+fn service_account_context_label(service_account: &Map<String, Value>) -> String {
+    let name = string_field(service_account, "name", "-");
+    let login = string_field(service_account, "login", "-");
+    let id = {
+        let id = scalar_text(service_account.get("id"));
+        if id.is_empty() {
+            scalar_text(service_account.get("serviceAccountId"))
+        } else {
+            id
+        }
+    };
+    format!("service-account={} login={} id={}", name, login, id)
+}
+
+fn service_account_token_prompt_label(
+    service_account: &Map<String, Value>,
+    token: &Map<String, Value>,
+) -> String {
     let name = string_field(token, "name", "-");
     let id = scalar_text(token.get("id"));
-    format_prompt_row(&[(&name, 30)], &format!("id={id}"))
+    format_prompt_row(
+        &[(&name, 30)],
+        &format!("id={id} {}", service_account_context_label(service_account)),
+    )
 }
 
 /// Delete a service account after identity checks and optional JSON output.
@@ -463,7 +483,7 @@ where
         }
         let labels = tokens
             .iter()
-            .map(service_account_token_prompt_label)
+            .map(|token| service_account_token_prompt_label(&service_account, token))
             .collect::<Vec<_>>();
         let Some(indexes) = prompt_select_indexes("Tokens To Delete", &labels)? else {
             println!("Cancelled service-account token delete.");
@@ -488,18 +508,21 @@ where
     if args.prompt {
         let labels = tokens
             .iter()
-            .map(service_account_token_prompt_label)
+            .map(|token| service_account_token_prompt_label(&service_account, token))
             .collect::<Vec<_>>();
         print_delete_confirmation_summary(
-            "The following service-account tokens will be deleted:",
+            &format!(
+                "The following service-account tokens will be deleted from {}:",
+                service_account_context_label(&service_account)
+            ),
             &labels,
         );
     }
     if args.prompt
         && !prompt_confirm_delete(&format!(
-            "Delete {} token(s) from service account {}?",
+            "Delete {} token(s) from {}?",
             tokens.len(),
-            string_field(&service_account, "name", "")
+            service_account_context_label(&service_account)
         ))?
     {
         println!("Cancelled service-account token delete.");
@@ -539,4 +562,42 @@ where
         }
     }
     Ok(results.len())
+}
+
+#[cfg(test)]
+mod pending_delete_service_account_tests {
+    use super::*;
+
+    #[test]
+    fn service_account_token_prompt_label_includes_service_account_context() {
+        let service_account = Map::from_iter(vec![
+            ("id".to_string(), Value::String("4".to_string())),
+            ("name".to_string(), Value::String("svc".to_string())),
+            ("login".to_string(), Value::String("sa-svc".to_string())),
+        ]);
+        let token = Map::from_iter(vec![
+            ("id".to_string(), Value::String("7".to_string())),
+            ("name".to_string(), Value::String("automation".to_string())),
+        ]);
+
+        let label = service_account_token_prompt_label(&service_account, &token);
+
+        assert!(label.contains("automation"));
+        assert!(label.contains("id=7"));
+        assert!(label.contains("service-account=svc"));
+        assert!(label.contains("login=sa-svc"));
+    }
+
+    #[test]
+    fn service_account_context_label_prefers_numeric_id_when_present() {
+        let service_account = Map::from_iter(vec![
+            ("serviceAccountId".to_string(), Value::String("9".to_string())),
+            ("name".to_string(), Value::String("svc".to_string())),
+            ("login".to_string(), Value::String("sa-svc".to_string())),
+        ]);
+
+        let label = service_account_context_label(&service_account);
+
+        assert_eq!(label, "service-account=svc login=sa-svc id=9");
+    }
 }
