@@ -46,7 +46,6 @@ The checked-in `docs/html/commands/en/*.html` files are generated from the same 
 - [dashboard clone-live](./dashboard-clone-live.md)
 - [dashboard list](./dashboard-list.md)
 - [dashboard export](./dashboard-export.md)
-- [dashboard raw-to-prompt](./dashboard-raw-to-prompt.md)
 - [dashboard import](./dashboard-import.md)
 - [dashboard patch-file](./dashboard-patch-file.md)
 - [dashboard serve](./dashboard-serve.md)
@@ -135,6 +134,11 @@ These pages document compatibility aliases for `dashboard analyze`. Prefer the c
 - [snapshot](./snapshot.md)
 - [snapshot export](./snapshot.md#export)
 - [snapshot review](./snapshot.md#review)
+
+## Migration
+
+- [migrate](./migrate.md)
+- [migrate dashboard raw-to-prompt](./migrate-dashboard-raw-to-prompt.md)
 
 ## Generic Resource Query
 

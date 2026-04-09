@@ -7,7 +7,7 @@ grafana\-util\-dashboard\-export \- Export dashboards to raw/, prompt/, and prov
 .SH DESCRIPTION
 Export dashboards to raw/, prompt/, and provisioning/ files, with optional history/ artifacts.
 .PP
-Use this when you need a local export tree for later import, review, diff, or file\-provisioning workflows. Add \-\-include\-history when you also need dashboard revision\-history artifacts under each exported org scope. The prompt/ lane is for Grafana UI import, not dashboard API import; use dashboard raw\-to\-prompt when you need to convert ordinary or raw dashboard JSON into prompt JSON.
+Use this when you need a local export tree for later import, review, diff, or file\-provisioning workflows. Add \-\-include\-history when you also need dashboard revision\-history artifacts under each exported org scope. The prompt/ lane is for Grafana UI import, not dashboard API import; use migrate dashboard raw\-to\-prompt when you need to convert ordinary or raw dashboard JSON into prompt JSON.
 .SH BEFORE / AFTER
 .IP \(bu 2
 Before: export is a one\-off action, and you only discover later whether the tree is reviewable or reusable.

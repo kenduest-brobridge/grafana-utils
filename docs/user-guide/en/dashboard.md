@@ -99,7 +99,7 @@ Need the command-by-command surface instead of the workflow guide?
 - [dashboard list](../../commands/en/dashboard-list.md)
 - [dashboard export](../../commands/en/dashboard-export.md)
 - [dashboard import](../../commands/en/dashboard-import.md)
-- [dashboard raw-to-prompt](../../commands/en/dashboard-raw-to-prompt.md)
+- [migrate dashboard raw-to-prompt](../../commands/en/migrate-dashboard-raw-to-prompt.md)
 - [dashboard patch-file](../../commands/en/dashboard-patch-file.md)
 - [dashboard serve](../../commands/en/dashboard-serve.md)
 - [dashboard edit-live](../../commands/en/dashboard-edit-live.md)
@@ -156,7 +156,7 @@ Dashboard export intentionally produces three different "lanes" because each ser
 | Lane | Purpose | Best Use Case |
 | :--- | :--- | :--- |
 | `raw/` | **Canonical Replay** | The primary source for `grafana-util dashboard import`. Reversible and API-friendly. |
-| `prompt/` | **UI Import** | Compatible with the Grafana UI "Upload JSON" feature. If you only have ordinary or raw dashboard JSON, convert it first with `grafana-util dashboard raw-to-prompt`. |
+| `prompt/` | **UI Import** | Compatible with the Grafana UI "Upload JSON" feature. If you only have ordinary or raw dashboard JSON, convert it first with `grafana-util migrate dashboard raw-to-prompt`. |
 | `provisioning/` | **File Provisioning** | When Grafana should read dashboards from disk via its internal provisioning system. |
 
 If you add `--include-history` to `dashboard export`, the export tree also gains a `history/` subdirectory for each org scope. In `--all-orgs` mode, that becomes one history tree per exported org root.
@@ -219,7 +219,7 @@ spring-jmx-node-unified  Spring JMX + Node Unified Dashboard (VM)  Demo    ffhrm
 | **List** | `grafana-util dashboard list --all-orgs --with-sources --table` |
 | **Export** | `grafana-util dashboard export --output-dir ./dashboards --overwrite --progress` |
 | **Export + History** | `grafana-util dashboard export --output-dir ./dashboards --include-history --overwrite --progress` |
-| **Raw to Prompt** | `grafana-util dashboard raw-to-prompt --input-dir ./dashboards/raw --output-dir ./dashboards/prompt --overwrite --progress` |
+| **Raw to Prompt** | `grafana-util migrate dashboard raw-to-prompt --input-dir ./dashboards/raw --output-dir ./dashboards/prompt --overwrite --progress` |
 | **Import** | `grafana-util dashboard import --input-dir ./dashboards/raw --replace-existing --dry-run --table` |
 | **Diff** | `grafana-util dashboard diff --input-dir ./dashboards/raw --input-format raw` |
 | **Analyze** | `grafana-util dashboard analyze --input-dir ./dashboards/raw --input-format raw --output-format dependency` |

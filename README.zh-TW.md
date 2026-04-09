@@ -34,7 +34,7 @@
 | 功能項 | 傳統作法 | 使用 `grafana-util` |
 | :--- | :--- | :--- |
 | **環境盤點** | 需手動切換 UI 或自行組合 API 呼叫以暸解現況。 | 使用 `overview live` 或 `status live` 快速取得環境統一視圖。 |
-| **儀表板路徑** | 難以區分 API 直接匯入與 UI 匯入所需的格式。 | 提供明確的 `raw`、`prompt` 與 `provisioning` 路徑，並具備 `raw-to-prompt` 轉換工具。 |
+| **儀表板路徑** | 難以區分 API 直接匯入與 UI 匯入所需的格式。 | 提供明確的 `raw`、`prompt` 與 `provisioning` 路徑，並具備 `migrate dashboard raw-to-prompt` 這類 migration 轉換工具。 |
 | **資料來源** | 匯出後的憑證資訊不容易安全保存，也不容易直接對應檔案配置。 | 匯出時先遮蔽敏感資訊，匯入時再補回認證，並保留和檔案配置對應的內容。 |
 | **審查機制** | 直接套用變更，缺乏中間審查層。 | 使用 `change inspect`、`check` 與 `preview`，在變動正式伺服器前先完成審查。 |
 | **安全性** | 認證資訊容易散落在 Shell 歷史紀錄或明文檔案中。 | 透過 `profile` 搭配作業系統 Keyring 或加密儲存空間管理憑證。 |

@@ -39,6 +39,8 @@ pub(crate) mod cli_help_examples;
 pub mod common;
 /// Dashboard export/import/inspect/screenshot/topology workflows.
 pub mod dashboard;
+/// Migration and repair workflows that transform Grafana artifacts between formats.
+pub mod migrate;
 /// Internal contract types for dashboard dependency inspection documents.
 pub(crate) mod dashboard_inspection_dependency_contract;
 /// Internal query-feature analysis helpers for dashboard inspection flows.

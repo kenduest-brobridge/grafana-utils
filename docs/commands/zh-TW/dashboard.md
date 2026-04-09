@@ -11,7 +11,7 @@
 | 變更前檢查 | `governance-gate` |
 | 拓樸與影響面 | `topology`、`impact` |
 | 歷史與還原 | `history list`、`history restore`、`history export` |
-| 截圖與素材 | `screenshot`、`raw-to-prompt` |
+| 截圖與素材 | `screenshot` |
 
 ## 從這裡開始
 
@@ -22,7 +22,7 @@
 - 先做上線前檢查：`dashboard governance-gate`
 - 先看影響面：`dashboard topology`、`dashboard impact`
 - 先處理歷史版本：`dashboard history list`、`dashboard history restore`、`dashboard history export`
-- 先拿素材：`dashboard screenshot`、`dashboard raw-to-prompt`
+- 先拿素材：`dashboard screenshot`
 
 ## 說明
 
@@ -128,7 +128,7 @@ grafana-util dashboard edit-live --profile prod --dashboard-uid cpu-main --outpu
 
 - [dashboard export](./dashboard-export.md)
 - [dashboard import](./dashboard-import.md)
-- [dashboard raw-to-prompt](./dashboard-raw-to-prompt.md)
+- [migrate dashboard raw-to-prompt](./migrate-dashboard-raw-to-prompt.md)
 - [dashboard patch-file](./dashboard-patch-file.md)
 
 ### 草稿 authoring

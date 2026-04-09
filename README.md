@@ -34,7 +34,7 @@ Its main strengths are a review-first workflow, separate paths for dashboard imp
 | Feature | Legacy Approach | with `grafana-util` |
 | :--- | :--- | :--- |
 | **Discovery** | Manual UI navigation or ad-hoc API calls to understand current state. | Start with `overview live` or `status live` for a unified environment snapshot. |
-| **Dashboard Paths** | Ambiguity between API-driven import and UI import formats. | Dedicated paths for `raw`, `prompt`, and `provisioning` with conversion tools like `raw-to-prompt`. |
+| **Dashboard Paths** | Ambiguity between API-driven import and UI import formats. | Dedicated paths for `raw`, `prompt`, and `provisioning` with migration tools like `migrate dashboard raw-to-prompt`. |
 | **Reviews** | Changes applied directly without an intermediate review surface. | Use `change inspect`, `check`, and `preview` to audit changes before they touch the live server. |
 | **Security** | Secrets often stored in shell history or plaintext files. | Centralized `profile` management with OS keyring or encrypted storage. |
 

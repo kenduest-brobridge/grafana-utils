@@ -489,7 +489,7 @@ Render a live overview by delegating to the shared status live path.
 - `raw/` 是給 API replay/import 使用的路徑。
 - `prompt/` 是給 Grafana UI 匯入使用的路徑。
 - `dashboard export` 會直接產生 prompt 路徑。
-- `dashboard raw-to-prompt` 可以把一般或 raw 的 dashboard JSON 轉成 prompt JSON，方便修補或遷移成 Grafana UI 匯入格式。
+- `migrate dashboard raw-to-prompt` 可以把一般或 raw 的 dashboard JSON 轉成 prompt JSON，方便修補或遷移成 Grafana UI 匯入格式。
 - `dashboard import` 只吃 `raw/` 或 `provisioning/` 輸入，不吃 `prompt/`。
 
 ---

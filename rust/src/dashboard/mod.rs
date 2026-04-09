@@ -621,10 +621,6 @@ pub fn run_dashboard_cli_with_client(
             let _ = export_dashboards_with_client(client, &export_args)?;
             Ok(())
         }
-        DashboardCommand::RawToPrompt(raw_to_prompt_args) => {
-            set_json_color_choice(raw_to_prompt_args.color);
-            run_raw_to_prompt(&raw_to_prompt_args)
-        }
         DashboardCommand::Get(get_args) => {
             get_live_dashboard_to_file_with_client(client, &get_args)
         }
@@ -804,10 +800,6 @@ pub fn run_dashboard_cli(args: DashboardCliArgs) -> Result<()> {
             }
             let _ = export_dashboards_with_org_clients(&export_args)?;
             Ok(())
-        }
-        DashboardCommand::RawToPrompt(raw_to_prompt_args) => {
-            set_json_color_choice(raw_to_prompt_args.color);
-            run_raw_to_prompt(&raw_to_prompt_args)
         }
         DashboardCommand::Get(get_args) => {
             let client = build_http_client(&get_args.common)?;
@@ -1009,7 +1001,6 @@ fn materialize_dashboard_command_auth(args: &mut DashboardCliArgs) -> Result<()>
         },
         DashboardCommand::Review(_)
         | DashboardCommand::PatchFile(_)
-        | DashboardCommand::RawToPrompt(_)
         | DashboardCommand::Serve(_)
         | DashboardCommand::Analyze(_)
         | DashboardCommand::GovernanceGate(_)

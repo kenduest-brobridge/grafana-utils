@@ -76,9 +76,9 @@ pub(crate) const UNIFIED_HELP_TEXT: &str = help_block!(
         "grafana-util dashboard export --url http://localhost:3000 --basic-user admin --basic-password admin --output-dir ./dashboards --overwrite"
     ),
     (
-        "[Dashboard Raw To Prompt]",
+        "[Migrate Raw To Prompt]",
         "Convert one raw dashboard file into its sibling .prompt.json target:",
-        "grafana-util dashboard raw-to-prompt --input-file ./dashboards/raw/cpu-main.json"
+        "grafana-util migrate dashboard raw-to-prompt --input-file ./dashboards/raw/cpu-main.json"
     ),
     (
         "[Dashboard Export]",
@@ -180,9 +180,9 @@ pub(crate) const UNIFIED_HELP_FULL_TEXT: &str = help_block!(
         "grafana-util dashboard analyze --input-dir ./dashboards/raw --input-format raw --output-format tree-table --report-columns dashboard_uid,panel_title,datasource_uid,query"
     ),
     (
-        "[Dashboard Raw To Prompt]",
+        "[Migrate Raw To Prompt]",
         "Generate a prompt/ lane from a raw export root:",
-        "grafana-util dashboard raw-to-prompt --input-dir ./dashboards/raw --output-dir ./dashboards/prompt --overwrite"
+        "grafana-util migrate dashboard raw-to-prompt --input-dir ./dashboards/raw --output-dir ./dashboards/prompt --overwrite"
     ),
     (
         "[Dashboard Analyze]",
@@ -535,6 +535,7 @@ pub(crate) fn colorize_dashboard_short_help(text: &str) -> String {
         "history",
         "screenshot",
         "governance-gate",
+        "migrate",
     ] {
         let needle = format!("\n  {command}");
         let replacement = format!("\n  {HELP_COLOR_COMMAND}{command}{HELP_COLOR_RESET}");

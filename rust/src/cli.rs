@@ -30,10 +30,10 @@ use crate::cli_help::{
     DASHBOARD_GET_HELP_TEXT, DASHBOARD_GOVERNANCE_GATE_HELP_TEXT, DASHBOARD_IMPORT_HELP_TEXT,
     DASHBOARD_INSPECT_EXPORT_HELP_TEXT, DASHBOARD_INSPECT_LIVE_HELP_TEXT,
     DASHBOARD_INSPECT_VARS_HELP_TEXT, DASHBOARD_LIST_HELP_TEXT, DASHBOARD_PATCH_FILE_HELP_TEXT,
-    DASHBOARD_PUBLISH_HELP_TEXT, DASHBOARD_RAW_TO_PROMPT_HELP_TEXT, DASHBOARD_REVIEW_HELP_TEXT,
-    DASHBOARD_SCREENSHOT_HELP_TEXT, DASHBOARD_TOPOLOGY_HELP_TEXT, SNAPSHOT_HELP_TEXT,
-    UNIFIED_ACCESS_HELP_TEXT, UNIFIED_ALERT_HELP_TEXT, UNIFIED_DASHBOARD_HELP_TEXT,
-    UNIFIED_DATASOURCE_HELP_TEXT, UNIFIED_PROFILE_HELP_TEXT, UNIFIED_SYNC_HELP_TEXT,
+    DASHBOARD_PUBLISH_HELP_TEXT, DASHBOARD_REVIEW_HELP_TEXT, DASHBOARD_SCREENSHOT_HELP_TEXT,
+    DASHBOARD_TOPOLOGY_HELP_TEXT, SNAPSHOT_HELP_TEXT, UNIFIED_ACCESS_HELP_TEXT,
+    UNIFIED_ALERT_HELP_TEXT, UNIFIED_DASHBOARD_HELP_TEXT, UNIFIED_DATASOURCE_HELP_TEXT,
+    UNIFIED_MIGRATE_HELP_TEXT, UNIFIED_PROFILE_HELP_TEXT, UNIFIED_SYNC_HELP_TEXT,
 };
 use crate::cli_help_examples::UNIFIED_HELP_TEXT;
 use crate::common::{json_color_choice, set_json_color_choice, CliColorChoice, Result};
@@ -41,10 +41,11 @@ use crate::dashboard::{
     run_dashboard_cli, AnalyzeArgs, BrowseArgs, CloneLiveArgs, DashboardCliArgs, DashboardCommand,
     DashboardHistoryArgs, DeleteArgs, DiffArgs, EditLiveArgs, ExportArgs, GetArgs,
     GovernanceGateArgs, ImpactArgs, ImportArgs, InspectExportArgs, InspectLiveArgs,
-    InspectVarsArgs, ListArgs, PatchFileArgs, PublishArgs, RawToPromptArgs, ReviewArgs,
-    ScreenshotArgs, ServeArgs, TopologyArgs, ValidateExportArgs,
+    InspectVarsArgs, ListArgs, PatchFileArgs, PublishArgs, ReviewArgs, ScreenshotArgs, ServeArgs,
+    TopologyArgs, ValidateExportArgs,
 };
 use crate::datasource::{run_datasource_cli, DatasourceGroupCommand};
+use crate::migrate::{run_migrate_cli, MigrateCliArgs};
 use crate::overview::{run_overview_cli, OverviewCliArgs};
 use crate::profile_cli::{run_profile_cli, ProfileCliArgs};
 use crate::project_status_command::{run_project_status_cli, ProjectStatusCliArgs};
@@ -85,12 +86,6 @@ pub enum DashboardGroupCommand {
         after_help = DASHBOARD_EXPORT_HELP_TEXT
     )]
     Export(ExportArgs),
-    #[command(
-        name = "raw-to-prompt",
-        about = "Convert raw dashboard exports into prompt lane artifacts.",
-        after_help = DASHBOARD_RAW_TO_PROMPT_HELP_TEXT
-    )]
-    RawToPrompt(RawToPromptArgs),
     #[command(
         about = "Import dashboard JSON files through the Grafana API.",
         after_help = DASHBOARD_IMPORT_HELP_TEXT
@@ -191,7 +186,7 @@ pub enum UnifiedCommand {
     #[command(about = "Print the current grafana-util version.")]
     Version(VersionArgs),
     #[command(
-        about = "Run dashboard browse, authoring, export, raw-to-prompt, import, diff, patch-file, review, and publish workflows.",
+        about = "Run dashboard browse, authoring, export, import, diff, patch-file, review, publish, and migration workflows.",
         visible_alias = "db",
         after_help = UNIFIED_DASHBOARD_HELP_TEXT
     )]
@@ -243,6 +238,11 @@ pub enum UnifiedCommand {
         about = "Run resource describe, kinds, list, and get workflows through a generic read-only query surface."
     )]
     Resource(ResourceCliArgs),
+    #[command(
+        about = "Run migration and repair transforms across Grafana artifact formats.",
+        after_help = UNIFIED_MIGRATE_HELP_TEXT
+    )]
+    Migrate(MigrateCliArgs),
     #[command(
         about = "Export and review live dashboard snapshots.",
         after_help = SNAPSHOT_HELP_TEXT
@@ -320,9 +320,6 @@ fn wrap_dashboard_group(command: DashboardGroupCommand) -> DashboardCliArgs {
         DashboardGroupCommand::EditLive(inner) => wrap_dashboard(DashboardCommand::EditLive(inner)),
         DashboardGroupCommand::List(inner) => wrap_dashboard(DashboardCommand::List(inner)),
         DashboardGroupCommand::Export(inner) => wrap_dashboard(DashboardCommand::Export(inner)),
-        DashboardGroupCommand::RawToPrompt(inner) => {
-            wrap_dashboard(DashboardCommand::RawToPrompt(inner))
-        }
         DashboardGroupCommand::Import(inner) => wrap_dashboard(DashboardCommand::Import(inner)),
         DashboardGroupCommand::Delete(inner) => wrap_dashboard(DashboardCommand::Delete(inner)),
         DashboardGroupCommand::Diff(inner) => wrap_dashboard(DashboardCommand::Diff(inner)),
@@ -363,13 +360,14 @@ fn wrap_dashboard_group(command: DashboardGroupCommand) -> DashboardCliArgs {
 /// Handlers are injected as callables so tests can assert routing without
 /// triggering network-heavy domain execution.
 #[allow(clippy::too_many_arguments)]
-fn dispatch_with_handlers<FD, FS, FY, FA, FX, FP, FR, FO, FQ>(
+fn dispatch_with_handlers<FD, FS, FY, FA, FX, FM, FP, FR, FO, FQ>(
     args: CliArgs,
     mut run_dashboard: FD,
     mut run_datasource: FS,
     mut run_sync: FY,
     mut run_alert: FA,
     mut run_access: FX,
+    mut run_migrate: FM,
     mut run_profile: FP,
     mut run_snapshot: FR,
     mut run_overview: FO,
@@ -381,6 +379,7 @@ where
     FY: FnMut(SyncGroupCommand) -> Result<()>,
     FA: FnMut(AlertCliArgs) -> Result<()>,
     FX: FnMut(AccessCliArgs) -> Result<()>,
+    FM: FnMut(MigrateCliArgs) -> Result<()>,
     FP: FnMut(ProfileCliArgs) -> Result<()>,
     FR: FnMut(SnapshotCommand) -> Result<()>,
     FO: FnMut(OverviewCliArgs) -> Result<()>,
@@ -414,6 +413,7 @@ where
         UnifiedCommand::Change { command } => run_sync(command),
         UnifiedCommand::Alert(inner) => run_alert(normalize_alert_namespace_args(inner)),
         UnifiedCommand::Access(inner) => run_access(inner),
+        UnifiedCommand::Migrate(inner) => run_migrate(inner),
         UnifiedCommand::Profile(inner) => run_profile(inner),
         UnifiedCommand::Resource(inner) => run_resource_cli(inner),
         UnifiedCommand::Snapshot { command } => run_snapshot(command),
@@ -436,6 +436,7 @@ pub fn run_cli(args: CliArgs) -> Result<()> {
         run_sync_cli,
         run_alert_cli,
         run_access_cli,
+        run_migrate_cli,
         run_profile_cli,
         run_snapshot_cli,
         run_overview_cli,

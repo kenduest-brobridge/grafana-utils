@@ -490,7 +490,7 @@ Both live entrypoints now use `--output-format`.
 - `raw/` is the API-safe replay/import lane.
 - `prompt/` is the Grafana UI import lane.
 - `dashboard export` writes the prompt lane for you.
-- `dashboard raw-to-prompt` converts ordinary or raw dashboard JSON into prompt JSON when you need to repair or migrate a dashboard for Grafana UI import.
+- `migrate dashboard raw-to-prompt` converts ordinary or raw dashboard JSON into prompt JSON when you need to repair or migrate a dashboard for Grafana UI import.
 - `dashboard import` consumes `raw/` or `provisioning/` input; it does not consume `prompt/`.
 
 ---

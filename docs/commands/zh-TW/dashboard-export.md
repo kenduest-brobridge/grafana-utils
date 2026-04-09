@@ -4,7 +4,7 @@
 將儀表板匯出成 `raw/`、`prompt/` 與 `provisioning/` 檔案，必要時也可附帶 `history/` 成品。
 
 ## 何時使用
-當您需要一個本地匯出樹，供後續匯入、檢視、比對或檔案 provisioning 工作流程使用時，使用這個指令。若您也需要每個匯出 org 範圍各自的版本歷史成品，請加上 `--include-history`。`prompt/` 路徑是給 Grafana UI 匯入用，不是給 dashboard API 匯入用；如果您只有一般或 raw 的 dashboard JSON，需要先轉成 prompt JSON，請使用 `dashboard raw-to-prompt`。
+當您需要一個本地匯出樹，供後續匯入、檢視、比對或檔案 provisioning 工作流程使用時，使用這個指令。若您也需要每個匯出 org 範圍各自的版本歷史成品，請加上 `--include-history`。`prompt/` 路徑是給 Grafana UI 匯入用，不是給 dashboard API 匯入用；如果您只有一般或 raw 的 dashboard JSON，需要先轉成 prompt JSON，請使用 `migrate dashboard raw-to-prompt`。
 
 ## 採用前後對照
 - **採用前**：匯出比較像一次性的備份動作，之後能不能 review、inspect 或 replay，通常要走到下一步才知道。
@@ -64,5 +64,5 @@ grafana-util dashboard export --url http://localhost:3000 --basic-user admin --b
 - [dashboard analyze（本地）](./dashboard-analyze-export.md)
 - [dashboard import](./dashboard-import.md)
 - [dashboard diff](./dashboard-diff.md)
-- [dashboard raw-to-prompt](./dashboard-raw-to-prompt.md)
+- [migrate dashboard raw-to-prompt](./migrate-dashboard-raw-to-prompt.md)
 - [dashboard history](./dashboard-history.md)

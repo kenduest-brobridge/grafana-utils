@@ -16,6 +16,7 @@ use crate::dashboard::{
     SimpleOutputFormat,
 };
 use crate::datasource::DatasourceGroupCommand;
+use crate::migrate::{MigrateCommand, MigrateDashboardCommand};
 use crate::overview::OverviewOutputFormat;
 use crate::profile_cli::{root_command as profile_root_command, ProfileCommand};
 use crate::resource::{ResourceCliArgs, ResourceCommand, ResourceKind, ResourceOutputFormat};
@@ -239,8 +240,10 @@ fn unified_help_mentions_screenshot_and_dashboard_analysis_examples() {
     assert!(help.contains("Print help with extended examples"));
     assert!(help.contains("[Dashboard Export] Export dashboards with Basic auth"));
     assert!(help.contains("[Dashboard Export] Export dashboards across all visible orgs"));
-    assert!(help.contains("[Dashboard Raw To Prompt]"));
-    assert!(help.contains("dashboard raw-to-prompt --input-file ./dashboards/raw/cpu-main.json"));
+    assert!(help.contains("[Migrate Raw To Prompt]"));
+    assert!(help.contains(
+        "migrate dashboard raw-to-prompt --input-file ./dashboards/raw/cpu-main.json"
+    ));
     assert!(help.contains("--basic-user admin --basic-password admin"));
     assert!(help.contains("--all-orgs"));
     assert!(help.contains("dashboard screenshot"));
@@ -484,9 +487,10 @@ fn unified_help_mentions_resource_escape_hatch() {
 }
 
 #[test]
-fn parse_cli_supports_dashboard_group_raw_to_prompt_command() {
+fn parse_cli_supports_migrate_raw_to_prompt_command() {
     let args: CliArgs = parse_cli_from([
         "grafana-util",
+        "migrate",
         "dashboard",
         "raw-to-prompt",
         "--input-file",
@@ -504,21 +508,22 @@ fn parse_cli_supports_dashboard_group_raw_to_prompt_command() {
     ]);
 
     match args.command {
-        UnifiedCommand::Dashboard { command } => match command {
-            super::DashboardGroupCommand::RawToPrompt(inner) => {
-                assert_eq!(
-                    inner.input_file,
-                    vec![Path::new("./dashboards/raw/cpu-main.json").to_path_buf()]
-                );
-                assert_eq!(inner.output_format, RawToPromptOutputFormat::Yaml);
-                assert_eq!(inner.log_format, RawToPromptLogFormat::Json);
-                assert_eq!(inner.resolution, RawToPromptResolution::Strict);
-                assert_eq!(inner.profile.as_deref(), Some("prod"));
-                assert_eq!(inner.org_id, Some(2));
-            }
-            _ => panic!("expected dashboard raw-to-prompt"),
+        UnifiedCommand::Migrate(inner) => match inner.command {
+            MigrateCommand::Dashboard { command } => match command {
+                MigrateDashboardCommand::RawToPrompt(inner) => {
+                    assert_eq!(
+                        inner.input_file,
+                        vec![Path::new("./dashboards/raw/cpu-main.json").to_path_buf()]
+                    );
+                    assert_eq!(inner.output_format, RawToPromptOutputFormat::Yaml);
+                    assert_eq!(inner.log_format, RawToPromptLogFormat::Json);
+                    assert_eq!(inner.resolution, RawToPromptResolution::Strict);
+                    assert_eq!(inner.profile.as_deref(), Some("prod"));
+                    assert_eq!(inner.org_id, Some(2));
+                }
+            },
         },
-        _ => panic!("expected dashboard group"),
+        _ => panic!("expected migrate group"),
     }
 }
 
@@ -2936,6 +2941,10 @@ fn dispatch_routes_dashboard_group_to_dashboard_handler() {
             routed.borrow_mut().push("access".to_string());
             Ok(())
         },
+        |_migrate_args| {
+            routed.borrow_mut().push("migrate".to_string());
+            Ok(())
+        },
         |_profile_args| {
             routed.borrow_mut().push("profile".to_string());
             Ok(())
@@ -2994,6 +3003,10 @@ fn dispatch_routes_dashboard_review_group_to_dashboard_handler() {
             routed.borrow_mut().push("access".to_string());
             Ok(())
         },
+        |_migrate_args| {
+            routed.borrow_mut().push("migrate".to_string());
+            Ok(())
+        },
         |_profile_args| {
             routed.borrow_mut().push("profile".to_string());
             Ok(())
@@ -3047,6 +3060,10 @@ fn dispatch_routes_snapshot_group_to_snapshot_handler() {
         },
         |_access_args| {
             routed.borrow_mut().push("access".to_string());
+            Ok(())
+        },
+        |_migrate_args| {
+            routed.borrow_mut().push("migrate".to_string());
             Ok(())
         },
         |_profile_args| {
@@ -3106,6 +3123,10 @@ fn dispatch_routes_access_group_to_access_handler() {
             routed.borrow_mut().push("access".to_string());
             Ok(())
         },
+        |_migrate_args| {
+            routed.borrow_mut().push("migrate".to_string());
+            Ok(())
+        },
         |_profile_args| {
             routed.borrow_mut().push("profile".to_string());
             Ok(())
@@ -3153,6 +3174,10 @@ fn dispatch_routes_overview_group_to_overview_handler() {
         },
         |_access_args| {
             routed.borrow_mut().push("access".to_string());
+            Ok(())
+        },
+        |_migrate_args| {
+            routed.borrow_mut().push("migrate".to_string());
             Ok(())
         },
         |_profile_args| {
@@ -3208,6 +3233,10 @@ fn dispatch_routes_change_group_to_change_handler() {
         },
         |_access_args| {
             routed.borrow_mut().push("access".to_string());
+            Ok(())
+        },
+        |_migrate_args| {
+            routed.borrow_mut().push("migrate".to_string());
             Ok(())
         },
         |_profile_args| {
@@ -3266,6 +3295,10 @@ fn dispatch_routes_datasource_group_to_datasource_handler() {
             routed.borrow_mut().push("access".to_string());
             Ok(())
         },
+        |_migrate_args| {
+            routed.borrow_mut().push("migrate".to_string());
+            Ok(())
+        },
         |_profile_args| {
             routed.borrow_mut().push("profile".to_string());
             Ok(())
@@ -3313,6 +3346,10 @@ fn dispatch_routes_status_group_to_status_handler() {
         },
         |_access_args| {
             routed.borrow_mut().push("access".to_string());
+            Ok(())
+        },
+        |_migrate_args| {
+            routed.borrow_mut().push("migrate".to_string());
             Ok(())
         },
         |_profile_args| {

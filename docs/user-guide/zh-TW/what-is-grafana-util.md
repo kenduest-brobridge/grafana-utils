@@ -72,7 +72,7 @@
 
 README 和手冊首頁要短，先露出大家最常用的工作流；更細的 command 樹放在 docs index 和各自的指令頁。
 
-- 放在 README / 首頁：`dashboard export/import/raw-to-prompt/review/publish`、`datasource export/import/diff`、`change inspect/check/preview/apply`、`status`、`overview`、`profile`、`alert plan/apply`、`access`、`secrets`。
+- 放在 README / 首頁：`dashboard export/import/review/publish`、`migrate dashboard raw-to-prompt`、`datasource export/import/diff`、`change inspect/check/preview/apply`、`status`、`overview`、`profile`、`alert plan/apply`、`access`、`secrets`。
 - 放在 docs index 和逐指令頁：`dashboard browse/fetch-live/clone-live/serve/edit-live/delete/history/list-vars/governance-gate/topology/impact/screenshot`、`datasource browse/types/list/add/modify/delete`、`snapshot`、`resource`、以及相容別名頁面。
 
 ## 主要目標

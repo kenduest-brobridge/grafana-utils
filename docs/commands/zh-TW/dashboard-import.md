@@ -48,6 +48,6 @@ grafana-util dashboard import --url http://localhost:3000 --token "$GRAFANA_API_
 
 ## 相關指令
 - [dashboard export](./dashboard-export.md)
-- [dashboard raw-to-prompt](./dashboard-raw-to-prompt.md)
+- [migrate dashboard raw-to-prompt](./migrate-dashboard-raw-to-prompt.md)
 - [dashboard diff](./dashboard-diff.md)
 - [dashboard publish](./dashboard-publish.md)

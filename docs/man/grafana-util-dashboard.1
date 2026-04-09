@@ -9,14 +9,14 @@ grafana\-util\-dashboard \- dashboard browse, export, import, analysis, governan
 .SH DESCRIPTION
 grafana\-util dashboard is the namespace for live dashboard workflows, local draft handling, export/import review, inspection, topology, and screenshots. The same namespace is also available as grafana\-util db.
 .PP
-Use this namespace when you need to browse live dashboards, fetch or clone a live dashboard into a local JSON draft, compare local files with Grafana, inspect export or live metadata, convert raw dashboards into prompt JSON, or publish a prepared dashboard back to Grafana.
+Use this namespace when you need to browse live dashboards, fetch or clone a live dashboard into a local JSON draft, compare local files with Grafana, inspect export or live metadata, or publish a prepared dashboard back to Grafana. Use migrate dashboard raw\-to\-prompt when the job is artifact repair rather than dashboard operations.
 .SH WORKFLOW LANES
 .PP
 \- Browse and inventory: browse, list, and fetch\-live.
 .PP
 \- Analyze dashboards and build reports: analyze, list\-vars, and topology checks.
 .PP
-\- Move: export, import, clone\-live, raw\-to\-prompt, diff, and publish paths.
+\- Move: export, import, clone\-live, diff, and publish paths.
 .PP
 \- Author: fetch\-live, clone\-live, serve, patch\-file, edit\-live, review, and publish around one dashboard draft.
 .PP
@@ -63,7 +63,7 @@ Clone one live dashboard into a local draft with optional overrides. Use when: Y
 List dashboard summaries without writing export files. Use when: You want a non\-interactive inventory view of live dashboards, optionally with resolved sources or structured output.
 .TP
 .B export
-Export dashboards to raw/, prompt/, and provisioning/ files, with optional history/ artifacts. Use when: You need a local export tree for later import, review, diff, or file\-provisioning workflows. Add \-\-include\-history when you also need dashboard revision\-history artifacts under each exported org scope. The prompt/ lane is for Grafana UI import, not dashboard API import; use dashboard raw\-to\-prompt when you need to convert ordinary or raw dashboard JSON into prompt JSON.
+Export dashboards to raw/, prompt/, and provisioning/ files, with optional history/ artifacts. Use when: You need a local export tree for later import, review, diff, or file\-provisioning workflows. Add \-\-include\-history when you also need dashboard revision\-history artifacts under each exported org scope. The prompt/ lane is for Grafana UI import, not dashboard API import; use migrate dashboard raw\-to\-prompt when you need to convert ordinary or raw dashboard JSON into prompt JSON.
 .TP
 .B import
 Import dashboard JSON files through the Grafana API. Use when: You have a local export tree or provisioning tree and need to push dashboards back into Grafana, either live or as a dry run. This command consumes raw/ or provisioning/ inputs; it does not consume the Grafana UI prompt/ lane.

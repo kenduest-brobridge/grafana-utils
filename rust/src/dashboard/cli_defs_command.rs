@@ -89,12 +89,6 @@ pub enum DashboardCommand {
     )]
     Export(ExportArgs),
     #[command(
-        name = "raw-to-prompt",
-        about = "Convert raw dashboard exports into prompt lane artifacts.",
-        after_help = "Examples:\n\n  Convert one raw dashboard file and rely on the sibling .prompt.json target:\n    grafana-util dashboard raw-to-prompt --input-file ./dashboards/raw/cpu-main.json\n\n  Convert one raw export root into a sibling prompt/ lane:\n    grafana-util dashboard raw-to-prompt --input-dir ./dashboards/raw --output-dir ./dashboards/prompt --overwrite\n\n  Convert a raw file with explicit datasource resolution settings:\n    grafana-util dashboard raw-to-prompt --input-file ./dashboards/raw/cpu-main.json --datasource-map ./datasource-map.json --resolution exact --output-format json\n\n  Augment datasource resolution with live lookup from a profile:\n    grafana-util dashboard raw-to-prompt --input-file ./dashboards/raw/cpu-main.json --profile prod --org-id 2"
-    )]
-    RawToPrompt(RawToPromptArgs),
-    #[command(
         name = "import",
         about = "Import dashboard JSON files through the Grafana API.",
         after_help = "Examples:\n\n  Import one raw export directory into the current org:\n    grafana-util dashboard import --url http://localhost:3000 --basic-user admin --basic-password admin --input-dir ./dashboards/raw --replace-existing\n\n  Preview import actions without changing Grafana:\n    grafana-util dashboard import --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --input-dir ./dashboards/raw --dry-run --table\n\n  Interactively choose exported dashboards to restore/import:\n    grafana-util dashboard import --url http://localhost:3000 --basic-user admin --basic-password admin --input-dir ./dashboards/raw --interactive --replace-existing"

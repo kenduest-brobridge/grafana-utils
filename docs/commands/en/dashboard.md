@@ -4,7 +4,7 @@
 `grafana-util dashboard` is the namespace for live dashboard workflows, local draft handling, export/import review, inspection, topology, and screenshots. The same namespace is also available as `grafana-util db`.
 
 ## When to use
-Use this namespace when you need to browse live dashboards, fetch or clone a live dashboard into a local JSON draft, compare local files with Grafana, inspect export or live metadata, convert raw dashboards into prompt JSON, or publish a prepared dashboard back to Grafana.
+Use this namespace when you need to browse live dashboards, fetch or clone a live dashboard into a local JSON draft, compare local files with Grafana, inspect export or live metadata, or publish a prepared dashboard back to Grafana. Use `migrate dashboard raw-to-prompt` when the job is artifact repair rather than dashboard operations.
 
 ## Description
 Open this page first when the work is about the full dashboard workflow rather than one isolated flag. The `dashboard` namespace brings together the tasks that usually travel together in real operator work: inventory reads, export and backup, migration between environments, staged review before apply, live inspection, topology checks, and reproducible screenshots.
@@ -15,7 +15,7 @@ If you are an SRE, Grafana operator, or responder, this page should help you dec
 
 - **Browse and inventory**: browse, list, and fetch-live.
 - **Analyze dashboards and build reports**: analyze, list-vars, and topology checks.
-- **Move**: export, import, clone-live, raw-to-prompt, diff, and publish paths.
+- **Move**: export, import, clone-live, diff, and publish paths.
 - **Author**: fetch-live, clone-live, serve, patch-file, edit-live, review, and publish around one dashboard draft.
 - **Review Before Mutate**: review, governance-gate, and impact analysis.
 - **History**: list, restore, and export revision history before you recover or promote a dashboard.
@@ -60,7 +60,7 @@ Choose this page when the task is dashboard work but you are still deciding whet
 - Prefer `--profile` for repeatable daily work and CI.
 - Use direct Basic auth for bootstrap or admin-heavy flows.
 - Token auth can be enough for scoped reads, but cross-org workflows such as `--all-orgs` are safer with admin-backed `--profile` or Basic auth.
-- `dashboard raw-to-prompt` is usually offline, but it can optionally use `--profile` or live auth flags to look up datasource inventory while repairing prompt files.
+- `migrate dashboard raw-to-prompt` is usually offline, but it can optionally use `--profile` or live auth flags to look up datasource inventory while repairing prompt files.
 
 ## Examples
 ```bash
@@ -80,7 +80,7 @@ grafana-util dashboard browse --url http://localhost:3000 --basic-user admin --b
 
 ```bash
 # Purpose: Convert a legacy dashboard export into prompt-friendly JSON.
-grafana-util dashboard raw-to-prompt --input-file ./legacy/cpu-main.json --profile prod --org-id 2
+grafana-util migrate dashboard raw-to-prompt --input-file ./legacy/cpu-main.json --profile prod --org-id 2
 ```
 
 ```bash
@@ -129,7 +129,7 @@ grafana-util dashboard analyze --url http://localhost:3000 --basic-user admin --
 - [dashboard clone-live](./dashboard-clone-live.md)
 - [dashboard export](./dashboard-export.md)
 - [dashboard import](./dashboard-import.md)
-- [dashboard raw-to-prompt](./dashboard-raw-to-prompt.md)
+- [migrate dashboard raw-to-prompt](./migrate-dashboard-raw-to-prompt.md)
 - [dashboard patch-file](./dashboard-patch-file.md)
 
 ### Author

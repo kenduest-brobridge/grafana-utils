@@ -109,6 +109,10 @@ COMMAND_AUDIENCE_HINTS = {
         "en": "Best for review-first workflows where you want summary, preflight, plan, and apply to stay explicit.",
         "zh-TW": "適合 review-first 流程，想把 summary、preflight、plan 與 apply 清楚分開的人。",
     },
+    "migrate": {
+        "en": "Best for artifact repair and normalization work before import, replay, or UI upload into another Grafana environment.",
+        "zh-TW": "適合在匯入、回放或 UI upload 之前，先做 artifact 修補與正規化的人。",
+    },
     "snapshot": {
         "en": "Best for readers who need a local snapshot bundle for offline review, backup, or handoff work.",
         "zh-TW": "適合需要建立本機 snapshot bundle，做離線檢視、備份或交接的人。",

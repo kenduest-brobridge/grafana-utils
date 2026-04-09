@@ -70,6 +70,23 @@ NAMESPACE_SPECS: tuple[NamespaceSpec, ...] = (
         ),
     ),
     NamespaceSpec(
+        stem="grafana-util-migrate",
+        cli_path="grafana-util migrate",
+        title="migration and repair workflows for Grafana artifacts",
+        root_doc="migrate.md",
+        sub_docs=(
+            "migrate-dashboard-raw-to-prompt.md",
+        ),
+        related_manpages=(
+            "grafana-util",
+            "grafana-util-dashboard",
+            "grafana-util-change",
+        ),
+        workflow_notes=(
+            "Migration commands should normalize or repair local artifacts before import or UI upload rather than mutate live Grafana state directly.",
+        ),
+    ),
+    NamespaceSpec(
         stem="grafana-util-alert",
         cli_path="grafana-util alert",
         title="alert export, import, planning, apply, routing, and authoring workflows",

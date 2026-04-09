@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>dashboard · grafana-util docs</title>
+  <title>migrate · grafana-util docs</title>
   <style>:root {
   color-scheme: light dark;
   --font-scale: 1;
@@ -736,7 +736,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
       <div class="topbar">
   <a class="brand" href="../../index.html">grafana-util docs</a>
   <div class="themebar">
-    <select id="page-locale-select" aria-label="Language switch"><option value="" selected>Language: 繁體中文</option><option value="../en/dashboard.html">Switch to English</option></select><select id="jump-select" aria-label="Jump"><option value="" selected>快速跳轉...</option><optgroup label="使用手冊"><option value="../../handbook/zh-TW/index.html">概觀</option><option value="../../handbook/zh-TW/what-is-grafana-util.html">這個工具是做什麼的</option><option value="../../handbook/zh-TW/getting-started.html">開始使用</option><option value="../../handbook/zh-TW/role-new-user.html">新手快速入門</option><option value="../../handbook/zh-TW/role-sre-ops.html">SRE / 維運角色導讀</option><option value="../../handbook/zh-TW/role-automation-ci.html">自動化 / CI 角色導讀</option><option value="../../handbook/zh-TW/architecture.html">系統架構與設計原則</option><option value="../../handbook/zh-TW/dashboard.html">Dashboard 維運人員手冊</option><option value="../../handbook/zh-TW/datasource.html">Data source 維運手冊</option><option value="../../handbook/zh-TW/alert.html">Alert 維運人員手冊</option><option value="../../handbook/zh-TW/access.html">身分與存取管理</option><option value="../../handbook/zh-TW/change-overview-status.html">專案狀態與變更總覽</option><option value="../../handbook/zh-TW/scenarios.html">維運情境手冊</option><option value="../../handbook/zh-TW/recipes.html">實戰錦囊與最佳實踐</option><option value="../../handbook/zh-TW/reference.html">技術參考手冊</option><option value="../../handbook/zh-TW/troubleshooting.html">疑難排解與名詞解釋</option></optgroup><optgroup label="指令參考"><option value="dashboard.html">Dashboard</option><option value="migrate.html">Migrate</option><option value="alert.html">Alert</option><option value="datasource.html">Datasource</option><option value="access.html">Access</option><option value="profile.html">Profile</option><option value="status.html">Status</option><option value="overview.html">Overview</option><option value="change.html">Change</option><option value="snapshot.html">Snapshot</option></optgroup></select>
+    <select id="page-locale-select" aria-label="Language switch"><option value="" selected>Language: 繁體中文</option><option value="../en/migrate.html">Switch to English</option></select><select id="jump-select" aria-label="Jump"><option value="" selected>快速跳轉...</option><optgroup label="使用手冊"><option value="../../handbook/zh-TW/index.html">概觀</option><option value="../../handbook/zh-TW/what-is-grafana-util.html">這個工具是做什麼的</option><option value="../../handbook/zh-TW/getting-started.html">開始使用</option><option value="../../handbook/zh-TW/role-new-user.html">新手快速入門</option><option value="../../handbook/zh-TW/role-sre-ops.html">SRE / 維運角色導讀</option><option value="../../handbook/zh-TW/role-automation-ci.html">自動化 / CI 角色導讀</option><option value="../../handbook/zh-TW/architecture.html">系統架構與設計原則</option><option value="../../handbook/zh-TW/dashboard.html">Dashboard 維運人員手冊</option><option value="../../handbook/zh-TW/datasource.html">Data source 維運手冊</option><option value="../../handbook/zh-TW/alert.html">Alert 維運人員手冊</option><option value="../../handbook/zh-TW/access.html">身分與存取管理</option><option value="../../handbook/zh-TW/change-overview-status.html">專案狀態與變更總覽</option><option value="../../handbook/zh-TW/scenarios.html">維運情境手冊</option><option value="../../handbook/zh-TW/recipes.html">實戰錦囊與最佳實踐</option><option value="../../handbook/zh-TW/reference.html">技術參考手冊</option><option value="../../handbook/zh-TW/troubleshooting.html">疑難排解與名詞解釋</option></optgroup><optgroup label="指令參考"><option value="dashboard.html">Dashboard</option><option value="migrate.html">Migrate</option><option value="alert.html">Alert</option><option value="datasource.html">Datasource</option><option value="access.html">Access</option><option value="profile.html">Profile</option><option value="status.html">Status</option><option value="overview.html">Overview</option><option value="change.html">Change</option><option value="snapshot.html">Snapshot</option></optgroup></select>
     <select id="font-select" aria-label="Font Size">
       <option value="0.9">Font: Compact</option>
       <option value="1">Font: Default</option>
@@ -758,77 +758,62 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </aside>
 
   <article class="article">
-    <div class="breadcrumbs"><a href="../../index.html">Home</a> / Commands / dashboard</div>
+    <div class="breadcrumbs"><a href="../../index.html">Home</a> / Commands / migrate</div>
 
-    <h1><span class="hero-title-main">dashboard</span></h1>
+    <h1><span class="hero-title-main">migrate</span></h1>
 
 
-    <h2 id="這一頁對應的工作流">這一頁對應的工作流</h2>
-<table><thead><tr><th>工作流</th><th>常用子命令</th></tr></thead><tbody><tr><td>盤點與瀏覽 live dashboard</td><td><code>browse</code>、<code>list</code>、<code>get</code></td></tr><tr><td>單一 dashboard 草稿 authoring</td><td><code>get</code>、<code>clone-live</code>、<code>serve</code>、<code>patch-file</code>、<code>edit-live</code>、<code>review</code>、<code>publish</code></td></tr><tr><td>匯出 / 匯入 / 比對</td><td><code>get</code>、<code>clone-live</code>、<code>export</code>、<code>import</code>、<code>diff</code>、<code>review</code>、<code>patch-file</code>、<code>publish</code>、<code>delete</code></td></tr><tr><td>分析與報表</td><td><code>analyze</code>、<code>list-vars</code>、<code>topology</code></td></tr><tr><td>變更前檢查</td><td><code>governance-gate</code></td></tr><tr><td>拓樸與影響面</td><td><code>topology</code>、<code>impact</code></td></tr><tr><td>歷史與還原</td><td><code>history list</code>、<code>history restore</code>、<code>history export</code></td></tr><tr><td>截圖與素材</td><td><code>screenshot</code></td></tr></tbody></table>
-<h2 id="從這裡開始">從這裡開始</h2>
-<ul><li>先看現況：<code>dashboard browse</code> 或 <code>dashboard list</code></li><li>先做草稿：<code>dashboard fetch-live</code>、<code>dashboard clone-live</code>、<code>dashboard export</code></li><li>先做比對：<code>dashboard diff</code>、<code>dashboard review</code></li><li>先做分析：<code>dashboard analyze --input-dir ...</code>、<code>dashboard analyze --url ...</code>、<code>dashboard list-vars</code></li><li>先做上線前檢查：<code>dashboard governance-gate</code></li><li>先看影響面：<code>dashboard topology</code>、<code>dashboard impact</code></li><li>先處理歷史版本：<code>dashboard history list</code>、<code>dashboard history restore</code>、<code>dashboard history export</code></li><li>先拿素材：<code>dashboard screenshot</code></li></ul>
+    <section class="command-intro">
+  <div class="command-intro-grid"><div class="command-intro-block">
+  <p class="command-intro-label">這頁在說什麼</p>
+  <p class="command-intro-text">grafana-util migrate 是專門放修補、正規化與跨格式轉換工作流程的 namespace，用來把一種 Grafana 成品轉成下一步較安全的 migration artifact。</p>
+</div>
+<div class="command-intro-block">
+  <p class="command-intro-label">什麼時候看這頁</p>
+  <ul class="command-intro-list"><li>當工作重點不是日常 live dashboard 操作，而是要把匯出成品修好、補 mapping、或整理成下一個環境更容易重用的格式時，使用這個 namespace。</li></ul>
+</div>
+<div class="command-intro-block">
+  <p class="command-intro-label">適合誰</p>
+  <p class="command-intro-text">適合在匯入、回放或 UI upload 之前，先做 artifact 修補與正規化的人。</p>
+</div>
+</div>
+</section>
+<h2 id="用途">用途</h2>
+<p><code>grafana-util migrate</code> 是專門放修補、正規化與跨格式轉換工作流程的 namespace，用來把一種 Grafana 成品轉成下一步較安全的 migration artifact。</p>
+<h2 id="何時使用">何時使用</h2>
+<p>當工作重點不是日常 live dashboard 操作，而是要把匯出成品修好、補 mapping、或整理成下一個環境更容易重用的格式時，使用這個 namespace。</p>
 <h2 id="說明">說明</h2>
-<p><code>grafana-util dashboard</code> 把 dashboard 相關工作收在同一個入口：從瀏覽、草稿、匯出、匯入、比對，到拓樸、影響面和截圖。它也可用 <code>grafana-util db</code> 呼叫。</p>
-<p>如果是單一 dashboard 的 authoring 路徑，建議把它想成：</p>
-<ul><li><code>get</code> 或 <code>clone-live</code>：先做草稿</li><li><code>serve</code>：用本地 preview server 持續檢視草稿內容，必要時也能自動打開瀏覽器</li><li><code>review</code>：先驗證草稿內容</li><li><code>patch-file</code>：改寫本地中繼資料</li><li><code>edit-live</code>：從 live 拉一份進 editor，預設仍先落回本地草稿，而且會依 review 結果決定能不能回寫 live</li><li><code>publish</code>：沿用 import pipeline 發回 Grafana</li></ul>
-<p><code>review</code>、<code>patch-file</code>、<code>publish</code> 也都支援 <code>--input -</code>，可以直接吃標準輸入的一份 wrapped 或 bare dashboard JSON。這適合外部 generator 已經把 JSON 寫到 stdout 的情況。<code>patch-file --input -</code> 必須搭配 <code>--output</code>，若你是在本地反覆編修同一份檔案，則改用 <code>publish --watch</code>；它只支援本地檔案路徑，不支援 <code>--input -</code>。</p>
-<h2 id="歷史與還原工作流">歷史與還原工作流</h2>
-<p>如果你的問題不是「現在這份 dashboard 長什麼樣」，而是「哪個舊版本應該被救回來並變成新的最新版本」，就看這一組。</p>
-<ul><li><a href="dashboard-history.html">dashboard history</a></li><li><code>dashboard history list</code>：列出單一 dashboard UID 的最近版本歷史。</li><li><code>dashboard history restore</code>：把某個歷史版本複製成新的最新 Grafana 版本。</li><li><code>dashboard history export</code>：把歷史版本匯出成可重用的 JSON 成品，方便審查或 CI。</li></ul>
-<p>這條路徑最適合要找回已知可用版本，但不想手動重建 dashboard 的情況。</p>
-<h2 id="採用前後對照">採用前後對照</h2>
-<ul><li><strong>採用前</strong>：dashboard 動作常分散在 UI、草稿 JSON 與臨時 shell 指令裡，要回頭重跑很麻煩。</li><li><strong>採用後</strong>：同一條命令群組就能把瀏覽、草稿、檢查、發佈與素材產生串起來。</li></ul>
+<p>如果這次工作本質上是 migration：修 raw export、補 datasource placeholder、或先整理好檔案再做後續匯入，請先看這頁。<code>migrate</code> 把這些轉換流程和 <code>dashboard</code> 裡偏 live/operator 的 browse、review、publish、history 分開，讓命令語意更清楚。</p>
+<h2 id="工作流路徑">工作流路徑</h2>
+<ul><li><strong>修補匯出檔</strong>：先修一批 raw dashboard 檔，再做後續匯入或 UI upload。</li><li><strong>正規化 migration artifact</strong>：把 raw export tree 轉成旁邊的 <code>prompt/</code> 路徑。</li><li><strong>補強解析</strong>：必要時可用 profile 或 live auth 查 Grafana datasource inventory，協助修補 datasource 參照。</li></ul>
+<h2 id="before-after">Before / After</h2>
+<ul><li><strong>Before</strong>：raw export 還綁著原本環境，下一個 Grafana 可能直接吃不下。</li><li><strong>After</strong>：修補後的 artifact 可檢視、可重用，也更適合下一步匯入或 UI upload。</li></ul>
 <h2 id="成功判準">成功判準</h2>
-<ul><li>你能在開始前就判斷這次是要看 live、做草稿、跑檢查，還是直接發佈</li><li>export / analyze / diff 的產物能互相對得起來，不會換個步驟就失去上下文</li><li>需要交給 review 或 CI 時，可以把 topology / impact / governance-gate 的結果拿去重跑</li></ul>
-<h2 id="失敗時先檢查">失敗時先檢查</h2>
-<ul><li>如果 browse 或 inspect 結果比預期少，先核對 <code>--profile</code>、<code>--url</code>、org 與權限</li><li>如果 topology 或 impact 是空的，先確認你餵的是同一次 inspect 產物</li><li>如果治理檢查看起來怪怪的，先看 <code>governance</code> 和 <code>queries</code> 是否來自相同來源</li></ul>
-<h2 id="重點旗標">重點旗標</h2>
-<ul><li><code>--url</code>：Grafana 基底網址。</li><li><code>--token</code>、<code>--basic-user</code>、<code>--basic-password</code>：共用的線上 Grafana 憑證。</li><li><code>--profile</code>：從 <code>grafana-util.yaml</code> 載入 repo 本地預設值。</li><li><code>--color</code>：控制這個指令群組的 JSON 彩色輸出。</li></ul>
+<ul><li>命令語意清楚是 migration step，不會和 live dashboard mutate 混在一起</li><li>修補後的檔案能直接進下一步 review 或 import，不必手改 JSON</li><li>datasource 修補與 prompt 生成能力保留，但不再塞進 <code>dashboard</code> 主 namespace</li></ul>
+<h2 id="失敗檢查">失敗檢查</h2>
+<ul><li>如果下一步是 API import，先確認你要的仍然是 <code>raw/</code> 或 <code>provisioning/</code>，不是 <code>prompt/</code></li><li>如果 datasource 解析仍有歧義，先補 <code>--datasource-map</code> 或 live profile 再重試</li><li>如果目錄轉換可能把生成檔混進原始資料樹，請停下來補 <code>--output-dir</code></li></ul>
 <h2 id="範例">範例</h2>
-<pre><code># 先看 live dashboard 長什麼樣，再決定下一步要走哪條工作流。
-grafana-util dashboard browse --profile prod</code></pre>
-<pre><code># 先盤點現況，再決定要走 browse 或 export。
-grafana-util dashboard list --profile prod</code></pre>
-<pre><code># 先做 live 分析，再決定要不要匯出或截圖。
-grafana-util dashboard analyze --url http://localhost:3000 --basic-user admin --basic-password admin --interactive</code></pre>
-<pre><code># 先產生治理輸出，留給 topology 或 governance-gate 接著用。
-grafana-util dashboard analyze --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output-format governance</code></pre>
-<pre><code># 先從標準輸入 review 一份生成儀表板，再決定要不要 publish。
-jsonnet dashboards/cpu.jsonnet | grafana-util dashboard review --input - --output-format json</code></pre>
-<pre><code># 編修本地草稿時，每次儲存後自動重跑 publish dry-run。
-grafana-util dashboard publish --url http://localhost:3000 --basic-user admin --basic-password admin --input ./drafts/cpu-main.json --dry-run --watch</code></pre>
-<pre><code># 開一個本地 preview server，持續檢視單一 dashboard 草稿。
-grafana-util dashboard serve --input ./drafts/cpu-main.json --port 18080 --open-browser</code></pre>
-<pre><code># 從 live dashboard 開始編修，但預設先輸出成新的本地草稿。
-grafana-util dashboard edit-live --profile prod --dashboard-uid cpu-main --output ./drafts/cpu-main.edited.json</code></pre>
+<pre><code># Purpose: 先看 migrate namespace 有哪些修補路徑。
+grafana-util migrate --help</code></pre>
+<pre><code># Purpose: 把一個 raw dashboard 檔修成 prompt-safe migration artifact。
+grafana-util migrate dashboard raw-to-prompt --input-file ./legacy/cpu-main.json</code></pre>
+<pre><code># Purpose: 把整個 raw export root 轉成旁邊的 prompt/ lane，方便後續 UI upload。
+grafana-util migrate dashboard raw-to-prompt --input-dir ./dashboards/raw --output-dir ./dashboards/prompt --overwrite</code></pre>
 <h2 id="相關指令">相關指令</h2>
-<h3 id="盤點">盤點</h3>
-<ul><li><a href="dashboard-browse.html">dashboard browse</a></li><li><a href="dashboard-fetch-live.html">dashboard fetch-live</a></li><li><a href="dashboard-clone-live.html">dashboard clone-live</a></li><li><a href="dashboard-list.html">dashboard list</a></li></ul>
-<h3 id="搬移">搬移</h3>
-<ul><li><a href="dashboard-export.html">dashboard export</a></li><li><a href="dashboard-import.html">dashboard import</a></li><li><a href="migrate-dashboard-raw-to-prompt.html">migrate dashboard raw-to-prompt</a></li><li><a href="dashboard-patch-file.html">dashboard patch-file</a></li></ul>
-<h3 id="草稿-authoring">草稿 authoring</h3>
-<ul><li><a href="dashboard-serve.html">dashboard serve</a></li><li><a href="dashboard-edit-live.html">dashboard edit-live</a></li></ul>
-<h3 id="分析與報表">分析與報表</h3>
-<ul><li><a href="dashboard-analyze-live.html">dashboard analyze（即時）</a></li><li><a href="dashboard-analyze-export.html">dashboard analyze（本地）</a></li><li><a href="dashboard-list-vars.html">dashboard list-vars</a></li><li><a href="dashboard-topology.html">dashboard topology</a></li></ul>
-<h3 id="變更前檢查">變更前檢查</h3>
-<ul><li><a href="dashboard-governance-gate.html">dashboard governance-gate</a></li></ul>
-<h3 id="變更與套用">變更與套用</h3>
-<ul><li><a href="dashboard-review.html">dashboard review</a></li><li><a href="dashboard-publish.html">dashboard publish</a></li><li><a href="dashboard-delete.html">dashboard delete</a></li><li><a href="dashboard-diff.html">dashboard diff</a></li></ul>
-<h3 id="截圖與素材">截圖與素材</h3>
-<ul><li><a href="dashboard-screenshot.html">dashboard screenshot</a></li></ul>
+<ul><li><a href="migrate-dashboard-raw-to-prompt.html">migrate dashboard raw-to-prompt</a></li><li><a href="dashboard-export.html">dashboard export</a></li><li><a href="dashboard-import.html">dashboard import</a></li><li><a href="dashboard-review.html">dashboard review</a></li><li><a href="change.html">change</a></li></ul>
     
   </article>
   <aside class="sidebar">
   <button class="sidebar-toggle sidebar-toggle-right" type="button" aria-expanded="true" aria-label="Toggle page sidebar">▶</button>
   <div class="sidebar-content">
-    <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#這一頁對應的工作流"><span class="toc-label">這一頁對應的工作流</span></a></li><li class="toc-level-2"><a href="#從這裡開始"><span class="toc-label">從這裡開始</span></a></li><li class="toc-level-2"><a href="#說明"><span class="toc-label">說明</span></a></li><li class="toc-level-2"><a href="#歷史與還原工作流"><span class="toc-label">歷史與還原工作流</span></a></li><li class="toc-level-2"><a href="#採用前後對照"><span class="toc-label">採用前後對照</span></a></li><li class="toc-level-2"><a href="#成功判準"><span class="toc-label">成功判準</span></a></li><li class="toc-level-2"><a href="#失敗時先檢查"><span class="toc-label">失敗時先檢查</span></a></li><li class="toc-level-2"><a href="#重點旗標"><span class="toc-label">重點旗標</span></a></li><li class="toc-level-2"><a href="#範例"><span class="toc-label">範例</span></a></li><li class="toc-level-2"><a href="#相關指令"><span class="toc-label">相關指令</span></a></li><li class="toc-level-3"><a href="#盤點"><span class="toc-label">盤點</span></a></li><li class="toc-level-3"><a href="#搬移"><span class="toc-label">搬移</span></a></li><li class="toc-level-3"><a href="#草稿-authoring"><span class="toc-label">草稿 authoring</span></a></li><li class="toc-level-3"><a href="#分析與報表"><span class="toc-label">分析與報表</span></a></li><li class="toc-level-3"><a href="#變更前檢查"><span class="toc-label">變更前檢查</span></a></li><li class="toc-level-3"><a href="#變更與套用"><span class="toc-label">變更與套用</span></a></li><li class="toc-level-3"><a href="#截圖與素材"><span class="toc-label">截圖與素材</span></a></li></ul></section><section class="sidebar-section"><h2>Related</h2><ul class="sidebar-meta-list"><li><a href="../../handbook/zh-TW/dashboard.html" class="sidebar-meta-link">Matching handbook chapter</a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: 繁體中文</a></li><li><a href="../en/dashboard.html" class="sidebar-meta-link">Switch to English</a></li></ul></section>
+    <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#用途"><span class="toc-label">用途</span></a></li><li class="toc-level-2"><a href="#何時使用"><span class="toc-label">何時使用</span></a></li><li class="toc-level-2"><a href="#說明"><span class="toc-label">說明</span></a></li><li class="toc-level-2"><a href="#工作流路徑"><span class="toc-label">工作流路徑</span></a></li><li class="toc-level-2"><a href="#before-after"><span class="toc-label">Before / After</span></a></li><li class="toc-level-2"><a href="#成功判準"><span class="toc-label">成功判準</span></a></li><li class="toc-level-2"><a href="#失敗檢查"><span class="toc-label">失敗檢查</span></a></li><li class="toc-level-2"><a href="#範例"><span class="toc-label">範例</span></a></li><li class="toc-level-2"><a href="#相關指令"><span class="toc-label">相關指令</span></a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: 繁體中文</a></li><li><a href="../en/migrate.html" class="sidebar-meta-link">Switch to English</a></li></ul></section>
   </div>
 </aside>
 
 </div>
 
     </div>
-    <footer class="site-footer">Source: dashboard.md</footer>
+    <footer class="site-footer">Source: migrate.md</footer>
   </div>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js" async></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js" async></script>

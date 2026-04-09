@@ -4,7 +4,7 @@
 Export dashboards to `raw/`, `prompt/`, and `provisioning/` files, with optional `history/` artifacts.
 
 ## When to use
-Use this when you need a local export tree for later import, review, diff, or file-provisioning workflows. Add `--include-history` when you also need dashboard revision-history artifacts under each exported org scope. The `prompt/` lane is for Grafana UI import, not dashboard API import; use `dashboard raw-to-prompt` when you need to convert ordinary or raw dashboard JSON into prompt JSON.
+Use this when you need a local export tree for later import, review, diff, or file-provisioning workflows. Add `--include-history` when you also need dashboard revision-history artifacts under each exported org scope. The `prompt/` lane is for Grafana UI import, not dashboard API import; use `migrate dashboard raw-to-prompt` when you need to convert ordinary or raw dashboard JSON into prompt JSON.
 
 ## Before / After
 - **Before**: export is a one-off action, and you only discover later whether the tree is reviewable or reusable.
@@ -64,5 +64,5 @@ grafana-util dashboard export --url http://localhost:3000 --basic-user admin --b
 - [dashboard analyze (local)](./dashboard-analyze-export.md)
 - [dashboard import](./dashboard-import.md)
 - [dashboard diff](./dashboard-diff.md)
-- [dashboard raw-to-prompt](./dashboard-raw-to-prompt.md)
+- [migrate dashboard raw-to-prompt](./migrate-dashboard-raw-to-prompt.md)
 - [dashboard history](./dashboard-history.md)
