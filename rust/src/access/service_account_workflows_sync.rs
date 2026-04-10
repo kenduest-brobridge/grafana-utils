@@ -10,8 +10,8 @@ use serde_json::{Map, Value};
 use crate::common::{message, render_json_value, string_field, write_json_file, Result};
 
 use super::super::super::render::{
-    format_table, normalize_service_account_row, scalar_text, service_account_role_to_api,
-    value_bool,
+    access_diff_summary_line, format_table, normalize_service_account_row, scalar_text,
+    service_account_role_to_api, value_bool,
 };
 use super::super::super::{
     ServiceAccountDiffArgs, ServiceAccountExportArgs, ServiceAccountImportArgs,
@@ -373,16 +373,15 @@ where
         let (identity, _) = &live_map[key];
         println!("Diff extra-live service-account {}", identity);
     }
-    if differences > 0 {
-        println!(
-            "Diff checked {} service-account(s); {} difference(s) found.",
-            checked, differences
-        );
-    } else {
-        println!(
-            "No service-account differences across {} service-account(s).",
-            checked
-        );
-    }
+    println!(
+        "{}",
+        access_diff_summary_line(
+            "service-account",
+            checked,
+            differences,
+            &args.diff_dir.to_string_lossy(),
+            "Grafana live service accounts",
+        )
+    );
     Ok(differences)
 }

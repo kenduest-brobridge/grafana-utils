@@ -6,8 +6,9 @@ use serde_json::{Map, Value};
 use crate::common::{message, Result};
 
 use crate::access::render::{
-    format_table, map_get_text, normalize_team_row, paginate_rows, render_csv, render_objects_json,
-    render_yaml, team_list_column_ids, team_summary_line, team_table_headers, team_table_rows,
+    access_diff_summary_line, format_table, map_get_text, normalize_team_row, paginate_rows,
+    render_csv, render_objects_json, render_yaml, team_list_column_ids, team_summary_line,
+    team_table_headers, team_table_rows,
 };
 use crate::access::team_import_export_diff::{
     build_record_diff_fields, build_team_diff_map, load_team_import_records,
@@ -80,14 +81,16 @@ where
             map_get_text(live_payload, "name")
         );
     }
-    if differences > 0 {
-        println!(
-            "Diff checked {} team(s); {} difference(s) found.",
-            checked, differences
-        );
-    } else {
-        println!("No team differences across {} team(s).", checked);
-    }
+    println!(
+        "{}",
+        access_diff_summary_line(
+            "team",
+            checked,
+            differences,
+            &args.diff_dir.to_string_lossy(),
+            "Grafana live teams",
+        )
+    );
     Ok(differences)
 }
 

@@ -456,7 +456,7 @@ pub fn build_alert_diff_document(rows: &[Value]) -> Value {
         })
         .count();
 
-    build_shared_diff_document(
+    let mut document = match build_shared_diff_document(
         "grafana-util-alert-diff",
         1,
         SharedDiffSummary {
@@ -468,5 +468,11 @@ pub fn build_alert_diff_document(rows: &[Value]) -> Value {
             ambiguous: 0,
         },
         rows,
-    )
+    ) {
+        Value::Object(map) => map,
+        _ => unreachable!("shared diff document must be an object"),
+    };
+    document.insert("reviewRequired".to_string(), Value::Bool(true));
+    document.insert("reviewed".to_string(), Value::Bool(false));
+    Value::Object(document)
 }

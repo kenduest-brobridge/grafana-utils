@@ -830,12 +830,13 @@ fn parse_datasource_import_output_column(value: &str) -> std::result::Result<Str
         "uid" => Ok("uid".to_string()),
         "name" => Ok("name".to_string()),
         "type" => Ok("type".to_string()),
+        "match_basis" | "matchBasis" => Ok("match_basis".to_string()),
         "destination" => Ok("destination".to_string()),
         "action" => Ok("action".to_string()),
         "org_id" | "orgId" => Ok("org_id".to_string()),
         "file" => Ok("file".to_string()),
         _ => Err(format!(
-            "Unsupported --output-columns value '{value}'. Supported values: all, uid, name, type, destination, action, org_id, file."
+            "Unsupported --output-columns value '{value}'. Supported values: all, uid, name, type, match_basis, destination, action, org_id, file."
         )),
     }
 }

@@ -16,7 +16,8 @@ use super::super::pending_delete::{
     prompt_select_indexes, validate_delete_prompt,
 };
 use super::super::render::{
-    format_table, render_csv, render_objects_json, render_yaml, scalar_text,
+    access_diff_summary_line, format_table, render_csv, render_objects_json, render_yaml,
+    scalar_text,
 };
 use super::super::{
     OrgAddArgs, OrgDeleteArgs, OrgDiffArgs, OrgExportArgs, OrgImportArgs, OrgListArgs,
@@ -657,13 +658,15 @@ where
         let (identity, _) = &live_map[key];
         println!("Diff extra-live org {}", identity);
     }
-    if differences > 0 {
-        println!(
-            "Diff checked {} org(s); {} difference(s) found.",
-            checked, differences
-        );
-    } else {
-        println!("No org differences across {} org(s).", checked);
-    }
+    println!(
+        "{}",
+        access_diff_summary_line(
+            "org",
+            checked,
+            differences,
+            &args.diff_dir.to_string_lossy(),
+            "Grafana live orgs",
+        )
+    );
     Ok(differences)
 }

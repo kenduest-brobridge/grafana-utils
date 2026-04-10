@@ -412,6 +412,7 @@ fn diff_report_json_contract_preserves_row_shape() {
             "domain": "datasource",
             "resourceKind": "datasource",
             "identity": entry.key,
+            "matchBasis": "uid",
             "status": entry.status.as_str(),
             "path": null,
             "changedFields": entry.differences.iter().map(|item| item.field).collect::<Vec<_>>(),
@@ -427,6 +428,7 @@ fn diff_report_json_contract_preserves_row_shape() {
     assert_eq!(document["schemaVersion"], json!(1));
     assert_eq!(document["summary"]["checked"], json!(1));
     assert_eq!(document["summary"]["different"], json!(1));
+    assert_eq!(document["rows"][0]["matchBasis"], json!("uid"));
     assert_eq!(document["rows"].as_array().map(Vec::len), Some(1));
     assert_eq!(document, fixture["document"]);
 }

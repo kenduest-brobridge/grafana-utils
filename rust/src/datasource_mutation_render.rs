@@ -145,10 +145,11 @@ pub(crate) fn render_import_table(
                 (0usize, "UID"),
                 (1usize, "NAME"),
                 (2usize, "TYPE"),
-                (3usize, "DESTINATION"),
-                (4usize, "ACTION"),
-                (5usize, "ORG_ID"),
-                (6usize, "FILE"),
+                (3usize, "MATCH_BASIS"),
+                (4usize, "DESTINATION"),
+                (5usize, "ACTION"),
+                (6usize, "ORG_ID"),
+                (7usize, "FILE"),
             ]
         } else {
             selected
@@ -157,10 +158,11 @@ pub(crate) fn render_import_table(
                     "uid" => (0usize, "UID"),
                     "name" => (1usize, "NAME"),
                     "type" => (2usize, "TYPE"),
-                    "destination" => (3usize, "DESTINATION"),
-                    "action" => (4usize, "ACTION"),
-                    "org_id" => (5usize, "ORG_ID"),
-                    "file" => (6usize, "FILE"),
+                    "match_basis" => (3usize, "MATCH_BASIS"),
+                    "destination" => (4usize, "DESTINATION"),
+                    "action" => (5usize, "ACTION"),
+                    "org_id" => (6usize, "ORG_ID"),
+                    "file" => (7usize, "FILE"),
                     _ => unreachable!("validated datasource import output column"),
                 })
                 .collect::<Vec<(usize, &str)>>()
@@ -170,10 +172,11 @@ pub(crate) fn render_import_table(
             (0usize, "UID"),
             (1usize, "NAME"),
             (2usize, "TYPE"),
-            (3usize, "DESTINATION"),
-            (4usize, "ACTION"),
-            (5usize, "ORG_ID"),
-            (6usize, "FILE"),
+            (3usize, "MATCH_BASIS"),
+            (4usize, "DESTINATION"),
+            (5usize, "ACTION"),
+            (6usize, "ORG_ID"),
+            (7usize, "FILE"),
         ]
     };
     let headers = columns
@@ -183,7 +186,7 @@ pub(crate) fn render_import_table(
     let mut widths: Vec<usize> = headers.iter().map(|item| item.len()).collect();
     for row in rows {
         for (index, (source_index, _)) in columns.iter().enumerate() {
-            let value = &row[*source_index];
+            let value = row.get(*source_index).map(String::as_str).unwrap_or("");
             widths[index] = widths[index].max(value.len());
         }
     }
@@ -207,7 +210,7 @@ pub(crate) fn render_import_table(
     lines.extend(rows.iter().map(|row| {
         let values = columns
             .iter()
-            .map(|(source_index, _)| row[*source_index].clone())
+            .map(|(source_index, _)| row.get(*source_index).cloned().unwrap_or_default())
             .collect::<Vec<String>>();
         format_row(&values)
     }));

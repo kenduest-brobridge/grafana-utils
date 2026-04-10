@@ -225,6 +225,27 @@ pub(crate) fn render_csv(headers: &[&str], rows: &[Vec<String>]) -> Vec<String> 
     lines
 }
 
+/// Format a consistent diff summary line for access workflows.
+pub(crate) fn access_diff_summary_line(
+    kind: &str,
+    checked: usize,
+    differences: usize,
+    local_source: &str,
+    live_source: &str,
+) -> String {
+    if differences > 0 {
+        format!(
+            "Diff checked {} {}(s) from {} against {}; {} difference(s) found.",
+            checked, kind, local_source, live_source, differences
+        )
+    } else {
+        format!(
+            "No {} differences across {} {}(s) from {} against {}.",
+            kind, checked, kind, local_source, live_source
+        )
+    }
+}
+
 // Build a normalized user row shape expected by access list renderers.
 /// Purpose: implementation note.
 pub(crate) fn normalize_user_row(user: &Map<String, Value>, scope: &Scope) -> Map<String, Value> {
@@ -370,6 +391,41 @@ pub(crate) fn normalize_service_account_row(team: &Map<String, Value>) -> Map<St
             Value::String(scalar_text(team.get("orgId"))),
         ),
     ])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::access_diff_summary_line;
+
+    #[test]
+    fn access_diff_summary_line_includes_source_context_for_differences() {
+        let line = access_diff_summary_line(
+            "user",
+            2,
+            1,
+            "./access-users",
+            "Grafana live users",
+        );
+        assert_eq!(
+            line,
+            "Diff checked 2 user(s) from ./access-users against Grafana live users; 1 difference(s) found."
+        );
+    }
+
+    #[test]
+    fn access_diff_summary_line_includes_source_context_for_matches() {
+        let line = access_diff_summary_line(
+            "team",
+            3,
+            0,
+            "./access-teams",
+            "Grafana live teams",
+        );
+        assert_eq!(
+            line,
+            "No team differences across 3 team(s) from ./access-teams against Grafana live teams."
+        );
+    }
 }
 
 /// map get text.

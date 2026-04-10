@@ -552,6 +552,7 @@ fn render_import_table_can_omit_header() {
         "prom-main".to_string(),
         "Prometheus Main".to_string(),
         "prometheus".to_string(),
+        "uid".to_string(),
         "exists-uid".to_string(),
         "would-update".to_string(),
         "7".to_string(),

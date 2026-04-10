@@ -847,10 +847,20 @@ fn build_alert_diff_document_reports_summary_and_rows() {
     assert_eq!(document["summary"]["same"], json!(1));
     assert_eq!(document["summary"]["different"], json!(1));
     assert_eq!(document["summary"]["missingRemote"], json!(1));
+    assert_eq!(document["reviewRequired"], json!(true));
+    assert_eq!(document["reviewed"], json!(false));
     assert_eq!(document["rows"].as_array().map(Vec::len), Some(3));
     assert_exact_object_keys(
         &document,
-        &["kind", "rows", "schemaVersion", "summary", "toolVersion"],
+        &[
+            "kind",
+            "reviewRequired",
+            "reviewed",
+            "rows",
+            "schemaVersion",
+            "summary",
+            "toolVersion",
+        ],
     );
     for row in document["rows"].as_array().unwrap() {
         assert_exact_object_keys(row, &["action", "identity", "kind", "path"]);

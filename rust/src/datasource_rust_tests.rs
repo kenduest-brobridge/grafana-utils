@@ -157,6 +157,7 @@ fn render_import_table_honors_selected_columns() {
         "prom-main".to_string(),
         "Prometheus Main".to_string(),
         "prometheus".to_string(),
+        "uid".to_string(),
         "exists-uid".to_string(),
         "would-update".to_string(),
         "7".to_string(),
@@ -188,6 +189,7 @@ fn render_import_table_supports_all_columns() {
         "prom-main".to_string(),
         "Prometheus Main".to_string(),
         "prometheus".to_string(),
+        "uid".to_string(),
         "exists-uid".to_string(),
         "would-update".to_string(),
         "7".to_string(),
@@ -199,6 +201,7 @@ fn render_import_table_supports_all_columns() {
     assert!(lines[0].contains("UID"));
     assert!(lines[0].contains("NAME"));
     assert!(lines[0].contains("TYPE"));
+    assert!(lines[0].contains("MATCH_BASIS"));
     assert!(lines[0].contains("DESTINATION"));
     assert!(lines[0].contains("ACTION"));
     assert!(lines[0].contains("ORG_ID"));
@@ -527,7 +530,7 @@ fn parse_datasource_import_supports_output_columns() {
         "--output-format",
         "table",
         "--output-columns",
-        "uid,action,orgId,file",
+        "uid,matchBasis,action,orgId,file",
     ]);
 
     match args.command {
@@ -535,7 +538,7 @@ fn parse_datasource_import_supports_output_columns() {
             assert!(inner.table);
             assert_eq!(
                 inner.output_columns,
-                vec!["uid", "action", "org_id", "file"]
+                vec!["uid", "match_basis", "action", "org_id", "file"]
             );
         }
         _ => panic!("expected datasource import"),
@@ -1098,6 +1101,7 @@ fn build_datasource_import_dry_run_json_value_includes_secret_visibility() {
             "loki-main".to_string(),
             "Loki Main".to_string(),
             "loki".to_string(),
+            "name".to_string(),
             "missing".to_string(),
             "would-create".to_string(),
             "7".to_string(),
@@ -1143,6 +1147,7 @@ fn build_datasource_import_dry_run_json_value_includes_secret_visibility() {
         value["secretVisibility"][0]["secretFields"],
         json!(["basicAuthPassword", "httpHeaderValue1"])
     );
+    assert_eq!(value["datasources"][0]["matchBasis"], json!("name"));
 }
 
 #[test]

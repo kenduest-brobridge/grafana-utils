@@ -12,7 +12,8 @@ use super::super::{
 use super::user_workflows_import_export::load_access_import_records;
 use super::{normalize_access_identity, parse_access_identity_list, DiffPayload, DiffPayloadMap};
 use crate::access::render::{
-    map_get_text, normalize_org_role, normalize_user_row, scalar_text, value_bool,
+    access_diff_summary_line, map_get_text, normalize_org_role, normalize_user_row, scalar_text,
+    value_bool,
 };
 use crate::common::{message, string_field, Result};
 
@@ -208,13 +209,15 @@ where
         println!("Diff extra-live user {}", live_identity);
     }
 
-    if differences > 0 {
-        println!(
-            "Diff checked {} user(s); {} difference(s) found.",
-            checked, differences
-        );
-    } else {
-        println!("No user differences across {} user(s).", checked);
-    }
+    println!(
+        "{}",
+        access_diff_summary_line(
+            "user",
+            checked,
+            differences,
+            &args.diff_dir.to_string_lossy(),
+            "Grafana live users",
+        )
+    );
     Ok(differences)
 }

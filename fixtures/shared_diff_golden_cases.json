@@ -5,6 +5,8 @@
       "kind": "grafana-util-alert-diff",
       "schemaVersion": 1,
       "toolVersion": "__TOOL_VERSION__",
+      "reviewRequired": true,
+      "reviewed": false,
       "summary": {
         "checked": 1,
         "same": 0,
@@ -72,6 +74,7 @@
           "domain": "datasource",
           "resourceKind": "datasource",
           "identity": "uid:prom-main",
+          "matchBasis": "uid",
           "status": "different",
           "path": null,
           "changedFields": ["access"],

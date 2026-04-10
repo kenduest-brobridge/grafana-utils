@@ -7,6 +7,7 @@ use crate::common::string_field;
 use super::super::DatasourceImportRecord;
 
 pub(crate) struct MatchResult {
+    pub(crate) match_basis: &'static str,
     pub(crate) destination: &'static str,
     pub(crate) action: &'static str,
     #[cfg_attr(not(test), allow(dead_code))]
@@ -37,6 +38,7 @@ pub(crate) fn resolve_match(
     };
     if uid_matches.is_empty() && name_matches.len() > 1 {
         return MatchResult {
+            match_basis: "name",
             destination: "ambiguous",
             action: "would-fail-ambiguous",
             target_uid: String::new(),
@@ -47,6 +49,7 @@ pub(crate) fn resolve_match(
     if !uid_matches.is_empty() {
         let item = uid_matches[0];
         return MatchResult {
+            match_basis: "uid",
             destination: "exists-uid",
             action: if replace_existing || update_existing_only {
                 "would-update"
@@ -62,6 +65,7 @@ pub(crate) fn resolve_match(
         let item = name_matches[0];
         let target_uid = string_field(item, "uid", "");
         return MatchResult {
+            match_basis: "name",
             destination: "exists-name",
             action: if !record.uid.is_empty() && !target_uid.is_empty() && record.uid != target_uid
             {
@@ -77,6 +81,13 @@ pub(crate) fn resolve_match(
         };
     }
     MatchResult {
+        match_basis: if !record.uid.is_empty() {
+            "uid"
+        } else if !record.name.is_empty() {
+            "name"
+        } else {
+            "unknown"
+        },
         destination: "missing",
         action: if update_existing_only {
             "would-skip-missing"
@@ -112,6 +123,7 @@ pub(crate) fn resolve_live_mutation_match(
     };
     if uid_matches.len() > 1 {
         return MatchResult {
+            match_basis: "uid",
             destination: "ambiguous-uid",
             action: "would-fail-ambiguous-uid",
             target_uid: String::new(),
@@ -124,6 +136,7 @@ pub(crate) fn resolve_live_mutation_match(
         let target_name = string_field(item, "name", "");
         if !normalized_name.is_empty() && target_name != normalized_name {
             return MatchResult {
+                match_basis: "uid",
                 destination: "uid-name-mismatch",
                 action: "would-fail-uid-name-mismatch",
                 target_uid: string_field(item, "uid", ""),
@@ -132,6 +145,7 @@ pub(crate) fn resolve_live_mutation_match(
             };
         }
         return MatchResult {
+            match_basis: "uid",
             destination: "exists-uid",
             action: "would-fail-existing-uid",
             target_uid: string_field(item, "uid", ""),
@@ -141,6 +155,7 @@ pub(crate) fn resolve_live_mutation_match(
     }
     if name_matches.len() > 1 {
         return MatchResult {
+            match_basis: "name",
             destination: "ambiguous-name",
             action: "would-fail-ambiguous-name",
             target_uid: String::new(),
@@ -153,6 +168,7 @@ pub(crate) fn resolve_live_mutation_match(
         let target_uid = string_field(item, "uid", "");
         if !normalized_uid.is_empty() && !target_uid.is_empty() && target_uid != normalized_uid {
             return MatchResult {
+                match_basis: "name",
                 destination: "uid-name-mismatch",
                 action: "would-fail-uid-name-mismatch",
                 target_uid,
@@ -161,6 +177,7 @@ pub(crate) fn resolve_live_mutation_match(
             };
         }
         return MatchResult {
+            match_basis: "name",
             destination: "exists-name",
             action: "would-fail-existing-name",
             target_uid,
@@ -169,6 +186,13 @@ pub(crate) fn resolve_live_mutation_match(
         };
     }
     MatchResult {
+        match_basis: if !normalized_uid.is_empty() {
+            "uid"
+        } else if !normalized_name.is_empty() {
+            "name"
+        } else {
+            "unknown"
+        },
         destination: "missing",
         action: "would-create",
         target_uid: String::new(),

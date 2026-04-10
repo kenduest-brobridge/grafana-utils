@@ -261,6 +261,7 @@ pub(crate) fn collect_datasource_import_dry_run_report(
             record.uid.clone(),
             record.name.clone(),
             record.datasource_type.clone(),
+            matching.match_basis.to_string(),
             matching.destination.to_string(),
             matching.action.to_string(),
             target_org_id.clone(),
@@ -329,10 +330,11 @@ pub(crate) fn build_datasource_import_dry_run_json_value(
                             ("uid".to_string(), Value::String(row[0].clone())),
                             ("name".to_string(), Value::String(row[1].clone())),
                             ("type".to_string(), Value::String(row[2].clone())),
-                            ("destination".to_string(), Value::String(row[3].clone())),
-                            ("action".to_string(), Value::String(row[4].clone())),
-                            ("orgId".to_string(), Value::String(row[5].clone())),
-                            ("file".to_string(), Value::String(row[6].clone())),
+                            ("matchBasis".to_string(), Value::String(row[3].clone())),
+                            ("destination".to_string(), Value::String(row[4].clone())),
+                            ("action".to_string(), Value::String(row[5].clone())),
+                            ("orgId".to_string(), Value::String(row[6].clone())),
+                            ("file".to_string(), Value::String(row[7].clone())),
                         ]))
                     })
                     .collect(),
@@ -432,8 +434,8 @@ pub(crate) fn print_datasource_import_dry_run_report(
 
 fn format_datasource_import_dry_run_line(row: &[String]) -> String {
     format!(
-        "Dry-run datasource uid={} name={} type={} dest={} action={} file={}",
-        row[0], row[1], row[2], row[3], row[4], row[6]
+        "Dry-run datasource uid={} name={} type={} match={} dest={} action={} file={}",
+        row[0], row[1], row[2], row[3], row[4], row[5], row[7]
     )
 }
 
@@ -952,6 +954,7 @@ mod tests {
             "prom-main".to_string(),
             "Prometheus Main".to_string(),
             "prometheus".to_string(),
+            "uid".to_string(),
             "would-create".to_string(),
             "would-create".to_string(),
             "7".to_string(),
@@ -963,6 +966,7 @@ mod tests {
         assert!(line.contains("uid=prom-main"));
         assert!(line.contains("name=Prometheus Main"));
         assert!(line.contains("type=prometheus"));
+        assert!(line.contains("match=uid"));
         assert!(line.contains("dest=would-create"));
         assert!(line.contains("action=would-create"));
         assert!(line.contains("file=datasources.json#0"));

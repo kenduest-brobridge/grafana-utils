@@ -252,6 +252,26 @@ fn render_diff_identity(entry: &DatasourceDiffEntry) -> String {
     entry.key.clone()
 }
 
+fn render_diff_match_basis(entry: &DatasourceDiffEntry) -> &'static str {
+    if let Some(record) = &entry.export_record {
+        if !record.uid.is_empty() {
+            return "uid";
+        }
+        if !record.name.is_empty() {
+            return "name";
+        }
+    }
+    if let Some(record) = &entry.live_record {
+        if !record.uid.is_empty() {
+            return "uid";
+        }
+        if !record.name.is_empty() {
+            return "name";
+        }
+    }
+    "unknown"
+}
+
 fn resolve_delete_preview_type(target_id: Option<i64>, live: &[Map<String, Value>]) -> String {
     let Some(target_id) = target_id else {
         return String::new();
@@ -266,9 +286,10 @@ fn resolve_delete_preview_type(target_id: Option<i64>, live: &[Map<String, Value
 fn print_datasource_diff_summary_report(report: &DatasourceDiffReport) {
     for entry in &report.entries {
         let identity = render_diff_identity(entry);
+        let match_basis = render_diff_match_basis(entry);
         match entry.status {
             DatasourceDiffStatus::Matches => {
-                println!("Diff same datasource {identity}");
+                println!("Diff same datasource {identity} match={match_basis}");
             }
             DatasourceDiffStatus::Different => {
                 let changed_fields = entry
@@ -277,16 +298,18 @@ fn print_datasource_diff_summary_report(report: &DatasourceDiffReport) {
                     .map(|item| item.field)
                     .collect::<Vec<&str>>()
                     .join(",");
-                println!("Diff different datasource {identity} fields={changed_fields}");
+                println!(
+                    "Diff different datasource {identity} match={match_basis} fields={changed_fields}"
+                );
             }
             DatasourceDiffStatus::MissingInLive => {
-                println!("Diff missing-live datasource {identity}");
+                println!("Diff missing-live datasource {identity} match={match_basis}");
             }
             DatasourceDiffStatus::MissingInExport => {
-                println!("Diff extra-live datasource {identity}");
+                println!("Diff extra-live datasource {identity} match={match_basis}");
             }
             DatasourceDiffStatus::AmbiguousLiveMatch => {
-                println!("Diff ambiguous-live datasource {identity}");
+                println!("Diff ambiguous-live datasource {identity} match={match_basis}");
             }
         }
     }
@@ -303,8 +326,36 @@ fn datasource_diff_summary(report: &DatasourceDiffReport) -> SharedDiffSummary {
     }
 }
 
+fn datasource_diff_summary_line(diff_dir: &Path, report: &DatasourceDiffReport) -> String {
+    let summary = &report.summary;
+    let status_breakdown = format!(
+        "same={} different={} missing-live={} extra-live={} ambiguous={}",
+        summary.matches_count,
+        summary.different_count,
+        summary.missing_in_live_count,
+        summary.missing_in_export_count,
+        summary.ambiguous_live_match_count
+    );
+    let difference_count = summary.compared_count - summary.matches_count;
+    if difference_count > 0 {
+        format!(
+            "Diff checked {} datasource(s) from {} against Grafana live datasources; {} difference(s) found ({status_breakdown}).",
+            summary.compared_count,
+            diff_dir.display(),
+            difference_count
+        )
+    } else {
+        format!(
+            "No datasource differences across {} datasource(s) from {} against Grafana live datasources ({status_breakdown}).",
+            summary.compared_count,
+            diff_dir.display(),
+        )
+    }
+}
+
 fn datasource_diff_row(entry: &DatasourceDiffEntry) -> Value {
     let identity = render_diff_identity(entry);
+    let match_basis = render_diff_match_basis(entry);
     let datasource_type = entry
         .export_record
         .as_ref()
@@ -321,6 +372,7 @@ fn datasource_diff_row(entry: &DatasourceDiffEntry) -> Value {
         "resourceKind": "datasource",
         "identity": identity,
         "type": datasource_type,
+        "matchBasis": match_basis,
         "status": entry.status.as_str(),
         "path": Value::Null,
         "changedFields": entry
@@ -376,13 +428,10 @@ pub(crate) fn diff_datasources_with_live(
             );
         }
     }
-    let difference_count = report.summary.compared_count - report.summary.matches_count;
     if matches!(output_format, DiffOutputFormat::Text) {
-        println!(
-            "Diff checked {} datasource(s); {} difference(s) found.",
-            report.summary.compared_count, difference_count
-        );
+        println!("{}", datasource_diff_summary_line(diff_dir, &report));
     }
+    let difference_count = report.summary.compared_count - report.summary.matches_count;
     Ok((report.summary.compared_count, difference_count))
 }
 
@@ -408,6 +457,7 @@ pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
                 "uid",
                 "name",
                 "type",
+                "match_basis",
                 "destination",
                 "action",
                 "org_id",
@@ -1079,6 +1129,7 @@ fn materialize_datasource_command_auth(
 #[cfg(test)]
 mod datasource_operator_text_tests {
     use super::*;
+    use crate::datasource::datasource_diff::DatasourceDiffSummary;
 
     #[test]
     fn diff_identity_and_row_include_datasource_type() {
@@ -1126,7 +1177,30 @@ mod datasource_operator_text_tests {
         assert!(identity.contains("name=Prometheus Main"));
         assert!(identity.contains("type=prometheus"));
         assert_eq!(row["type"], serde_json::json!("prometheus"));
+        assert_eq!(row["matchBasis"], serde_json::json!("uid"));
         assert_eq!(row["identity"], serde_json::json!(identity));
+    }
+
+    #[test]
+    fn datasource_diff_summary_line_includes_source_context_and_status_breakdown() {
+        let report = DatasourceDiffReport {
+            entries: vec![],
+            summary: DatasourceDiffSummary {
+                compared_count: 4,
+                matches_count: 1,
+                different_count: 1,
+                missing_in_live_count: 1,
+                missing_in_export_count: 0,
+                ambiguous_live_match_count: 1,
+            },
+        };
+
+        let line = datasource_diff_summary_line(Path::new("/tmp/datasources"), &report);
+
+        assert_eq!(
+            line,
+            "Diff checked 4 datasource(s) from /tmp/datasources against Grafana live datasources; 3 difference(s) found (same=1 different=1 missing-live=1 extra-live=0 ambiguous=1)."
+        );
     }
 }
 
