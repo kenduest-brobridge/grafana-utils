@@ -360,10 +360,12 @@ fn sort_string_array_field(object: &mut Map<String, Value>, key: &str) {
         return;
     };
     values.sort_by_key(value_to_string);
+    values.dedup_by(|left, right| value_to_string(left) == value_to_string(right));
 }
 
-fn sort_matcher_values(matchers: &mut [Value]) {
+fn sort_matcher_values(matchers: &mut Vec<Value>) {
     matchers.sort_by_key(value_to_string);
+    matchers.dedup_by(|left, right| value_to_string(left) == value_to_string(right));
 }
 
 fn normalize_compare_value(value: Value) -> Value {
@@ -544,6 +546,7 @@ fn normalize_route_matchers(route: &mut Map<String, Value>, route_name: &str) {
         .map(|matcher| Value::Array(matcher.into_iter().map(Value::String).collect()))
         .collect::<Vec<Value>>();
     matchers.push(json!([stable_route_label_key(), "=", managed_value]));
+    sort_matcher_values(&mut matchers);
     route.insert("object_matchers".to_string(), Value::Array(matchers));
 }
 
@@ -559,8 +562,10 @@ pub fn route_matches_stable_label(route: &Map<String, Value>, route_name: &str) 
 pub fn build_route_preview(route: &Map<String, Value>) -> Value {
     let mut group_by = value_list(route.get("group_by"));
     group_by.sort_by_key(value_to_string);
+    group_by.dedup_by(|left, right| value_to_string(left) == value_to_string(right));
     let mut matchers = value_list(route.get("object_matchers"));
     matchers.sort_by_key(value_to_string);
+    matchers.dedup_by(|left, right| value_to_string(left) == value_to_string(right));
     json!({
         "receiver": string_field(route, "receiver", ""),
         "continue": route.get("continue").and_then(Value::as_bool).unwrap_or(false),

@@ -2083,7 +2083,7 @@ fn run_alert_cli_add_rule_writes_desired_rule_and_managed_policy_files() {
     );
     assert_eq!(
         policy["spec"]["routes"][0]["object_matchers"][0],
-        json!(["team", "=", "platform"])
+        json!(["grafana_utils_route", "=", "pagerduty-primary"])
     );
 }
 
@@ -2163,8 +2163,8 @@ fn run_alert_cli_set_route_overwrites_managed_route_in_place() {
     assert_eq!(
         routes[0]["object_matchers"],
         json!([
-            ["team", "=", "infra"],
-            ["grafana_utils_route", "=", "pagerduty-primary"]
+            ["grafana_utils_route", "=", "pagerduty-primary"],
+            ["team", "=", "infra"]
         ])
     );
 }
@@ -2221,10 +2221,11 @@ fn render_alert_action_text_surfaces_review_contract() {
 fn build_route_preview_sorts_group_by_and_matchers_stably() {
     let route = json!({
         "receiver": "team-webhook",
-        "group_by": ["grafana_folder", "alertname"],
+        "group_by": ["grafana_folder", "alertname", "alertname"],
         "object_matchers": [
             ["team", "=", "platform"],
-            ["severity", "=", "critical"]
+            ["severity", "=", "critical"],
+            ["team", "=", "platform"]
         ],
         "routes": [{"receiver": "team-slack"}]
     });
@@ -2236,6 +2237,43 @@ fn build_route_preview_sorts_group_by_and_matchers_stably() {
     );
     assert_eq!(
         preview["matchers"],
+        json!([
+            ["severity", "=", "critical"],
+            ["team", "=", "platform"]
+        ])
+    );
+}
+
+#[test]
+fn normalize_compare_payload_dedupes_policy_group_by_and_matchers() {
+    let payload = json!({
+        "receiver": "team-webhook",
+        "group_by": ["grafana_folder", "alertname", "alertname"],
+        "routes": [{
+            "receiver": "team-slack",
+            "group_by": ["grafana_folder", "alertname", "grafana_folder"],
+            "object_matchers": [
+                ["team", "=", "platform"],
+                ["severity", "=", "critical"],
+                ["team", "=", "platform"]
+            ]
+        }]
+    });
+
+    let normalized = super::alert_support::normalize_compare_payload(
+        POLICIES_KIND,
+        payload.as_object().unwrap(),
+    );
+    assert_eq!(
+        normalized["group_by"],
+        json!(["alertname", "grafana_folder"])
+    );
+    assert_eq!(
+        normalized["routes"][0]["group_by"],
+        json!(["alertname", "grafana_folder"])
+    );
+    assert_eq!(
+        normalized["routes"][0]["object_matchers"],
         json!([
             ["severity", "=", "critical"],
             ["team", "=", "platform"]

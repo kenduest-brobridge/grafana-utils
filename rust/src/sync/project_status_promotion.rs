@@ -43,12 +43,20 @@ const PROMOTION_CONTINUATION_SIGNAL_KEYS: &[&str] = &[
     "continuationSummary.resolvedCount",
     "continuationSummary.continuationInstruction",
 ];
+const PROMOTION_CHECK_SUMMARY_SIGNAL_KEYS: &[&str] = &[
+    "checkSummary.folderRemapCount",
+    "checkSummary.datasourceUidRemapCount",
+    "checkSummary.datasourceNameRemapCount",
+];
 
 const PROMOTION_BLOCKER_MISSING_MAPPINGS: &str = "missing-mappings";
 const PROMOTION_BLOCKER_BUNDLE_BLOCKING: &str = "bundle-blocking";
 const PROMOTION_BLOCKER_BLOCKING: &str = "blocking";
 const PROMOTION_WARNING_REVIEW_HANDOFF: &str = "review-handoff";
 const PROMOTION_WARNING_APPLY_CONTINUATION: &str = "apply-continuation";
+const PROMOTION_WARNING_FOLDER_REMAPS: &str = "folder-remaps";
+const PROMOTION_WARNING_DATASOURCE_UID_REMAPS: &str = "datasource-uid-remaps";
+const PROMOTION_WARNING_DATASOURCE_NAME_REMAPS: &str = "datasource-name-remaps";
 
 const PROMOTION_RESOLVE_BLOCKERS_ACTIONS: &[&str] =
     &["resolve promotion blockers in the fixed order: missing-mapping, bundle-blocking, blocking"];
@@ -61,6 +69,10 @@ const PROMOTION_APPLY_READY_ACTIONS: &[&str] =
     &["promotion is apply-ready in the staged continuation"];
 const PROMOTION_APPLY_CONTINUATION_ACTIONS: &[&str] =
     &["keep the promotion staged until the apply continuation is ready"];
+const PROMOTION_REVIEW_FOLDER_REMAPS_ACTIONS: &[&str] =
+    &["review folder remaps before promotion review"];
+const PROMOTION_REVIEW_DATASOURCE_REMAPS_ACTIONS: &[&str] =
+    &["review datasource remaps before promotion review"];
 
 fn summary_number(document: &Value, key: &str) -> usize {
     document
@@ -209,6 +221,13 @@ pub(crate) fn build_promotion_domain_status(
                 .map(|item| (*item).to_string()),
         );
     }
+    if nested_summary_object(Some(document), "checkSummary").is_some() {
+        signal_keys.extend(
+            PROMOTION_CHECK_SUMMARY_SIGNAL_KEYS
+                .iter()
+                .map(|item| (*item).to_string()),
+        );
+    }
 
     let has_blockers = !blockers.is_empty();
     let is_partial = resources == 0;
@@ -220,6 +239,32 @@ pub(crate) fn build_promotion_domain_status(
         (PROJECT_STATUS_READY, PROMOTION_REASON_READY)
     };
     let mut warnings = Vec::new();
+    let folder_remaps = nested_number(Some(document), "checkSummary", "folderRemapCount");
+    let datasource_uid_remaps =
+        nested_number(Some(document), "checkSummary", "datasourceUidRemapCount");
+    let datasource_name_remaps =
+        nested_number(Some(document), "checkSummary", "datasourceNameRemapCount");
+    if folder_remaps > 0 {
+        warnings.push(status_finding(
+            PROMOTION_WARNING_FOLDER_REMAPS,
+            folder_remaps,
+            "checkSummary.folderRemapCount",
+        ));
+    }
+    if datasource_uid_remaps > 0 {
+        warnings.push(status_finding(
+            PROMOTION_WARNING_DATASOURCE_UID_REMAPS,
+            datasource_uid_remaps,
+            "checkSummary.datasourceUidRemapCount",
+        ));
+    }
+    if datasource_name_remaps > 0 {
+        warnings.push(status_finding(
+            PROMOTION_WARNING_DATASOURCE_NAME_REMAPS,
+            datasource_name_remaps,
+            "checkSummary.datasourceNameRemapCount",
+        ));
+    }
     let next_actions = if has_blockers {
         PROMOTION_RESOLVE_BLOCKERS_ACTIONS
             .iter()
@@ -245,6 +290,12 @@ pub(crate) fn build_promotion_domain_status(
                     .unwrap_or_else(|| PROMOTION_REVIEW_HANDOFF_ACTIONS[0].to_string())
             };
             push_unique(&mut actions, &action);
+        }
+        if folder_remaps > 0 {
+            push_unique(&mut actions, PROMOTION_REVIEW_FOLDER_REMAPS_ACTIONS[0]);
+        }
+        if datasource_uid_remaps > 0 || datasource_name_remaps > 0 {
+            push_unique(&mut actions, PROMOTION_REVIEW_DATASOURCE_REMAPS_ACTIONS[0]);
         }
         if nested_summary_object(Some(document), "continuationSummary").is_some() {
             warnings.push(status_finding(
@@ -645,6 +696,77 @@ mod tests {
         assert_eq!(
             status.next_actions,
             vec!["resolve promotion blockers in the fixed order: missing-mapping, bundle-blocking, blocking".to_string()]
+        );
+    }
+
+    #[test]
+    fn build_promotion_domain_status_surfaces_remap_complexity_signals_from_check_summary() {
+        let document = json!({
+            "kind": "grafana-utils-sync-promotion-preflight",
+            "summary": {
+                "resourceCount": 4,
+                "missingMappingCount": 0,
+                "bundleBlockingCount": 0,
+                "blockingCount": 0,
+            },
+            "checkSummary": {
+                "folderRemapCount": 1,
+                "datasourceUidRemapCount": 2,
+                "datasourceNameRemapCount": 3,
+            },
+            "handoffSummary": {
+                "reviewRequired": true,
+                "readyForReview": true,
+                "nextStage": "review",
+                "blockingCount": 0,
+                "reviewInstruction": "promotion handoff is ready to move into review",
+            },
+            "continuationSummary": {
+                "stagedOnly": true,
+                "liveMutationAllowed": false,
+                "readyForContinuation": true,
+                "nextStage": "staged-apply-continuation",
+                "blockingCount": 0,
+                "continuationInstruction": "reviewed remaps can continue into a staged apply continuation without enabling live mutation",
+            }
+        });
+
+        let status = build_promotion_domain_status(Some(&document)).unwrap();
+
+        assert_eq!(status.status, "ready");
+        assert_eq!(status.reason_code, "ready");
+        assert_eq!(status.blocker_count, 0);
+        assert_eq!(status.warning_count, 8);
+        assert!(status.signal_keys.contains(&"checkSummary.folderRemapCount".to_string()));
+        assert!(status
+            .signal_keys
+            .contains(&"checkSummary.datasourceUidRemapCount".to_string()));
+        assert!(status
+            .signal_keys
+            .contains(&"checkSummary.datasourceNameRemapCount".to_string()));
+        assert!(status.warnings.iter().any(|warning| {
+            warning.kind == "folder-remaps"
+                && warning.count == 1
+                && warning.source == "checkSummary.folderRemapCount"
+        }));
+        assert!(status.warnings.iter().any(|warning| {
+            warning.kind == "datasource-uid-remaps"
+                && warning.count == 2
+                && warning.source == "checkSummary.datasourceUidRemapCount"
+        }));
+        assert!(status.warnings.iter().any(|warning| {
+            warning.kind == "datasource-name-remaps"
+                && warning.count == 3
+                && warning.source == "checkSummary.datasourceNameRemapCount"
+        }));
+        assert_eq!(
+            status.next_actions,
+            vec![
+                "promotion handoff is review-ready".to_string(),
+                "review folder remaps before promotion review".to_string(),
+                "review datasource remaps before promotion review".to_string(),
+                "promotion is apply-ready in the staged continuation".to_string(),
+            ]
         );
     }
 }
