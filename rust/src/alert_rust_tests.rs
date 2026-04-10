@@ -1865,6 +1865,10 @@ fn managed_policy_subtree_upsert_is_idempotent_and_leaves_unmanaged_routes_untou
         preview["nextRoute"]["groupBy"],
         json!(["alertname", "grafana_folder"])
     );
+    assert_eq!(
+        preview["nextRoute"]["matchers"],
+        json!([["grafana_utils_route", "=", "Team_Alerts"]])
+    );
 
     let (second_policy, second_action) = super::alert_support::upsert_managed_policy_subtree(
         &first_policy,
@@ -1952,6 +1956,10 @@ fn runtime_managed_policy_helpers_produce_idempotent_documents() {
     assert_eq!(
         preview["preview"]["nextRoute"]["groupBy"],
         json!(["alertname", "grafana_folder"])
+    );
+    assert_eq!(
+        preview["preview"]["nextRoute"]["matchers"],
+        json!([["grafana_utils_route", "=", "Team_Alerts"]])
     );
 
     let first_apply = super::alert_runtime_support::apply_managed_policy_subtree_edit_document(
@@ -2175,6 +2183,32 @@ fn build_alert_delete_preview_from_files_blocks_policy_reset_without_guard() {
     assert_eq!(
         preview["rows"][0]["reason"],
         json!("policy-reset-requires-allow-policy-reset")
+    );
+}
+
+#[test]
+fn build_route_preview_sorts_group_by_and_matchers_stably() {
+    let route = json!({
+        "receiver": "team-webhook",
+        "group_by": ["grafana_folder", "alertname"],
+        "object_matchers": [
+            ["team", "=", "platform"],
+            ["severity", "=", "critical"]
+        ],
+        "routes": [{"receiver": "team-slack"}]
+    });
+
+    let preview = super::alert_support::build_route_preview(route.as_object().unwrap());
+    assert_eq!(
+        preview["groupBy"],
+        json!(["alertname", "grafana_folder"])
+    );
+    assert_eq!(
+        preview["matchers"],
+        json!([
+            ["severity", "=", "critical"],
+            ["team", "=", "platform"]
+        ])
     );
 }
 

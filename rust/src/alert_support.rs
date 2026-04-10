@@ -559,11 +559,13 @@ pub fn route_matches_stable_label(route: &Map<String, Value>, route_name: &str) 
 pub fn build_route_preview(route: &Map<String, Value>) -> Value {
     let mut group_by = value_list(route.get("group_by"));
     group_by.sort_by_key(value_to_string);
+    let mut matchers = value_list(route.get("object_matchers"));
+    matchers.sort_by_key(value_to_string);
     json!({
         "receiver": string_field(route, "receiver", ""),
         "continue": route.get("continue").and_then(Value::as_bool).unwrap_or(false),
         "groupBy": group_by,
-        "matchers": value_list(route.get("object_matchers")),
+        "matchers": matchers,
         "childRouteCount": route.get("routes").and_then(Value::as_array).map(Vec::len).unwrap_or(0),
     })
 }
