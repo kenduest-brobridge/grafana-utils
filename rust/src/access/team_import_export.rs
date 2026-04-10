@@ -11,7 +11,9 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::common::{message, render_json_value, string_field, write_json_file, Result};
 
-use crate::access::render::{format_table, map_get_text, normalize_team_row, scalar_text};
+use crate::access::render::{
+    access_import_summary_line, format_table, map_get_text, normalize_team_row, scalar_text,
+};
 use crate::access::team_import_export_diff::{
     assert_not_overwrite, build_membership_payloads, build_team_access_export_metadata,
     build_team_import_dry_run_document, build_team_import_dry_run_row,
@@ -416,12 +418,15 @@ where
     }
 
     println!(
-        "Import summary: processed={} created={} updated={} skipped={} source={}",
-        processed,
-        created,
-        updated,
-        skipped,
-        args.input_dir.display()
+        "{}",
+        access_import_summary_line(
+            "team",
+            processed,
+            created,
+            updated,
+            skipped,
+            &args.input_dir.to_string_lossy(),
+        )
     );
     Ok(processed)
 }

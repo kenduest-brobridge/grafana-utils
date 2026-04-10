@@ -14,7 +14,8 @@ use std::fs;
 use std::path::Path;
 
 use crate::access::render::{
-    bool_label, format_table, map_get_text, normalize_org_role, scalar_text, value_bool,
+    access_import_summary_line, bool_label, format_table, map_get_text, normalize_org_role,
+    scalar_text, value_bool,
 };
 use crate::common::{
     load_json_object_file, message, render_json_value, string_field, value_as_object, Result,
@@ -605,12 +606,15 @@ where
     }
 
     println!(
-        "Import summary: processed={} created={} updated={} skipped={} source={}",
-        processed,
-        created,
-        updated,
-        skipped,
-        args.input_dir.display()
+        "{}",
+        access_import_summary_line(
+            "user",
+            processed,
+            created,
+            updated,
+            skipped,
+            &args.input_dir.to_string_lossy(),
+        )
     );
     Ok(processed)
 }

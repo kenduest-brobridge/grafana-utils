@@ -246,6 +246,21 @@ pub(crate) fn access_diff_summary_line(
     }
 }
 
+/// Format a consistent import summary line for access workflows.
+pub(crate) fn access_import_summary_line(
+    kind: &str,
+    processed: usize,
+    created: usize,
+    updated: usize,
+    skipped: usize,
+    source: &str,
+) -> String {
+    format!(
+        "Import summary for {kind}: processed={} created={} updated={} skipped={} source={}",
+        processed, created, updated, skipped, source
+    )
+}
+
 // Build a normalized user row shape expected by access list renderers.
 /// Purpose: implementation note.
 pub(crate) fn normalize_user_row(user: &Map<String, Value>, scope: &Scope) -> Map<String, Value> {
@@ -395,7 +410,7 @@ pub(crate) fn normalize_service_account_row(team: &Map<String, Value>) -> Map<St
 
 #[cfg(test)]
 mod tests {
-    use super::access_diff_summary_line;
+    use super::{access_diff_summary_line, access_import_summary_line};
 
     #[test]
     fn access_diff_summary_line_includes_source_context_for_differences() {
@@ -424,6 +439,15 @@ mod tests {
         assert_eq!(
             line,
             "No team differences across 3 team(s) from ./access-teams against Grafana live teams."
+        );
+    }
+
+    #[test]
+    fn access_import_summary_line_includes_resource_and_source_context() {
+        let line = access_import_summary_line("user", 3, 1, 1, 1, "/tmp/access-users");
+        assert_eq!(
+            line,
+            "Import summary for user: processed=3 created=1 updated=1 skipped=1 source=/tmp/access-users"
         );
     }
 }

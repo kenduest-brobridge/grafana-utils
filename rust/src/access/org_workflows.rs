@@ -16,8 +16,8 @@ use super::super::pending_delete::{
     prompt_select_indexes, validate_delete_prompt,
 };
 use super::super::render::{
-    access_diff_summary_line, format_table, render_csv, render_objects_json, render_yaml,
-    scalar_text,
+    access_diff_summary_line, access_import_summary_line, format_table, render_csv,
+    render_objects_json, render_yaml, scalar_text,
 };
 use super::super::{
     OrgAddArgs, OrgDeleteArgs, OrgDiffArgs, OrgExportArgs, OrgImportArgs, OrgListArgs,
@@ -597,12 +597,15 @@ where
     }
 
     println!(
-        "Import summary: processed={} created={} updated={} skipped={} source={}",
-        processed,
-        created,
-        updated,
-        skipped,
-        args.input_dir.display()
+        "{}",
+        access_import_summary_line(
+            "org",
+            processed,
+            created,
+            updated,
+            skipped,
+            &args.input_dir.to_string_lossy(),
+        )
     );
     Ok(0)
 }
