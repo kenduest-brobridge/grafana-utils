@@ -4,6 +4,9 @@
 //! namespaces. It exists so operators can inspect a few live Grafana resource
 //! kinds before richer domain-specific flows exist.
 
+#[path = "resource_help.rs"]
+mod resource_help;
+
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use reqwest::Method;
 use serde::Serialize;
@@ -18,6 +21,10 @@ use crate::grafana_api::{
 };
 use crate::profile_config::ConnectionMergeInput;
 use crate::tabular_output::{print_lines, render_summary_table, render_table, render_yaml};
+use resource_help::{
+    RESOURCE_DESCRIBE_AFTER_HELP, RESOURCE_GET_AFTER_HELP, RESOURCE_KINDS_AFTER_HELP,
+    RESOURCE_LIST_AFTER_HELP,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum ResourceOutputFormat {
@@ -169,25 +176,25 @@ pub enum ResourceCommand {
     #[command(
         name = "kinds",
         about = "List the resource kinds supported by the generic read-only resource query surface.",
-        after_help = "Examples:\n\n  Show supported resource kinds as a table:\n    grafana-util resource kinds\n\n  Render the same kind catalog as JSON:\n    grafana-util resource kinds --output-format json"
+        after_help = RESOURCE_KINDS_AFTER_HELP
     )]
     Kinds(ResourceKindsArgs),
     #[command(
         name = "describe",
         about = "Describe the supported live Grafana resource kinds and selector patterns.",
-        after_help = "Examples:\n\n  Describe every supported kind as a table:\n    grafana-util resource describe\n\n  Describe one supported kind as JSON:\n    grafana-util resource describe dashboards --output-format json"
+        after_help = RESOURCE_DESCRIBE_AFTER_HELP
     )]
     Describe(ResourceDescribeArgs),
     #[command(
         name = "list",
         about = "List one supported live Grafana resource kind.",
-        after_help = "Examples:\n\n  List dashboards as a table:\n    grafana-util resource list dashboards --url http://localhost:3000 --basic-user admin --basic-password admin\n\n  List folders as YAML:\n    grafana-util resource list folders --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-format yaml\n\n  List alert rules as JSON:\n    grafana-util resource list alert-rules --profile prod --output-format json"
+        after_help = RESOURCE_LIST_AFTER_HELP
     )]
     List(ResourceListArgs),
     #[command(
         name = "get",
         about = "Fetch one supported live Grafana resource by selector.",
-        after_help = "Examples:\n\n  Fetch one dashboard by UID:\n    grafana-util resource get dashboards/cpu-main --url http://localhost:3000 --basic-user admin --basic-password admin\n\n  Fetch one datasource by UID as YAML:\n    grafana-util resource get datasources/prom-main --profile prod --output-format yaml\n\n  Fetch one org by numeric ID:\n    grafana-util resource get orgs/1 --profile prod --output-format json"
+        after_help = RESOURCE_GET_AFTER_HELP
     )]
     Get(ResourceGetArgs),
 }

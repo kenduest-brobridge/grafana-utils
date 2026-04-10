@@ -1,10 +1,16 @@
+#[path = "profile_cli_help.rs"]
+mod profile_cli_help;
+
 use clap::{Args, CommandFactory, Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
 use crate::common::CliColorChoice;
 use crate::dashboard::SimpleOutputFormat;
-
-const PROFILE_HELP_TEXT: &str = "Examples:\n\n  grafana-util profile list\n  grafana-util profile current\n  grafana-util profile show --profile prod --output-format yaml\n  grafana-util profile validate --profile prod\n  grafana-util profile validate --profile prod --live --output-format json\n  grafana-util profile add prod --url https://grafana.example.com --basic-user admin --prompt-password --store-secret encrypted-file\n  grafana-util profile example --mode basic\n  grafana-util profile example --mode full\n  grafana-util profile init --overwrite";
+use profile_cli_help::{
+    PROFILE_ADD_AFTER_HELP, PROFILE_CURRENT_AFTER_HELP, PROFILE_EXAMPLE_AFTER_HELP,
+    PROFILE_HELP_TEXT, PROFILE_INIT_AFTER_HELP, PROFILE_LIST_AFTER_HELP, PROFILE_SHOW_AFTER_HELP,
+    PROFILE_VALIDATE_AFTER_HELP,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum ProfileSecretStorageMode {
@@ -42,37 +48,37 @@ pub struct ProfileCliArgs {
 pub enum ProfileCommand {
     #[command(
         about = "List profile names from the resolved grafana-util config file.",
-        after_help = "Prints one discovered profile name per line from the resolved config path."
+        after_help = PROFILE_LIST_AFTER_HELP
     )]
     List(ProfileListArgs),
     #[command(
         about = "Show the selected profile as YAML or text.",
-        after_help = "Use --profile NAME to show a specific profile instead of the default-selection rules."
+        after_help = PROFILE_SHOW_AFTER_HELP
     )]
     Show(ProfileShowArgs),
     #[command(
         about = "Show the currently selected profile and resolved config path.",
-        after_help = "Use this to confirm which repo-local profile would be selected before running status live, overview live, or any Grafana command that accepts --profile."
+        after_help = PROFILE_CURRENT_AFTER_HELP
     )]
     Current(ProfileCurrentArgs),
     #[command(
         about = "Validate the selected profile and optionally check live Grafana reachability.",
-        after_help = "Static validation checks profile selection, auth shape, env-backed credentials, and secret-store resolution. Add --live to also call Grafana /api/health with the selected profile."
+        after_help = PROFILE_VALIDATE_AFTER_HELP
     )]
     Validate(ProfileValidateArgs),
     #[command(
         about = "Add one named profile to grafana-util.yaml.",
-        after_help = "Creates or updates one profile entry without requiring manual YAML editing."
+        after_help = PROFILE_ADD_AFTER_HELP
     )]
     Add(Box<ProfileAddArgs>),
     #[command(
         about = "Initialize grafana-util.yaml in the current working directory.",
-        after_help = "Creates grafana-util.yaml from the built-in profile template and refuses to overwrite it unless --overwrite is set."
+        after_help = PROFILE_INIT_AFTER_HELP
     )]
     Init(ProfileInitArgs),
     #[command(
         about = "Render a complete annotated profile config example.",
-        after_help = "Use this when you want a full reference config instead of the minimal init template."
+        after_help = PROFILE_EXAMPLE_AFTER_HELP
     )]
     Example(ProfileExampleArgs),
 }
