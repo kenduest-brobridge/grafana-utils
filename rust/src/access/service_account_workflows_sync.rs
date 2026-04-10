@@ -25,8 +25,9 @@ use super::super::{
 };
 use super::service_account_workflows_support::{
     assert_not_overwrite, build_record_diff_fields, build_service_account_diff_map,
-    build_service_account_export_metadata, build_service_account_import_dry_run_document,
-    build_service_account_import_dry_run_row, build_service_account_import_dry_run_rows,
+    build_service_account_diff_review_line, build_service_account_export_metadata,
+    build_service_account_import_dry_run_document, build_service_account_import_dry_run_row,
+    build_service_account_import_dry_run_rows,
     list_all_service_accounts_with_request, load_service_account_import_records,
     validate_service_account_import_dry_run_output,
 };
@@ -375,6 +376,15 @@ where
         let (identity, _) = &live_map[key];
         println!("Diff extra-live service-account {}", identity);
     }
+    println!(
+        "{}",
+        build_service_account_diff_review_line(
+            checked,
+            differences,
+            &args.diff_dir.to_string_lossy(),
+            "Grafana live service accounts",
+        )
+    );
     println!(
         "{}",
         access_diff_summary_line(

@@ -7,7 +7,7 @@ use std::fs;
 use std::path::Path;
 
 use super::super::list_service_accounts_with_request;
-use crate::access::render::{map_get_text, value_bool};
+use crate::access::render::{access_diff_review_line, map_get_text, value_bool};
 use crate::access::{
     ServiceAccountImportArgs, ACCESS_EXPORT_KIND_SERVICE_ACCOUNTS, ACCESS_EXPORT_METADATA_FILENAME,
     ACCESS_EXPORT_VERSION, ACCESS_SERVICE_ACCOUNT_EXPORT_FILENAME, DEFAULT_PAGE_SIZE,
@@ -219,6 +219,21 @@ pub(super) fn build_service_account_import_dry_run_document(
     )
 }
 
+pub(super) fn build_service_account_diff_review_line(
+    checked: usize,
+    differences: usize,
+    local_source: &str,
+    live_source: &str,
+) -> String {
+    access_diff_review_line(
+        "service-account",
+        checked,
+        differences,
+        local_source,
+        live_source,
+    )
+}
+
 pub(super) fn validate_service_account_import_dry_run_output(
     args: &ServiceAccountImportArgs,
 ) -> Result<()> {
@@ -327,7 +342,10 @@ where
 
 #[cfg(test)]
 mod service_account_json_tests {
-    use super::{build_service_account_import_dry_run_document, render_single_object_json};
+    use super::{
+        build_service_account_diff_review_line, build_service_account_import_dry_run_document,
+        render_single_object_json,
+    };
     use serde_json::{Map, Value};
     use std::path::Path;
 
@@ -387,6 +405,21 @@ mod service_account_json_tests {
         assert_eq!(
             document.get("rows").and_then(Value::as_array).map(Vec::len),
             Some(1)
+        );
+    }
+
+    #[test]
+    fn service_account_diff_review_line_surfaces_shared_review_contract() {
+        let line = build_service_account_diff_review_line(
+            3,
+            1,
+            "./access-service-accounts",
+            "Grafana live service accounts",
+        );
+
+        assert_eq!(
+            line,
+            "Review: required=true reviewed=false kind=service-account checked=3 same=2 different=1 source=./access-service-accounts live=Grafana live service accounts"
         );
     }
 }
