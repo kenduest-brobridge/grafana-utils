@@ -45,6 +45,8 @@ const DATASOURCE_WARNING_IMPORT_PREVIEW_WOULD_CREATE: &str = "import-preview-wou
 const DATASOURCE_WARNING_IMPORT_PREVIEW_WOULD_UPDATE: &str = "import-preview-would-update";
 const DATASOURCE_WARNING_IMPORT_PREVIEW_WOULD_SKIP: &str = "import-preview-would-skip";
 const DATASOURCE_WARNING_IMPORT_PREVIEW_WOULD_CREATE_ORG: &str = "import-preview-would-create-org";
+const DATASOURCE_WARNING_IMPORT_PREVIEW_ROUTED_SOURCE_ORGS: &str =
+    "import-preview-routed-source-orgs";
 const DATASOURCE_BLOCKER_IMPORT_PREVIEW_WOULD_BLOCK: &str = "import-preview-would-block";
 
 const DATASOURCE_EXPORT_AT_LEAST_ONE_ACTIONS: &[&str] = &["export at least one datasource"];
@@ -59,6 +61,8 @@ const DATASOURCE_REVIEW_IMPORT_PREVIEW_ACTIONS: &[&str] =
     &["review datasource import preview before import or sync"];
 const DATASOURCE_REVIEW_IMPORT_ORG_CREATION_ACTIONS: &[&str] =
     &["review datasource org creation before import or sync"];
+const DATASOURCE_REVIEW_IMPORT_ROUTED_SOURCE_ORGS_ACTIONS: &[&str] =
+    &["review datasource org routing before import or sync"];
 const DATASOURCE_RESOLVE_IMPORT_BLOCKERS_ACTIONS: &[&str] =
     &["resolve datasource import preview blockers before import or sync"];
 
@@ -78,6 +82,15 @@ fn summary_number_first(document: &Value, keys: &[&'static str]) -> (usize, Opti
         }
     }
     (0, None)
+}
+
+fn summary_string_list_count(document: &Value, key: &str) -> usize {
+    document
+        .get("summary")
+        .and_then(|value| value.get(key))
+        .and_then(Value::as_array)
+        .map(Vec::len)
+        .unwrap_or(0)
 }
 
 fn append_signal_key(signal_keys: &mut Vec<String>, source: &str) {
@@ -207,6 +220,7 @@ pub(crate) fn build_datasource_domain_status(
         summary_number_first(document, &["wouldSkip", "would_skip"]);
     let (would_create_org, would_create_org_source) =
         summary_number_first(document, &["wouldCreateOrgCount", "would_create_org_count"]);
+    let routed_source_orgs = summary_string_list_count(document, "sourceOrgLabels");
 
     let mut diff_drift_review_required = false;
     let mut granular_diff_drift_found = false;
@@ -332,6 +346,20 @@ pub(crate) fn build_datasource_domain_status(
         );
         next_actions.extend(
             DATASOURCE_REVIEW_IMPORT_ORG_CREATION_ACTIONS
+                .iter()
+                .map(|item| (*item).to_string()),
+        );
+    }
+    if routed_source_orgs > 0 {
+        push_warning(
+            &mut warnings,
+            &mut signal_keys,
+            DATASOURCE_WARNING_IMPORT_PREVIEW_ROUTED_SOURCE_ORGS,
+            routed_source_orgs,
+            "summary.sourceOrgLabels",
+        );
+        next_actions.extend(
+            DATASOURCE_REVIEW_IMPORT_ROUTED_SOURCE_ORGS_ACTIONS
                 .iter()
                 .map(|item| (*item).to_string()),
         );
@@ -693,6 +721,53 @@ mod tests {
                 "summary.wouldSkip",
                 "summary.wouldBlock",
                 "summary.wouldCreateOrgCount",
+            ])
+        );
+    }
+
+    #[test]
+    fn build_datasource_domain_status_surfaces_routed_source_org_labels() {
+        let document = json!({
+            "summary": {
+                "datasourceCount": 4,
+                "orgCount": 3,
+                "defaultCount": 1,
+                "typeCount": 2,
+                "sourceOrgLabels": ["1:Main Org.", "2:Ops Org"],
+            }
+        });
+
+        let domain = build_datasource_domain_status(Some(&document)).unwrap();
+        let domain = serde_json::to_value(domain).unwrap();
+
+        assert_eq!(domain["warningCount"], json!(2));
+        assert_eq!(
+            domain["warnings"],
+            json!([
+                {
+                    "kind": "import-preview-routed-source-orgs",
+                    "count": 2,
+                    "source": "summary.sourceOrgLabels",
+                }
+            ])
+        );
+        assert_eq!(
+            domain["nextActions"],
+            json!(["review datasource org routing before import or sync"])
+        );
+        assert_eq!(
+            domain["signalKeys"],
+            json!([
+                "summary.datasourceCount",
+                "summary.orgCount",
+                "summary.defaultCount",
+                "summary.typeCount",
+                "summary.wouldCreate",
+                "summary.wouldUpdate",
+                "summary.wouldSkip",
+                "summary.wouldBlock",
+                "summary.wouldCreateOrgCount",
+                "summary.sourceOrgLabels",
             ])
         );
     }
