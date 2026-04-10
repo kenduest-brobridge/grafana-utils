@@ -384,51 +384,47 @@ fn service_account_token_delete_result(
     token: &Map<String, Value>,
     response: &Map<String, Value>,
 ) -> Map<String, Value> {
-    Map::from_iter(vec![
-        (
-            "serviceAccountId".to_string(),
-            Value::String({
-                let id = scalar_text(service_account.get("id"));
-                if id.is_empty() {
-                    scalar_text(service_account.get("serviceAccountId"))
-                } else {
-                    id
-                }
-            }),
-        ),
-        (
-            "serviceAccountName".to_string(),
-            Value::String(string_field(service_account, "name", "")),
-        ),
-        (
-            "tokenId".to_string(),
-            Value::String({
-                let id = scalar_text(token.get("id"));
-                if id.is_empty() {
-                    scalar_text(response.get("tokenId"))
-                } else {
-                    id
-                }
-            }),
-        ),
-        (
-            "tokenName".to_string(),
-            Value::String(string_field(token, "name", "")),
-        ),
-        (
-            "message".to_string(),
-            Value::String(string_field(
-                response,
-                "message",
-                "Service-account token deleted.",
-            )),
-        ),
-    ])
+    let mut row = normalize_service_account_row(service_account);
+    row.insert(
+        "serviceAccountId".to_string(),
+        Value::String({
+            let id = map_get_text(&row, "id");
+            if id.is_empty() {
+                scalar_text(service_account.get("serviceAccountId"))
+            } else {
+                id
+            }
+        }),
+    );
+    row.insert(
+        "tokenId".to_string(),
+        Value::String({
+            let id = scalar_text(token.get("id"));
+            if id.is_empty() {
+                scalar_text(response.get("tokenId"))
+            } else {
+                id
+            }
+        }),
+    );
+    row.insert(
+        "tokenName".to_string(),
+        Value::String(string_field(token, "name", "")),
+    );
+    row.insert(
+        "message".to_string(),
+        Value::String(string_field(
+            response,
+            "message",
+            "Service-account token deleted.",
+        )),
+    );
+    row
 }
 
 /// Build a stable summary line for a deleted service-account token.
 fn service_account_token_delete_summary_line(result: &Map<String, Value>) -> String {
-    [
+    let mut parts = vec![
         format!(
             "serviceAccountId={}",
             map_get_text(result, "serviceAccountId")
@@ -437,11 +433,25 @@ fn service_account_token_delete_summary_line(result: &Map<String, Value>) -> Str
             "serviceAccountName={}",
             map_get_text(result, "serviceAccountName")
         ),
+    ];
+    for (field, label) in [
+        ("login", "login"),
+        ("role", "role"),
+        ("disabled", "disabled"),
+        ("tokens", "tokens"),
+    ] {
+        let value = map_get_text(result, field);
+        if !value.is_empty() {
+            parts.push(format!("{label}={value}"));
+        }
+    }
+    parts.extend([
         format!("tokenId={}", map_get_text(result, "tokenId")),
         format!("tokenName={}", map_get_text(result, "tokenName")),
         format!("message={}", map_get_text(result, "message")),
     ]
-    .join(" ")
+    .into_iter());
+    parts.join(" ")
 }
 
 /// Delete one service-account token with mutually-exclusive identity checks.
@@ -601,6 +611,36 @@ mod pending_delete_service_account_tests {
         assert!(label.contains("id=7"));
         assert!(label.contains("service-account=svc"));
         assert!(label.contains("login=sa-svc"));
+    }
+
+    #[test]
+    fn service_account_token_delete_summary_line_includes_account_context() {
+        let result = Map::from_iter(vec![
+            ("serviceAccountId".to_string(), Value::String("4".to_string())),
+            ("serviceAccountName".to_string(), Value::String("svc".to_string())),
+            ("login".to_string(), Value::String("sa-svc".to_string())),
+            ("role".to_string(), Value::String("Viewer".to_string())),
+            ("disabled".to_string(), Value::String("false".to_string())),
+            ("tokens".to_string(), Value::String("2".to_string())),
+            ("tokenId".to_string(), Value::String("9".to_string())),
+            ("tokenName".to_string(), Value::String("automation".to_string())),
+            (
+                "message".to_string(),
+                Value::String("Service-account token deleted.".to_string()),
+            ),
+        ]);
+
+        let line = service_account_token_delete_summary_line(&result);
+
+        assert!(line.contains("serviceAccountId=4"));
+        assert!(line.contains("serviceAccountName=svc"));
+        assert!(line.contains("login=sa-svc"));
+        assert!(line.contains("role=Viewer"));
+        assert!(line.contains("disabled=false"));
+        assert!(line.contains("tokens=2"));
+        assert!(line.contains("tokenId=9"));
+        assert!(line.contains("tokenName=automation"));
+        assert!(line.contains("message=Service-account token deleted."));
     }
 
     #[test]
