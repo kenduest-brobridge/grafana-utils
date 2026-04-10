@@ -83,6 +83,23 @@ class CheckAiWorkflowTests(unittest.TestCase):
 
         self.assertEqual(errors, [])
 
+    def test_workspace_noise_paths_are_rejected(self):
+        module = load_module()
+
+        errors = module.validate_paths(["test-results/alert-export.json", "scratch/note.md"])
+
+        self.assertEqual(len(errors), 1)
+        self.assertIn("workspace noise paths", errors[0])
+        self.assertIn("test-results/alert-export.json", errors[0])
+        self.assertIn("scratch/note.md", errors[0])
+
+    def test_workspace_noise_paths_can_still_be_detected_directly(self):
+        module = load_module()
+
+        self.assertTrue(module.is_workspace_noise_path("notes/local-review.md"))
+        self.assertTrue(module.is_workspace_noise_path(".codex/task-brief.md"))
+        self.assertFalse(module.is_workspace_noise_path("docs/internal/ai-workflow-note.md"))
+
 
 if __name__ == "__main__":
     unittest.main()

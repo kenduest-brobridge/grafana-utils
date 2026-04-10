@@ -2,7 +2,8 @@
 use super::make_common_args;
 use crate::dashboard::authoring::{
     load_dashboard_input_document_from_reader, publish_dashboard_with_request,
-    watch_change_detected_message, watch_change_unstable_message, watch_start_message,
+    watch_change_detected_message, watch_change_unstable_message, watch_event_targets_input_path,
+    watch_start_message,
 };
 use crate::dashboard::{patch_dashboard_file, PatchFileArgs, PublishArgs};
 use serde_json::{json, Value};
@@ -289,4 +290,17 @@ fn watch_status_messages_match_expected_operator_text() {
         watch_change_unstable_message(&input),
         "Dashboard input changed again before it stabilized; still watching /tmp/cpu-main.json."
     );
+}
+
+#[test]
+fn watch_event_targets_input_path_matches_only_the_watched_file() {
+    let input = std::path::PathBuf::from("/tmp/cpu-main.json");
+    let matching = vec![std::path::PathBuf::from("/tmp/cpu-main.json")];
+    let unrelated = vec![
+        std::path::PathBuf::from("/tmp/other.json"),
+        std::path::PathBuf::from("/tmp/drafts/cpu-main.json"),
+    ];
+
+    assert!(watch_event_targets_input_path(&matching, &input));
+    assert!(!watch_event_targets_input_path(&unrelated, &input));
 }

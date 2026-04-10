@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from subprocess import CalledProcessError, run
 from typing import Iterable
 
 
@@ -79,7 +80,7 @@ def discover_noise_paths(root: Path) -> list[NoisePath]:
                 )
             )
             continue
-        if path.is_file() and _contains_marker(path, NOISE_MARKERS):
+        if path.is_file() and _contains_marker(path, DEFAULT_NOISE_MARKERS):
             noise.append(
                 NoisePath(
                     path=path,
@@ -107,6 +108,48 @@ def render_noise_report(root: Path) -> list[str]:
     return lines
 
 
+def discover_noise_paths_from_git_status(root: Path) -> list[NoisePath]:
+    """Report only noise paths that currently show up in git status."""
+    tracked_noise = {item.path.resolve(): item for item in discover_noise_paths(root)}
+    if not tracked_noise:
+        return []
+
+    try:
+        result = run(
+            ["git", "status", "--short", "--untracked-files=all"],
+            check=True,
+            capture_output=True,
+            text=True,
+            cwd=root,
+        )
+    except (OSError, CalledProcessError):
+        return []
+
+    visible_noise: list[NoisePath] = []
+    seen_paths: set[Path] = set()
+    for raw_line in result.stdout.splitlines():
+        if len(raw_line) < 4:
+            continue
+        path_text = raw_line[3:].strip()
+        if " -> " in path_text:
+            path_text = path_text.split(" -> ", 1)[1]
+        candidate = (root / path_text).resolve()
+        noise = tracked_noise.get(candidate)
+        if noise is None or candidate in seen_paths:
+            continue
+        visible_noise.append(noise)
+        seen_paths.add(candidate)
+    return visible_noise
+
+
+def render_git_status_noise_report(root: Path) -> list[str]:
+    """Build a plain text report for noise currently visible in git status."""
+    return [
+        f"{item.category}\t{item.reason}\t{item.path}"
+        for item in discover_noise_paths_from_git_status(root)
+    ]
+
+
 def main() -> int:
     """CLI entry point for local manual workspace scans."""
     # Call graph: see callers/callees.
@@ -126,6 +169,11 @@ def main() -> int:
         action="store_true",
         help="Render a machine-readable JSON payload.",
     )
+    parser.add_argument(
+        "--check-git-status",
+        action="store_true",
+        help="Fail when likely scratch/noise paths currently appear in git status.",
+    )
     args = parser.parse_args()
 
     root = Path(args.root).resolve()
@@ -135,16 +183,26 @@ def main() -> int:
 
     if args.json:
         from json import dumps
+        items = (
+            discover_noise_paths_from_git_status(root)
+            if args.check_git_status
+            else discover_noise_paths(root)
+        )
         payload = [
             {"path": str(item.path), "category": item.category, "reason": item.reason}
-            for item in discover_noise_paths(root)
+            for item in items
         ]
         print(dumps(payload, indent=2, sort_keys=False))
-        return 0
+        return 1 if args.check_git_status and payload else 0
 
-    for line in render_noise_report(root):
+    lines = (
+        render_git_status_noise_report(root)
+        if args.check_git_status
+        else render_noise_report(root)
+    )
+    for line in lines:
         print(line)
-    return 0
+    return 1 if args.check_git_status and lines else 0
 
 
 if __name__ == "__main__":

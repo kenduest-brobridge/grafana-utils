@@ -42,6 +42,14 @@ MAN_SOURCE_FILES = {
     "scripts/docgen_common.py",
 }
 
+WORKSPACE_NOISE_PREFIXES = (
+    ".codex/",
+    ".workspace-noise/",
+    "notes/",
+    "scratch/",
+    "test-results/",
+)
+
 MEANINGFUL_INTERNAL_DOC_FILES = {
     "docs/DEVELOPER.md",
     "docs/internal/ai-workflow-note.md",
@@ -76,6 +84,10 @@ def is_meaningful_internal_doc(path: str) -> bool:
     return path.endswith(MEANINGFUL_INTERNAL_DOC_SUFFIXES)
 
 
+def is_workspace_noise_path(path: str) -> bool:
+    return any(path.startswith(prefix) for prefix in WORKSPACE_NOISE_PREFIXES)
+
+
 def detect_changed_files() -> list[str]:
     diff_cmd = [
         "git",
@@ -106,6 +118,7 @@ def validate_paths(paths: list[str]) -> list[str]:
     touched_man = any(path.startswith("docs/man/") for path in normalized)
     touched_meaningful_internal = any(is_meaningful_internal_doc(path) for path in normalized)
     touched_trace = TRACE_FILES.issubset(path_set)
+    touched_workspace_noise = [path for path in normalized if is_workspace_noise_path(path)]
 
     if touched_html:
         has_html_source = any(
@@ -130,6 +143,12 @@ def validate_paths(paths: list[str]) -> list[str]:
     if touched_meaningful_internal and not touched_trace:
         errors.append(
             "changed meaningful maintainer/contract/architecture docs without updating both docs/internal/ai-status.md and docs/internal/ai-changes.md"
+        )
+
+    if touched_workspace_noise:
+        errors.append(
+            "changed local workspace noise paths that should stay out of review and commit paths: "
+            + ", ".join(touched_workspace_noise)
         )
 
     return errors

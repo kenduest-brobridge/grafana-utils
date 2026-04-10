@@ -2,12 +2,14 @@
 //!
 //! These commands fetch one live dashboard, clear the numeric ID, and write a local
 //! draft that can be edited and later imported with the existing dashboard import flow.
+use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use reqwest::Method;
 use serde_json::{Map, Value};
 use std::fs;
 use std::io::{self, Read};
 use std::path::{Path, PathBuf};
 use std::process;
+use std::sync::mpsc::{self, RecvTimeoutError};
 use std::thread;
 use std::time::Duration;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -147,6 +149,13 @@ fn current_file_watch_fingerprint(path: &Path) -> Result<Option<FileWatchFingerp
         Err(error) if error.kind() == io::ErrorKind::NotFound => Ok(None),
         Err(error) => Err(error.into()),
     }
+}
+
+pub(crate) fn watch_event_targets_input_path(paths: &[PathBuf], input_path: &Path) -> bool {
+    paths.iter().any(|path| {
+        path == input_path
+            || (path.file_name() == input_path.file_name() && path.parent() == input_path.parent())
+    })
 }
 
 pub(crate) fn watch_start_message(path: &Path) -> String {
@@ -585,13 +594,65 @@ fn watch_publish_dashboard_with_client(client: &JsonHttpClient, args: &PublishAr
         Err(error) => eprintln!("Initial publish failed: {error}"),
     }
 
+    let (event_tx, event_rx) = mpsc::channel();
+    let mut watcher = RecommendedWatcher::new(
+        move |result| {
+            let _ = event_tx.send(result);
+        },
+        Config::default(),
+    )
+    .map_err(|error| {
+        message(format!(
+            "Failed to start dashboard publish watcher: {error}"
+        ))
+    })?;
+    let watch_root = input_path
+        .parent()
+        .map(Path::to_path_buf)
+        .unwrap_or_else(|| PathBuf::from("."));
+    watcher
+        .watch(&watch_root, RecursiveMode::NonRecursive)
+        .map_err(|error| {
+            message(format!(
+                "Failed to watch {} for dashboard publish changes: {error}",
+                watch_root.display()
+            ))
+        })?;
+
     let mut last_seen = current_file_watch_fingerprint(input_path)?;
     loop {
-        thread::sleep(Duration::from_millis(500));
-        let current = current_file_watch_fingerprint(input_path)?;
-        if current == last_seen {
-            continue;
-        }
+        let current = match event_rx.recv_timeout(Duration::from_secs(2)) {
+            Ok(Ok(event)) => {
+                if !watch_event_targets_input_path(&event.paths, input_path) {
+                    continue;
+                }
+                let current = current_file_watch_fingerprint(input_path)?;
+                if current == last_seen {
+                    continue;
+                }
+                current
+            }
+            Ok(Err(error)) => {
+                eprintln!(
+                    "Dashboard publish watcher reported an error for {}: {error}",
+                    input_path.display()
+                );
+                continue;
+            }
+            Err(RecvTimeoutError::Timeout) => {
+                let current = current_file_watch_fingerprint(input_path)?;
+                if current == last_seen {
+                    continue;
+                }
+                current
+            }
+            Err(RecvTimeoutError::Disconnected) => {
+                return Err(message(format!(
+                    "Dashboard publish watcher disconnected for {}.",
+                    input_path.display()
+                )));
+            }
+        };
 
         eprintln!("{}", watch_change_detected_message(input_path));
 

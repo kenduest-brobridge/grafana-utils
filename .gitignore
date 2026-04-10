@@ -11,5 +11,10 @@ build/
 dist/
 rust/target/
 *.egg-info/
+test-results/
+scratch/
+notes/
+.codex/
+.workspace-noise/
 tmp/
 .playwright-cli/

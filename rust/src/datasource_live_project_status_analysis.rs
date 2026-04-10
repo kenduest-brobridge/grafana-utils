@@ -67,6 +67,9 @@ const DATASOURCE_CREATE_OR_SYNC_ACTIONS: &[&str] =
 const DATASOURCE_MARK_DEFAULT_ACTIONS: &[&str] = &["mark a default datasource in Grafana"];
 const DATASOURCE_KEEP_SINGLE_DEFAULT_ACTIONS: &[&str] =
     &["keep exactly one datasource marked as the default"];
+const DATASOURCE_FIX_ORG_SCOPE_ACTIONS: &[&str] = &[
+    "re-run live datasource read after aligning datasource org scope with the current org and visible org list",
+];
 const DATASOURCE_FIX_METADATA_ACTIONS: &[&str] =
     &["re-run live datasource read after correcting datasource identity or org scope"];
 const DATASOURCE_REVIEW_SECRET_PROVIDER_ACTIONS: &[&str] =
@@ -336,6 +339,7 @@ pub(crate) fn build_datasource_live_project_status(
 
     let mut warnings = Vec::new();
     let mut metadata_issue_found = false;
+    let mut org_scope_issue_found = false;
     let mut readiness_signal_found = false;
     if missing_uid_count > 0 {
         metadata_issue_found = true;
@@ -387,6 +391,7 @@ pub(crate) fn build_datasource_live_project_status(
     }
     if inputs.current_org.is_some() && org_id_count > 1 {
         metadata_issue_found = true;
+        org_scope_issue_found = true;
         warnings.push(status_finding(
             DATASOURCE_WARNING_MIXED_ORG_IDS,
             org_id_count - 1,
@@ -402,6 +407,7 @@ pub(crate) fn build_datasource_live_project_status(
                 .unwrap_or_default();
             if !datasource_org_id.is_empty() && datasource_org_id != *current_org_id {
                 metadata_issue_found = true;
+                org_scope_issue_found = true;
                 warnings.push(status_finding(
                     DATASOURCE_WARNING_ORG_SCOPE_MISMATCH,
                     1,
@@ -419,6 +425,7 @@ pub(crate) fn build_datasource_live_project_status(
         let missing_org_ids = datasource_org_ids.difference(org_list_ids).count();
         if missing_org_ids > 0 {
             metadata_issue_found = true;
+            org_scope_issue_found = true;
             warnings.push(status_finding(
                 DATASOURCE_WARNING_ORG_LIST_MISMATCH,
                 missing_org_ids,
@@ -543,7 +550,13 @@ pub(crate) fn build_datasource_live_project_status(
     } else {
         Vec::new()
     };
-    if metadata_issue_found && datasource_count > 0 {
+    if org_scope_issue_found && datasource_count > 0 {
+        next_actions.extend(
+            DATASOURCE_FIX_ORG_SCOPE_ACTIONS
+                .iter()
+                .map(|item| (*item).to_string()),
+        );
+    } else if metadata_issue_found && datasource_count > 0 {
         next_actions.extend(
             DATASOURCE_FIX_METADATA_ACTIONS
                 .iter()
