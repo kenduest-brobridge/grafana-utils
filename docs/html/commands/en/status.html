@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>grafana-util status · grafana-util docs</title>
+  <title>Legacy: grafana-util status · grafana-util docs</title>
   <style>:root {
   color-scheme: light dark;
   --font-scale: 1;
@@ -758,19 +758,19 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </aside>
 
   <article class="article">
-    <div class="breadcrumbs"><a href="../../index.html">Home</a> / Commands / grafana-util status</div>
+    <div class="breadcrumbs"><a href="../../index.html">Home</a> / Commands / Legacy: grafana-util status</div>
 
-    <h1><span class="hero-title-main">grafana-util status</span></h1>
+    <h1><span class="hero-title-main">Legacy: grafana-util status</span></h1>
 
 
     <section class="command-intro">
   <div class="command-intro-grid"><div class="command-intro-block">
   <p class="command-intro-label">What this page covers</p>
-  <p class="command-intro-text">render shared project-wide staged or live status.</p>
+  <p class="command-intro-text">compatibility reference for the old staged/live status root.</p>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">When to open this page</p>
-  <ul class="command-intro-list"><li>when you need the final gate view for exported artifacts or live Grafana state.</li></ul>
+  <ul class="command-intro-list"><li>when you are translating older docs or scripts to the current observe surface.</li></ul>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">Who this page is for</p>
@@ -779,28 +779,28 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 </section>
 <h2 id="root">Root</h2>
-<p>Purpose: render shared project-wide staged or live status.</p>
-<p>When to use: when you need the final gate view for exported artifacts or live Grafana state.</p>
-<p>Description: start here when you need a final readiness or health readout rather than a deep command-by-command walkthrough. The <code>status</code> namespace is the gate view that operators and CI jobs use to answer “is the staged bundle ready?” or “what does the live Grafana state look like right now?”.</p>
-<p>Key flags: the root command is a namespace; staged and live inputs live on the subcommands. Common flags include <code>--output-format</code> and the shared live connection/auth options.</p>
+<p>Purpose: compatibility reference for the old staged/live status root.</p>
+<p>When to use: when you are translating older docs or scripts to the current <code>observe</code> surface.</p>
+<p>Description: the public staged/live status surface now lives under <code>grafana-util observe</code>. Use <code>observe staged</code>, <code>observe live</code>, <code>observe overview</code>, or <code>observe snapshot</code> instead of the legacy top-level <code>status</code> root.</p>
+<p>Key flags: the canonical root is <code>observe</code>; staged and live inputs live on the subcommands. Common flags include <code>--output-format</code> and the shared live connection/auth options.</p>
 <p>Examples:</p>
 <pre><code># Purpose: Render staged status from dashboard and desired artifacts.
-grafana-util status staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output-format json</code></pre>
+grafana-util observe staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output-format json</code></pre>
 <pre><code># Purpose: Render live status from a reusable profile.
-grafana-util status live --profile prod --output-format yaml</code></pre>
-<p>Related commands: <code>grafana-util overview</code>, <code>grafana-util change check</code>, <code>grafana-util change apply</code>.</p>
+grafana-util observe live --profile prod --output-format yaml</code></pre>
+<p>Related commands: <code>grafana-util observe overview</code>, <code>grafana-util change check</code>, <code>grafana-util change apply</code>.</p>
 <p>Schema guide:</p>
-<ul><li><code>grafana-util status --help-schema</code></li><li><code>grafana-util status staged --help-schema</code></li><li><code>grafana-util status live --help-schema</code></li></ul>
+<ul><li><code>grafana-util observe --help-schema</code></li><li><code>grafana-util observe staged --help-schema</code></li><li><code>grafana-util observe live --help-schema</code></li></ul>
 <h2 id="staged"><code>staged</code></h2>
 <p>Purpose: render project status from staged artifacts.</p>
 <p>When to use: when you need the machine-readable readiness gate for exported files before apply.</p>
 <p>Key flags: <code>--dashboard-export-dir</code>, <code>--dashboard-provisioning-dir</code>, <code>--datasource-export-dir</code>, <code>--datasource-provisioning-file</code>, <code>--access-user-export-dir</code>, <code>--access-team-export-dir</code>, <code>--access-org-export-dir</code>, <code>--access-service-account-export-dir</code>, <code>--desired-file</code>, <code>--source-bundle</code>, <code>--target-inventory</code>, <code>--alert-export-dir</code>, <code>--availability-file</code>, <code>--mapping-file</code>, <code>--output-format</code>.</p>
 <p>Examples:</p>
 <pre><code># Purpose: staged.
-grafana-util status staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output-format table</code></pre>
+grafana-util observe staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output-format table</code></pre>
 <pre><code># Purpose: staged.
-grafana-util status staged --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts --output-format interactive</code></pre>
-<p>Related commands: <code>grafana-util overview</code>, <code>grafana-util change inspect</code>, <code>grafana-util change check</code>.</p>
+grafana-util observe staged --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts --output-format interactive</code></pre>
+<p>Related commands: <code>grafana-util observe overview</code>, <code>grafana-util change inspect</code>, <code>grafana-util change check</code>.</p>
 <p>Machine-readable contract: <code>grafana-util-project-status</code></p>
 <h2 id="live"><code>live</code></h2>
 <p>Purpose: render project status from live Grafana read surfaces.</p>
@@ -810,12 +810,12 @@ grafana-util status staged --dashboard-provisioning-dir ./dashboards/provisionin
 <ul><li>Prefer <code>--profile</code> for normal live status checks.</li><li><code>--all-orgs</code> is safest with admin-backed <code>--profile</code> or direct Basic auth because token scope can hide other orgs.</li></ul>
 <p>Examples:</p>
 <pre><code># Purpose: live.
-grafana-util status live --profile prod --output-format yaml</code></pre>
+grafana-util observe live --profile prod --output-format yaml</code></pre>
 <pre><code># Purpose: live.
-grafana-util status live --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output-format json</code></pre>
+grafana-util observe live --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output-format json</code></pre>
 <pre><code># Purpose: live.
-grafana-util status live --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --sync-summary-file ./sync-summary.json --output-format interactive</code></pre>
-<p>Related commands: <code>grafana-util overview live</code>, <code>grafana-util change apply</code>, <code>grafana-util profile show</code>.</p>
+grafana-util observe live --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --sync-summary-file ./sync-summary.json --output-format interactive</code></pre>
+<p>Related commands: <code>grafana-util observe overview</code>, <code>grafana-util change apply</code>, <code>grafana-util config profile show</code>.</p>
 <p>Machine-readable contract: <code>grafana-util-project-status</code></p>
     
   </article>

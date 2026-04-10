@@ -22,7 +22,7 @@
 
 | 原本常見情況 | 改用 `grafana-util` 後 |
 | :--- | :--- |
-| 想知道現在 Grafana 環境長什麼樣，只能一直切 UI 或查 API。 | 先用 `overview`、`status` 或 `change inspect` 建立第一個審查面。 |
+| 想知道現在 Grafana 環境長什麼樣，只能一直切 UI 或查 API。 | 先用 `observe live`、`observe overview` 或 `change inspect` 建立第一個審查面。 |
 | 匯出/匯入像一次性的動作，缺少中間檢查點。 | 先匯出、再 inspect、再 dry-run，最後才決定要不要回放。 |
 | 告警或權限變更很難在套用前說清楚。 | 先看 summary、plan 與結構化輸出，再進入 apply。 |
 | 認證與 secret 容易散落在命令列與腳本裡。 | 用 profile 與 secret 模式把重複設定收起來。 |
@@ -51,10 +51,10 @@
 
 它把常見需求拆成幾個面向：
 
-- **盤點與觀察**：用 `status`、`overview` 先看目前狀態
+- **盤點與觀察**：用 `observe` 先看目前狀態
 - **資產操作**：用 `dashboard`、`datasource`、`alert`、`access` 管理不同類型的 Grafana 資產
 - **變更審查**：用 `change` 走 `inspect`、`check`、`preview`、`apply` 這條 task-first 路徑
-- **連線與憑證**：用 `profile` 把 URL、驗證方式與 secret 來源整理起來
+- **連線與憑證**：用 `config profile` 把 URL、驗證方式與 secret 來源整理起來
 
 重點不是記住每個 command，而是先知道自己在做哪一種工作。
 
@@ -72,7 +72,7 @@
 
 README 和手冊首頁要短，先露出大家最常用的工作流；更細的 command 樹放在 docs index 和各自的指令頁。
 
-- 放在 README / 首頁：`dashboard export/import/review/publish`、`migrate dashboard raw-to-prompt`、`datasource export/import/diff`、`change inspect/check/preview/apply`、`status`、`overview`、`profile`、`alert plan/apply`、`access`、`secrets`。
+- 放在 README / 首頁：`observe live`、`observe overview`、`export dashboard|alert|datasource`、`change inspect/check/preview/apply`、`config profile`、`advanced dashboard`、`advanced alert`、`advanced datasource`、`access`。
 - 放在 docs index 和逐指令頁：`dashboard browse/fetch-live/clone-live/serve/edit-live/delete/history/list-vars/governance-gate/topology/impact/screenshot`、`datasource browse/types/list/add/modify/delete`、`snapshot`、`resource`、以及相容別名頁面。
 
 ## 主要目標
@@ -87,14 +87,14 @@ README 和手冊首頁要短，先露出大家最常用的工作流；更細的 
 
 | 功能面向 | 主要 command | 你會用它來做什麼 |
 | :--- | :--- | :--- |
-| 環境狀態檢查 | `status` | 看 live 或 staged 狀態是否健康、是否適合往下做 |
-| 全域總覽 | `overview` | 快速盤點整體 Grafana 環境、先決定下一步要往哪裡鑽 |
+| 環境狀態檢查 | `observe live` / `observe staged` | 看 live 或 staged 狀態是否健康、是否適合往下做 |
+| 全域總覽 | `observe overview` | 快速盤點整體 Grafana 環境、先決定下一步要往哪裡鑽 |
 | Dashboard 維運 | `dashboard` | 匯出、匯入、diff、inspect、截圖、拓樸分析 |
 | Data source 維運 | `datasource` | data source 盤點、匯出、匯入、diff、修改與恢復 |
 | 告警治理 | `alert` | 告警規則、通知路由、contact point、plan / apply |
 | 身分與存取 | `access` | org、user、team、service account 與 token 管理 |
 | 變更審查 | `change` | 先 inspect、check、preview，再決定要不要 apply |
-| 連線與憑證設定 | `profile` | 把 URL、驗證方式與 secret 來源整理成可重複使用的設定 |
+| 連線與憑證設定 | `config profile` | 把 URL、驗證方式與 secret 來源整理成可重複使用的設定 |
 
 如果你只想知道「現在該從哪裡開始」，可以先用這個表判斷自己遇到的是哪一類問題，再往對應章節走。
 
@@ -110,7 +110,7 @@ README 和手冊首頁要短，先露出大家最常用的工作流；更細的 
 - live 狀態是否正常？
 - 哪些地方看起來已經漂移或快要出問題？
 
-這時通常會先從 `status live` 或 `overview live` 開始。
+這時通常會先從 `observe live` 或 `observe overview` 開始。
 
 ### 2. 匯出、搬移與回放
 
@@ -136,7 +136,7 @@ README 和手冊首頁要短，先露出大家最常用的工作流；更細的 
 
 這時重點通常是：
 
-- 用 `--profile` 或 env 把連線整理好
+- 用 `config profile` 或 env 把連線整理好
 - 讓輸出格式穩定可讀
 - 讓變更流程有 review 與 gate
 

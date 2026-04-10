@@ -37,17 +37,16 @@ This guide is for operators who need to inventory Grafana data sources from live
 
 Need the command-by-command surface instead of the workflow guide?
 
-- [datasource command overview](../../commands/en/datasource.md)
-- [datasource types](../../commands/en/datasource-types.md)
-- [datasource browse](../../commands/en/datasource-browse.md)
-- [datasource list](../../commands/en/datasource-list.md)
-- [datasource export](../../commands/en/datasource-export.md)
-- [datasource import](../../commands/en/datasource-import.md)
-- [datasource diff](../../commands/en/datasource-diff.md)
-- [datasource list](../../commands/en/datasource-list.md)
-- [datasource add](../../commands/en/datasource-add.md)
-- [datasource modify](../../commands/en/datasource-modify.md)
-- [datasource delete](../../commands/en/datasource-delete.md)
+- [advanced datasource command overview](../../commands/en/advanced.md)
+- [advanced datasource types](../../commands/en/advanced.md)
+- [advanced datasource browse](../../commands/en/advanced.md)
+- [advanced datasource list](../../commands/en/advanced.md)
+- [export datasource](../../commands/en/export.md)
+- [advanced datasource import](../../commands/en/advanced.md)
+- [advanced datasource diff](../../commands/en/advanced.md)
+- [advanced datasource add](../../commands/en/advanced.md)
+- [advanced datasource modify](../../commands/en/advanced.md)
+- [advanced datasource delete](../../commands/en/advanced.md)
 - [full command index](../../commands/en/index.md)
 
 ---
@@ -82,7 +81,7 @@ Use `datasource list` to verify the current state of your Grafana plugins and ta
 
 ```bash
 # Purpose: Use datasource list to verify the current state of your Grafana plugins and targets.
-grafana-util datasource list \
+grafana-util advanced datasource list \
   --url http://localhost:3000 \
   --basic-user admin \
   --basic-password admin \
@@ -121,7 +120,7 @@ dehk4kxat5la8b  Prometheus  prometheus  http://prometheus:9090  true            
 ### 1. Export Inventory
 ```bash
 # Purpose: 1. Export Inventory.
-grafana-util datasource export --output-dir ./datasources --overwrite
+grafana-util export datasource --output-dir ./datasources --overwrite
 ```
 **Output Excerpt:**
 ```text
@@ -133,7 +132,7 @@ Datasource export completed: 3 item(s)
 ### 2. Dry-Run Import Preview
 ```bash
 # Purpose: 2. Dry-Run Import Preview.
-grafana-util datasource import --input-dir ./datasources --replace-existing --dry-run --table
+grafana-util advanced datasource import --input-dir ./datasources --replace-existing --dry-run --table
 ```
 **Output Excerpt:**
 ```text
@@ -149,7 +148,7 @@ loki-prod   loki-prod          loki         create   missing
 ### 3. Direct Live Add (Dry-Run)
 ```bash
 # Purpose: 3. Direct Live Add (Dry-Run).
-grafana-util datasource add \
+grafana-util advanced datasource add \
   --uid prom-main --name prom-new --type prometheus \
   --datasource-url http://prometheus:9090 --dry-run --table
 ```
@@ -162,7 +161,7 @@ INDEX  NAME       TYPE         ACTION  DETAIL
 ### 4. Local Inventory Review
 ```bash
 # Purpose: 4. Local Inventory Review.
-grafana-util datasource list --input-dir ./datasources --table
+grafana-util advanced datasource list --input-dir ./datasources --table
 ```
 **Output Excerpt:**
 ```text

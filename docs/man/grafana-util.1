@@ -48,13 +48,13 @@ grafana\-util datasource is the namespace for catalog lookup, inventory reads, e
 Run the access\-management command surface for users, orgs, teams, and service accounts. Use when: List live or local access inventory.; Create, modify, export, import, diff, or delete access resources.; Manage service\-account tokens.
 .TP
 .B profile
-list, inspect, validate, add, and initialize repo\-local grafana\-util profiles. Use when: Want to keep Grafana connection defaults in the current checkout and reuse them with \-\-profile.
+list, inspect, validate, add, and initialize repo\-local grafana\-util profiles through the current config profile entrypoint. Use when: Want to keep Grafana connection defaults in the current checkout and reuse them with \-\-profile.
 .TP
 .B status
-render shared project\-wide staged or live status. Use when: Need the final gate view for exported artifacts or live Grafana state.
+compatibility reference for the old staged/live status root. Use when: Are translating older docs or scripts to the current observe surface.
 .TP
 .B overview
-summarize staged artifacts into one project\-wide overview. Use when: Want a single readout across dashboard, datasource, access, alert, and change artifacts before checking status or promoting changes.
+compatibility reference for the old project\-wide overview root. Use when: Are translating older docs or scripts to the current observe surface.
 .TP
 .B change
 task\-first staged change workflow with optional live Grafana preview and apply paths. Use when: Need to inspect a staged package, check whether it looks safe to continue, preview what would change, apply an approved preview, or drop into lower\-level advanced review contracts.
@@ -249,7 +249,7 @@ render project status from live Grafana read surfaces. Use when: Need current Gr
 .SS overview
 .TP
 .B grafana\-util\-overview\-live(1)
-render the live overview by delegating to the shared status live path. Use when: Need the same live readout that status live uses, but want it under the overview namespace.
+render the live overview by delegating to the shared observe live path. Use when: Need the same live readout that observe live uses, but want it under the overview namespace.
 .SS change
 .TP
 .B grafana\-util\-change\-advanced(1)

@@ -11,27 +11,34 @@
 
 ## 子命令
 
-- `export dashboard`
-- `export alert`
-- `export datasource`
-- `export access user`
-- `export access org`
-- `export access team`
-- `export access service-account`
+### 備份與 artifact 擷取
+- `export dashboard`：匯出 dashboards 的 raw、prompt、provisioning 三條 lane。
+- `export alert`：把 alert resources 匯出成在地 artifact tree。
+- `export datasource`：匯出 datasource inventory 供 review 或 restore。
+
+### Access inventory 擷取
+- `export access user`：匯出 Grafana users。
+- `export access org`：匯出 Grafana org inventory。
+- `export access team`：匯出 Grafana teams。
+- `export access service-account`：匯出 service accounts。
 
 ## 範例
+### Dashboard 備份
 ```bash
 grafana-util export dashboard --output-dir ./dashboards --overwrite
 ```
 
+### Alert 備份
 ```bash
 grafana-util export alert --output-dir ./alerts --overwrite
 ```
 
+### Datasource inventory
 ```bash
 grafana-util export datasource --output-dir ./datasources
 ```
 
+### Access inventory
 ```bash
 grafana-util export access service-account --output-dir ./access-service-accounts
 ```

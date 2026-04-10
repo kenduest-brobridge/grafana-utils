@@ -9,7 +9,7 @@
 
 **標準化 Grafana 維運流程：包含儀表板、告警、資料源、存取控制與操作審查。**
 
-`grafana-util` 是一款專為 Grafana 日常維運設計的 Rust CLI 工具。它把盤點、匯出/匯入、比對、回放、profile 管理與 secret 處理整理在一起，讓 SRE 與平台工程師可以先看清楚，再決定要不要變更。
+`grafana-util` 是一款專為 Grafana 日常維運設計的 Rust CLI 工具。它把盤點、匯出/匯入、比對、回放、config profile 管理與 secret 處理整理在一起，讓 SRE 與平台工程師可以先看清楚，再決定要不要變更。
 
 它的重點是先審查再動手、把儀表板匯入/匯出的不同路徑分清楚，以及用可重複的 profile 讓日常操作保持簡短、穩定。
 
@@ -22,8 +22,8 @@
 - **告警 (Alerts)**：匯出/匯入、比對 (diff)、計畫與套用 (`plan`/`apply`) 以及路由預覽。
 - **存取控制 (Access)**：使用者、團隊、組織、服務帳號 (Service Account) 與 Token 管理。
 - **變更管理 (Change)**：先審查再變更的流程 (`inspect`、`check`、`preview`)，讓正式套用前的狀態更清楚。
-- **狀態與總覽 (Status / Overview)**：針對即時環境與暫存資源的就緒檢查。
-- **設定檔 (Profiles)**：集中管理連線資訊，支援 `file`、`os` (Keyring) 與 `encrypted-file` 等秘密資訊儲存模式。
+- **Observe**：針對即時環境與暫存資源的唯讀就緒檢查。
+- **設定檔 / Config Profiles**：集中管理連線資訊，支援 `file`、`os` (Keyring) 與 `encrypted-file` 等秘密資訊儲存模式。
 - **快照 (Snapshot)**：資源套件的匯出與審查。
 - **資源 (Resource)**：針對 Grafana 資源的唯讀式 `inspect`/`get`/`list`/`describe` 操作。
 
@@ -33,11 +33,11 @@
 
 | 功能項 | 傳統作法 | 使用 `grafana-util` |
 | :--- | :--- | :--- |
-| **環境盤點** | 需手動切換 UI 或自行組合 API 呼叫以暸解現況。 | 使用 `overview live` 或 `status live` 快速取得環境統一視圖。 |
+| **環境盤點** | 需手動切換 UI 或自行組合 API 呼叫以暸解現況。 | 使用 `observe live` 或 `observe overview` 快速取得環境統一視圖。 |
 | **儀表板路徑** | 難以區分 API 直接匯入與 UI 匯入所需的格式。 | 提供明確的 `raw`、`prompt` 與 `provisioning` 路徑，並具備 `migrate dashboard raw-to-prompt` 這類 migration 轉換工具。 |
 | **資料來源** | 匯出後的憑證資訊不容易安全保存，也不容易直接對應檔案配置。 | 匯出時先遮蔽敏感資訊，匯入時再補回認證，並保留和檔案配置對應的內容。 |
 | **審查機制** | 直接套用變更，缺乏中間審查層。 | 使用 `change inspect`、`check` 與 `preview`，在變動正式伺服器前先完成審查。 |
-| **安全性** | 認證資訊容易散落在 Shell 歷史紀錄或明文檔案中。 | 透過 `profile` 搭配作業系統 Keyring 或加密儲存空間管理憑證。 |
+| **安全性** | 認證資訊容易散落在 Shell 歷史紀錄或明文檔案中。 | 透過 `config profile` 搭配作業系統 Keyring 或加密儲存空間管理憑證。 |
 
 ---
 
@@ -57,7 +57,7 @@ grafana-util --version
 
 ```bash
 # 檢視目前 Grafana 狀態
-grafana-util overview live --url http://my-grafana:3000 --basic-user admin --prompt-password --output-format interactive
+grafana-util observe live --url http://my-grafana:3000 --basic-user admin --prompt-password --output-format interactive
 ```
 
 ### 安裝選項
@@ -93,7 +93,7 @@ sh ./scripts/install.sh --help
 
 ## 實用範例
 
-以下範例展示核心維運流程。連線方式可以直接帶 `--basic-password`，也可以用 `--prompt-password` 互動輸入，或改成 token、用 `bash` / `zsh` 的 `export` 設定環境變數，再搭配 `profile` 設定檔管理。若需完整的連線設定指南，請參考 [開始使用](./docs/user-guide/zh-TW/getting-started.md)。
+以下範例展示核心維運流程。連線方式可以直接帶 `--basic-password`，也可以用 `--prompt-password` 互動輸入，或改成 token、用 `bash` / `zsh` 的 `export` 設定環境變數，再搭配 `config profile` 設定檔管理。若需完整的連線設定指南，請參考 [開始使用](./docs/user-guide/zh-TW/getting-started.md)。
 
 ```bash
 # bash / zsh
@@ -101,67 +101,61 @@ export GRAFANA_USERNAME=admin
 export GRAFANA_PASSWORD=admin
 ```
 
-如果你想把這些設定放進 profile，也可以直接用 `profile add` 分開存：
+如果你想把這些設定放進 profile，也可以直接用 `config profile add` 分開存：
 
 ```bash
-grafana-util profile add prod \
+grafana-util config profile add prod \
   --url http://my-grafana:3000 \
   --basic-user admin \
   --prompt-password \
   --store-secret os
 
-grafana-util profile add ci \
+grafana-util config profile add ci \
   --url http://my-grafana:3000 \
   --token-env GRAFANA_CI_TOKEN \
   --store-secret encrypted-file
 ```
 
-從第二個例子開始，我們先省略連線資訊，讓畫面更簡潔。你還是可以直接帶 `--url`、`--basic-user`、`--basic-password` 或 `--token`，也可以先用 `export` 設好環境變數，或者放進 `profile`，分別管理 username、password、token。
+從第二個例子開始，我們先省略連線資訊，讓畫面更簡潔。你還是可以直接帶 `--url`、`--basic-user`、`--basic-password` 或 `--token`，也可以先用 `export` 設好環境變數，或者放進 `config profile`，分別管理 username、password、token。
 
-在執行 live 指令前，也可以先確認目前選到的 profile，或做完整驗證：
+在執行 live 指令前，也可以先確認目前選到的 config profile，或做完整驗證：
 
 ```bash
-grafana-util profile current --profile prod --output-format json
-grafana-util profile validate --profile prod --live --output-format json
+grafana-util config profile current --profile prod --output-format json
+grafana-util config profile validate --profile prod --live --output-format json
 ```
 
 ### 1. 檢視環境維運總覽
 ```bash
-grafana-util overview live \
+grafana-util observe live \
   --url http://my-grafana:3000 \
   --basic-user admin \
   --basic-password admin \
   --output-format interactive
 ```
 
-### 2. 先列出儀表板
-```bash
-# 先看看現有內容，再決定要不要匯出或修改。
-grafana-util dashboard list --all-orgs --table
-```
-
-### 3. 匯出儀表板以供審查
+### 2. 匯出儀表板以供審查
 ```bash
 # 跨組織匯出所有儀表板，建立本地審查目錄樹。
-grafana-util dashboard export --all-orgs --output-dir ./backup --progress
+grafana-util export dashboard --all-orgs --output-dir ./backup --progress
 ```
 
-### 4. 用機器可讀格式比對本地 artifact
+### 3. 用機器可讀格式比對本地 artifact
 ```bash
 # 輸出共用 dashboard diff contract。
-grafana-util dashboard diff --input-dir ./backup/raw --output-format json
+grafana-util advanced dashboard sync diff --input-dir ./backup/raw --output-format json
 
 # alert diff 對外以 --output-format json 為主；--json 仍保留相容。
-grafana-util alert diff --diff-dir ./alerts/raw --output-format json
+grafana-util advanced alert migrate diff --diff-dir ./alerts/raw --output-format json
 
 # datasource diff 的 JSON 會包含欄位層級的 before/after 變更。
-grafana-util datasource diff --diff-dir ./datasources --input-format inventory --output-format json
+grafana-util advanced datasource diff --diff-dir ./datasources --input-format inventory --output-format json
 ```
 
 ### 4. 分析儀表板相依性
 ```bash
 # 在匯入前檢查資料源參照是否失效或結構是否異常。
-grafana-util dashboard analyze \
+grafana-util advanced dashboard analyze summary \
   --input-dir ./backup/raw \
   --input-format raw \
   --output-format tree-table
@@ -170,7 +164,7 @@ grafana-util dashboard analyze \
 ### 5. 開啟儀表板互動式工作台
 ```bash
 # 開啟互動式的儀表板分析工作台。
-grafana-util dashboard analyze \
+grafana-util advanced dashboard analyze summary \
   --input-dir ./backup/raw \
   --input-format raw \
   --interactive
@@ -178,7 +172,7 @@ grafana-util dashboard analyze \
 
 ### 6. 預覽儀表板匯入變更
 ```bash
-grafana-util dashboard import \
+grafana-util advanced dashboard sync import \
   --input-dir ./backup/raw \
   --replace-existing \
   --dry-run \
@@ -188,16 +182,16 @@ grafana-util dashboard import \
 ### 7. 儀表板快速反覆編修
 ```bash
 # 直接把本機產生的 dashboard JSON 送進 review，Grafana 不會被改到。
-cat cpu.json | grafana-util dashboard review --input - --output-format json
+cat cpu.json | grafana-util advanced dashboard draft review --input - --output-format json
 ```
 
 ### 8. 先看告警會怎麼變
 ```bash
 # 先看看這次改動會影響哪些告警。
-grafana-util alert plan --desired-dir ./alerts/desired --prune
+grafana-util advanced alert change plan --desired-dir ./alerts/desired --prune
 
 # 先預覽告警最後會送到哪裡。
-grafana-util alert preview-route \
+grafana-util advanced alert author route preview \
   --desired-dir ./alerts/desired \
   --label team=sre --severity critical
 ```
@@ -205,8 +199,8 @@ grafana-util alert preview-route \
 ### 9. 資料源匯出與還原
 ```bash
 # 匯出時先遮蔽敏感資訊，匯入時再把連線資訊補回去。
-grafana-util datasource export --output-dir ./datasources
-grafana-util datasource import --input-dir ./datasources --prompt-password
+grafana-util export datasource --output-dir ./datasources
+grafana-util advanced datasource import --input-dir ./datasources --prompt-password
 ```
 
 ---

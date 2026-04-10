@@ -69,7 +69,7 @@ grafana-util --version
 ### 3. 執行第一次完整巡檢
 ```bash
 # 產生整個 Grafana Estate 的高階健康度與資產盤點報告
-grafana-util overview live --url http://localhost:3000 --basic-user admin --prompt-password --output-format interactive
+grafana-util observe overview --url http://localhost:3000 --basic-user admin --prompt-password --output-format interactive
 ```
 
 **為什麼這很重要？** 30 秒內，你就能先確認連線正常，快速看 Dashboard、Alert 和 data source 的狀態，也能先看出哪些設定可能已經失效。

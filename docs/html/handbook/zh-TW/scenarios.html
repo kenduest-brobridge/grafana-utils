@@ -780,11 +780,11 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <p><strong>採用前</strong>：你還不知道 CLI 連的是哪一套 Grafana、目前憑證到底吃到哪組、live 狀態是否真的適合往下做。</p>
 <p><strong>採用後</strong>：你會先得到一個可驗證的 live 目標、一個可讀的 readiness 結果，以及一個可瀏覽的 overview，再進入後續流程。</p>
 <pre><code># 用途：在執行任何變更前，先確認連線正確，而且版本沒搞錯。
-grafana-util profile list</code></pre>
+grafana-util config profile list</code></pre>
 <pre><code># 用途：在執行任何變更前，先確認連線正確，而且版本沒搞錯。
-grafana-util status live --profile prod --output-format table</code></pre>
+grafana-util observe live --profile prod --output-format table</code></pre>
 <pre><code># 用途：在執行任何變更前，先確認連線正確，而且版本沒搞錯。
-grafana-util overview live --profile prod --output-format interactive</code></pre>
+grafana-util observe overview live --profile prod --output-format interactive</code></pre>
 <p><strong>預期輸出：</strong></p>
 <pre><code>PROFILES:
   * prod (預設) -&gt; http://grafana.internal
@@ -793,15 +793,15 @@ OVERALL: status=ready
 
 Project overview
 Live status: ready</code></pre>
-<p>先用 <code>profile list</code> 確認專案本地的預設值，再用 <code>status live</code> 做驗證，最後用 <code>overview live --output-format interactive</code> 看同一個 live 操作面的可瀏覽版本。</p>
+<p>先用 <code>config profile list</code> 確認專案本地的預設值，再用 <code>observe live</code> 做驗證，最後用 <code>observe overview live --output-format interactive</code> 看同一個 live 操作面的可瀏覽版本。</p>
 <h2 id="2-全資產稽核-estate-wide-audit">2. 全資產稽核 (Estate-Wide Audit)</h2>
 <p>盤點跨 org 的資產。</p>
 <p><strong>採用前</strong>：你知道環境裡有 dashboard、org、使用者，但很難快速回答「現在到底有哪些東西」。</p>
 <p><strong>採用後</strong>：你可以用 dashboard inventory 搭配 access inventory，把目前 estate 狀態先講清楚，再決定要不要匯出、回放或整理。</p>
 <pre><code># 用途：盤點跨 org 的資產。
-grafana-util dashboard list --profile prod --all-orgs --with-sources --table</code></pre>
+grafana-util advanced dashboard live list --profile prod --all-orgs --with-sources --table</code></pre>
 <pre><code># 用途：盤點跨 org 的資產。
-grafana-util access org list --basic-user admin --basic-password admin --with-users --output-format yaml</code></pre>
+grafana-util advanced access org list --basic-user admin --basic-password admin --with-users --output-format yaml</code></pre>
 <p><strong>預期輸出：</strong></p>
 <pre><code>UID        TITLE             FOLDER    ORG   SOURCES
 cpu-view   CPU Metrics       Metrics   1     prometheus-main
@@ -817,11 +817,11 @@ users:
 <p><strong>採用前</strong>：所謂備份常常只是 UI 匯出或一批零散檔案，之後很難 review、比對或 replay。</p>
 <p><strong>採用後</strong>：你會得到一份可審查、可回放、也能接後續 inspect 與 migration 的匯出樹。</p>
 <pre><code># 用途：把 live dashboard 匯出成可長期保存的目錄結構。
-grafana-util dashboard export --output-dir ./backups --overwrite --progress</code></pre>
+grafana-util export dashboard --output-dir ./backups --overwrite --progress</code></pre>
 <pre><code># 用途：把 live dashboard 匯出成可長期保存的目錄結構。
-grafana-util access org export --output-dir ./access-orgs</code></pre>
+grafana-util export access org --output-dir ./access-orgs</code></pre>
 <pre><code># 用途：把 live dashboard 匯出成可長期保存的目錄結構。
-grafana-util access service-account export --output-dir ./access-service-accounts</code></pre>
+grafana-util export access service-account --output-dir ./access-service-accounts</code></pre>
 <p><strong>預期輸出：</strong></p>
 <pre><code>Exporting dashboard 1/32: cpu-metrics
 Exporting dashboard 2/32: memory-leak-check
@@ -836,9 +836,9 @@ Exported service account inventory -&gt; access-service-accounts/service-account
 <p><strong>採用前</strong>：回放常常是先執行再看結果，直到覆寫到不該動的東西才發現問題。</p>
 <p><strong>採用後</strong>：你會先看 dry-run 的表格化結果，再決定這次回放是否安全、是否會覆蓋既有資產。</p>
 <pre><code># 用途：把備份回放到 live Grafana 實例。
-grafana-util dashboard import --input-dir ./backups/raw --replace-existing --dry-run --table</code></pre>
+grafana-util advanced dashboard sync import --input-dir ./backups/raw --replace-existing --dry-run --table</code></pre>
 <pre><code># 用途：把備份回放到 live Grafana 實例。
-grafana-util access team import --input-dir ./access-teams --replace-existing --dry-run --table</code></pre>
+grafana-util advanced access team import --input-dir ./access-teams --replace-existing --dry-run --table</code></pre>
 <p><strong>預期輸出：</strong></p>
 <pre><code>UID        TITLE          ACTION   DESTINATION
 cpu-view   CPU Metrics    update   exists
@@ -855,7 +855,7 @@ grafana-util change inspect --desired-file ./desired.json</code></pre>
 <pre><code># 用途：告警變更應遵循受審查的生命週期。
 grafana-util change check --desired-file ./desired.json --fetch-live --output-format json</code></pre>
 <pre><code># 用途：告警變更應遵循受審查的生命週期。
-grafana-util alert plan --profile prod --desired-dir ./alerts/desired --output-format json</code></pre>
+grafana-util advanced alert change plan --profile prod --desired-dir ./alerts/desired --output-format json</code></pre>
 <p><strong>預期輸出 (摘要片段)：</strong></p>
 <pre><code>CHANGE PACKAGE SUMMARY:
 - dashboards: 5 modified, 2 added
@@ -873,11 +873,11 @@ PREFLIGHT CHECK:
 <h2 id="6-身份快照回放-access-management">6. 身份快照回放 (Access Management)</h2>
 <p>透過快照管理使用者、team 與 service account。</p>
 <pre><code># 用途：透過快照管理使用者、team 與 service account。
-grafana-util access user import --input-dir ./access-users --dry-run --table</code></pre>
+grafana-util advanced access user import --input-dir ./access-users --dry-run --table</code></pre>
 <pre><code># 用途：透過快照管理使用者、team 與 service account。
-grafana-util access service-account token add --service-account-id 15 --token-name nightly --seconds-to-live 3600 --json</code></pre>
+grafana-util advanced access service-account token add --service-account-id 15 --token-name nightly --seconds-to-live 3600 --json</code></pre>
 <pre><code># 用途：透過快照管理使用者、team 與 service account。
-grafana-util access service-account token delete --service-account-id 15 --token-name nightly --yes --json</code></pre>
+grafana-util advanced access service-account token delete --service-account-id 15 --token-name nightly --yes --json</code></pre>
 <p><strong>預期輸出：</strong></p>
 <pre><code>LOGIN       ROLE    ACTION   STATUS
 dev-admin   Admin   update   existing

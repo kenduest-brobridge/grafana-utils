@@ -816,7 +816,7 @@ grafana-util change apply \
   --approve \
   --execute-live \
   --profile prod</code></pre>
-<p>Related commands: <code>grafana-util overview</code>, <code>grafana-util status</code>, <code>grafana-util snapshot</code>.</p>
+<p>Related commands: <code>grafana-util observe overview</code>, <code>grafana-util observe staged</code>, <code>grafana-util snapshot</code>.</p>
 <h2 id="primary-subcommands">Primary Subcommands</h2>
 <p>Use the root page to understand the overall lane, then open the subcommand page that matches the step you are actually performing:</p>
 <ul><li><a href="change-inspect.html">change inspect</a>: identify what the staged package contains</li><li><a href="change-check.html">change check</a>: confirm that the staged package is structurally ready</li><li><a href="change-preview.html">change preview</a>: build the reviewable change preview</li><li><a href="change-apply.html">change apply</a>: turn a reviewed preview into an apply intent or a live apply</li></ul>
@@ -937,7 +937,7 @@ grafana-util change audit --lock-file ./sync-lock.json --fetch-live --profile pr
   &quot;drifts&quot;: []
 }</code></pre>
 <p>Treat <code>driftCount &gt; 0</code> as the top-level signal that your managed state and live Grafana have separated.</p>
-<p>Related commands: <code>change preflight</code>, <code>change plan</code>, <code>status live</code>.</p>
+<p>Related commands: <code>change preflight</code>, <code>change plan</code>, <code>observe live</code>.</p>
 <h2 id="preflight"><code>preflight</code></h2>
 <p>Purpose: build a staged sync preflight document from desired resources and optional availability hints.</p>
 <p>When to use: when you need a structural gate before planning or applying.</p>
@@ -1067,7 +1067,7 @@ grafana-util change promotion-preflight --source-bundle ./sync-source-bundle.jso
   &quot;blockingChecks&quot;: []
 }</code></pre>
 <p>Use this when the hard question is not “what will change?” but “is this source bundle promotable into that target environment with the current mappings?”.</p>
-<p>Related commands: <code>change bundle-preflight</code>, <code>change apply</code>, <code>status live</code>.</p>
+<p>Related commands: <code>change bundle-preflight</code>, <code>change apply</code>, <code>observe live</code>.</p>
     
   </article>
   <aside class="sidebar">

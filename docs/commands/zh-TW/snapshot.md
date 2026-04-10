@@ -45,7 +45,7 @@ grafana-util snapshot review --input-dir ./snapshot --output-format json
 grafana-util snapshot export --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-dir ./snapshot
 ```
 
-相關指令：`grafana-util overview`、`grafana-util status staged`、`grafana-util change bundle`。
+相關指令：`grafana-util observe overview`、`grafana-util observe staged`、`grafana-util change bundle`。
 
 ## `export`
 
@@ -87,7 +87,7 @@ grafana-util snapshot export --url http://localhost:3000 --token "$GRAFANA_API_T
 grafana-util snapshot export --profile prod --prompt --output-dir ./snapshot
 ```
 
-相關指令：`snapshot review`、`change bundle`、`overview`。
+相關指令：`snapshot review`、`change bundle`、`observe overview`。
 
 ## `review`
 
@@ -111,4 +111,4 @@ grafana-util snapshot review --input-dir ./snapshot --output-format table
 grafana-util snapshot review --input-dir ./snapshot --interactive
 ```
 
-相關指令：`snapshot export`、`overview`、`status staged`。
+相關指令：`snapshot export`、`observe overview`、`observe staged`。

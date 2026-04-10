@@ -31,7 +31,7 @@ This chapter turns command families into end-to-end operator workflows so you ca
 - If the expected output does not line up with the stage you are in, resolve the mismatch before continuing.
 - If you still need exact flags more than workflow context, switch to the command reference.
 
-For the exact flags behind each workflow, see [dashboard](../../commands/en/dashboard.md), [access](../../commands/en/access.md), [alert](../../commands/en/alert.md), [change](../../commands/en/change.md), [status](../../commands/en/status.md), and [overview](../../commands/en/overview.md).
+For the exact flags behind each workflow, see [observe](../../commands/en/observe.md), [export](../../commands/en/export.md), [change](../../commands/en/change.md), [config profile](../../commands/en/profile.md), and [advanced](../../commands/en/advanced.md).
 
 ---
 
@@ -45,17 +45,17 @@ Prove connectivity and version alignment before making changes.
 
 ```bash
 # Purpose: Prove connectivity and version alignment before making changes.
-grafana-util profile list
+grafana-util config profile list
 ```
 
 ```bash
 # Purpose: Prove connectivity and version alignment before making changes.
-grafana-util status live --profile prod --output-format table
+grafana-util observe live --profile prod --output-format table
 ```
 
 ```bash
 # Purpose: Prove connectivity and version alignment before making changes.
-grafana-util overview live --profile prod --output-format interactive
+grafana-util observe overview live --profile prod --output-format interactive
 ```
 **Expected Output:**
 ```text
@@ -67,7 +67,7 @@ OVERALL: status=ready
 Project overview
 Live status: ready
 ```
-Start with `profile list` to confirm which repo-local defaults are active, then use `status live` for the gate and `overview live --output-format interactive` when you want the same live surface in a browsable TUI.
+Start with `config profile list` to confirm which repo-local defaults are active, then use `observe live` for the gate and `observe overview live --output-format interactive` when you want the same live surface in a browsable TUI.
 
 ---
 
@@ -81,12 +81,12 @@ Inventory all assets across all organizations.
 
 ```bash
 # Purpose: Inventory all assets across all organizations.
-grafana-util dashboard list --profile prod --all-orgs --with-sources --table
+grafana-util advanced dashboard live list --profile prod --all-orgs --with-sources --table
 ```
 
 ```bash
 # Purpose: Inventory all assets across all organizations.
-grafana-util access org list --basic-user admin --basic-password admin --with-users --output-format yaml
+grafana-util advanced access org list --basic-user admin --basic-password admin --with-users --output-format yaml
 ```
 **Expected Output:**
 ```text
@@ -113,17 +113,17 @@ Export live dashboards into a durable tree.
 
 ```bash
 # Purpose: Export live dashboards into a durable tree.
-grafana-util dashboard export --output-dir ./backups --overwrite --progress
+grafana-util export dashboard --output-dir ./backups --overwrite --progress
 ```
 
 ```bash
 # Purpose: Export live dashboards into a durable tree.
-grafana-util access org export --output-dir ./access-orgs
+grafana-util export access org --output-dir ./access-orgs
 ```
 
 ```bash
 # Purpose: Export live dashboards into a durable tree.
-grafana-util access service-account export --output-dir ./access-service-accounts
+grafana-util export access service-account --output-dir ./access-service-accounts
 ```
 **Expected Output:**
 ```text
@@ -149,12 +149,12 @@ Replay a backup into a live Grafana instance.
 
 ```bash
 # Purpose: Replay a backup into a live Grafana instance.
-grafana-util dashboard import --input-dir ./backups/raw --replace-existing --dry-run --table
+grafana-util advanced dashboard sync import --input-dir ./backups/raw --replace-existing --dry-run --table
 ```
 
 ```bash
 # Purpose: Replay a backup into a live Grafana instance.
-grafana-util access team import --input-dir ./access-teams --replace-existing --dry-run --table
+grafana-util advanced access team import --input-dir ./access-teams --replace-existing --dry-run --table
 ```
 **Expected Output:**
 ```text
@@ -186,7 +186,7 @@ grafana-util change check --desired-file ./desired.json --fetch-live --output-fo
 
 ```bash
 # Purpose: Move alerting changes through a reviewed lifecycle.
-grafana-util alert plan --profile prod --desired-dir ./alerts/desired --output-format json
+grafana-util advanced alert change plan --profile prod --desired-dir ./alerts/desired --output-format json
 ```
 **Expected Output (Snippet):**
 ```text
@@ -213,17 +213,17 @@ Manage users, teams, and service accounts through snapshots.
 
 ```bash
 # Purpose: Manage users, teams, and service accounts through snapshots.
-grafana-util access user import --input-dir ./access-users --dry-run --table
+grafana-util advanced access user import --input-dir ./access-users --dry-run --table
 ```
 
 ```bash
 # Purpose: Manage users, teams, and service accounts through snapshots.
-grafana-util access service-account token add --service-account-id 15 --token-name nightly --seconds-to-live 3600 --json
+grafana-util advanced access service-account token add --service-account-id 15 --token-name nightly --seconds-to-live 3600 --json
 ```
 
 ```bash
 # Purpose: Manage users, teams, and service accounts through snapshots.
-grafana-util access service-account token delete --service-account-id 15 --token-name nightly --yes --json
+grafana-util advanced access service-account token delete --service-account-id 15 --token-name nightly --yes --json
 ```
 **Expected Output:**
 ```text

@@ -40,9 +40,9 @@ This page is for script authors, pipeline owners, and release engineers who need
 
 ## Recommended connection and secret handling
 
-Use a profile first, with env-backed secrets for CI.
+Use a `config profile` first, with env-backed secrets for CI.
 
-1. `--profile` with `password_env` or `token_env` for repeatable jobs and checked-in config.
+1. `config profile` with `password_env` or `token_env` for repeatable jobs and checked-in config.
 2. Direct Basic auth only for bootstrap or one-off validation in a safe local shell.
 3. Token auth is the normal steady state for narrow automation, as long as the token scope matches the exact resource set you need.
 
@@ -50,17 +50,17 @@ Use a profile first, with env-backed secrets for CI.
 
 ```bash
 # Purpose: First commands to run.
-grafana-util profile add ci --url https://grafana.example.com --token-env GRAFANA_CI_TOKEN
+grafana-util config profile add ci --url https://grafana.example.com --token-env GRAFANA_CI_TOKEN
 ```
 
 ```bash
 # Purpose: First commands to run.
-grafana-util profile show --profile ci --output-format yaml
+grafana-util config profile show --profile ci --output-format yaml
 ```
 
 ```bash
 # Purpose: First commands to run.
-grafana-util status staged --desired-file ./desired.json --output-format json
+grafana-util observe staged --desired-file ./desired.json --output-format json
 ```
 
 ```bash
@@ -70,7 +70,7 @@ grafana-util change check --desired-file ./desired.json --fetch-live --output-fo
 
 ```bash
 # Purpose: First commands to run.
-grafana-util overview live --profile ci --output-format yaml
+grafana-util observe overview live --profile ci --output-format yaml
 ```
 
 If the job only needs to validate one live surface, you can replace the last line with an equivalent direct Basic-auth or narrow-token read, but do not ask the credential to see more than its real scope.
@@ -79,14 +79,14 @@ If you need a bootstrap check before the profile is wired, use Basic auth with a
 
 ```bash
 # Purpose: If you need a bootstrap check before the profile is wired, use Basic auth with a prompted password.
-grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml
+grafana-util observe live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml
 ```
 
 If the job already receives a scoped token, you can call the live surface directly:
 
 ```bash
 # Purpose: If the job already receives a scoped token, you can call the live surface directly.
-grafana-util overview live --url https://grafana.example.com --token "$GRAFANA_CI_TOKEN" --output-format json
+grafana-util observe overview live --url https://grafana.example.com --token "$GRAFANA_CI_TOKEN" --output-format json
 ```
 
 ## What a stable automation path looks like
@@ -107,12 +107,12 @@ Your automation path is in good shape when:
 
 ## Keep open
 
-- [profile](../../commands/en/profile.md)
-- [status](../../commands/en/status.md)
+- [config profile](../../commands/en/profile.md)
+- [observe live](../../commands/en/observe.md)
 - [change](../../commands/en/change.md)
-- [overview](../../commands/en/overview.md)
-- [access service-account](../../commands/en/access-service-account.md)
-- [access service-account token](../../commands/en/access-service-account-token.md)
+- [observe overview](../../commands/en/observe.md)
+- [advanced access service-account](../../commands/en/advanced.md)
+- [advanced access service-account token](../../commands/en/advanced.md)
 - [full command index](../../commands/en/index.md)
 
 ## Common mistakes and limits

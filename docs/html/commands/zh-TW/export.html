@@ -781,11 +781,18 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="說明">說明</h2>
 <p><code>export</code> 故意保持狹窄。它只是包住既有的 domain export 流程，不改變底層行為，讓第一次使用的人不用先理解整棵 <code>dashboard</code>、<code>alert</code>、<code>datasource</code>、<code>access</code> 命令樹。</p>
 <h2 id="子命令">子命令</h2>
-<ul><li><code>export dashboard</code></li><li><code>export alert</code></li><li><code>export datasource</code></li><li><code>export access user</code></li><li><code>export access org</code></li><li><code>export access team</code></li><li><code>export access service-account</code></li></ul>
+<h3 id="備份與-artifact-擷取">備份與 artifact 擷取</h3>
+<ul><li><code>export dashboard</code>：匯出 dashboards 的 raw、prompt、provisioning 三條 lane。</li><li><code>export alert</code>：把 alert resources 匯出成在地 artifact tree。</li><li><code>export datasource</code>：匯出 datasource inventory 供 review 或 restore。</li></ul>
+<h3 id="access-inventory-擷取">Access inventory 擷取</h3>
+<ul><li><code>export access user</code>：匯出 Grafana users。</li><li><code>export access org</code>：匯出 Grafana org inventory。</li><li><code>export access team</code>：匯出 Grafana teams。</li><li><code>export access service-account</code>：匯出 service accounts。</li></ul>
 <h2 id="範例">範例</h2>
+<h3 id="dashboard-備份">Dashboard 備份</h3>
 <pre><code>grafana-util export dashboard --output-dir ./dashboards --overwrite</code></pre>
+<h3 id="alert-備份">Alert 備份</h3>
 <pre><code>grafana-util export alert --output-dir ./alerts --overwrite</code></pre>
+<h3 id="datasource-inventory">Datasource inventory</h3>
 <pre><code>grafana-util export datasource --output-dir ./datasources</code></pre>
+<h3 id="access-inventory">Access inventory</h3>
 <pre><code>grafana-util export access service-account --output-dir ./access-service-accounts</code></pre>
 <h2 id="相關指令">相關指令</h2>
 <ul><li><a href="advanced.html">advanced</a></li><li><a href="dashboard-export.html">dashboard export</a></li><li><a href="alert-export.html">alert export</a></li><li><a href="datasource-export.html">datasource export</a></li><li><a href="access.html">access</a></li></ul>
@@ -794,7 +801,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
   <aside class="sidebar">
   <button class="sidebar-toggle sidebar-toggle-right" type="button" aria-expanded="true" aria-label="Toggle page sidebar">▶</button>
   <div class="sidebar-content">
-    <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#用途"><span class="toc-label">用途</span></a></li><li class="toc-level-2"><a href="#何時使用"><span class="toc-label">何時使用</span></a></li><li class="toc-level-2"><a href="#說明"><span class="toc-label">說明</span></a></li><li class="toc-level-2"><a href="#子命令"><span class="toc-label">子命令</span></a></li><li class="toc-level-2"><a href="#範例"><span class="toc-label">範例</span></a></li><li class="toc-level-2"><a href="#相關指令"><span class="toc-label">相關指令</span></a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: 繁體中文</a></li><li><a href="../en/export.html" class="sidebar-meta-link">Switch to English</a></li></ul></section>
+    <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#用途"><span class="toc-label">用途</span></a></li><li class="toc-level-2"><a href="#何時使用"><span class="toc-label">何時使用</span></a></li><li class="toc-level-2"><a href="#說明"><span class="toc-label">說明</span></a></li><li class="toc-level-2"><a href="#子命令"><span class="toc-label">子命令</span></a></li><li class="toc-level-3"><a href="#備份與-artifact-擷取"><span class="toc-label">備份與 artifact 擷取</span></a></li><li class="toc-level-3"><a href="#access-inventory-擷取"><span class="toc-label">Access inventory 擷取</span></a></li><li class="toc-level-2"><a href="#範例"><span class="toc-label">範例</span></a></li><li class="toc-level-3"><a href="#dashboard-備份"><span class="toc-label">Dashboard 備份</span></a></li><li class="toc-level-3"><a href="#alert-備份"><span class="toc-label">Alert 備份</span></a></li><li class="toc-level-3"><a href="#datasource-inventory"><span class="toc-label">Datasource inventory</span></a></li><li class="toc-level-3"><a href="#access-inventory"><span class="toc-label">Access inventory</span></a></li><li class="toc-level-2"><a href="#相關指令"><span class="toc-label">相關指令</span></a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: 繁體中文</a></li><li><a href="../en/export.html" class="sidebar-meta-link">Switch to English</a></li></ul></section>
   </div>
 </aside>
 

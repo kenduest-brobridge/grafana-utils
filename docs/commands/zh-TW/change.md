@@ -90,7 +90,7 @@ grafana-util change apply \
   --basic-password admin
 ```
 
-相關指令：`grafana-util overview`、`grafana-util status`、`grafana-util snapshot`。
+相關指令：`grafana-util observe overview`、`grafana-util observe staged`、`grafana-util snapshot`。
 
 ## 主要子指令
 
@@ -415,7 +415,7 @@ grafana-util change audit \
   --output-format json
 ```
 
-相關指令：`change preflight`、`change plan`、`status live`。
+相關指令：`change preflight`、`change plan`、`observe live`。
 
 ## `preflight`
 
@@ -712,4 +712,4 @@ grafana-util change promotion-preflight --source-bundle ./sync-source-bundle.jso
 ```
 這份文件要回答的不是「會改什麼」，而是「在目前 mapping 下，這包 source bundle 能不能安全 promotion 到目標環境」。
 
-相關指令：`change bundle-preflight`、`change apply`、`status live`。
+相關指令：`change bundle-preflight`、`change apply`、`observe live`。

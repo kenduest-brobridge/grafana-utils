@@ -35,45 +35,45 @@ This guide is for operators who need to inventory dashboards, export or import t
 
 Use the authoring lane when the work starts from one dashboard draft instead of a full export tree.
 
-- Start from a live draft with `dashboard fetch-live` or `dashboard clone-live` when Grafana already has the closest source dashboard.
-- Use `dashboard serve` when you want a lightweight local preview browser for one draft file, one draft directory, or one generator script output while you edit.
-- Use `dashboard review` before mutation to confirm title, UID, tags, folder UID, and any blocking validation issues.
-- Use `dashboard patch-file` when you need to rewrite one local draft in place or write a new patched file.
-- Use `dashboard edit-live` when you want to fetch one live dashboard into an external editor, get a review summary with validation blockers, and keep a safe local-draft default instead of immediately mutating Grafana.
-- Use `dashboard publish` when the draft is ready to go back through the same import pipeline used by the broader replay path.
+- Start from a live draft with `advanced dashboard live fetch` or `advanced dashboard live clone` when Grafana already has the closest source dashboard.
+- Use `advanced dashboard draft serve` when you want a lightweight local preview browser for one draft file, one draft directory, or one generator script output while you edit.
+- Use `advanced dashboard draft review` before mutation to confirm title, UID, tags, folder UID, and any blocking validation issues.
+- Use `advanced dashboard draft patch-file` when you need to rewrite one local draft in place or write a new patched file.
+- Use `advanced dashboard live edit` when you want to fetch one live dashboard into an external editor, get a review summary with validation blockers, and keep a safe local-draft default instead of immediately mutating Grafana.
+- Use `advanced dashboard draft publish` when the draft is ready to go back through the same import pipeline used by the broader replay path.
 
 Generator-driven teams do not need to stop at an intermediate temp file for every review or publish step.
 
 ```bash
 # Purpose: Review one generated dashboard from standard input.
-jsonnet dashboards/cpu.jsonnet | grafana-util dashboard review --input - --output-format json
+jsonnet dashboards/cpu.jsonnet | grafana-util advanced dashboard draft review --input - --output-format json
 ```
 
 ```bash
 # Purpose: Publish one generated dashboard from standard input.
-jsonnet dashboards/cpu.jsonnet | grafana-util dashboard publish --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --input - --replace-existing
+jsonnet dashboards/cpu.jsonnet | grafana-util advanced dashboard draft publish --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --input - --replace-existing
 ```
 
-If you are editing one local draft repeatedly, use `dashboard publish --watch` with a file path instead of `--input -`. Watch mode reruns publish or dry-run after each stabilized save and keeps watching even if one iteration fails validation or the API call.
+If you are editing one local draft repeatedly, use `advanced dashboard draft publish --watch` with a file path instead of `--input -`. Watch mode reruns publish or dry-run after each stabilized save and keeps watching even if one iteration fails validation or the API call.
 
 ```bash
 # Purpose: Re-run dry-run publish after each save while editing one local draft.
-grafana-util dashboard publish --url http://localhost:3000 --basic-user admin --basic-password admin --input ./drafts/cpu-main.json --dry-run --watch
+grafana-util advanced dashboard draft publish --url http://localhost:3000 --basic-user admin --basic-password admin --input ./drafts/cpu-main.json --dry-run --watch
 ```
 
 ```bash
 # Purpose: Keep one draft open in a lightweight local preview browser while you edit.
-grafana-util dashboard serve --input ./drafts/cpu-main.json --port 18080 --open-browser
+grafana-util advanced dashboard draft serve --input ./drafts/cpu-main.json --port 18080 --open-browser
 ```
 
 ```bash
 # Purpose: Fetch one live dashboard into an external editor and keep the result as a local draft by default.
-grafana-util dashboard edit-live --profile prod --dashboard-uid cpu-main --output ./drafts/cpu-main.edited.json
+grafana-util advanced dashboard live edit --profile prod --dashboard-uid cpu-main --output ./drafts/cpu-main.edited.json
 ```
 
-`dashboard patch-file --input -` requires `--output` because standard input cannot be overwritten in place.
-If you target Grafana's built-in General folder, `dashboard publish` normalizes that back to the default root publish path instead of sending a literal `general` folder UID.
-`dashboard serve` is intentionally a lightweight preview/document-inspection surface, not a full embedded Grafana renderer.
+`advanced dashboard draft patch-file --input -` requires `--output` because standard input cannot be overwritten in place.
+If you target Grafana's built-in General folder, `advanced dashboard draft publish` normalizes that back to the default root publish path instead of sending a literal `general` folder UID.
+`advanced dashboard draft serve` is intentionally a lightweight preview/document-inspection surface, not a full embedded Grafana renderer.
 
 ## History and recovery
 
@@ -161,7 +161,7 @@ Dashboard export intentionally produces three different "lanes" because each ser
 
 If you add `--include-history` to `dashboard export`, the export tree also gains a `history/` subdirectory for each org scope. In `--all-orgs` mode, that becomes one history tree per exported org root.
 
-Use `dashboard history export` when you need a standalone JSON artifact for one dashboard UID. Use `dashboard export --include-history` when you want history artifacts bundled alongside the export tree.
+Use `advanced dashboard live history export` when you need a standalone JSON artifact for one dashboard UID. Use `export dashboard --include-history` when you want history artifacts bundled alongside the export tree.
 
 ---
 
@@ -186,11 +186,11 @@ Use `dashboard history export` when you need a standalone JSON artifact for one 
 
 ## 📋 Reading Live Inventory
 
-Use `dashboard list` to get a fast picture of the estate.
+Use `advanced dashboard live list` to get a fast picture of the estate.
 
 ```bash
-# Purpose: Use dashboard list to get a fast picture of the estate.
-grafana-util dashboard list \
+# Purpose: Use advanced dashboard live list to get a fast picture of the estate.
+grafana-util advanced dashboard live list \
   --url http://localhost:3000 \
   --basic-user admin \
   --basic-password admin \
@@ -216,18 +216,18 @@ spring-jmx-node-unified  Spring JMX + Node Unified Dashboard (VM)  Demo    ffhrm
 
 | Command | Full Example with Arguments |
 | :--- | :--- |
-| **List** | `grafana-util dashboard list --all-orgs --with-sources --table` |
-| **Export** | `grafana-util dashboard export --output-dir ./dashboards --overwrite --progress` |
-| **Export + History** | `grafana-util dashboard export --output-dir ./dashboards --include-history --overwrite --progress` |
-| **Raw to Prompt** | `grafana-util migrate dashboard raw-to-prompt --input-dir ./dashboards/raw --output-dir ./dashboards/prompt --overwrite --progress` |
-| **Import** | `grafana-util dashboard import --input-dir ./dashboards/raw --replace-existing --dry-run --table` |
-| **Diff** | `grafana-util dashboard diff --input-dir ./dashboards/raw --input-format raw` |
-| **Analyze** | `grafana-util dashboard analyze --input-dir ./dashboards/raw --input-format raw --output-format dependency` |
-| **Delete** | `grafana-util dashboard delete --uid <UID> --url <URL> --basic-user admin --basic-password admin` |
-| **List Vars** | `grafana-util dashboard list-vars --uid <UID> --url <URL> --table` |
-| **Patch File** | `grafana-util dashboard patch-file --input <FILE> --name "New Title" --output <FILE>` |
-| **Publish** | `grafana-util dashboard publish --input <FILE> --url <URL> --basic-user admin --basic-password admin` |
-| **Clone Live** | `grafana-util dashboard clone-live --source-uid <UID> --output <FILE> --url <URL>` |
+| **List** | `grafana-util advanced dashboard live list --all-orgs --with-sources --table` |
+| **Export** | `grafana-util export dashboard --output-dir ./dashboards --overwrite --progress` |
+| **Export + History** | `grafana-util export dashboard --output-dir ./dashboards --include-history --overwrite --progress` |
+| **Raw to Prompt** | `grafana-util advanced dashboard sync convert raw-to-prompt --input-dir ./dashboards/raw --output-dir ./dashboards/prompt --overwrite --progress` |
+| **Import** | `grafana-util advanced dashboard sync import --input-dir ./dashboards/raw --replace-existing --dry-run --table` |
+| **Diff** | `grafana-util advanced dashboard sync diff --input-dir ./dashboards/raw --input-format raw` |
+| **Analyze** | `grafana-util advanced dashboard analyze --input-dir ./dashboards/raw --input-format raw --output-format dependency` |
+| **Delete** | `grafana-util advanced dashboard live delete --uid <UID> --url <URL> --basic-user admin --basic-password admin` |
+| **List Vars** | `grafana-util advanced dashboard live vars --uid <UID> --url <URL> --table` |
+| **Patch File** | `grafana-util advanced dashboard draft patch-file --input <FILE> --name "New Title" --output <FILE>` |
+| **Publish** | `grafana-util advanced dashboard draft publish --input <FILE> --url <URL> --basic-user admin --basic-password admin` |
+| **Clone Live** | `grafana-util advanced dashboard live clone --source-uid <UID> --output <FILE> --url <URL>` |
 
 ---
 
@@ -237,7 +237,7 @@ spring-jmx-node-unified  Spring JMX + Node Unified Dashboard (VM)  Demo    ffhrm
 Use `--progress` for a clean log during large estate exports.
 ```bash
 # Purpose: Use --progress for a clean log during large estate exports.
-grafana-util dashboard export --output-dir ./dashboards --overwrite --progress
+grafana-util export dashboard --output-dir ./dashboards --overwrite --progress
 ```
 **Output Excerpt:**
 ```text
@@ -251,7 +251,7 @@ Exporting dashboard 7/7: two-prom-query-smoke
 Always confirm the destination action before mutation.
 ```bash
 # Purpose: Always confirm the destination action before mutation.
-grafana-util dashboard import --input-dir ./dashboards/raw --dry-run --table
+grafana-util advanced dashboard sync import --input-dir ./dashboards/raw --dry-run --table
 ```
 **Output Excerpt:**
 ```text
@@ -269,7 +269,7 @@ subfolder-chain-smoke  missing      create  Platform / Team / Apps / Prod  ./das
 Compare your local provisioning files against live state.
 ```bash
 # Purpose: Compare your local provisioning files against live state.
-grafana-util dashboard diff --input-dir ./dashboards/provisioning --input-format provisioning
+grafana-util advanced dashboard sync diff --input-dir ./dashboards/provisioning --input-format provisioning
 ```
 **Output Excerpt:**
 ```text

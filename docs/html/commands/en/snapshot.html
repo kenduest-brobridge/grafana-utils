@@ -794,7 +794,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 grafana-util snapshot export --url http://localhost:3000 --basic-user admin --basic-password admin --output-dir ./snapshot</code></pre>
 <pre><code># Purpose: Review the exported snapshot bundle as JSON.
 grafana-util snapshot review --input-dir ./snapshot --output-format json</code></pre>
-<p>Related commands: <code>grafana-util overview</code>, <code>grafana-util status staged</code>, <code>grafana-util change bundle</code>.</p>
+<p>Related commands: <code>grafana-util observe overview</code>, <code>grafana-util observe staged</code>, <code>grafana-util change bundle</code>.</p>
 <h2 id="export"><code>export</code></h2>
 <p>Purpose: export dashboard, datasource, and access inventory into a local snapshot bundle.</p>
 <p>When to use: when you need a local snapshot root that can be reviewed without Grafana access.</p>
@@ -808,7 +808,7 @@ grafana-util snapshot export --url http://localhost:3000 --basic-user admin --ba
 grafana-util snapshot export --profile prod --output-dir ./snapshot --overwrite</code></pre>
 <pre><code># Purpose: choose snapshot lanes from a terminal prompt before export.
 grafana-util snapshot export --profile prod --prompt --output-dir ./snapshot</code></pre>
-<p>Related commands: <code>snapshot review</code>, <code>change bundle</code>, <code>overview</code>.</p>
+<p>Related commands: <code>snapshot review</code>, <code>change bundle</code>, <code>observe overview</code>.</p>
 <h2 id="review"><code>review</code></h2>
 <p>Purpose: review a local snapshot inventory without touching Grafana.</p>
 <p>When to use: when you want to inspect an exported snapshot root as table, csv, text, json, yaml, or interactive output.</p>
@@ -819,7 +819,7 @@ grafana-util snapshot export --profile prod --prompt --output-dir ./snapshot</co
 grafana-util snapshot review --input-dir ./snapshot --output-format table</code></pre>
 <pre><code># Purpose: review an exported snapshot root as table, csv, text, json, yaml, or interactive output.
 grafana-util snapshot review --input-dir ./snapshot --interactive</code></pre>
-<p>Related commands: <code>snapshot export</code>, <code>overview</code>, <code>status staged</code>.</p>
+<p>Related commands: <code>snapshot export</code>, <code>observe overview</code>, <code>observe staged</code>.</p>
     
   </article>
   <aside class="sidebar">

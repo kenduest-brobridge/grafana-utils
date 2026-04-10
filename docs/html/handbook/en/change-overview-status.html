@@ -778,16 +778,16 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="command-pages">Command Pages</h2>
 <p>Need the command-by-command surface instead of the workflow guide?</p>
 <p>Primary lane:</p>
-<ul><li><a href="../../commands/en/change.html">change</a></li><li><a href="../../commands/en/change-inspect.html">change inspect</a></li><li><a href="../../commands/en/change-check.html">change check</a></li><li><a href="../../commands/en/change-preview.html">change preview</a></li><li><a href="../../commands/en/change-apply.html">change apply</a></li><li><a href="../../commands/en/status.html">status</a></li><li><a href="../../commands/en/status.html#staged">status staged</a></li><li><a href="../../commands/en/status.html#live">status live</a></li><li><a href="../../commands/en/overview.html">overview</a></li><li><a href="../../commands/en/overview.html#live">overview live</a></li></ul>
+<ul><li><a href="../../commands/en/change.html">change</a></li><li><a href="../../commands/en/change-inspect.html">change inspect</a></li><li><a href="../../commands/en/change-check.html">change check</a></li><li><a href="../../commands/en/change-preview.html">change preview</a></li><li><a href="../../commands/en/change-apply.html">change apply</a></li><li><a href="../../commands/en/observe.html">observe</a></li><li><a href="../../commands/en/observe.html#staged">observe staged</a></li><li><a href="../../commands/en/observe.html#live">observe live</a></li><li><a href="../../commands/en/observe.html#overview">observe overview</a></li><li><a href="../../commands/en/observe.html#live">observe overview live</a></li></ul>
 <p>Advanced workflows:</p>
-<ul><li>Need lower-level staged contracts or bundle/promotion handoff docs? Start at <a href="../../commands/en/change.html#advanced">change advanced</a> or the <a href="../../commands/en/index.html">full command index</a>.</li><li><a href="../../commands/en/snapshot.html">snapshot</a></li><li><a href="../../commands/en/snapshot.html#export">snapshot export</a></li><li><a href="../../commands/en/snapshot.html#review">snapshot review</a></li><li><a href="../../commands/en/profile.html">profile</a></li><li><a href="../../commands/en/profile.html#list">profile list</a></li><li><a href="../../commands/en/profile.html#show">profile show</a></li><li><a href="../../commands/en/profile.html#add">profile add</a></li><li><a href="../../commands/en/profile.html#example">profile example</a></li><li><a href="../../commands/en/profile.html#init">profile init</a></li></ul>
+<ul><li>Need lower-level staged contracts or bundle/promotion handoff docs? Start at <a href="../../commands/en/change.html#advanced">change advanced</a> or the <a href="../../commands/en/index.html">full command index</a>.</li><li><a href="../../commands/en/snapshot.html">snapshot</a></li><li><a href="../../commands/en/snapshot.html#export">snapshot export</a></li><li><a href="../../commands/en/snapshot.html#review">snapshot review</a></li><li><a href="../../commands/en/profile.html">config profile</a></li><li><a href="../../commands/en/profile.html#list">config profile list</a></li><li><a href="../../commands/en/profile.html#show">config profile show</a></li><li><a href="../../commands/en/profile.html#add">config profile add</a></li><li><a href="../../commands/en/profile.html#example">config profile example</a></li><li><a href="../../commands/en/profile.html#init">config profile init</a></li></ul>
 <h2 id="status-surfaces">Status Surfaces</h2>
 <p>We distinguish between <strong>Live</strong> (what is actually running) and <strong>Staged</strong> (what you intend to deploy).</p>
 <h3 id="1-live-readiness-check">1. Live Readiness Check</h3>
 <pre><code># Purpose: 1. Live Readiness Check.
-grafana-util status live --output-format table</code></pre>
+grafana-util observe live --output-format table</code></pre>
 <pre><code># Purpose: 1. Live Readiness Check.
-grafana-util status live --profile prod --sync-summary-file ./sync-summary.json --bundle-preflight-file ./bundle-preflight.json --output-format json</code></pre>
+grafana-util observe live --profile prod --sync-summary-file ./sync-summary.json --bundle-preflight-file ./bundle-preflight.json --output-format json</code></pre>
 <p><strong>Expected Output:</strong></p>
 <pre><code>OVERALL: status=ready
 
@@ -795,20 +795,20 @@ COMPONENT    HEALTH   REASON
 Dashboards   ok       32/32 Accessible
 Datasources  ok       Secret recovery verified
 Alerts       ok       No dangling rules</code></pre>
-<p>Use <code>status live</code> when you want the shared live status path to tell you whether Grafana is safe to read from or promote into. The extra staged sync files deepen the live view without changing the command shape.</p>
+<p>Use <code>observe live</code> when you want the shared live status path to tell you whether Grafana is safe to read from or promote into. The extra staged sync files deepen the live view without changing the command shape.</p>
 <h3 id="2-staged-readiness-check">2. Staged Readiness Check</h3>
 <p>Use this as a mandatory CI/CD gate before running <code>apply</code>.</p>
 <pre><code># Purpose: Use this as a mandatory CI/CD gate before running apply.
-grafana-util status staged --desired-file ./desired.json --output-format json</code></pre>
+grafana-util observe staged --desired-file ./desired.json --output-format json</code></pre>
 <pre><code># Purpose: Use this as a mandatory CI/CD gate before running apply.
-grafana-util status staged --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts --desired-file ./desired.json --output-format table</code></pre>
+grafana-util observe staged --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts --desired-file ./desired.json --output-format table</code></pre>
 <p><strong>Expected Output:</strong></p>
 <pre><code>{
   &quot;status&quot;: &quot;ready&quot;,
   &quot;blockers&quot;: [],
   &quot;warnings&quot;: [&quot;1 dashboard missing a unique folder assignment&quot;]
 }</code></pre>
-<p><code>status staged</code> is the machine-readable gate. Treat <code>blockers</code> as hard stops and <code>warnings</code> as review items.</p>
+<p><code>observe staged</code> is the machine-readable gate. Treat <code>blockers</code> as hard stops and <code>warnings</code> as review items.</p>
 <h2 id="change-lifecycle">Change Lifecycle</h2>
 <p>Manage the transition from Git to production Grafana.</p>
 <h3 id="first-run-shortcut">First-run shortcut</h3>
@@ -856,12 +856,12 @@ grafana-util change preview --desired-file ./desired.json --live-file ./live.jso
 <p>Preview is the task-first replacement for the common <code>plan</code> step. It still emits the same reviewable staged contract underneath, but the operator entrypoint is now “preview what would change” instead of “build a plan document.” That preview contract is also where ordering lives: <code>ordering.mode</code>, <code>operations[].orderIndex</code> / <code>orderGroup</code> / <code>kindOrder</code>, and <code>summary.blocked_reasons</code> tell reviewers how the plan is sequenced and which operations remain blocked before apply.</p>
 <p>If the same mixed workspace root needs to become a handoff package, run <code>change bundle --workspace ./grafana-oac-repo --output-file ./sync-source-bundle.json</code>, then keep the resulting <code>sync-source-bundle.json</code> as the portable review artifact.</p>
 <h2 id="interactive-mode-tui-semantics">Interactive Mode (TUI) Semantics</h2>
-<p><code>overview live --output-format interactive</code> opens the live project overview through the shared status live path.</p>
+<p><code>observe overview live --output-format interactive</code> opens the live project overview through the shared observe live path.</p>
 <pre><code># Purpose: overview live --output-format interactive opens the live project overview through the shared status live path.
-grafana-util overview live --url http://localhost:3000 --basic-user admin --basic-password admin --output-format interactive</code></pre>
+grafana-util observe overview live --url http://localhost:3000 --basic-user admin --basic-password admin --output-format interactive</code></pre>
 <p>The TUI uses the following visual language:</p>
 <ul><li><strong>🟢 Green</strong>: The component is healthy and fully reachable.</li><li><strong>🟡 Yellow</strong>: The component is functional but has warnings, such as missing metadata.</li><li><strong>🔴 Red</strong>: The component is blocked and needs action before deployment.</li></ul>
-<p>Use <code>overview</code> without <code>live</code> for staged artifact review, and use <code>status live</code> when you need the same live gate in machine-readable form.</p>
+<p>Use <code>observe overview</code> without <code>live</code> for staged artifact review, and use <code>observe live</code> when you need the same live gate in machine-readable form.</p>
 <p><a href="access.html">⬅️ Previous: Access Management</a> | <a href="index.html">🏠 Home</a> | <a href="scenarios.html">➡️ Next: Operator Scenarios</a></p>
     <nav class="footer-nav"><a class="link-card" href="access.html"><span>Previous</span>Access Management (Identity &amp; Access)</a><a class="link-card" href="scenarios.html"><span>Next</span>Operator Scenarios</a></nav>
   </article>

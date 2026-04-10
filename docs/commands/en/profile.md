@@ -1,12 +1,12 @@
-# `grafana-util profile`
+# `grafana-util config profile`
 
 ## Root
 
-Purpose: list, inspect, validate, add, and initialize repo-local `grafana-util` profiles.
+Purpose: list, inspect, validate, add, and initialize repo-local `grafana-util` profiles through the current `config profile` entrypoint.
 
 When to use: when you want to keep Grafana connection defaults in the current checkout and reuse them with `--profile`.
 
-Description: open this page when you want to understand the full profile workflow before choosing one subcommand. The `profile` namespace is the entrypoint for repo-local connection defaults, secret handling, and non-interactive command reuse across local work, SRE tasks, and CI jobs.
+Description: open this page when you want to understand the full profile workflow before choosing one subcommand. The public entrypoint is `grafana-util config profile`; the legacy top-level `profile` root is not the preferred path. This namespace covers repo-local connection defaults, secret handling, and non-interactive command reuse across local work, SRE tasks, and CI jobs.
 
 ## Before / After
 
@@ -31,45 +31,45 @@ Examples:
 
 ```bash
 # Purpose: List profiles available in the current checkout.
-grafana-util profile list
+grafana-util config profile list
 ```
 
 ```bash
 # Purpose: Inspect the resolved profile before running live commands.
-grafana-util profile show --profile prod --output-format yaml
+grafana-util config profile show --profile prod --output-format yaml
 ```
 
 ```bash
 # Purpose: Show the currently selected profile and resolved config path.
-grafana-util profile current --profile prod
+grafana-util config profile current --profile prod
 ```
 
 ```bash
 # Purpose: Validate the selected profile and check Grafana reachability.
-grafana-util profile validate --profile prod --live
+grafana-util config profile validate --profile prod --live
 ```
 
 ```bash
 # Purpose: Create a reusable production profile with prompt-based secrets.
-grafana-util profile add prod --url https://grafana.example.com --basic-user admin --prompt-password --store-secret encrypted-file
+grafana-util config profile add prod --url https://grafana.example.com --basic-user admin --prompt-password --store-secret encrypted-file
 ```
 
 ```bash
 # Purpose: Create a CI profile that reads the token from an environment variable.
-grafana-util profile add ci --url https://grafana.example.com --token-env GRAFANA_CI_TOKEN --store-secret os
+grafana-util config profile add ci --url https://grafana.example.com --token-env GRAFANA_CI_TOKEN --store-secret os
 ```
 
 ```bash
 # Purpose: Print a fully annotated profile template.
-grafana-util profile example --mode full
+grafana-util config profile example --mode full
 ```
 
 ```bash
 # Purpose: Initialize a fresh grafana-util.yaml in the current checkout.
-grafana-util profile init --overwrite
+grafana-util config profile init --overwrite
 ```
 
-Related commands: `grafana-util status live`, `grafana-util overview live`, `grafana-util change preview`, `grafana-util profile current`, `grafana-util profile validate`.
+Related commands: `grafana-util observe live`, `grafana-util observe overview`, `grafana-util change preview`, `grafana-util config profile current`, `grafana-util config profile validate`.
 
 ## `list`
 
@@ -83,10 +83,10 @@ Examples:
 
 ```bash
 # Purpose: list.
-grafana-util profile list
+grafana-util config profile list
 ```
 
-Related commands: `profile show`, `profile current`, `profile add`, `profile init`.
+Related commands: `config profile show`, `config profile current`, `config profile add`, `config profile init`.
 
 ## `show`
 
@@ -103,24 +103,24 @@ Examples:
 
 ```bash
 # Purpose: show.
-grafana-util profile show --profile prod --output-format yaml
+grafana-util config profile show --profile prod --output-format yaml
 ```
 
 ```bash
 # Purpose: show.
-grafana-util profile show --profile prod --output-format json
+grafana-util config profile show --profile prod --output-format json
 ```
 
 ```bash
 # Purpose: show.
-grafana-util profile show --profile prod --show-secrets --output-format yaml
+grafana-util config profile show --profile prod --show-secrets --output-format yaml
 ```
 
 Notes:
 - Secret values are masked by default.
 - `--show-secrets` reveals plaintext values or resolves secret-store references.
 
-Related commands: `profile list`, `profile add`, `profile current`, `profile validate`, `status live`, `overview live`.
+Related commands: `config profile list`, `config profile add`, `config profile current`, `config profile validate`, `observe live`, `observe overview`.
 
 ## `current`
 
@@ -136,19 +136,19 @@ Examples:
 
 ```bash
 # Purpose: current.
-grafana-util profile current
+grafana-util config profile current
 ```
 
 ```bash
 # Purpose: current.
-grafana-util profile current --profile prod --output-format json
+grafana-util config profile current --profile prod --output-format json
 ```
 
 Notes:
 - The output is diagnostic only and does not reveal secrets.
 - If the config file is missing, `current` reports that the config does not exist instead of failing.
 
-Related commands: `profile show`, `profile validate`, `status live`, `overview live`.
+Related commands: `config profile show`, `config profile validate`, `observe live`, `observe overview`.
 
 ## `validate`
 
@@ -165,19 +165,19 @@ Examples:
 
 ```bash
 # Purpose: validate.
-grafana-util profile validate --profile prod
+grafana-util config profile validate --profile prod
 ```
 
 ```bash
 # Purpose: validate.
-grafana-util profile validate --profile prod --live --output-format json
+grafana-util config profile validate --profile prod --live --output-format json
 ```
 
 Notes:
 - `--live` adds a Grafana `/api/health` check after static validation succeeds.
 - Validation does not print secrets.
 
-Related commands: `profile current`, `profile show`, `status live`, `overview live`.
+Related commands: `config profile current`, `config profile show`, `observe live`, `observe overview`.
 
 ## `add`
 
@@ -196,17 +196,17 @@ Examples:
 
 ```bash
 # Purpose: add.
-grafana-util profile add dev --url http://127.0.0.1:3000 --basic-user admin --password-env GRAFANA_DEV_PASSWORD
+grafana-util config profile add dev --url http://127.0.0.1:3000 --basic-user admin --password-env GRAFANA_DEV_PASSWORD
 ```
 
 ```bash
 # Purpose: add.
-grafana-util profile add prod --url https://grafana.example.com --basic-user admin --prompt-password --store-secret os --set-default
+grafana-util config profile add prod --url https://grafana.example.com --basic-user admin --prompt-password --store-secret os --set-default
 ```
 
 ```bash
 # Purpose: add.
-grafana-util profile add stage --url https://grafana-stage.example.com --token-env GRAFANA_STAGE_TOKEN --store-secret encrypted-file --prompt-secret-passphrase
+grafana-util config profile add stage --url https://grafana-stage.example.com --token-env GRAFANA_STAGE_TOKEN --store-secret encrypted-file --prompt-secret-passphrase
 ```
 
 Notes:
@@ -221,7 +221,7 @@ Notes:
 - `os` is only supported on macOS and Linux. Headless Linux shells may need `password_env`, `token_env`, or `encrypted-file` instead.
 - Prefer profile-backed `password_env` or `token_env` entries for repeated automation instead of pasting secrets into every live command.
 
-Related commands: `profile show`, `profile current`, `profile example`, `profile init`.
+Related commands: `config profile show`, `config profile current`, `config profile example`, `config profile init`.
 
 ## `example`
 
@@ -236,17 +236,17 @@ Examples:
 
 ```bash
 # Purpose: example.
-grafana-util profile example
+grafana-util config profile example
 ```
 
 ```bash
 # Purpose: example.
-grafana-util profile example --mode basic
+grafana-util config profile example --mode basic
 ```
 
 ```bash
 # Purpose: example.
-grafana-util profile example --mode full
+grafana-util config profile example --mode full
 ```
 
 Notes:
@@ -254,7 +254,7 @@ Notes:
 - `full` includes commented examples for `file`, `os`, and `encrypted-file`.
 - The `os` examples assume macOS Keychain or Linux Secret Service is available.
 
-Related commands: `profile add`, `profile init`, `profile show`, `profile current`, `profile validate`.
+Related commands: `config profile add`, `config profile init`, `config profile show`, `config profile current`, `config profile validate`.
 
 ## `init`
 
@@ -269,16 +269,16 @@ Examples:
 
 ```bash
 # Purpose: init.
-grafana-util profile init
+grafana-util config profile init
 ```
 
 ```bash
 # Purpose: init.
-grafana-util profile init --overwrite
+grafana-util config profile init --overwrite
 ```
 
 Notes:
 - `init` seeds the built-in starter template.
 - `add` is the friendlier way to create one real profile entry directly.
 
-Related commands: `profile add`, `profile example`, `profile current`, `profile validate`, `status live`.
+Related commands: `config profile add`, `config profile example`, `config profile current`, `config profile validate`, `observe live`.

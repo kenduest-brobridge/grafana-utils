@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>grafana-util overview · grafana-util docs</title>
+  <title>Legacy: grafana-util overview · grafana-util docs</title>
   <style>:root {
   color-scheme: light dark;
   --font-scale: 1;
@@ -758,19 +758,19 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </aside>
 
   <article class="article">
-    <div class="breadcrumbs"><a href="../../index.html">Home</a> / Commands / grafana-util overview</div>
+    <div class="breadcrumbs"><a href="../../index.html">Home</a> / Commands / Legacy: grafana-util overview</div>
 
-    <h1><span class="hero-title-main">grafana-util overview</span></h1>
+    <h1><span class="hero-title-main">Legacy: grafana-util overview</span></h1>
 
 
     <section class="command-intro">
   <div class="command-intro-grid"><div class="command-intro-block">
   <p class="command-intro-label">What this page covers</p>
-  <p class="command-intro-text">summarize staged artifacts into one project-wide overview.</p>
+  <p class="command-intro-text">compatibility reference for the old project-wide overview root.</p>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">When to open this page</p>
-  <ul class="command-intro-list"><li>when you want a single readout across dashboard, datasource, access, alert, and change artifacts before checking status or promoting changes.</li></ul>
+  <ul class="command-intro-list"><li>when you are translating older docs or scripts to the current observe surface.</li></ul>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">Who this page is for</p>
@@ -779,30 +779,30 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 </section>
 <h2 id="root">Root</h2>
-<p>Purpose: summarize staged artifacts into one project-wide overview.</p>
-<p>When to use: when you want a single readout across dashboard, datasource, access, alert, and change artifacts before checking status or promoting changes.</p>
-<p>Description: open this page when you need one project-wide summary before switching into a narrower workflow. The <code>overview</code> namespace is useful for readers who want one place to scan staged artifacts or live state across multiple Grafana surfaces without opening each asset command first.</p>
+<p>Purpose: compatibility reference for the old project-wide overview root.</p>
+<p>When to use: when you are translating older docs or scripts to the current <code>observe</code> surface.</p>
+<p>Description: the public overview surface now lives under <code>grafana-util observe</code>. Use <code>observe overview</code> or <code>observe live</code> instead of the legacy top-level <code>overview</code> root.</p>
 <p>Key flags: staged inputs such as <code>--dashboard-export-dir</code>, <code>--dashboard-provisioning-dir</code>, <code>--datasource-export-dir</code>, <code>--datasource-provisioning-file</code>, <code>--access-user-export-dir</code>, <code>--access-team-export-dir</code>, <code>--access-org-export-dir</code>, <code>--access-service-account-export-dir</code>, <code>--desired-file</code>, <code>--source-bundle</code>, <code>--target-inventory</code>, <code>--alert-export-dir</code>, <code>--availability-file</code>, <code>--mapping-file</code>, and <code>--output-format</code>.</p>
 <p>Examples:</p>
 <pre><code># Purpose: Summarize staged dashboard, alert, and access artifacts.
-grafana-util overview --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts --desired-file ./desired.json --output-format table</code></pre>
+grafana-util observe overview --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts --desired-file ./desired.json --output-format table</code></pre>
 <pre><code># Purpose: Review sync bundle inputs before promotion.
-grafana-util overview --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --availability-file ./availability.json --mapping-file ./mapping.json --output-format text</code></pre>
-<p>Related commands: <code>grafana-util status staged</code>, <code>grafana-util change inspect</code>, <code>grafana-util snapshot review</code>.</p>
+grafana-util observe overview --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --availability-file ./availability.json --mapping-file ./mapping.json --output-format text</code></pre>
+<p>Related commands: <code>grafana-util observe staged</code>, <code>grafana-util change inspect</code>, <code>grafana-util snapshot review</code>.</p>
 <h2 id="live"><code>live</code></h2>
-<p>Purpose: render the live overview by delegating to the shared status live path.</p>
-<p>When to use: when you need the same live readout that <code>status live</code> uses, but want it under the overview namespace.</p>
-<p>Key flags: live connection and auth flags from the shared status live path, plus <code>--sync-summary-file</code>, <code>--bundle-preflight-file</code>, <code>--promotion-summary-file</code>, <code>--mapping-file</code>, <code>--availability-file</code>, and <code>--output-format</code>.</p>
+<p>Purpose: render the live overview by delegating to the shared observe live path.</p>
+<p>When to use: when you need the same live readout that <code>observe live</code> uses, but want it under the overview namespace.</p>
+<p>Key flags: live connection and auth flags from the shared observe live path, plus <code>--sync-summary-file</code>, <code>--bundle-preflight-file</code>, <code>--promotion-summary-file</code>, <code>--mapping-file</code>, <code>--availability-file</code>, and <code>--output-format</code>.</p>
 <p>Notes:</p>
 <ul><li>Prefer <code>--profile</code> for repeatable live overview work.</li><li>Direct Basic auth is the safer fallback for broader org visibility.</li><li>Token auth is fine for scoped reads, but the visible results still follow the token&#x27;s permission envelope.</li></ul>
 <p>Examples:</p>
 <pre><code># Purpose: live.
-grafana-util overview live --profile prod --output-format yaml</code></pre>
+grafana-util observe overview --profile prod --output-format yaml</code></pre>
 <pre><code># Purpose: live.
-grafana-util overview live --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output-format json</code></pre>
+grafana-util observe overview --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output-format json</code></pre>
 <pre><code># Purpose: live.
-grafana-util overview live --url http://localhost:3000 --basic-user admin --basic-password admin --output-format interactive</code></pre>
-<p>Related commands: <code>grafana-util status live</code>, <code>grafana-util change apply</code>, <code>grafana-util profile show</code>.</p>
+grafana-util observe overview --url http://localhost:3000 --basic-user admin --basic-password admin --output-format interactive</code></pre>
+<p>Related commands: <code>grafana-util observe live</code>, <code>grafana-util change apply</code>, <code>grafana-util config profile show</code>.</p>
     
   </article>
   <aside class="sidebar">

@@ -789,7 +789,7 @@ curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main
 grafana-util --version</code></pre>
 <h3 id="3-執行第一次完整巡檢">3. 執行第一次完整巡檢</h3>
 <pre><code># 產生整個 Grafana Estate 的高階健康度與資產盤點報告
-grafana-util overview live --url http://localhost:3000 --basic-user admin --prompt-password --output-format interactive</code></pre>
+grafana-util observe overview --url http://localhost:3000 --basic-user admin --prompt-password --output-format interactive</code></pre>
 <p><strong>為什麼這很重要？</strong> 30 秒內，你就能先確認連線正常，快速看 Dashboard、Alert 和 data source 的狀態，也能先看出哪些設定可能已經失效。</p>
 <h2 id="章節導覽-navigation-map">章節導覽 (Navigation Map)</h2>
 <h3 id="第一階段奠定基礎">第一階段：奠定基礎</h3>

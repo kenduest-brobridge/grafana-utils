@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>grafana-util overview · grafana-util docs</title>
+  <title>兼容頁：grafana-util overview · grafana-util docs</title>
   <style>:root {
   color-scheme: light dark;
   --font-scale: 1;
@@ -758,15 +758,15 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </aside>
 
   <article class="article">
-    <div class="breadcrumbs"><a href="../../index.html">Home</a> / Commands / grafana-util overview</div>
+    <div class="breadcrumbs"><a href="../../index.html">Home</a> / Commands / 兼容頁：grafana-util overview</div>
 
-    <h1><span class="hero-title-main">grafana-util overview</span></h1>
+    <h1><span class="hero-title-main">兼容頁：grafana-util overview</span></h1>
 
 
     <section class="command-intro">
   <div class="command-intro-grid"><div class="command-intro-block">
   <p class="command-intro-label">這頁在說什麼</p>
-  <p class="command-intro-text">把已準備好的 artifact 彙整成一份全專案總覽。</p>
+  <p class="command-intro-text">舊 top-level overview root 的相容參考頁。</p>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">適合誰</p>
@@ -775,30 +775,30 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 </section>
 <h2 id="root">Root</h2>
-<p>用途：把已準備好的 artifact 彙整成一份全專案總覽。</p>
-<p>適用時機：當你想在查看 status 或推進變更前，先一次看完 dashboard、datasource、access、alert 與 change 相關 artifact 時。</p>
-<p>說明：如果你需要先看一份全專案總覽，再決定要切到哪個較窄的工作流，先看這一頁最合適。<code>overview</code> 指令群組適合想一次掃過 staged artifact 或 live 狀態的人，不必先把每個資產指令都打開。</p>
+<p>用途：舊 top-level <code>overview</code> root 的相容參考頁。</p>
+<p>適用時機：當你在對照舊文件或舊腳本，想對應到目前的 <code>observe</code> surface 時。</p>
+<p>說明：目前公開的 overview surface 已移到 <code>grafana-util observe</code>。請改用 <code>observe overview</code> 或 <code>observe live</code>，不要再把 top-level <code>overview</code> 當成主入口。</p>
 <p>主要旗標：分階段輸入，例如 <code>--dashboard-export-dir</code>、<code>--dashboard-provisioning-dir</code>、<code>--datasource-export-dir</code>、<code>--datasource-provisioning-file</code>、<code>--access-user-export-dir</code>、<code>--access-team-export-dir</code>、<code>--access-org-export-dir</code>、<code>--access-service-account-export-dir</code>、<code>--desired-file</code>、<code>--source-bundle</code>、<code>--target-inventory</code>、<code>--alert-export-dir</code>、<code>--availability-file</code>、<code>--mapping-file</code> 和 <code>--output-format</code>。</p>
 <p>範例：</p>
 <pre><code># 用途：彙總 staged 的 dashboard、alert 與 access 產物。
-grafana-util overview --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts --desired-file ./desired.json --output-format table</code></pre>
+grafana-util observe overview --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts --desired-file ./desired.json --output-format table</code></pre>
 <pre><code># 用途：在 promotion 前先檢視 sync bundle 的輸入。
-grafana-util overview --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --availability-file ./availability.json --mapping-file ./mapping.json --output-format text</code></pre>
-<p>相關指令：<code>grafana-util status staged</code>、<code>grafana-util change inspect</code>、<code>grafana-util snapshot review</code>。</p>
+grafana-util observe overview --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --availability-file ./availability.json --mapping-file ./mapping.json --output-format text</code></pre>
+<p>相關指令：<code>grafana-util observe staged</code>、<code>grafana-util change inspect</code>、<code>grafana-util snapshot review</code>。</p>
 <h2 id="live"><code>live</code></h2>
-<p>用途：透過共用的 status live 流程，輸出 live overview。</p>
-<p>適用時機：當你需要與 <code>status live</code> 相同的 live readout，但想從 overview 這個指令群組來操作時。</p>
-<p>主要旗標：共用 status live 流程的 live 連線與驗證旗標，以及 <code>--sync-summary-file</code>、<code>--bundle-preflight-file</code>、<code>--promotion-summary-file</code>、<code>--mapping-file</code>、<code>--availability-file</code> 和 <code>--output-format</code>。</p>
+<p>用途：透過共用的 observe live 流程，輸出 live overview。</p>
+<p>適用時機：當你需要與 <code>observe live</code> 相同的 live readout，但想從 overview 這個指令群組來操作時。</p>
+<p>主要旗標：共用 observe live 流程的 live 連線與驗證旗標，以及 <code>--sync-summary-file</code>、<code>--bundle-preflight-file</code>、<code>--promotion-summary-file</code>、<code>--mapping-file</code>、<code>--availability-file</code> 和 <code>--output-format</code>。</p>
 <p>說明：</p>
 <ul><li>可重複執行的 live overview 工作優先用 <code>--profile</code>。</li><li>想拿到較廣 org 可見度時，直接 Basic auth 會更穩定。</li><li>Token 驗證適合權限邊界明確的讀取流程，但最後可見結果仍受 token 權限範圍限制。</li></ul>
 <p>範例：</p>
 <pre><code># 用途：live。
-grafana-util overview live --profile prod --output-format yaml</code></pre>
+grafana-util observe overview --profile prod --output-format yaml</code></pre>
 <pre><code># 用途：live。
-grafana-util overview live --url http://localhost:3000 --basic-user admin --basic-password admin --output-format interactive</code></pre>
+grafana-util observe overview --url http://localhost:3000 --basic-user admin --basic-password admin --output-format interactive</code></pre>
 <pre><code># 用途：live。
-grafana-util overview live --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output-format json</code></pre>
-<p>相關指令：<code>grafana-util status live</code>、<code>grafana-util change apply</code>、<code>grafana-util profile show</code>。</p>
+grafana-util observe overview --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output-format json</code></pre>
+<p>相關指令：<code>grafana-util observe live</code>、<code>grafana-util change apply</code>、<code>grafana-util config profile show</code>。</p>
     
   </article>
   <aside class="sidebar">

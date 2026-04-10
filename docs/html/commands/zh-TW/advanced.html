@@ -781,11 +781,20 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="說明">說明</h2>
 <p><code>advanced</code> 保留了 <code>grafana-util</code> 原本完整的 domain 深度，但不再讓新手在第一眼就看到所有 lane。它是之後建議的 canonical expert 入口；舊的 top-level domain roots 仍然保留作為相容路徑。</p>
 <h2 id="子命令">子命令</h2>
-<ul><li><code>advanced dashboard ...</code></li><li><code>advanced alert ...</code></li><li><code>advanced datasource ...</code></li><li><code>advanced access ...</code></li></ul>
+<h3 id="dashboard-工作流">Dashboard 工作流</h3>
+<ul><li><code>advanced dashboard live ...</code>：瀏覽 live dashboards、history、fetch。</li><li><code>advanced dashboard draft ...</code>：review、patch、serve、publish 本地 draft。</li><li><code>advanced dashboard sync ...</code>：export、import、diff、轉換 migration artifacts。</li><li><code>advanced dashboard analyze ...</code>：summary、topology、impact、governance。</li><li><code>advanced dashboard capture ...</code>：瀏覽器渲染截圖與 PDF。</li></ul>
+<h3 id="alert-工作流">Alert 工作流</h3>
+<ul><li><code>advanced alert live ...</code>：查看 live alert inventory，或刪除一個 live resource。</li><li><code>advanced alert migrate ...</code>：export、import、diff alert artifacts。</li><li><code>advanced alert author ...</code>：初始化並編寫 desired-state alert 資源。</li><li><code>advanced alert scaffold ...</code>：直接建立低階 alert 檔案骨架。</li><li><code>advanced alert change ...</code>：plan 與 apply staged alert changes。</li></ul>
+<h3 id="datasource-與-access-工作流">Datasource 與 access 工作流</h3>
+<ul><li><code>advanced datasource ...</code>：list、browse、export、import、diff datasources。</li><li><code>advanced access ...</code>：user、team、org、service-account 管理。</li></ul>
 <h2 id="範例">範例</h2>
+<h3 id="dashboard-匯入">Dashboard 匯入</h3>
 <pre><code>grafana-util advanced dashboard sync import --input-dir ./dashboards/raw --dry-run --table</code></pre>
+<h3 id="alert-路由預覽">Alert 路由預覽</h3>
 <pre><code>grafana-util advanced alert author route preview --desired-dir ./alerts/desired --label team=sre --severity critical</code></pre>
+<h3 id="datasource-diff">Datasource diff</h3>
 <pre><code>grafana-util advanced datasource diff --diff-dir ./datasources --input-format inventory</code></pre>
+<h3 id="access-diff">Access diff</h3>
 <pre><code>grafana-util advanced access user diff --diff-dir ./access-users --scope global</code></pre>
 <h2 id="相關指令">相關指令</h2>
 <ul><li><a href="export.html">export</a></li><li><a href="change.html">change</a></li><li><a href="dashboard.html">dashboard</a></li><li><a href="alert.html">alert</a></li><li><a href="datasource.html">datasource</a></li><li><a href="access.html">access</a></li></ul>
@@ -794,7 +803,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
   <aside class="sidebar">
   <button class="sidebar-toggle sidebar-toggle-right" type="button" aria-expanded="true" aria-label="Toggle page sidebar">▶</button>
   <div class="sidebar-content">
-    <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#用途"><span class="toc-label">用途</span></a></li><li class="toc-level-2"><a href="#何時使用"><span class="toc-label">何時使用</span></a></li><li class="toc-level-2"><a href="#說明"><span class="toc-label">說明</span></a></li><li class="toc-level-2"><a href="#子命令"><span class="toc-label">子命令</span></a></li><li class="toc-level-2"><a href="#範例"><span class="toc-label">範例</span></a></li><li class="toc-level-2"><a href="#相關指令"><span class="toc-label">相關指令</span></a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: 繁體中文</a></li><li><a href="../en/advanced.html" class="sidebar-meta-link">Switch to English</a></li></ul></section>
+    <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#用途"><span class="toc-label">用途</span></a></li><li class="toc-level-2"><a href="#何時使用"><span class="toc-label">何時使用</span></a></li><li class="toc-level-2"><a href="#說明"><span class="toc-label">說明</span></a></li><li class="toc-level-2"><a href="#子命令"><span class="toc-label">子命令</span></a></li><li class="toc-level-3"><a href="#dashboard-工作流"><span class="toc-label">Dashboard 工作流</span></a></li><li class="toc-level-3"><a href="#alert-工作流"><span class="toc-label">Alert 工作流</span></a></li><li class="toc-level-3"><a href="#datasource-與-access-工作流"><span class="toc-label">Datasource 與 access 工作流</span></a></li><li class="toc-level-2"><a href="#範例"><span class="toc-label">範例</span></a></li><li class="toc-level-3"><a href="#dashboard-匯入"><span class="toc-label">Dashboard 匯入</span></a></li><li class="toc-level-3"><a href="#alert-路由預覽"><span class="toc-label">Alert 路由預覽</span></a></li><li class="toc-level-3"><a href="#datasource-diff"><span class="toc-label">Datasource diff</span></a></li><li class="toc-level-3"><a href="#access-diff"><span class="toc-label">Access diff</span></a></li><li class="toc-level-2"><a href="#相關指令"><span class="toc-label">相關指令</span></a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: 繁體中文</a></li><li><a href="../en/advanced.html" class="sidebar-meta-link">Switch to English</a></li></ul></section>
   </div>
 </aside>
 

@@ -792,7 +792,7 @@ grafana-util snapshot export --profile prod --output-dir ./snapshot</code></pre>
 grafana-util snapshot review --input-dir ./snapshot --output-format json</code></pre>
 <pre><code># 用途：用 token 認證從 live Grafana 匯出 snapshot bundle。
 grafana-util snapshot export --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output-dir ./snapshot</code></pre>
-<p>相關指令：<code>grafana-util overview</code>、<code>grafana-util status staged</code>、<code>grafana-util change bundle</code>。</p>
+<p>相關指令：<code>grafana-util observe overview</code>、<code>grafana-util observe staged</code>、<code>grafana-util change bundle</code>。</p>
 <h2 id="export"><code>export</code></h2>
 <p>用途：將 dashboard、datasource 與 access inventory 匯出到本機 snapshot bundle。</p>
 <p>適用時機：當你需要一個不必連到 Grafana 也能檢視的本機 snapshot root 時。</p>
@@ -808,7 +808,7 @@ grafana-util snapshot export --url http://localhost:3000 --basic-user admin --ba
 grafana-util snapshot export --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output-dir ./snapshot</code></pre>
 <pre><code># 用途：先用 terminal prompt 勾選要匯出的 snapshot lane。
 grafana-util snapshot export --profile prod --prompt --output-dir ./snapshot</code></pre>
-<p>相關指令：<code>snapshot review</code>、<code>change bundle</code>、<code>overview</code>。</p>
+<p>相關指令：<code>snapshot review</code>、<code>change bundle</code>、<code>observe overview</code>。</p>
 <h2 id="review"><code>review</code></h2>
 <p>用途：在不接觸 Grafana 的情況下檢視本機 snapshot inventory。</p>
 <p>適用時機：當你想把匯出的 snapshot root 以 table、csv、text、json、yaml 或 interactive 格式查看時。</p>
@@ -819,7 +819,7 @@ grafana-util snapshot export --profile prod --prompt --output-dir ./snapshot</co
 grafana-util snapshot review --input-dir ./snapshot --output-format table</code></pre>
 <pre><code># 用途：在不接觸 Grafana 的情況下檢視本機 snapshot inventory。
 grafana-util snapshot review --input-dir ./snapshot --interactive</code></pre>
-<p>相關指令：<code>snapshot export</code>、<code>overview</code>、<code>status staged</code>。</p>
+<p>相關指令：<code>snapshot export</code>、<code>observe overview</code>、<code>observe staged</code>。</p>
     
   </article>
   <aside class="sidebar">

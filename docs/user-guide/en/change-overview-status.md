@@ -44,11 +44,11 @@ Primary lane:
 - [change check](../../commands/en/change-check.md)
 - [change preview](../../commands/en/change-preview.md)
 - [change apply](../../commands/en/change-apply.md)
-- [status](../../commands/en/status.md)
-- [status staged](../../commands/en/status.md#staged)
-- [status live](../../commands/en/status.md#live)
-- [overview](../../commands/en/overview.md)
-- [overview live](../../commands/en/overview.md#live)
+- [observe](../../commands/en/observe.md)
+- [observe staged](../../commands/en/observe.md#staged)
+- [observe live](../../commands/en/observe.md#live)
+- [observe overview](../../commands/en/observe.md#overview)
+- [observe overview live](../../commands/en/observe.md#live)
 
 Advanced workflows:
 
@@ -56,12 +56,12 @@ Advanced workflows:
 - [snapshot](../../commands/en/snapshot.md)
 - [snapshot export](../../commands/en/snapshot.md#export)
 - [snapshot review](../../commands/en/snapshot.md#review)
-- [profile](../../commands/en/profile.md)
-- [profile list](../../commands/en/profile.md#list)
-- [profile show](../../commands/en/profile.md#show)
-- [profile add](../../commands/en/profile.md#add)
-- [profile example](../../commands/en/profile.md#example)
-- [profile init](../../commands/en/profile.md#init)
+- [config profile](../../commands/en/profile.md)
+- [config profile list](../../commands/en/profile.md#list)
+- [config profile show](../../commands/en/profile.md#show)
+- [config profile add](../../commands/en/profile.md#add)
+- [config profile example](../../commands/en/profile.md#example)
+- [config profile init](../../commands/en/profile.md#init)
 
 ---
 
@@ -72,12 +72,12 @@ We distinguish between **Live** (what is actually running) and **Staged** (what 
 ### 1. Live Readiness Check
 ```bash
 # Purpose: 1. Live Readiness Check.
-grafana-util status live --output-format table
+grafana-util observe live --output-format table
 ```
 
 ```bash
 # Purpose: 1. Live Readiness Check.
-grafana-util status live --profile prod --sync-summary-file ./sync-summary.json --bundle-preflight-file ./bundle-preflight.json --output-format json
+grafana-util observe live --profile prod --sync-summary-file ./sync-summary.json --bundle-preflight-file ./bundle-preflight.json --output-format json
 ```
 **Expected Output:**
 ```text
@@ -88,18 +88,18 @@ Dashboards   ok       32/32 Accessible
 Datasources  ok       Secret recovery verified
 Alerts       ok       No dangling rules
 ```
-Use `status live` when you want the shared live status path to tell you whether Grafana is safe to read from or promote into. The extra staged sync files deepen the live view without changing the command shape.
+Use `observe live` when you want the shared live status path to tell you whether Grafana is safe to read from or promote into. The extra staged sync files deepen the live view without changing the command shape.
 
 ### 2. Staged Readiness Check
 Use this as a mandatory CI/CD gate before running `apply`.
 ```bash
 # Purpose: Use this as a mandatory CI/CD gate before running apply.
-grafana-util status staged --desired-file ./desired.json --output-format json
+grafana-util observe staged --desired-file ./desired.json --output-format json
 ```
 
 ```bash
 # Purpose: Use this as a mandatory CI/CD gate before running apply.
-grafana-util status staged --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts --desired-file ./desired.json --output-format table
+grafana-util observe staged --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts --desired-file ./desired.json --output-format table
 ```
 **Expected Output:**
 ```json
@@ -109,7 +109,7 @@ grafana-util status staged --dashboard-export-dir ./dashboards/raw --alert-expor
   "warnings": ["1 dashboard missing a unique folder assignment"]
 }
 ```
-`status staged` is the machine-readable gate. Treat `blockers` as hard stops and `warnings` as review items.
+`observe staged` is the machine-readable gate. Treat `blockers` as hard stops and `warnings` as review items.
 
 ---
 
@@ -202,11 +202,11 @@ If the same mixed workspace root needs to become a handoff package, run `change 
 
 ## 🖥️ Interactive Mode (TUI) Semantics
 
-`overview live --output-format interactive` opens the live project overview through the shared status live path.
+`observe overview live --output-format interactive` opens the live project overview through the shared observe live path.
 
 ```bash
 # Purpose: overview live --output-format interactive opens the live project overview through the shared status live path.
-grafana-util overview live --url http://localhost:3000 --basic-user admin --basic-password admin --output-format interactive
+grafana-util observe overview live --url http://localhost:3000 --basic-user admin --basic-password admin --output-format interactive
 ```
 
 The TUI uses the following visual language:
@@ -214,7 +214,7 @@ The TUI uses the following visual language:
 - **🟡 Yellow**: The component is functional but has warnings, such as missing metadata.
 - **🔴 Red**: The component is blocked and needs action before deployment.
 
-Use `overview` without `live` for staged artifact review, and use `status live` when you need the same live gate in machine-readable form.
+Use `observe overview` without `live` for staged artifact review, and use `observe live` when you need the same live gate in machine-readable form.
 
 ---
 [⬅️ Previous: Access Management](access.md) | [🏠 Home](index.md) | [➡️ Next: Operator Scenarios](scenarios.md)

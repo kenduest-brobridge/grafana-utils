@@ -765,7 +765,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 
     <p>This page is for someone opening <code>grafana-util</code> for the first time, or for a teammate who needs a safe local checklist before touching live Grafana data.</p>
 <p>The first thing to understand is that <code>grafana-util</code> does not force one auth style. You can connect in several ways:</p>
-<ul><li>pass the Grafana URL and credentials directly on each command</li><li>prompt for a password or token instead of pasting it into the shell</li><li>rely on environment variables that the CLI already knows how to read</li><li>save repeatable defaults in a repo-local profile and call them back with <code>--profile</code></li></ul>
+<ul><li>pass the Grafana URL and credentials directly on each command</li><li>prompt for a password or token instead of pasting it into the shell</li><li>rely on environment variables that the CLI already knows how to read</li><li>save repeatable defaults in a repo-local <code>config profile</code> and call them back with <code>config profile</code></li></ul>
 <p>Profiles matter because they remove repetition, not because direct flags are unsupported. The normal learning path is:</p>
 <ol><li>prove the binary can reach Grafana with one safe read</li><li>understand which auth form you are using</li><li>move the repeatable parts into a profile once you know the connection works</li></ol>
 <h2 id="who-it-is-for">Who It Is For</h2>
@@ -779,48 +779,48 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="failure-checks">Failure checks</h2>
 <ul><li>If the first live read fails, stop and fix connection or auth before touching mutation workflows.</li><li>If you do not know which auth source is active, inspect the command line and profile file before proceeding.</li><li>If you are tempted to paste secrets into shell history, switch to env-backed or prompted auth first.</li></ul>
 <h2 id="typical-first-day-tasks">Typical First-Day Tasks</h2>
-<ul><li>Confirm the installed binary is on <code>PATH</code>.</li><li>Run one direct read-only command against a lab or dev Grafana.</li><li>Create one repo-local profile once the direct connection works.</li><li>Run one safe live read and recognize the difference between <code>status live</code> and <code>overview live</code>.</li><li>Learn which docs to keep open before moving on to dashboards, alerts, or access workflows.</li></ul>
+<ul><li>Confirm the installed binary is on <code>PATH</code>.</li><li>Run one direct read-only command against a lab or dev Grafana.</li><li>Create one repo-local profile once the direct connection works.</li><li>Run one safe live read and recognize the difference between <code>observe live</code> and <code>observe overview</code>.</li><li>Learn which docs to keep open before moving on to dashboards, alerts, or access workflows.</li></ul>
 <h2 id="how-connection-and-auth-work">How Connection And Auth Work</h2>
 <p><code>grafana-util</code> accepts connection details in more than one place.</p>
-<ul><li><code>--url</code> selects the Grafana base URL.</li><li><code>--basic-user</code> plus <code>--basic-password</code>, or <code>--prompt-password</code>, uses Basic auth.</li><li><code>--token</code>, or <code>--prompt-token</code>, uses token auth.</li><li><code>GRAFANA_USERNAME</code>, <code>GRAFANA_PASSWORD</code>, and <code>GRAFANA_API_TOKEN</code> can supply the same credentials through environment variables.</li><li><code>--profile</code> loads the reusable defaults stored in <code>grafana-util.yaml</code>.</li></ul>
+<ul><li><code>--url</code> selects the Grafana base URL.</li><li><code>--basic-user</code> plus <code>--basic-password</code>, or <code>--prompt-password</code>, uses Basic auth.</li><li><code>--token</code>, or <code>--prompt-token</code>, uses token auth.</li><li><code>GRAFANA_USERNAME</code>, <code>GRAFANA_PASSWORD</code>, and <code>GRAFANA_API_TOKEN</code> can supply the same credentials through environment variables.</li><li><code>config profile</code> loads the reusable defaults stored in <code>grafana-util.yaml</code>.</li></ul>
 <p>That means you can always start with a one-off command, then move to a profile later if you do not want to keep repeating the same URL and auth flags.</p>
 <h2 id="recommended-auth-and-secret-approach">Recommended Auth And Secret Approach</h2>
 <p>Use the auth modes in this order:</p>
-<ol><li>Direct Basic auth with <code>--prompt-password</code> for a first local bootstrap or a one-time reachability check.</li><li><code>--profile</code> with <code>password_env</code>, <code>token_env</code>, or an OS-backed secret store for repeatable day-to-day work.</li><li>Direct token auth only when you already know the token is scoped tightly enough for the read you want.</li></ol>
+<ol><li>Direct Basic auth with <code>--prompt-password</code> for a first local bootstrap or a one-time reachability check.</li><li><code>config profile</code> with <code>password_env</code>, <code>token_env</code>, or an OS-backed secret store for repeatable day-to-day work.</li><li>Direct token auth only when you already know the token is scoped tightly enough for the read you want.</li></ol>
 <p>The key idea is simple: direct flags prove the connection, profiles simplify repeated use.</p>
 <h2 id="first-commands-to-run">First Commands To Run</h2>
 <pre><code># Purpose: First Commands To Run.
 grafana-util --version</code></pre>
 <pre><code># Purpose: First Commands To Run.
-grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml</code></pre>
+grafana-util observe live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml</code></pre>
 <pre><code># Purpose: First Commands To Run.
-grafana-util profile init --overwrite</code></pre>
+grafana-util config profile init --overwrite</code></pre>
 <pre><code># Purpose: First Commands To Run.
-grafana-util profile example --mode basic</code></pre>
+grafana-util config profile example --mode basic</code></pre>
 <pre><code># Purpose: First Commands To Run.
-grafana-util profile add dev --url http://127.0.0.1:3000 --basic-user admin --prompt-password</code></pre>
+grafana-util config profile add dev --url http://127.0.0.1:3000 --basic-user admin --prompt-password</code></pre>
 <pre><code># Purpose: First Commands To Run.
-grafana-util status live --profile dev --output-format yaml</code></pre>
+grafana-util observe live --profile dev --output-format yaml</code></pre>
 <p>The sequence matters:</p>
 <ul><li>first prove that the binary can talk to Grafana with one direct command</li><li>then initialize a repo-local config</li><li>then add a reusable profile for the same target</li><li>then run the same safe read again through <code>--profile</code></li></ul>
 <p>If you do not have a profile yet, this is the shortest safe bootstrap:</p>
 <pre><code># Purpose: If you do not have a profile yet, this is the shortest safe bootstrap.
-grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml</code></pre>
+grafana-util observe live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml</code></pre>
 <p>If you already have a scoped token, you can check the same live surface without a profile:</p>
 <pre><code># Purpose: If you already have a scoped token, you can check the same live surface without a profile.
-grafana-util overview live --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output-format json</code></pre>
+grafana-util observe overview --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output-format json</code></pre>
 <p>If your shell already exports auth variables, you can also keep the command shorter:</p>
 <pre><code># Purpose: If your shell already exports auth variables, you can also keep the command shorter.
 export GRAFANA_USERNAME=admin
 export GRAFANA_PASSWORD=admin
-grafana-util status live --url http://localhost:3000 --output-format yaml</code></pre>
+grafana-util observe live --url http://localhost:3000 --output-format yaml</code></pre>
 <h2 id="what-good-looks-like">What Good Looks Like</h2>
 <p>You are ready to leave the new-user path when:</p>
-<ul><li><code>grafana-util --version</code> works from your normal shell</li><li>one direct read-only command succeeds against the Grafana you care about</li><li><code>profile show --profile dev</code> resolves the fields you expect</li><li><code>status live --profile dev</code> returns readable output without prompting surprises</li><li>you know whether your next step is dashboards, alerts, access, or CI automation</li></ul>
+<ul><li><code>grafana-util --version</code> works from your normal shell</li><li>one direct read-only command succeeds against the Grafana you care about</li><li><code>config profile show --profile dev</code> resolves the fields you expect</li><li><code>observe live --profile dev</code> returns readable output without prompting surprises</li><li>you know whether your next step is dashboards, alerts, access, or CI automation</li></ul>
 <h2 id="read-next">Read Next</h2>
 <ul><li><a href="getting-started.html">Getting Started</a></li><li><a href="reference.html">Technical Reference</a></li><li><a href="troubleshooting.html">Troubleshooting</a></li></ul>
 <h2 id="keep-open">Keep Open</h2>
-<ul><li><a href="../../commands/en/profile.html">profile</a></li><li><a href="../../commands/en/status.html">status</a></li><li><a href="../../commands/en/overview.html">overview</a></li><li><a href="../../commands/en/dashboard.html">dashboard</a></li></ul>
+<ul><li><a href="../../commands/en/index.html">Command Docs</a></li><li><a href="../../commands/en/profile.html">profile compatibility reference</a></li><li><a href="../../commands/en/overview.html">overview compatibility reference</a></li><li><a href="../../commands/en/dashboard.html">dashboard</a></li></ul>
 <h2 id="common-mistakes-and-limits">Common Mistakes And Limits</h2>
 <ul><li>Do not assume profiles are mandatory before the first connectivity check; one direct command is a good starting point.</li><li>Do not start with token auth if you are still learning the profile rules; token scope can hide data and make the output look incomplete.</li><li>Do not use <code>--show-secrets</code> on shared terminals or in screenshots.</li><li>Do not expect <code>--all-orgs</code> inventory flows to work reliably with a narrow token.</li><li>Do not assume interactive output is the best first check; plain YAML or JSON is easier to compare.</li></ul>
 <h2 id="when-to-switch-to-deeper-docs">When To Switch To Deeper Docs</h2>

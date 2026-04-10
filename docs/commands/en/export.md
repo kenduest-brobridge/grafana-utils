@@ -11,27 +11,34 @@ Use this namespace when the job is straightforward export or backup and you do n
 
 ## Subcommands
 
-- `export dashboard`
-- `export alert`
-- `export datasource`
-- `export access user`
-- `export access org`
-- `export access team`
-- `export access service-account`
+### Backup and artifact capture
+- `export dashboard`: export dashboards into raw, prompt, and provisioning lanes.
+- `export alert`: export alert resources into a local artifact tree.
+- `export datasource`: export datasource inventory for review or restore.
+
+### Access inventory capture
+- `export access user`: export Grafana users.
+- `export access org`: export Grafana org inventory.
+- `export access team`: export Grafana teams.
+- `export access service-account`: export service accounts.
 
 ## Examples
+### Dashboard backup
 ```bash
 grafana-util export dashboard --output-dir ./dashboards --overwrite
 ```
 
+### Alert backup
 ```bash
 grafana-util export alert --output-dir ./alerts --overwrite
 ```
 
+### Datasource inventory
 ```bash
 grafana-util export datasource --output-dir ./datasources
 ```
 
+### Access inventory
 ```bash
 grafana-util export access service-account --output-dir ./access-service-accounts
 ```

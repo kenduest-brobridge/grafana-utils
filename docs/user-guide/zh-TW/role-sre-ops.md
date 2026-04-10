@@ -10,7 +10,7 @@
 
 ## 主要目標
 
-- 先用 `status live` 和 `overview live` 確認現況
+- 先用 `observe live` 和 `observe overview live` 確認現況
 - 先在 `change inspect`、`change check`、`change preview` 擋掉不合理的變更包
 - 先用 `--dry-run` 看匯入結果，再決定要不要真的套用
 - 需要時才用 direct Basic auth 做 break-glass
@@ -50,12 +50,12 @@
 
 ```bash
 # 用途：建議先跑的 5 個指令。
-grafana-util status live --profile prod --output-format table
+grafana-util observe live --profile prod --output-format table
 ```
 
 ```bash
 # 用途：建議先跑的 5 個指令。
-grafana-util overview live --profile prod --output-format interactive
+grafana-util observe overview live --profile prod --output-format interactive
 ```
 
 ```bash
@@ -75,14 +75,14 @@ grafana-util change preview --workspace . --fetch-live --output-format json
 
 ```bash
 # 用途：建議先跑的 5 個指令。
-grafana-util dashboard export --output-dir ./backups --overwrite --progress
+grafana-util export dashboard --output-dir ./backups --overwrite --progress
 ```
 
-如果你要先處理存取層資產，可以把 `dashboard export` 換成：
+如果你要先處理存取層資產，可以把 `export dashboard` 換成：
 
 ```bash
 # 用途：如果你要先處理存取層資產，可以把 dashboard export 換成。
-grafana-util access org list --table
+grafana-util advanced access org list --table
 ```
 
 ## 接下來先讀哪些章節
@@ -106,7 +106,7 @@ grafana-util access org list --table
 
 ## 常見錯誤與限制
 
-- 不要把 `status live` 當成部署前的唯一檢查；`change check` 和 staged 驗證還是要跑。
+- 不要把 `observe live` 當成部署前的唯一檢查；`change check` 和 staged 驗證還是要跑。
 - 不要在匯入前略過 `--dry-run`，尤其是會覆寫既有資產時。
 - 不要假設 token 看得到所有 org，`--all-orgs` 與管理操作常會受 scope 限制。
 - 不要把 `tokens.json` 當一般輸出檔；它包含敏感資訊。

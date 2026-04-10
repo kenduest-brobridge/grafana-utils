@@ -11,7 +11,7 @@ This page is for on-call operators and SREs who need a repeatable way to check r
 ## Primary Goals
 
 - Confirm live readiness before you touch anything.
-- Keep a reliable profile for routine checks and repeatable maintenance.
+ - Keep a reliable `config profile` for routine checks and repeatable maintenance.
 - Choose an auth path that can actually see the scope you need.
 
 ## Before / After
@@ -42,7 +42,7 @@ This page is for on-call operators and SREs who need a repeatable way to check r
 
 Use a profile backed by admin-capable credentials for day-to-day work.
 
-1. `--profile` with `password_env`, `token_env`, or an OS-backed secret store for repeatable operator use.
+1. `config profile` with `password_env`, `token_env`, or an OS-backed secret store for repeatable operator use.
 2. Direct Basic auth with `--prompt-password` for bootstrap or break-glass work.
 3. Token auth only for narrow reads where you already know the token can see every target org and resource.
 
@@ -50,12 +50,12 @@ Use a profile backed by admin-capable credentials for day-to-day work.
 
 ```bash
 # Purpose: First commands to run.
-grafana-util status live --profile prod --output-format table
+grafana-util observe live --profile prod --output-format table
 ```
 
 ```bash
 # Purpose: First commands to run.
-grafana-util overview live --profile prod --output-format interactive
+grafana-util observe overview live --profile prod --output-format interactive
 ```
 
 ```bash
@@ -75,28 +75,28 @@ grafana-util change preview --workspace . --fetch-live --output-format json
 
 ```bash
 # Purpose: First commands to run.
-grafana-util dashboard export --output-dir ./backups --overwrite --progress
+grafana-util export dashboard --output-dir ./backups --overwrite --progress
 ```
 
 If you need to start from the access layer instead, swap the last line for:
 
 ```bash
 # Purpose: If you need to start from the access layer instead, swap the last line for.
-grafana-util access org list --table
+grafana-util advanced access org list --table
 ```
 
 If you are checking a host directly, Basic auth is the safest fallback for broad visibility:
 
 ```bash
 # Purpose: If you are checking a host directly, Basic auth is the safest fallback for broad visibility.
-grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --all-orgs --output-format table
+grafana-util observe live --url http://localhost:3000 --basic-user admin --prompt-password --all-orgs --output-format table
 ```
 
 Use token auth only when the scope matches the work:
 
 ```bash
 # Purpose: Use token auth only when the scope matches the work.
-grafana-util overview live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format json
+grafana-util observe overview live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format json
 ```
 
 ## What good operator posture looks like
@@ -119,12 +119,11 @@ You are in a good operator posture when:
 
 ## Keep open
 
-- [profile](../../commands/en/profile.md)
-- [status](../../commands/en/status.md)
-- [overview](../../commands/en/overview.md)
-- [dashboard](../../commands/en/dashboard.md)
-- [alert](../../commands/en/alert.md)
-- [access](../../commands/en/access.md)
+- [config profile](../../commands/en/profile.md)
+- [observe live](../../commands/en/observe.md)
+- [observe overview](../../commands/en/observe.md)
+- [export dashboard](../../commands/en/export.md)
+- [advanced](../../commands/en/advanced.md)
 - [change](../../commands/en/change.md)
 - [full command index](../../commands/en/index.md)
 

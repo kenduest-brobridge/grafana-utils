@@ -24,6 +24,7 @@
 - `advanced`：你已經知道是某個 domain 時，再打開進階樹
 
 像 `dashboard`、`alert`、`datasource`、`access` 這些舊根命令仍可使用，但不再是第一層 onboarding 入口。
+較舊的 `status`、`overview`、`profile` 頁面只保留作為相容參考；對外請以 `observe` 與 `config profile` 為主入口。
 
 ## 常用工作
 

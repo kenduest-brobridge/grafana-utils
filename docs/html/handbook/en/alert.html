@@ -778,7 +778,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <p>&gt; <strong>Operator Principle</strong>: Change alerts deliberately through a <strong>Plan -&gt; Review -&gt; Apply</strong> cycle to prevent accidental mutations in live environments.</p>
 <h2 id="command-pages">Command Pages</h2>
 <p>Need the command-by-command surface instead of the workflow guide?</p>
-<ul><li><a href="../../commands/en/alert.html">alert command overview</a></li><li><a href="../../commands/en/alert-export.html">alert export</a></li><li><a href="../../commands/en/alert-import.html">alert import</a></li><li><a href="../../commands/en/alert-diff.html">alert diff</a></li><li><a href="../../commands/en/alert-plan.html">alert plan</a></li><li><a href="../../commands/en/alert-apply.html">alert apply</a></li><li><a href="../../commands/en/alert-delete.html">alert delete</a></li><li><a href="../../commands/en/alert-add-rule.html">alert add-rule</a></li><li><a href="../../commands/en/alert-clone-rule.html">alert clone-rule</a></li><li><a href="../../commands/en/alert-add-contact-point.html">alert add-contact-point</a></li><li><a href="../../commands/en/alert-set-route.html">alert set-route</a></li><li><a href="../../commands/en/alert-preview-route.html">alert preview-route</a></li><li><a href="../../commands/en/alert-new-rule.html">alert new-rule</a></li><li><a href="../../commands/en/alert-new-contact-point.html">alert new-contact-point</a></li><li><a href="../../commands/en/alert-new-template.html">alert new-template</a></li><li><a href="../../commands/en/alert-list-rules.html">alert list-rules</a></li><li><a href="../../commands/en/alert-list-contact-points.html">alert list-contact-points</a></li><li><a href="../../commands/en/alert-list-mute-timings.html">alert list-mute-timings</a></li><li><a href="../../commands/en/alert-list-templates.html">alert list-templates</a></li><li><a href="../../commands/en/index.html">full command index</a></li></ul>
+<ul><li><a href="../../commands/en/advanced.html">advanced alert command overview</a></li><li><a href="../../commands/en/advanced.html">advanced alert migrate export</a></li><li><a href="../../commands/en/advanced.html">advanced alert migrate import</a></li><li><a href="../../commands/en/advanced.html">advanced alert migrate diff</a></li><li><a href="../../commands/en/advanced.html">advanced alert change plan</a></li><li><a href="../../commands/en/advanced.html">advanced alert change apply</a></li><li><a href="../../commands/en/advanced.html">advanced alert live list-rules</a></li><li><a href="../../commands/en/advanced.html">advanced alert live list-contact-points</a></li><li><a href="../../commands/en/advanced.html">advanced alert live list-mute-timings</a></li><li><a href="../../commands/en/advanced.html">advanced alert live list-templates</a></li><li><a href="../../commands/en/index.html">full command index</a></li></ul>
 <h2 id="what-this-area-is-for">What This Area Is For</h2>
 <p>Use the alert area when the work is about Grafana alerting resources:</p>
 <ul><li><strong>Desired State</strong>: Build new alert configurations locally without touching live Grafana.</li><li><strong>Review delta</strong>: Compare your desired state against the live estate before approving changes.</li><li><strong>Controlled Apply</strong>: Execute only reviewed plans.</li><li><strong>Migration &amp; Replay</strong>: Use the legacy <code>raw/</code> lane for inventory snapshots and environment-wide moves.</li></ul>
@@ -798,7 +798,7 @@ grafana-util alert add-rule \
 <h2 id="review-and-apply-the-review-cycle">Review and Apply (The Review Cycle)</h2>
 <p>Use <code>plan</code> to build a preview of the delta between your local files and live Grafana.</p>
 <pre><code># Generate a plan for review
-grafana-util alert plan \
+  grafana-util advanced alert change plan \
   --url http://localhost:3000 \
   --basic-user admin --basic-password admin \
   --desired-dir ./alerts/desired --prune --output-format json</code></pre>
@@ -806,15 +806,15 @@ grafana-util alert plan \
 <ul><li><strong>create</strong>: Desired resource is missing in live Grafana.</li><li><strong>update</strong>: Live Grafana differs from your desired file.</li><li><strong>delete</strong>: Triggered by <code>--prune</code> when a live resource is not in your files.</li></ul>
 <p><strong>Validated Apply Step:</strong> Only execute after the plan has been reviewed and saved.</p>
 <pre><code># Purpose: Only execute after the plan has been reviewed and saved.
-grafana-util alert apply \
+  grafana-util advanced alert change apply \
   --plan-file ./alert-plan-reviewed.json \
   --approve --output-format json</code></pre>
 <h2 id="key-commands-full-argument-reference">Key Commands (Full Argument Reference)</h2>
-<table><thead><tr><th>Command</th><th>Full Example with Arguments</th></tr></thead><tbody><tr><td><strong>List Rules</strong></td><td><code>grafana-util alert list-rules --all-orgs --table</code></td></tr><tr><td><strong>Export</strong></td><td><code>grafana-util alert export --output-dir ./alerts --overwrite</code></td></tr><tr><td><strong>Plan</strong></td><td><code>grafana-util alert plan --desired-dir ./alerts/desired --prune --output-format json</code></td></tr><tr><td><strong>Apply</strong></td><td><code>grafana-util alert apply --plan-file ./plan.json --approve</code></td></tr><tr><td><strong>Set Route</strong></td><td><code>grafana-util alert set-route --desired-dir ./alerts/desired --receiver pagerduty</code></td></tr><tr><td><strong>New Rule</strong></td><td><code>grafana-util alert new-rule --name &lt;NAME&gt; --folder &lt;FOLDER&gt; --output &lt;FILE&gt;</code></td></tr><tr><td><strong>New Contact</strong></td><td><code>grafana-util alert new-contact-point --name &lt;NAME&gt; --type &lt;TYPE&gt; --output &lt;FILE&gt;</code></td></tr><tr><td><strong>New Template</strong></td><td><code>grafana-util alert new-template --name &lt;NAME&gt; --template &lt;CONTENT&gt; --output &lt;FILE&gt;</code></td></tr></tbody></table>
+<table><thead><tr><th>Command</th><th>Full Example with Arguments</th></tr></thead><tbody><tr><td><strong>List Rules</strong></td><td><code>grafana-util advanced alert live list-rules --all-orgs --table</code></td></tr><tr><td><strong>Export</strong></td><td><code>grafana-util advanced alert migrate export --output-dir ./alerts --overwrite</code></td></tr><tr><td><strong>Import</strong></td><td><code>grafana-util advanced alert migrate import --input-dir ./alerts/raw --replace-existing --dry-run --json</code></td></tr><tr><td><strong>Diff</strong></td><td><code>grafana-util advanced alert migrate diff --diff-dir ./alerts/raw --output-format json</code></td></tr><tr><td><strong>Plan</strong></td><td><code>grafana-util advanced alert change plan --desired-dir ./alerts/desired --prune --output-format json</code></td></tr><tr><td><strong>Apply</strong></td><td><code>grafana-util advanced alert change apply --plan-file ./plan.json --approve</code></td></tr><tr><td><strong>Set Route</strong></td><td><code>grafana-util advanced alert author route set --desired-dir ./alerts/desired --receiver pagerduty</code></td></tr><tr><td><strong>Preview Route</strong></td><td><code>grafana-util advanced alert author route preview --desired-dir ./alerts/desired --label team=platform --severity critical</code></td></tr></tbody></table>
 <h2 id="validated-docker-examples">Validated Docker Examples</h2>
 <h3 id="1-alert-plan-excerpt">1. Alert Plan Excerpt</h3>
 <pre><code># Purpose: 1. Alert Plan Excerpt.
-grafana-util alert plan --desired-dir ./alerts/desired --prune --output-format json</code></pre>
+grafana-util advanced alert change plan --desired-dir ./alerts/desired --prune --output-format json</code></pre>
 <p><strong>Output Excerpt:</strong></p>
 <pre><code>{
   &quot;summary&quot;: {
@@ -828,7 +828,7 @@ grafana-util alert plan --desired-dir ./alerts/desired --prune --output-format j
 <h3 id="2-route-preview">2. Route Preview</h3>
 <p>Verify your routing logic locally before applying.</p>
 <pre><code># Purpose: Verify your routing logic locally before applying.
-grafana-util alert preview-route --desired-dir ./alerts/desired --label team=platform --severity critical</code></pre>
+grafana-util advanced alert author route preview --desired-dir ./alerts/desired --label team=platform --severity critical</code></pre>
 <p><strong>Output Excerpt:</strong></p>
 <pre><code>{
   &quot;input&quot;: { &quot;labels&quot;: { &quot;team&quot;: &quot;platform&quot; }, &quot;severity&quot;: &quot;critical&quot; },

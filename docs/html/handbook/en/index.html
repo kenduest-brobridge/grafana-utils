@@ -767,7 +767,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <ul><li>English handbook: <a href="index.html">current page</a></li><li>Traditional Chinese handbook: <a href="../zh-TW/index.html">繁體中文手冊</a></li><li>English command reference: <a href="../../commands/en/index.html">Command Docs</a></li><li>Traditional Chinese command reference: <a href="../../commands/zh-TW/index.html">繁體中文逐指令說明</a></li></ul>
 <p>Welcome to the <code>grafana-util</code> handbook. Start here if you need a practical operator path from first connection, to repeatable profiles, to day-to-day Grafana maintenance and automation.</p>
 <p><code>grafana-util</code> is a personal long-term tool built around real Grafana maintenance pain. This handbook is written from that same angle: not &quot;how to expose every API surface&quot;, but how to move through inventory, inspection, review, migration, and safer live changes without rebuilding the workflow every time.</p>
-<p>This handbook is organized around the way operators actually work: first understand what the tool is for, then get a safe connection working, then move into dashboards, alerts, access, and review workflows.</p>
+<p>This handbook is organized around the way operators actually work: first understand what the tool is for, then get a safe connection working, then move into <code>observe</code>, <code>export</code>, <code>change</code>, <code>config</code>, and <code>advanced</code> workflows.</p>
 <p>If you want the high-level framing first, including the pain points this tool is meant to solve and when it is the right fit, start here:</p>
 <ul><li><a href="what-is-grafana-util.html">What grafana-util is for</a></li></ul>
 <h2 id="before-after">Before / After</h2>
@@ -786,7 +786,7 @@ curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main
 grafana-util --version</code></pre>
 <h3 id="3-run-your-first-global-audit">3. Run Your First Global Audit</h3>
 <pre><code># Generates a high-level health and inventory report of your Grafana estate
-grafana-util overview live --url http://localhost:3000 --basic-user admin --prompt-password --output-format interactive</code></pre>
+grafana-util observe overview --url http://localhost:3000 --basic-user admin --prompt-password --output-format interactive</code></pre>
 <p><strong>Why this matters:</strong> In 30 seconds, you have confirmed connectivity, checked dashboards and alerts, and found the first obvious data source problems before you make changes.</p>
 <h2 id="navigation-map">Navigation Map</h2>
 <h3 id="phase-1-foundation">Phase 1: Foundation</h3>

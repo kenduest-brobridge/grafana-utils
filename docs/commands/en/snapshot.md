@@ -40,7 +40,7 @@ grafana-util snapshot export --url http://localhost:3000 --basic-user admin --ba
 grafana-util snapshot review --input-dir ./snapshot --output-format json
 ```
 
-Related commands: `grafana-util overview`, `grafana-util status staged`, `grafana-util change bundle`.
+Related commands: `grafana-util observe overview`, `grafana-util observe staged`, `grafana-util change bundle`.
 
 ## `export`
 
@@ -77,7 +77,7 @@ grafana-util snapshot export --profile prod --output-dir ./snapshot --overwrite
 grafana-util snapshot export --profile prod --prompt --output-dir ./snapshot
 ```
 
-Related commands: `snapshot review`, `change bundle`, `overview`.
+Related commands: `snapshot review`, `change bundle`, `observe overview`.
 
 ## `review`
 
@@ -101,4 +101,4 @@ grafana-util snapshot review --input-dir ./snapshot --output-format table
 grafana-util snapshot review --input-dir ./snapshot --interactive
 ```
 
-Related commands: `snapshot export`, `overview`, `status staged`.
+Related commands: `snapshot export`, `observe overview`, `observe staged`.

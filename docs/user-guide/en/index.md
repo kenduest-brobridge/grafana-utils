@@ -13,7 +13,7 @@ Welcome to the `grafana-util` handbook. Start here if you need a practical opera
 
 `grafana-util` is a personal long-term tool built around real Grafana maintenance pain. This handbook is written from that same angle: not "how to expose every API surface", but how to move through inventory, inspection, review, migration, and safer live changes without rebuilding the workflow every time.
 
-This handbook is organized around the way operators actually work: first understand what the tool is for, then get a safe connection working, then move into dashboards, alerts, access, and review workflows.
+This handbook is organized around the way operators actually work: first understand what the tool is for, then get a safe connection working, then move into `observe`, `export`, `change`, `config`, and `advanced` workflows.
 
 If you want the high-level framing first, including the pain points this tool is meant to solve and when it is the right fit, start here:
 
@@ -57,7 +57,7 @@ grafana-util --version
 ### 3. Run Your First Global Audit
 ```bash
 # Generates a high-level health and inventory report of your Grafana estate
-grafana-util overview live --url http://localhost:3000 --basic-user admin --prompt-password --output-format interactive
+grafana-util observe overview --url http://localhost:3000 --basic-user admin --prompt-password --output-format interactive
 ```
 
 **Why this matters:** In 30 seconds, you have confirmed connectivity, checked dashboards and alerts, and found the first obvious data source problems before you make changes.

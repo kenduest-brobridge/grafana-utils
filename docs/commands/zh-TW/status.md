@@ -1,33 +1,33 @@
-# `grafana-util status`
+# 兼容頁：`grafana-util status`
 
 ## Root
 
-用途：輸出整個專案的 staged 或 live 狀態摘要。
+用途：舊 `status` root 的相容參考頁。
 
-適用時機：當你需要看 exported artifacts 或 live Grafana state 的最後檢查結果時。
+適用時機：當你在對照舊文件或舊腳本，想對應到目前的 `observe` surface 時。
 
-說明：如果你要的是最後的 readiness 或健康度讀取，而不是逐條研究命令細節，先看這一頁最合適。`status` 指令群組就是維運與 CI 常拿來回答「目前 staged bundle 能不能往下走」或「現在 live Grafana 狀態如何」的 gate 視圖。
+說明：目前公開的 staged/live status surface 已移到 `grafana-util observe`。請改用 `observe staged`、`observe live`、`observe overview` 或 `observe snapshot`，不要再把 top-level `status` 當成主入口。
 
-主要旗標：root 指令本身只是指令群組；staged 與 live 輸入都在子指令上。常見旗標包含 `--output-format` 和共用的 live 連線 / 驗證選項。
+主要旗標：canonical root 是 `observe`；staged 與 live 輸入都在子指令上。常見旗標包含 `--output-format` 和共用的 live 連線 / 驗證選項。
 
 範例：
 
 ```bash
 # 用途：輸出 staged 狀態，來源是 dashboard 與 desired 產物。
-grafana-util status staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output-format json
+grafana-util observe staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output-format json
 ```
 
 ```bash
 # 用途：用可重複使用的 profile 輸出 live 狀態。
-grafana-util status live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format yaml
+grafana-util observe live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format yaml
 ```
 
-相關指令：`grafana-util overview`、`grafana-util change check`、`grafana-util change apply`。
+相關指令：`grafana-util observe overview`、`grafana-util change check`、`grafana-util change apply`。
 
 Schema guide：
-- `grafana-util status --help-schema`
-- `grafana-util status staged --help-schema`
-- `grafana-util status live --help-schema`
+- `grafana-util observe --help-schema`
+- `grafana-util observe staged --help-schema`
+- `grafana-util observe live --help-schema`
 
 ## `staged`
 
@@ -41,15 +41,15 @@ Schema guide：
 
 ```bash
 # 用途：staged。
-grafana-util status staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output-format table
+grafana-util observe staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output-format table
 ```
 
 ```bash
 # 用途：staged。
-grafana-util status staged --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts --output-format interactive
+grafana-util observe staged --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts --output-format interactive
 ```
 
-相關指令：`grafana-util overview`、`grafana-util change inspect`、`grafana-util change check`。
+相關指令：`grafana-util observe overview`、`grafana-util change inspect`、`grafana-util change check`。
 
 Machine-readable contract：`grafana-util-project-status`
 
@@ -69,19 +69,19 @@ Machine-readable contract：`grafana-util-project-status`
 
 ```bash
 # 用途：live。
-grafana-util status live --profile prod --output-format yaml
+grafana-util observe live --profile prod --output-format yaml
 ```
 
 ```bash
 # 用途：live。
-grafana-util status live --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --sync-summary-file ./sync-summary.json --output-format interactive
+grafana-util observe live --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --sync-summary-file ./sync-summary.json --output-format interactive
 ```
 
 ```bash
 # 用途：live。
-grafana-util status live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format json
+grafana-util observe live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format json
 ```
 
-相關指令：`grafana-util overview live`、`grafana-util change apply`、`grafana-util profile show`。
+相關指令：`grafana-util observe overview`、`grafana-util change apply`、`grafana-util config profile show`。
 
 Machine-readable contract：`grafana-util-project-status`

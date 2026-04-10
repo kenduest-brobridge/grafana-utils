@@ -1,33 +1,33 @@
-# `grafana-util status`
+# Legacy: `grafana-util status`
 
 ## Root
 
-Purpose: render shared project-wide staged or live status.
+Purpose: compatibility reference for the old staged/live status root.
 
-When to use: when you need the final gate view for exported artifacts or live Grafana state.
+When to use: when you are translating older docs or scripts to the current `observe` surface.
 
-Description: start here when you need a final readiness or health readout rather than a deep command-by-command walkthrough. The `status` namespace is the gate view that operators and CI jobs use to answer “is the staged bundle ready?” or “what does the live Grafana state look like right now?”.
+Description: the public staged/live status surface now lives under `grafana-util observe`. Use `observe staged`, `observe live`, `observe overview`, or `observe snapshot` instead of the legacy top-level `status` root.
 
-Key flags: the root command is a namespace; staged and live inputs live on the subcommands. Common flags include `--output-format` and the shared live connection/auth options.
+Key flags: the canonical root is `observe`; staged and live inputs live on the subcommands. Common flags include `--output-format` and the shared live connection/auth options.
 
 Examples:
 
 ```bash
 # Purpose: Render staged status from dashboard and desired artifacts.
-grafana-util status staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output-format json
+grafana-util observe staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output-format json
 ```
 
 ```bash
 # Purpose: Render live status from a reusable profile.
-grafana-util status live --profile prod --output-format yaml
+grafana-util observe live --profile prod --output-format yaml
 ```
 
-Related commands: `grafana-util overview`, `grafana-util change check`, `grafana-util change apply`.
+Related commands: `grafana-util observe overview`, `grafana-util change check`, `grafana-util change apply`.
 
 Schema guide:
-- `grafana-util status --help-schema`
-- `grafana-util status staged --help-schema`
-- `grafana-util status live --help-schema`
+- `grafana-util observe --help-schema`
+- `grafana-util observe staged --help-schema`
+- `grafana-util observe live --help-schema`
 
 ## `staged`
 
@@ -41,15 +41,15 @@ Examples:
 
 ```bash
 # Purpose: staged.
-grafana-util status staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output-format table
+grafana-util observe staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output-format table
 ```
 
 ```bash
 # Purpose: staged.
-grafana-util status staged --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts --output-format interactive
+grafana-util observe staged --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts --output-format interactive
 ```
 
-Related commands: `grafana-util overview`, `grafana-util change inspect`, `grafana-util change check`.
+Related commands: `grafana-util observe overview`, `grafana-util change inspect`, `grafana-util change check`.
 
 Machine-readable contract: `grafana-util-project-status`
 
@@ -69,19 +69,19 @@ Examples:
 
 ```bash
 # Purpose: live.
-grafana-util status live --profile prod --output-format yaml
+grafana-util observe live --profile prod --output-format yaml
 ```
 
 ```bash
 # Purpose: live.
-grafana-util status live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format json
+grafana-util observe live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format json
 ```
 
 ```bash
 # Purpose: live.
-grafana-util status live --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --sync-summary-file ./sync-summary.json --output-format interactive
+grafana-util observe live --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --sync-summary-file ./sync-summary.json --output-format interactive
 ```
 
-Related commands: `grafana-util overview live`, `grafana-util change apply`, `grafana-util profile show`.
+Related commands: `grafana-util observe overview`, `grafana-util change apply`, `grafana-util config profile show`.
 
 Machine-readable contract: `grafana-util-project-status`

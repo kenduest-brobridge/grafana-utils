@@ -88,7 +88,7 @@ grafana-util change apply \
   --profile prod
 ```
 
-Related commands: `grafana-util overview`, `grafana-util status`, `grafana-util snapshot`.
+Related commands: `grafana-util observe overview`, `grafana-util observe staged`, `grafana-util snapshot`.
 
 ## Primary Subcommands
 
@@ -364,7 +364,7 @@ grafana-util change audit --lock-file ./sync-lock.json --fetch-live --profile pr
 ```
 Treat `driftCount > 0` as the top-level signal that your managed state and live Grafana have separated.
 
-Related commands: `change preflight`, `change plan`, `status live`.
+Related commands: `change preflight`, `change plan`, `observe live`.
 
 ## `preflight`
 
@@ -640,4 +640,4 @@ grafana-util change promotion-preflight --source-bundle ./sync-source-bundle.jso
 ```
 Use this when the hard question is not “what will change?” but “is this source bundle promotable into that target environment with the current mappings?”.
 
-Related commands: `change bundle-preflight`, `change apply`, `status live`.
+Related commands: `change bundle-preflight`, `change apply`, `observe live`.

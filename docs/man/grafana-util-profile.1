@@ -5,7 +5,7 @@ grafana\-util\-profile \- manage repo\-local grafana\-util profile configuration
 .SH SYNOPSIS
 .B grafana-util profile [\fISUBCOMMAND\fR] [\fIOPTIONS\fR]
 .SH DESCRIPTION
-list, inspect, validate, add, and initialize repo\-local grafana\-util profiles.
+list, inspect, validate, add, and initialize repo\-local grafana\-util profiles through the current config profile entrypoint.
 .PP
 when you want to keep Grafana connection defaults in the current checkout and reuse them with \-\-profile.
 .SH BEFORE / AFTER
@@ -56,37 +56,37 @@ Examples:
 .PP
 # Purpose: List profiles available in the current checkout.
 .PP
-grafana\-util profile list
+grafana\-util config profile list
 .PP
 # Purpose: Inspect the resolved profile before running live commands.
 .PP
-grafana\-util profile show \-\-profile prod \-\-output\-format yaml
+grafana\-util config profile show \-\-profile prod \-\-output\-format yaml
 .PP
 # Purpose: Show the currently selected profile and resolved config path.
 .PP
-grafana\-util profile current \-\-profile prod
+grafana\-util config profile current \-\-profile prod
 .PP
 # Purpose: Validate the selected profile and check Grafana reachability.
 .PP
-grafana\-util profile validate \-\-profile prod \-\-live
+grafana\-util config profile validate \-\-profile prod \-\-live
 .PP
 # Purpose: Create a reusable production profile with prompt\-based secrets.
 .PP
-grafana\-util profile add prod \-\-url https://grafana.example.com \-\-basic\-user admin \-\-prompt\-password \-\-store\-secret encrypted\-file
+grafana\-util config profile add prod \-\-url https://grafana.example.com \-\-basic\-user admin \-\-prompt\-password \-\-store\-secret encrypted\-file
 .PP
 # Purpose: Create a CI profile that reads the token from an environment variable.
 .PP
-grafana\-util profile add ci \-\-url https://grafana.example.com \-\-token\-env GRAFANA_CI_TOKEN \-\-store\-secret os
+grafana\-util config profile add ci \-\-url https://grafana.example.com \-\-token\-env GRAFANA_CI_TOKEN \-\-store\-secret os
 .PP
 # Purpose: Print a fully annotated profile template.
 .PP
-grafana\-util profile example \-\-mode full
+grafana\-util config profile example \-\-mode full
 .PP
 # Purpose: Initialize a fresh grafana\-util.yaml in the current checkout.
 .PP
-grafana\-util profile init \-\-overwrite
+grafana\-util config profile init \-\-overwrite
 .PP
-Related commands: grafana\-util status live, grafana\-util overview live, grafana\-util change preview, grafana\-util profile current, grafana\-util profile validate.
+Related commands: grafana\-util observe live, grafana\-util observe overview, grafana\-util change preview, grafana\-util config profile current, grafana\-util config profile validate.
 .SH SEE ALSO
 \fBgrafana-util\fR(1),
 \fBgrafana-util-status\fR(1),

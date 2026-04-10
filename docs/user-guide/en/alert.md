@@ -39,25 +39,16 @@ This guide covers `grafana-util alert` as an operator workflow for alert desired
 
 Need the command-by-command surface instead of the workflow guide?
 
-- [alert command overview](../../commands/en/alert.md)
-- [alert export](../../commands/en/alert-export.md)
-- [alert import](../../commands/en/alert-import.md)
-- [alert diff](../../commands/en/alert-diff.md)
-- [alert plan](../../commands/en/alert-plan.md)
-- [alert apply](../../commands/en/alert-apply.md)
-- [alert delete](../../commands/en/alert-delete.md)
-- [alert add-rule](../../commands/en/alert-add-rule.md)
-- [alert clone-rule](../../commands/en/alert-clone-rule.md)
-- [alert add-contact-point](../../commands/en/alert-add-contact-point.md)
-- [alert set-route](../../commands/en/alert-set-route.md)
-- [alert preview-route](../../commands/en/alert-preview-route.md)
-- [alert new-rule](../../commands/en/alert-new-rule.md)
-- [alert new-contact-point](../../commands/en/alert-new-contact-point.md)
-- [alert new-template](../../commands/en/alert-new-template.md)
-- [alert list-rules](../../commands/en/alert-list-rules.md)
-- [alert list-contact-points](../../commands/en/alert-list-contact-points.md)
-- [alert list-mute-timings](../../commands/en/alert-list-mute-timings.md)
-- [alert list-templates](../../commands/en/alert-list-templates.md)
+- [advanced alert command overview](../../commands/en/advanced.md)
+- [advanced alert migrate export](../../commands/en/advanced.md)
+- [advanced alert migrate import](../../commands/en/advanced.md)
+- [advanced alert migrate diff](../../commands/en/advanced.md)
+- [advanced alert change plan](../../commands/en/advanced.md)
+- [advanced alert change apply](../../commands/en/advanced.md)
+- [advanced alert live list-rules](../../commands/en/advanced.md)
+- [advanced alert live list-contact-points](../../commands/en/advanced.md)
+- [advanced alert live list-mute-timings](../../commands/en/advanced.md)
+- [advanced alert live list-templates](../../commands/en/advanced.md)
 - [full command index](../../commands/en/index.md)
 
 ---
@@ -106,7 +97,7 @@ Use `plan` to build a preview of the delta between your local files and live Gra
 
 ```bash
 # Generate a plan for review
-grafana-util alert plan \
+  grafana-util advanced alert change plan \
   --url http://localhost:3000 \
   --basic-user admin --basic-password admin \
   --desired-dir ./alerts/desired --prune --output-format json
@@ -121,7 +112,7 @@ grafana-util alert plan \
 Only execute after the plan has been reviewed and saved.
 ```bash
 # Purpose: Only execute after the plan has been reviewed and saved.
-grafana-util alert apply \
+  grafana-util advanced alert change apply \
   --plan-file ./alert-plan-reviewed.json \
   --approve --output-format json
 ```
@@ -132,14 +123,14 @@ grafana-util alert apply \
 
 | Command | Full Example with Arguments |
 | :--- | :--- |
-| **List Rules** | `grafana-util alert list-rules --all-orgs --table` |
-| **Export** | `grafana-util alert export --output-dir ./alerts --overwrite` |
-| **Plan** | `grafana-util alert plan --desired-dir ./alerts/desired --prune --output-format json` |
-| **Apply** | `grafana-util alert apply --plan-file ./plan.json --approve` |
-| **Set Route** | `grafana-util alert set-route --desired-dir ./alerts/desired --receiver pagerduty` |
-| **New Rule** | `grafana-util alert new-rule --name <NAME> --folder <FOLDER> --output <FILE>` |
-| **New Contact** | `grafana-util alert new-contact-point --name <NAME> --type <TYPE> --output <FILE>` |
-| **New Template** | `grafana-util alert new-template --name <NAME> --template <CONTENT> --output <FILE>` |
+| **List Rules** | `grafana-util advanced alert live list-rules --all-orgs --table` |
+| **Export** | `grafana-util advanced alert migrate export --output-dir ./alerts --overwrite` |
+| **Import** | `grafana-util advanced alert migrate import --input-dir ./alerts/raw --replace-existing --dry-run --json` |
+| **Diff** | `grafana-util advanced alert migrate diff --diff-dir ./alerts/raw --output-format json` |
+| **Plan** | `grafana-util advanced alert change plan --desired-dir ./alerts/desired --prune --output-format json` |
+| **Apply** | `grafana-util advanced alert change apply --plan-file ./plan.json --approve` |
+| **Set Route** | `grafana-util advanced alert author route set --desired-dir ./alerts/desired --receiver pagerduty` |
+| **Preview Route** | `grafana-util advanced alert author route preview --desired-dir ./alerts/desired --label team=platform --severity critical` |
 
 ---
 
@@ -148,7 +139,7 @@ grafana-util alert apply \
 ### 1. Alert Plan Excerpt
 ```bash
 # Purpose: 1. Alert Plan Excerpt.
-grafana-util alert plan --desired-dir ./alerts/desired --prune --output-format json
+grafana-util advanced alert change plan --desired-dir ./alerts/desired --prune --output-format json
 ```
 **Output Excerpt:**
 ```json
@@ -167,7 +158,7 @@ grafana-util alert plan --desired-dir ./alerts/desired --prune --output-format j
 Verify your routing logic locally before applying.
 ```bash
 # Purpose: Verify your routing logic locally before applying.
-grafana-util alert preview-route --desired-dir ./alerts/desired --label team=platform --severity critical
+grafana-util advanced alert author route preview --desired-dir ./alerts/desired --label team=platform --severity critical
 ```
 **Output Excerpt:**
 ```json

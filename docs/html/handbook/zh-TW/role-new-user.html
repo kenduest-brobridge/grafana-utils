@@ -771,7 +771,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="適用對象">適用對象</h2>
 <ul><li>第一次接觸這個工具的工程師或維運人員。</li><li>需要先確認連線、版本與 profile 是否正常的人。</li><li>還不需要執行匯入、套用或跨 org 作業的使用者。</li></ul>
 <h2 id="主要目標">主要目標</h2>
-<ul><li>先確認執行檔、Grafana 連線與唯讀檢查都正常。</li><li>了解這個工具支援哪些連線與驗證方式。</li><li>釐清何時直接帶旗標就夠，何時應該改用 profile 簡化。</li><li>熟悉 <code>status live</code> 與 <code>overview live</code> 的差異。</li><li>了解 token 比較適合權限範圍明確的單一 org 自動化作業。</li></ul>
+<ul><li>先確認執行檔、Grafana 連線與唯讀檢查都正常。</li><li>了解這個工具支援哪些連線與驗證方式。</li><li>釐清何時直接帶旗標就夠，何時應該改用 profile 簡化。</li><li>熟悉 <code>observe live</code> 與 <code>observe overview</code> 的差異。</li><li>了解 token 比較適合權限範圍明確的單一 org 自動化作業。</li></ul>
 <h2 id="採用前後對照">採用前後對照</h2>
 <ul><li>以前：新手一開始很容易卡在 profile、token、Basic auth 要先選哪個。</li><li>現在：先用一次直接唯讀命令證明連得上，再把重複設定整理進 profile。</li></ul>
 <h2 id="成功判準">成功判準</h2>
@@ -779,46 +779,46 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="失敗時先檢查">失敗時先檢查</h2>
 <ul><li>如果第一條 live read 失敗，先停下來修連線或驗證，不要直接進入變更流程。</li><li>如果你不確定目前是從哪個 auth source 取值，先檢查命令列和 profile 檔。</li><li>如果你正準備把密碼直接打進 shell 歷史，先改用 env-backed 或 prompt 方式。</li></ul>
 <h2 id="典型新手任務">典型新手任務</h2>
-<ul><li>確認執行檔已加入 <code>PATH</code> 環境變數。</li><li>先對本地實驗環境或開發用 Grafana 跑一次直接的唯讀檢查。</li><li>確認沒問題後，再為同一個 Grafana 建立 profile。</li><li>執行一次安全的即時讀取 (Live Read)，並區分 <code>status live</code> 與 <code>overview live</code> 的差異。</li><li>瞭解後續進行儀表板、告警或存取權限管理時應參考的說明文件。</li></ul>
+<ul><li>確認執行檔已加入 <code>PATH</code> 環境變數。</li><li>先對本地實驗環境或開發用 Grafana 跑一次直接的唯讀檢查。</li><li>確認沒問題後，再為同一個 Grafana 建立 profile。</li><li>執行一次安全的即時讀取 (Live Read)，並區分 <code>observe live</code> 與 <code>observe overview</code> 的差異。</li><li>瞭解後續進行儀表板、告警或存取權限管理時應參考的說明文件。</li></ul>
 <h2 id="先搞懂連線與驗證是怎麼運作的">先搞懂連線與驗證是怎麼運作的</h2>
 <p><code>grafana-util</code> 可以從幾個地方拿連線資訊：</p>
-<ul><li><code>--url</code>：指定 Grafana 位址</li><li><code>--basic-user</code> 搭配 <code>--basic-password</code>，或改用 <code>--prompt-password</code></li><li><code>--token</code>，或改用 <code>--prompt-token</code></li><li><code>GRAFANA_USERNAME</code>、<code>GRAFANA_PASSWORD</code>、<code>GRAFANA_API_TOKEN</code> 這類環境變數</li><li><code>--profile</code>：從 <code>grafana-util.yaml</code> 讀取已整理好的預設值</li></ul>
+<ul><li><code>--url</code>：指定 Grafana 位址</li><li><code>--basic-user</code> 搭配 <code>--basic-password</code>，或改用 <code>--prompt-password</code></li><li><code>--token</code>，或改用 <code>--prompt-token</code></li><li><code>GRAFANA_USERNAME</code>、<code>GRAFANA_PASSWORD</code>、<code>GRAFANA_API_TOKEN</code> 這類環境變數</li><li><code>config profile</code>：從 <code>grafana-util.yaml</code> 讀取已整理好的預設值</li></ul>
 <p>也就是說，你完全可以先用一次性的直接旗標確認連線，再決定要不要把同一組設定整理成 profile。</p>
 <h2 id="身分驗證與秘密資料處理建議">身分驗證與秘密資料處理建議</h2>
-<ol><li><strong>第一次連線先用直接旗標驗證</strong>：例如 <code>--url</code> 加上 Basic auth，先確定這台 Grafana 真的連得到。</li><li><strong>日常重複工作改用 <code>--profile</code></strong>：連線確認後，把 URL、帳號與 secret 來源整理進 profile，之後就不用每次重打。</li><li><strong>本機引導或臨時檢查可用 Basic auth</strong>：若還沒建 profile，可先用 <code>--basic-user</code> 搭配 <code>--prompt-password</code>。</li><li><strong>特定自動化場景才直接用 token</strong>：只有在你很清楚 token 權限範圍時，才建議直接拿來跑命令。</li><li><strong>secret 優先放在環境變數或 secret store</strong>：像 <code>password_env</code>、<code>token_env</code>、<code>os</code> 或 <code>encrypted-file</code> 都比把敏感值直接打在命令列上安全。</li></ol>
+<ol><li><strong>第一次連線先用直接旗標驗證</strong>：例如 <code>--url</code> 加上 Basic auth，先確定這台 Grafana 真的連得到。</li><li><strong>日常重複工作改用 <code>config profile</code></strong>：連線確認後，把 URL、帳號與 secret 來源整理進 profile，之後就不用每次重打。</li><li><strong>本機引導或臨時檢查可用 Basic auth</strong>：若還沒建 profile，可先用 <code>--basic-user</code> 搭配 <code>--prompt-password</code>。</li><li><strong>特定自動化場景才直接用 token</strong>：只有在你很清楚 token 權限範圍時，才建議直接拿來跑命令。</li><li><strong>secret 優先放在環境變數或 secret store</strong>：像 <code>password_env</code>、<code>token_env</code>、<code>os</code> 或 <code>encrypted-file</code> 都比把敏感值直接打在命令列上安全。</li></ol>
 <h2 id="建議先執行的-5-個指令">建議先執行的 5 個指令</h2>
 <pre><code># 用途：建議先執行的 5 個指令。
 grafana-util --version</code></pre>
 <pre><code># 用途：建議先執行的 5 個指令。
-grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml</code></pre>
+grafana-util observe live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml</code></pre>
 <pre><code># 用途：建議先執行的 5 個指令。
-grafana-util profile init --overwrite</code></pre>
+grafana-util config profile init --overwrite</code></pre>
 <pre><code># 用途：建議先執行的 5 個指令。
-grafana-util profile add dev --url http://127.0.0.1:3000 --basic-user admin --prompt-password</code></pre>
+grafana-util config profile add dev --url http://127.0.0.1:3000 --basic-user admin --prompt-password</code></pre>
 <pre><code># 用途：建議先執行的 5 個指令。
-grafana-util status live --profile dev --output-format yaml</code></pre>
+grafana-util observe live --profile dev --output-format yaml</code></pre>
 <p>這個順序不是隨便排的：</p>
 <ul><li>先看 binary 有沒有裝好</li><li>再用一次直接旗標確認 Grafana 真的連得通</li><li>確認沒問題後再初始化設定檔</li><li>把同一組連線整理成 profile</li><li>最後再用 <code>--profile</code> 跑同一種唯讀檢查</li></ul>
 <p>如果你暫時還沒有 profile，這就是最短的安全起手式：</p>
 <pre><code># 用途：如果你暫時還沒有 profile，這就是最短的安全起手式。
-grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml</code></pre>
+grafana-util observe live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml</code></pre>
 <p>如果你手邊已有範圍明確的 token，也可以直接做同一類唯讀檢查：</p>
 <pre><code># 用途：如果你手邊已有範圍明確的 token，也可以直接做同一類唯讀檢查。
-grafana-util overview live --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output-format json</code></pre>
+grafana-util observe overview --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output-format json</code></pre>
 <p>如果你的 shell 已經有環境變數，也可以不先建 profile，直接這樣跑：</p>
 <pre><code># 用途：如果你的 shell 已經有環境變數，也可以不先建 profile，直接這樣跑。
 export GRAFANA_USERNAME=admin
 export GRAFANA_PASSWORD=admin
-grafana-util status live --url http://localhost:3000 --output-format yaml</code></pre>
+grafana-util observe live --url http://localhost:3000 --output-format yaml</code></pre>
 <h2 id="學習進度檢核">學習進度檢核</h2>
 <p>當你符合以下幾點時，就可以進到後續章節：</p>
-<ul><li>可在常用的終端機環境中正常執行 <code>grafana-util --version</code>。</li><li>至少有一個直接的唯讀指令能穩定連到目標 Grafana。</li><li><code>profile show --profile dev</code> 解析出的欄位符合預期。</li><li><code>status live --profile dev</code> 能穩定回傳可讀的結果。</li><li>已清楚後續要進行 dashboard、alert 或 access 管理的操作流程。</li></ul>
+<ul><li>可在常用的終端機環境中正常執行 <code>grafana-util --version</code>。</li><li>至少有一個直接的唯讀指令能穩定連到目標 Grafana。</li><li><code>config profile show --profile dev</code> 解析出的欄位符合預期。</li><li><code>observe live --profile dev</code> 能穩定回傳可讀的結果。</li><li>已清楚後續要進行 dashboard、alert 或 access 管理的操作流程。</li></ul>
 <h2 id="後續閱讀建議">後續閱讀建議</h2>
 <ul><li><a href="getting-started.html">開始使用</a></li><li><a href="reference.html">技術參考手冊</a></li><li><a href="troubleshooting.html">疑難排解與名詞解釋</a></li></ul>
 <h2 id="推薦搭配參考的指令頁面">推薦搭配參考的指令頁面</h2>
-<ul><li><a href="../../commands/zh-TW/profile.html">profile</a></li><li><a href="../../commands/zh-TW/status.html">status</a></li><li><a href="../../commands/zh-TW/overview.html">overview</a></li><li><a href="../../commands/zh-TW/index.html">指令詳細總索引</a></li></ul>
+<ul><li><a href="../../commands/zh-TW/index.html">指令詳細總索引</a></li><li><a href="../../commands/zh-TW/profile.html">profile 相容參考頁</a></li><li><a href="../../commands/zh-TW/overview.html">overview 相容參考頁</a></li></ul>
 <h2 id="常見錯誤與限制">常見錯誤與限制</h2>
-<ul><li><strong>不要以為一開始就一定要先建 profile</strong>：第一次確認連線時，先跑一個直接的唯讀命令很正常。</li><li><strong>旗標誤用</strong>：請勿混用 <code>--output-format</code> 與 <code>--output</code>，這兩個旗標位於不同的輸出控制層級。</li><li><strong>設定檔安全性</strong>：請勿在 <code>grafana-util.yaml</code> 中寫入明文密碼，除非僅用於一次性的實驗或展示。</li><li><strong>Token 權限限制</strong>：窄權限 token 無法執行所有操作，特別是跨 org 盤點或管理類任務。</li><li><strong>循序漸進</strong>：在熟悉 Profile、Status 與 Overview 的讀取流程前，建議先不要執行匯入或套用變更的作業。</li></ul>
+<ul><li><strong>不要以為一開始就一定要先建 profile</strong>：第一次確認連線時，先跑一個直接的唯讀命令很正常。</li><li><strong>旗標誤用</strong>：請勿混用 <code>--output-format</code> 與 <code>--output</code>，這兩個旗標位於不同的輸出控制層級。</li><li><strong>設定檔安全性</strong>：請勿在 <code>grafana-util.yaml</code> 中寫入明文密碼，除非僅用於一次性的實驗或展示。</li><li><strong>Token 權限限制</strong>：窄權限 token 無法執行所有操作，特別是跨 org 盤點或管理類任務。</li><li><strong>循序漸進</strong>：在熟悉 config profile 與 observe 的讀取流程前，建議先不要執行匯入或套用變更的作業。</li></ul>
 <h2 id="何時切換至深度文件">何時切換至深度文件</h2>
 <ul><li><strong>流程理解</strong>：需要理解完整操作脈絡時，請參閱維運指南 (Handbook) 章節。</li><li><strong>精確查閱</strong>：已知操作流程僅需確認特定旗標時，請參閱指令詳細說明頁。</li><li><strong>故障排除</strong>：語法正確但結果不符預期時，請參閱疑難排解章節。</li></ul>
 <h2 id="下一步">下一步</h2>

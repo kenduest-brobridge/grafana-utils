@@ -814,7 +814,7 @@ grafana-util change apply \
   --url http://localhost:3000 \
   --basic-user admin \
   --basic-password admin</code></pre>
-<p>相關指令：<code>grafana-util overview</code>、<code>grafana-util status</code>、<code>grafana-util snapshot</code>。</p>
+<p>相關指令：<code>grafana-util observe overview</code>、<code>grafana-util observe staged</code>、<code>grafana-util snapshot</code>。</p>
 <h2 id="主要子指令">主要子指令</h2>
 <p>先用 root 頁了解整體 lane，再依你現在正在做的步驟打開對應的子頁：</p>
 <ul><li><a href="change-inspect.html">change inspect</a>：確認 staged package 裡到底有什麼</li><li><a href="change-check.html">change check</a>：確認 staged package 在結構上是否適合往下走</li><li><a href="change-preview.html">change preview</a>：建立可審查的變更預覽</li><li><a href="change-apply.html">change apply</a>：把已審核的 preview 轉成 apply intent，或真的套用到 live</li></ul>
@@ -972,7 +972,7 @@ grafana-util change audit \
   --token &quot;$GRAFANA_API_TOKEN&quot; \
   --fail-on-drift \
   --output-format json</code></pre>
-<p>相關指令：<code>change preflight</code>、<code>change plan</code>、<code>status live</code>。</p>
+<p>相關指令：<code>change preflight</code>、<code>change plan</code>、<code>observe live</code>。</p>
 <h2 id="preflight"><code>preflight</code></h2>
 <p>用途：根據 desired resources 與可選的 availability 提示，建立分階段的同步 preflight 文件。</p>
 <p>適用時機：當你需要在規劃或套用前先做結構性門檻檢查時。</p>
@@ -1117,7 +1117,7 @@ grafana-util change promotion-preflight --source-bundle ./sync-source-bundle.jso
   &quot;blockingChecks&quot;: []
 }</code></pre>
 <p>這份文件要回答的不是「會改什麼」，而是「在目前 mapping 下，這包 source bundle 能不能安全 promotion 到目標環境」。</p>
-<p>相關指令：<code>change bundle-preflight</code>、<code>change apply</code>、<code>status live</code>。</p>
+<p>相關指令：<code>change bundle-preflight</code>、<code>change apply</code>、<code>observe live</code>。</p>
     
   </article>
   <aside class="sidebar">

@@ -24,6 +24,7 @@ The public first-run CLI is organized around a small task-first surface:
 - `advanced`: domain-heavy workflows once you already know the subsystem
 
 Compatibility roots such as `dashboard`, `alert`, `datasource`, and `access` still exist, but they are no longer the primary onboarding path.
+Older `status`, `overview`, and `profile` pages are kept as compatibility references only; use `observe` and `config profile` as the public entrypoints.
 
 ## Common Tasks
 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>grafana-util status · grafana-util docs</title>
+  <title>兼容頁：grafana-util status · grafana-util docs</title>
   <style>:root {
   color-scheme: light dark;
   --font-scale: 1;
@@ -758,15 +758,15 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </aside>
 
   <article class="article">
-    <div class="breadcrumbs"><a href="../../index.html">Home</a> / Commands / grafana-util status</div>
+    <div class="breadcrumbs"><a href="../../index.html">Home</a> / Commands / 兼容頁：grafana-util status</div>
 
-    <h1><span class="hero-title-main">grafana-util status</span></h1>
+    <h1><span class="hero-title-main">兼容頁：grafana-util status</span></h1>
 
 
     <section class="command-intro">
   <div class="command-intro-grid"><div class="command-intro-block">
   <p class="command-intro-label">這頁在說什麼</p>
-  <p class="command-intro-text">輸出整個專案的 staged 或 live 狀態摘要。</p>
+  <p class="command-intro-text">舊 status root 的相容參考頁。</p>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">適合誰</p>
@@ -775,28 +775,28 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 </section>
 <h2 id="root">Root</h2>
-<p>用途：輸出整個專案的 staged 或 live 狀態摘要。</p>
-<p>適用時機：當你需要看 exported artifacts 或 live Grafana state 的最後檢查結果時。</p>
-<p>說明：如果你要的是最後的 readiness 或健康度讀取，而不是逐條研究命令細節，先看這一頁最合適。<code>status</code> 指令群組就是維運與 CI 常拿來回答「目前 staged bundle 能不能往下走」或「現在 live Grafana 狀態如何」的 gate 視圖。</p>
-<p>主要旗標：root 指令本身只是指令群組；staged 與 live 輸入都在子指令上。常見旗標包含 <code>--output-format</code> 和共用的 live 連線 / 驗證選項。</p>
+<p>用途：舊 <code>status</code> root 的相容參考頁。</p>
+<p>適用時機：當你在對照舊文件或舊腳本，想對應到目前的 <code>observe</code> surface 時。</p>
+<p>說明：目前公開的 staged/live status surface 已移到 <code>grafana-util observe</code>。請改用 <code>observe staged</code>、<code>observe live</code>、<code>observe overview</code> 或 <code>observe snapshot</code>，不要再把 top-level <code>status</code> 當成主入口。</p>
+<p>主要旗標：canonical root 是 <code>observe</code>；staged 與 live 輸入都在子指令上。常見旗標包含 <code>--output-format</code> 和共用的 live 連線 / 驗證選項。</p>
 <p>範例：</p>
 <pre><code># 用途：輸出 staged 狀態，來源是 dashboard 與 desired 產物。
-grafana-util status staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output-format json</code></pre>
+grafana-util observe staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output-format json</code></pre>
 <pre><code># 用途：用可重複使用的 profile 輸出 live 狀態。
-grafana-util status live --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output-format yaml</code></pre>
-<p>相關指令：<code>grafana-util overview</code>、<code>grafana-util change check</code>、<code>grafana-util change apply</code>。</p>
+grafana-util observe live --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output-format yaml</code></pre>
+<p>相關指令：<code>grafana-util observe overview</code>、<code>grafana-util change check</code>、<code>grafana-util change apply</code>。</p>
 <p>Schema guide：</p>
-<ul><li><code>grafana-util status --help-schema</code></li><li><code>grafana-util status staged --help-schema</code></li><li><code>grafana-util status live --help-schema</code></li></ul>
+<ul><li><code>grafana-util observe --help-schema</code></li><li><code>grafana-util observe staged --help-schema</code></li><li><code>grafana-util observe live --help-schema</code></li></ul>
 <h2 id="staged"><code>staged</code></h2>
 <p>用途：根據已準備好的 artifact 輸出專案狀態。</p>
 <p>適用時機：當你需要在 apply 前，先用結構化輸出做 readiness gate 時。</p>
 <p>主要旗標：<code>--dashboard-export-dir</code>、<code>--dashboard-provisioning-dir</code>、<code>--datasource-export-dir</code>、<code>--datasource-provisioning-file</code>、<code>--access-user-export-dir</code>、<code>--access-team-export-dir</code>、<code>--access-org-export-dir</code>、<code>--access-service-account-export-dir</code>、<code>--desired-file</code>、<code>--source-bundle</code>、<code>--target-inventory</code>、<code>--alert-export-dir</code>、<code>--availability-file</code>、<code>--mapping-file</code>、<code>--output-format</code>。</p>
 <p>範例：</p>
 <pre><code># 用途：staged。
-grafana-util status staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output-format table</code></pre>
+grafana-util observe staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output-format table</code></pre>
 <pre><code># 用途：staged。
-grafana-util status staged --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts --output-format interactive</code></pre>
-<p>相關指令：<code>grafana-util overview</code>、<code>grafana-util change inspect</code>、<code>grafana-util change check</code>。</p>
+grafana-util observe staged --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts --output-format interactive</code></pre>
+<p>相關指令：<code>grafana-util observe overview</code>、<code>grafana-util change inspect</code>、<code>grafana-util change check</code>。</p>
 <p>Machine-readable contract：<code>grafana-util-project-status</code></p>
 <h2 id="live"><code>live</code></h2>
 <p>用途：根據 live Grafana 的讀取結果輸出專案狀態。</p>
@@ -806,12 +806,12 @@ grafana-util status staged --dashboard-provisioning-dir ./dashboards/provisionin
 <ul><li>一般 live status 檢查優先用 <code>--profile</code>。</li><li><code>--all-orgs</code> 最穩妥的是搭配管理員憑證支援的 <code>--profile</code> 或直接 Basic auth，因為 token 權限可能看不到其他 org。</li></ul>
 <p>範例：</p>
 <pre><code># 用途：live。
-grafana-util status live --profile prod --output-format yaml</code></pre>
+grafana-util observe live --profile prod --output-format yaml</code></pre>
 <pre><code># 用途：live。
-grafana-util status live --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --sync-summary-file ./sync-summary.json --output-format interactive</code></pre>
+grafana-util observe live --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --sync-summary-file ./sync-summary.json --output-format interactive</code></pre>
 <pre><code># 用途：live。
-grafana-util status live --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output-format json</code></pre>
-<p>相關指令：<code>grafana-util overview live</code>、<code>grafana-util change apply</code>、<code>grafana-util profile show</code>。</p>
+grafana-util observe live --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output-format json</code></pre>
+<p>相關指令：<code>grafana-util observe overview</code>、<code>grafana-util change apply</code>、<code>grafana-util config profile show</code>。</p>
 <p>Machine-readable contract：<code>grafana-util-project-status</code></p>
     
   </article>

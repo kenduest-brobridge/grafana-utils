@@ -9,7 +9,7 @@ English | [繁體中文](./README.zh-TW.md)
 
 **Standardized Grafana workflows for dashboards, alerts, datasources, access control, and operational review.**
 
-`grafana-util` is a Rust-based CLI designed for day-to-day Grafana operations. It focuses on reviewable inventory, export/import, diff, replay, profile management, and secret handling so SREs and platform engineers can inspect changes before they apply them.
+`grafana-util` is a Rust-based CLI designed for day-to-day Grafana operations. It focuses on reviewable inventory, export/import, diff, replay, config profile management, and secret handling so SREs and platform engineers can inspect changes before they apply them.
 
 Its main strengths are a review-first workflow, separate paths for dashboard import/export formats, and reusable connection profiles that keep repeatable operations short and predictable.
 
@@ -22,8 +22,8 @@ Its main strengths are a review-first workflow, separate paths for dashboard imp
 - **Alerts**: Export/import, diffing, planning (`plan`/`apply`), and routing preview.
 - **Access**: Management of users, teams, organizations, service accounts, and tokens.
 - **Change Management**: Review-first workflows (`inspect`, `check`, `preview`) before live mutation.
-- **Status / Overview**: Readiness checks for live and staged environments.
-- **Profiles**: Centralized connection management with support for `file`, `os`, and `encrypted-file` secret storage.
+- **Observe**: Read-only readiness checks for live and staged environments.
+- **Config / Profiles**: Centralized connection management with support for `file`, `os`, and `encrypted-file` secret storage.
 - **Snapshot**: Export and review of resource bundles.
 - **Resource**: Read-only `inspect`/`get`/`list`/`describe` for live Grafana resources.
 
@@ -33,10 +33,10 @@ Its main strengths are a review-first workflow, separate paths for dashboard imp
 
 | Feature | Legacy Approach | with `grafana-util` |
 | :--- | :--- | :--- |
-| **Discovery** | Manual UI navigation or ad-hoc API calls to understand current state. | Start with `overview live` or `status live` for a unified environment snapshot. |
+| **Discovery** | Manual UI navigation or ad-hoc API calls to understand current state. | Start with `observe live` or `observe overview` for a unified environment snapshot. |
 | **Dashboard Paths** | Ambiguity between API-driven import and UI import formats. | Dedicated paths for `raw`, `prompt`, and `provisioning` with migration tools like `migrate dashboard raw-to-prompt`. |
 | **Reviews** | Changes applied directly without an intermediate review surface. | Use `change inspect`, `check`, and `preview` to audit changes before they touch the live server. |
-| **Security** | Secrets often stored in shell history or plaintext files. | Centralized `profile` management with OS keyring or encrypted storage. |
+| **Security** | Secrets often stored in shell history or plaintext files. | Centralized `config profile` management with OS keyring or encrypted storage. |
 
 ---
 
@@ -55,8 +55,8 @@ grafana-util --version
 ```
 
 ```bash
-# Inspect current Grafana status
-grafana-util overview live --url http://my-grafana:3000 --basic-user admin --prompt-password --output-format interactive
+# Inspect current Grafana status through the task-first surface
+grafana-util observe live --url http://my-grafana:3000 --basic-user admin --prompt-password --output-format interactive
 ```
 
 ### Install Options
@@ -92,7 +92,7 @@ sh ./scripts/install.sh --help
 
 ## Practical Examples
 
-The following examples demonstrate core operational workflows. You can connect with direct flags such as `--basic-password`, prompt-based input such as `--prompt-password`, token auth, `export`-based environment variables in `bash` or `zsh`, or centralized `profile` configurations. For a full connection setup guide, refer to [Getting Started](./docs/user-guide/en/getting-started.md).
+The following examples demonstrate core operational workflows. You can connect with direct flags such as `--basic-password`, prompt-based input such as `--prompt-password`, token auth, `export`-based environment variables in `bash` or `zsh`, or centralized `config profile` configurations. For a full connection setup guide, refer to [Getting Started](./docs/user-guide/en/getting-started.md).
 
 ```bash
 # bash / zsh
@@ -100,67 +100,61 @@ export GRAFANA_USERNAME=admin
 export GRAFANA_PASSWORD=admin
 ```
 
-If you want to keep those settings in a profile instead, `profile add` can store them separately:
+If you want to keep those settings in a profile instead, `config profile add` can store them separately:
 
 ```bash
-grafana-util profile add prod \
+grafana-util config profile add prod \
   --url http://my-grafana:3000 \
   --basic-user admin \
   --prompt-password \
   --store-secret os
 
-grafana-util profile add ci \
+grafana-util config profile add ci \
   --url http://my-grafana:3000 \
   --token-env GRAFANA_CI_TOKEN \
   --store-secret encrypted-file
 ```
 
-From example 2 onward, the connection details are omitted for brevity. You can still pass them directly with `--url`, `--basic-user`, `--basic-password`, or `--token`, or keep them in `export`ed environment variables or a shared `profile`.
+From example 2 onward, the connection details are omitted for brevity. You can still pass them directly with `--url`, `--basic-user`, `--basic-password`, or `--token`, or keep them in `export`ed environment variables or a shared `config profile`.
 
 Before running a live command, you can also confirm the selected profile or validate it end to end:
 
 ```bash
-grafana-util profile current --profile prod --output-format json
-grafana-util profile validate --profile prod --live --output-format json
+grafana-util config profile current --profile prod --output-format json
+grafana-util config profile validate --profile prod --live --output-format json
 ```
 
 ### 1. Get a live operational overview
 ```bash
-grafana-util overview live \
+grafana-util observe live \
   --url http://my-grafana:3000 \
   --basic-user admin \
   --basic-password admin \
   --output-format interactive
 ```
 
-### 2. List dashboards first
-```bash
-# See what is already there before exporting or changing anything.
-grafana-util dashboard list --all-orgs --table
-```
-
-### 3. Export dashboards for review
+### 2. Export dashboards for review
 ```bash
 # Export all dashboards into a reviewable local tree.
-grafana-util dashboard export --all-orgs --output-dir ./backup --progress
+grafana-util export dashboard --all-orgs --output-dir ./backup --progress
 ```
 
-### 4. Diff local artifacts with machine-readable output
+### 3. Diff local artifacts with machine-readable output
 ```bash
 # Emit the shared dashboard diff contract.
-grafana-util dashboard diff --input-dir ./backup/raw --output-format json
+grafana-util advanced dashboard sync diff --input-dir ./backup/raw --output-format json
 
 # Keep alert diff canonical on --output-format json; --json remains a compatibility alias.
-grafana-util alert diff --diff-dir ./alerts/raw --output-format json
+grafana-util advanced alert migrate diff --diff-dir ./alerts/raw --output-format json
 
 # Datasource diff JSON includes field-level before/after changes.
-grafana-util datasource diff --diff-dir ./datasources --input-format inventory --output-format json
+grafana-util advanced datasource diff --diff-dir ./datasources --input-format inventory --output-format json
 ```
 
 ### 4. Analyze dashboard dependencies
 ```bash
 # Audit datasource references and structure before import.
-grafana-util dashboard analyze \
+grafana-util advanced dashboard analyze summary \
   --input-dir ./backup/raw \
   --input-format raw \
   --output-format tree-table
@@ -169,7 +163,7 @@ grafana-util dashboard analyze \
 ### 5. Open the dashboard TUI
 ```bash
 # Open the interactive dashboard analysis workbench.
-grafana-util dashboard analyze \
+grafana-util advanced dashboard analyze summary \
   --input-dir ./backup/raw \
   --input-format raw \
   --interactive
@@ -177,7 +171,7 @@ grafana-util dashboard analyze \
 
 ### 6. Dry-run dashboard import
 ```bash
-grafana-util dashboard import \
+grafana-util advanced dashboard sync import \
   --input-dir ./backup/raw \
   --replace-existing \
   --dry-run \
@@ -187,16 +181,16 @@ grafana-util dashboard import \
 ### 7. Rapid dashboard iteration
 ```bash
 # Review a locally generated dashboard JSON without touching Grafana.
-cat cpu.json | grafana-util dashboard review --input - --output-format json
+cat cpu.json | grafana-util advanced dashboard draft review --input - --output-format json
 ```
 
 ### 8. Review alerts before you change them
 ```bash
 # See what the alert changes would do before applying them.
-grafana-util alert plan --desired-dir ./alerts/desired --prune
+grafana-util advanced alert change plan --desired-dir ./alerts/desired --prune
 
 # Preview where an alert would go.
-grafana-util alert preview-route \
+grafana-util advanced alert author route preview \
   --desired-dir ./alerts/desired \
   --label team=sre --severity critical
 ```
@@ -204,8 +198,8 @@ grafana-util alert preview-route \
 ### 9. Datasource export and restore
 ```bash
 # Export with secrets masked, then restore the connection details when you import.
-grafana-util datasource export --output-dir ./datasources
-grafana-util datasource import --input-dir ./datasources --prompt-password
+grafana-util export datasource --output-dir ./datasources
+grafana-util advanced datasource import --input-dir ./datasources --prompt-password
 ```
 
 ---

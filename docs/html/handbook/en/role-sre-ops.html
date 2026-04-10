@@ -767,7 +767,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="who-it-is-for">Who It Is For</h2>
 <ul><li>On-call SREs.</li><li>Platform and Grafana operators.</li><li>Anyone who needs cross-org visibility, export/import checks, or break-glass access.</li></ul>
 <h2 id="primary-goals">Primary Goals</h2>
-<ul><li>Confirm live readiness before you touch anything.</li><li>Keep a reliable profile for routine checks and repeatable maintenance.</li><li>Choose an auth path that can actually see the scope you need.</li></ul>
+<ul><li>Confirm live readiness before you touch anything.</li><li>Keep a reliable <code>config profile</code> for routine checks and repeatable maintenance.</li><li>Choose an auth path that can actually see the scope you need.</li></ul>
 <h2 id="before-after">Before / After</h2>
 <ul><li>Before: SREs had to infer readiness, scope, and replay risk from a chain of ad hoc commands.</li><li>After: use a repeatable profile, then move through live checks, staged review, and apply only after preflight.</li></ul>
 <h2 id="what-success-looks-like">What success looks like</h2>
@@ -778,12 +778,12 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <ul><li>Run a live readiness check before a maintenance window.</li><li>Inspect dashboards or datasources across visible orgs.</li><li>Inspect, check, and preview staged changes before an apply path.</li><li>Export or review assets during backup, drift review, or break-glass recovery.</li></ul>
 <h2 id="recommended-connection-and-secret-handling">Recommended connection and secret handling</h2>
 <p>Use a profile backed by admin-capable credentials for day-to-day work.</p>
-<ol><li><code>--profile</code> with <code>password_env</code>, <code>token_env</code>, or an OS-backed secret store for repeatable operator use.</li><li>Direct Basic auth with <code>--prompt-password</code> for bootstrap or break-glass work.</li><li>Token auth only for narrow reads where you already know the token can see every target org and resource.</li></ol>
+<ol><li><code>config profile</code> with <code>password_env</code>, <code>token_env</code>, or an OS-backed secret store for repeatable operator use.</li><li>Direct Basic auth with <code>--prompt-password</code> for bootstrap or break-glass work.</li><li>Token auth only for narrow reads where you already know the token can see every target org and resource.</li></ol>
 <h2 id="first-commands-to-run">First commands to run</h2>
 <pre><code># Purpose: First commands to run.
-grafana-util status live --profile prod --output-format table</code></pre>
+grafana-util observe live --profile prod --output-format table</code></pre>
 <pre><code># Purpose: First commands to run.
-grafana-util overview live --profile prod --output-format interactive</code></pre>
+grafana-util observe overview live --profile prod --output-format interactive</code></pre>
 <pre><code># Purpose: First commands to run.
 grafana-util change inspect --workspace .</code></pre>
 <pre><code># Purpose: First commands to run.
@@ -791,23 +791,23 @@ grafana-util change check --workspace . --fetch-live --output-format json</code>
 <pre><code># Purpose: First commands to run.
 grafana-util change preview --workspace . --fetch-live --output-format json</code></pre>
 <pre><code># Purpose: First commands to run.
-grafana-util dashboard export --output-dir ./backups --overwrite --progress</code></pre>
+grafana-util export dashboard --output-dir ./backups --overwrite --progress</code></pre>
 <p>If you need to start from the access layer instead, swap the last line for:</p>
 <pre><code># Purpose: If you need to start from the access layer instead, swap the last line for.
-grafana-util access org list --table</code></pre>
+grafana-util advanced access org list --table</code></pre>
 <p>If you are checking a host directly, Basic auth is the safest fallback for broad visibility:</p>
 <pre><code># Purpose: If you are checking a host directly, Basic auth is the safest fallback for broad visibility.
-grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --all-orgs --output-format table</code></pre>
+grafana-util observe live --url http://localhost:3000 --basic-user admin --prompt-password --all-orgs --output-format table</code></pre>
 <p>Use token auth only when the scope matches the work:</p>
 <pre><code># Purpose: Use token auth only when the scope matches the work.
-grafana-util overview live --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output-format json</code></pre>
+grafana-util observe overview live --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output-format json</code></pre>
 <h2 id="what-good-operator-posture-looks-like">What good operator posture looks like</h2>
 <p>You are in a good operator posture when:</p>
 <ul><li>you can tell whether the current credential can really see the org or admin scope you need</li><li>you can separate live reads from staged review from actual apply paths</li><li>you run preflight or dry-run checks before destructive actions</li><li>you know which command page to open when the surface shifts from status into dashboard, alert, or access work</li></ul>
 <h2 id="read-next">Read next</h2>
 <ul><li><a href="change-overview-status.html">Change &amp; Status</a></li><li><a href="dashboard.html">Dashboard Management</a></li><li><a href="datasource.html">Data source Management</a></li><li><a href="alert.html">Alerting Governance</a></li><li><a href="access.html">Access Management</a></li><li><a href="troubleshooting.html">Troubleshooting</a></li></ul>
 <h2 id="keep-open">Keep open</h2>
-<ul><li><a href="../../commands/en/profile.html">profile</a></li><li><a href="../../commands/en/status.html">status</a></li><li><a href="../../commands/en/overview.html">overview</a></li><li><a href="../../commands/en/dashboard.html">dashboard</a></li><li><a href="../../commands/en/alert.html">alert</a></li><li><a href="../../commands/en/access.html">access</a></li><li><a href="../../commands/en/change.html">change</a></li><li><a href="../../commands/en/index.html">full command index</a></li></ul>
+<ul><li><a href="../../commands/en/profile.html">config profile</a></li><li><a href="../../commands/en/observe.html">observe live</a></li><li><a href="../../commands/en/observe.html">observe overview</a></li><li><a href="../../commands/en/export.html">export dashboard</a></li><li><a href="../../commands/en/advanced.html">advanced</a></li><li><a href="../../commands/en/change.html">change</a></li><li><a href="../../commands/en/index.html">full command index</a></li></ul>
 <h2 id="common-mistakes-and-limits">Common mistakes and limits</h2>
 <ul><li>Do not assume a token can see <code>--all-orgs</code>; that is one of the easiest ways to get partial inventory and miss a problem.</li><li>Do not paste <code>--basic-password</code> into shared shell history unless you are deliberately in a throwaway session.</li><li>Do not use <code>--show-secrets</code> outside a local, controlled inspection step.</li><li>Do not treat a successful read-only check as proof that write or admin workflows will also work.</li><li>Do not skip <code>change check</code>, <code>change preview</code>, or command-specific <code>--dry-run</code> paths before high-impact changes.</li></ul>
 <h2 id="when-to-switch-to-deeper-docs">When to switch to deeper docs</h2>

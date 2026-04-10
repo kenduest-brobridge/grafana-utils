@@ -16,7 +16,7 @@ If you regularly hit problems like these, this is the tool solving them:
 
 | Before | After with `grafana-util` |
 | :--- | :--- |
-| "What changed?" means opening several Grafana screens or hand-rolling API calls. | Start with `overview`, `status`, or `change inspect` and get one review surface first. |
+| "What changed?" means opening several Grafana screens or hand-rolling API calls. | Start with `observe live`, `observe overview`, or `change inspect` and get one review surface first. |
 | Export/import is a fragile action with little context. | Export, inspect, dry-run, and replay in an explicit sequence. |
 | Alerting or access changes are hard to explain in review. | Plans, summaries, and structured output make the intended change visible before apply. |
 | Secrets and auth defaults get repeated across shell history and scripts. | Profiles and secret modes make repeated workflows cleaner and safer. |
@@ -45,10 +45,10 @@ It is a personal long-term tool, not a complete platform and not an attempt to c
 
 It breaks the work into a few clear surfaces:
 
-- **Inventory and observation**: start with `status` and `overview`
+- **Inventory and observation**: start with `observe`
 - **Asset operations**: use `dashboard`, `datasource`, `alert`, and `access`
 - **Change review**: use `change` to inspect, check, preview, and apply through one task-first lane
-- **Connection and credentials**: use `profile` to keep URLs, auth defaults, and secret sources repeatable
+- **Connection and credentials**: use `config profile` to keep URLs, auth defaults, and secret sources repeatable
 
 The goal is not to memorize every command first. The goal is to know what kind of work you are doing.
 
@@ -68,14 +68,14 @@ These tools can overlap. The useful question is which working style you need fir
 
 | Area | Main command | What you use it for |
 | :--- | :--- | :--- |
-| Readiness and health checks | `status` | Check whether live or staged state is healthy enough to move forward |
-| Estate-wide overview | `overview` | Get a fast picture of the Grafana estate and decide where to drill in next |
+| Readiness and health checks | `observe live` / `observe staged` | Check whether live or staged state is healthy enough to move forward |
+| Estate-wide overview | `observe overview` | Get a fast picture of the Grafana estate and decide where to drill in next |
 | Dashboard operations | `dashboard` | Export, import, diff, inspect, screenshot, and topology analysis |
 | Data source operations | `datasource` | Inventory, export, import, diff, mutation, and recovery for data sources |
 | Alert governance | `alert` | Alert rules, notification routing, contact points, and plan/apply workflows |
 | Identity and access | `access` | Manage orgs, users, teams, service accounts, and tokens |
 | Change review | `change` | Inspect, check, preview, and apply changes through a reviewable path |
-| Connection and credentials | `profile` | Keep URLs, auth defaults, and secret sources repeatable |
+| Connection and credentials | `config profile` | Keep URLs, auth defaults, and secret sources repeatable |
 
 If all you need is “where do I start?”, use this table first, then move into the matching handbook chapter.
 
@@ -83,7 +83,7 @@ If all you need is “where do I start?”, use this table first, then move into
 
 Keep the README and handbook home pages short. Show the lanes people reach for first, then leave the deeper command tree in the docs index.
 
-- Show on the README/home page: `dashboard export/import/review/publish`, `migrate dashboard raw-to-prompt`, `datasource export/import/diff`, `change inspect/check/preview/apply`, `status`, `overview`, `profile`, `alert plan/apply`, `access`, and `secrets`.
+- Show on the README/home page: `observe live`, `observe overview`, `export dashboard|alert|datasource`, `change inspect/check/preview/apply`, `config profile`, `advanced dashboard`, `advanced alert`, `advanced datasource`, and `access`.
 - Keep in the docs index and per-command pages: `dashboard browse/fetch-live/clone-live/serve/edit-live/delete/history/list-vars/governance-gate/topology/impact/screenshot`, `datasource browse/types/list/add/modify/delete`, `snapshot`, `resource`, and the compatibility alias pages.
 
 ---
@@ -98,7 +98,7 @@ You want quick answers to questions like:
 - does live state look healthy?
 - where does the estate already look like it is drifting?
 
-This usually starts with `status live` or `overview live`.
+This usually starts with `observe live` or `observe overview`.
 
 ### 2. Export, migration, and replay
 
@@ -124,7 +124,7 @@ You want Grafana operations to fit into scripts, pipelines, or scheduled jobs in
 
 That usually means:
 
-- using `--profile` or env-backed auth cleanly
+- using `config profile` or env-backed auth cleanly
 - choosing stable output formats
 - keeping gates and review steps before mutation
 

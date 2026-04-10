@@ -50,17 +50,17 @@
 
 ```bash
 # 用途：建議先跑的 5 個指令。
-grafana-util profile add ci --url https://grafana.example.com --token-env GRAFANA_CI_TOKEN
+grafana-util config profile add ci --url https://grafana.example.com --token-env GRAFANA_CI_TOKEN
 ```
 
 ```bash
 # 用途：建議先跑的 5 個指令。
-grafana-util profile show --profile ci --output-format yaml
+grafana-util config profile show --profile ci --output-format yaml
 ```
 
 ```bash
 # 用途：建議先跑的 5 個指令。
-grafana-util status staged --desired-file ./desired.json --output-format json
+grafana-util observe staged --desired-file ./desired.json --output-format json
 ```
 
 ```bash
@@ -70,7 +70,7 @@ grafana-util change check --desired-file ./desired.json --fetch-live --output-fo
 
 ```bash
 # 用途：建議先跑的 5 個指令。
-grafana-util overview live --profile ci --output-format yaml
+grafana-util observe overview live --profile ci --output-format yaml
 ```
 
 如果 pipeline 只需要驗證某個 live 操作面，可把最後一行換成 direct Basic auth 或單一 org token 的等價查詢，但不要把查詢範圍開得比權限更大。

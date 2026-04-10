@@ -777,33 +777,33 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="typical-automation-tasks">Typical Automation Tasks</h2>
 <ul><li>Run readiness checks in CI before promotion or apply.</li><li>Build machine-readable summaries from staged or live state.</li><li>Keep one profile shape that works across multiple jobs.</li><li>Fail fast when auth scope, connectivity, or staged inputs are wrong.</li></ul>
 <h2 id="recommended-connection-and-secret-handling">Recommended connection and secret handling</h2>
-<p>Use a profile first, with env-backed secrets for CI.</p>
-<ol><li><code>--profile</code> with <code>password_env</code> or <code>token_env</code> for repeatable jobs and checked-in config.</li><li>Direct Basic auth only for bootstrap or one-off validation in a safe local shell.</li><li>Token auth is the normal steady state for narrow automation, as long as the token scope matches the exact resource set you need.</li></ol>
+<p>Use a <code>config profile</code> first, with env-backed secrets for CI.</p>
+<ol><li><code>config profile</code> with <code>password_env</code> or <code>token_env</code> for repeatable jobs and checked-in config.</li><li>Direct Basic auth only for bootstrap or one-off validation in a safe local shell.</li><li>Token auth is the normal steady state for narrow automation, as long as the token scope matches the exact resource set you need.</li></ol>
 <h2 id="first-commands-to-run">First commands to run</h2>
 <pre><code># Purpose: First commands to run.
-grafana-util profile add ci --url https://grafana.example.com --token-env GRAFANA_CI_TOKEN</code></pre>
+grafana-util config profile add ci --url https://grafana.example.com --token-env GRAFANA_CI_TOKEN</code></pre>
 <pre><code># Purpose: First commands to run.
-grafana-util profile show --profile ci --output-format yaml</code></pre>
+grafana-util config profile show --profile ci --output-format yaml</code></pre>
 <pre><code># Purpose: First commands to run.
-grafana-util status staged --desired-file ./desired.json --output-format json</code></pre>
+grafana-util observe staged --desired-file ./desired.json --output-format json</code></pre>
 <pre><code># Purpose: First commands to run.
 grafana-util change check --desired-file ./desired.json --fetch-live --output-format json</code></pre>
 <pre><code># Purpose: First commands to run.
-grafana-util overview live --profile ci --output-format yaml</code></pre>
+grafana-util observe overview live --profile ci --output-format yaml</code></pre>
 <p>If the job only needs to validate one live surface, you can replace the last line with an equivalent direct Basic-auth or narrow-token read, but do not ask the credential to see more than its real scope.</p>
 <p>If you need a bootstrap check before the profile is wired, use Basic auth with a prompted password:</p>
 <pre><code># Purpose: If you need a bootstrap check before the profile is wired, use Basic auth with a prompted password.
-grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml</code></pre>
+grafana-util observe live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml</code></pre>
 <p>If the job already receives a scoped token, you can call the live surface directly:</p>
 <pre><code># Purpose: If the job already receives a scoped token, you can call the live surface directly.
-grafana-util overview live --url https://grafana.example.com --token &quot;$GRAFANA_CI_TOKEN&quot; --output-format json</code></pre>
+grafana-util observe overview live --url https://grafana.example.com --token &quot;$GRAFANA_CI_TOKEN&quot; --output-format json</code></pre>
 <h2 id="what-a-stable-automation-path-looks-like">What a stable automation path looks like</h2>
 <p>Your automation path is in good shape when:</p>
 <ul><li>jobs run without prompts</li><li>the same profile can be reused across multiple checks</li><li>outputs are machine-readable and stable enough for parsing</li><li>failures clearly separate bad credentials, bad scope, bad staged input, and connectivity problems</li></ul>
 <h2 id="read-next">Read next</h2>
 <ul><li><a href="getting-started.html">Getting Started</a></li><li><a href="reference.html">Technical Reference</a></li><li><a href="change-overview-status.html">Change &amp; Status</a></li><li><a href="access.html">Access Management</a></li></ul>
 <h2 id="keep-open">Keep open</h2>
-<ul><li><a href="../../commands/en/profile.html">profile</a></li><li><a href="../../commands/en/status.html">status</a></li><li><a href="../../commands/en/change.html">change</a></li><li><a href="../../commands/en/overview.html">overview</a></li><li><a href="../../commands/en/access-service-account.html">access service-account</a></li><li><a href="../../commands/en/access-service-account-token.html">access service-account token</a></li><li><a href="../../commands/en/index.html">full command index</a></li></ul>
+<ul><li><a href="../../commands/en/profile.html">config profile</a></li><li><a href="../../commands/en/observe.html">observe live</a></li><li><a href="../../commands/en/change.html">change</a></li><li><a href="../../commands/en/observe.html">observe overview</a></li><li><a href="../../commands/en/advanced.html">advanced access service-account</a></li><li><a href="../../commands/en/advanced.html">advanced access service-account token</a></li><li><a href="../../commands/en/index.html">full command index</a></li></ul>
 <h2 id="common-mistakes-and-limits">Common mistakes and limits</h2>
 <ul><li>Do not pass raw secrets on the command line if the job can read them from <code>GRAFANA_CI_TOKEN</code> or another env-backed profile field.</li><li>Do not treat <code>status staged</code> as <code>apply</code>; it is a gate, not the mutating step.</li><li>Do not expect narrow tokens or service-account tokens to see every org or admin-only surface.</li><li>Do not rely on interactive output in CI; prefer <code>json</code>, <code>yaml</code>, <code>table</code>, or explicit exit codes.</li><li>Do not forget that <code>--show-secrets</code> is a local inspection aid, not a CI logging mode.</li><li>Do not write ad hoc plaintext config files in the pipeline when env-backed or store-backed secret paths already exist.</li></ul>
 <h2 id="failure-triage-hints">Failure triage hints</h2>

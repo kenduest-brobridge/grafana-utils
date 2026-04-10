@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>grafana-util profile · grafana-util docs</title>
+  <title>grafana-util config profile · grafana-util docs</title>
   <style>:root {
   color-scheme: light dark;
   --font-scale: 1;
@@ -758,15 +758,15 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </aside>
 
   <article class="article">
-    <div class="breadcrumbs"><a href="../../index.html">Home</a> / Commands / grafana-util profile</div>
+    <div class="breadcrumbs"><a href="../../index.html">Home</a> / Commands / grafana-util config profile</div>
 
-    <h1><span class="hero-title-main">grafana-util profile</span></h1>
+    <h1><span class="hero-title-main">grafana-util config profile</span></h1>
 
 
     <section class="command-intro">
   <div class="command-intro-grid"><div class="command-intro-block">
   <p class="command-intro-label">What this page covers</p>
-  <p class="command-intro-text">list, inspect, validate, add, and initialize repo-local grafana-util profiles.</p>
+  <p class="command-intro-text">list, inspect, validate, add, and initialize repo-local grafana-util profiles through the current config profile entrypoint.</p>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">When to open this page</p>
@@ -779,9 +779,9 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 </section>
 <h2 id="root">Root</h2>
-<p>Purpose: list, inspect, validate, add, and initialize repo-local <code>grafana-util</code> profiles.</p>
+<p>Purpose: list, inspect, validate, add, and initialize repo-local <code>grafana-util</code> profiles through the current <code>config profile</code> entrypoint.</p>
 <p>When to use: when you want to keep Grafana connection defaults in the current checkout and reuse them with <code>--profile</code>.</p>
-<p>Description: open this page when you want to understand the full profile workflow before choosing one subcommand. The <code>profile</code> namespace is the entrypoint for repo-local connection defaults, secret handling, and non-interactive command reuse across local work, SRE tasks, and CI jobs.</p>
+<p>Description: open this page when you want to understand the full profile workflow before choosing one subcommand. The public entrypoint is <code>grafana-util config profile</code>; the legacy top-level <code>profile</code> root is not the preferred path. This namespace covers repo-local connection defaults, secret handling, and non-interactive command reuse across local work, SRE tasks, and CI jobs.</p>
 <h2 id="before-after">Before / After</h2>
 <ul><li><strong>Before</strong>: connection settings live in scattered flags or ad hoc shell history, so the same live command is hard to repeat later.</li><li><strong>After</strong>: a named profile keeps URL, auth, and secret handling in one place so live commands stay shorter and easier to reuse.</li></ul>
 <h2 id="what-success-looks-like">What success looks like</h2>
@@ -791,30 +791,30 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <p>Key flags: the root command is a namespace; operational flags live on subcommands. The shared root flag is <code>--color</code>.</p>
 <p>Examples:</p>
 <pre><code># Purpose: List profiles available in the current checkout.
-grafana-util profile list</code></pre>
+grafana-util config profile list</code></pre>
 <pre><code># Purpose: Inspect the resolved profile before running live commands.
-grafana-util profile show --profile prod --output-format yaml</code></pre>
+grafana-util config profile show --profile prod --output-format yaml</code></pre>
 <pre><code># Purpose: Show the currently selected profile and resolved config path.
-grafana-util profile current --profile prod</code></pre>
+grafana-util config profile current --profile prod</code></pre>
 <pre><code># Purpose: Validate the selected profile and check Grafana reachability.
-grafana-util profile validate --profile prod --live</code></pre>
+grafana-util config profile validate --profile prod --live</code></pre>
 <pre><code># Purpose: Create a reusable production profile with prompt-based secrets.
-grafana-util profile add prod --url https://grafana.example.com --basic-user admin --prompt-password --store-secret encrypted-file</code></pre>
+grafana-util config profile add prod --url https://grafana.example.com --basic-user admin --prompt-password --store-secret encrypted-file</code></pre>
 <pre><code># Purpose: Create a CI profile that reads the token from an environment variable.
-grafana-util profile add ci --url https://grafana.example.com --token-env GRAFANA_CI_TOKEN --store-secret os</code></pre>
+grafana-util config profile add ci --url https://grafana.example.com --token-env GRAFANA_CI_TOKEN --store-secret os</code></pre>
 <pre><code># Purpose: Print a fully annotated profile template.
-grafana-util profile example --mode full</code></pre>
+grafana-util config profile example --mode full</code></pre>
 <pre><code># Purpose: Initialize a fresh grafana-util.yaml in the current checkout.
-grafana-util profile init --overwrite</code></pre>
-<p>Related commands: <code>grafana-util status live</code>, <code>grafana-util overview live</code>, <code>grafana-util change preview</code>, <code>grafana-util profile current</code>, <code>grafana-util profile validate</code>.</p>
+grafana-util config profile init --overwrite</code></pre>
+<p>Related commands: <code>grafana-util observe live</code>, <code>grafana-util observe overview</code>, <code>grafana-util change preview</code>, <code>grafana-util config profile current</code>, <code>grafana-util config profile validate</code>.</p>
 <h2 id="list"><code>list</code></h2>
 <p>Purpose: list profile names from the resolved <code>grafana-util</code> config file.</p>
 <p>When to use: when you need to confirm which profiles are available in the current checkout.</p>
 <p>Key flags: none beyond the shared root <code>--color</code>.</p>
 <p>Examples:</p>
 <pre><code># Purpose: list.
-grafana-util profile list</code></pre>
-<p>Related commands: <code>profile show</code>, <code>profile current</code>, <code>profile add</code>, <code>profile init</code>.</p>
+grafana-util config profile list</code></pre>
+<p>Related commands: <code>config profile show</code>, <code>config profile current</code>, <code>config profile add</code>, <code>config profile init</code>.</p>
 <h2 id="show"><code>show</code></h2>
 <p>Purpose: show the selected profile as text, table, csv, json, or yaml.</p>
 <p>When to use: when you want to inspect the resolved connection settings before running a live command.</p>
@@ -822,14 +822,14 @@ grafana-util profile list</code></pre>
 <ul><li><code>--profile</code></li><li><code>--output-format</code></li><li><code>--show-secrets</code></li></ul>
 <p>Examples:</p>
 <pre><code># Purpose: show.
-grafana-util profile show --profile prod --output-format yaml</code></pre>
+grafana-util config profile show --profile prod --output-format yaml</code></pre>
 <pre><code># Purpose: show.
-grafana-util profile show --profile prod --output-format json</code></pre>
+grafana-util config profile show --profile prod --output-format json</code></pre>
 <pre><code># Purpose: show.
-grafana-util profile show --profile prod --show-secrets --output-format yaml</code></pre>
+grafana-util config profile show --profile prod --show-secrets --output-format yaml</code></pre>
 <p>Notes:</p>
 <ul><li>Secret values are masked by default.</li><li><code>--show-secrets</code> reveals plaintext values or resolves secret-store references.</li></ul>
-<p>Related commands: <code>profile list</code>, <code>profile add</code>, <code>profile current</code>, <code>profile validate</code>, <code>status live</code>, <code>overview live</code>.</p>
+<p>Related commands: <code>config profile list</code>, <code>config profile add</code>, <code>config profile current</code>, <code>config profile validate</code>, <code>observe live</code>, <code>observe overview</code>.</p>
 <h2 id="current"><code>current</code></h2>
 <p>Purpose: show the currently selected profile, resolved config path, auth mode, and secret mode.</p>
 <p>When to use: when you want to confirm which repo-local profile would be used before a live command runs.</p>
@@ -837,12 +837,12 @@ grafana-util profile show --profile prod --show-secrets --output-format yaml</co
 <ul><li><code>--profile</code></li><li><code>--output-format</code></li></ul>
 <p>Examples:</p>
 <pre><code># Purpose: current.
-grafana-util profile current</code></pre>
+grafana-util config profile current</code></pre>
 <pre><code># Purpose: current.
-grafana-util profile current --profile prod --output-format json</code></pre>
+grafana-util config profile current --profile prod --output-format json</code></pre>
 <p>Notes:</p>
 <ul><li>The output is diagnostic only and does not reveal secrets.</li><li>If the config file is missing, <code>current</code> reports that the config does not exist instead of failing.</li></ul>
-<p>Related commands: <code>profile show</code>, <code>profile validate</code>, <code>status live</code>, <code>overview live</code>.</p>
+<p>Related commands: <code>config profile show</code>, <code>config profile validate</code>, <code>observe live</code>, <code>observe overview</code>.</p>
 <h2 id="validate"><code>validate</code></h2>
 <p>Purpose: validate the selected profile and optionally check Grafana reachability.</p>
 <p>When to use: when you want to confirm profile selection, auth shape, and secret resolution before running a live command.</p>
@@ -850,12 +850,12 @@ grafana-util profile current --profile prod --output-format json</code></pre>
 <ul><li><code>--profile</code></li><li><code>--live</code></li><li><code>--output-format</code></li></ul>
 <p>Examples:</p>
 <pre><code># Purpose: validate.
-grafana-util profile validate --profile prod</code></pre>
+grafana-util config profile validate --profile prod</code></pre>
 <pre><code># Purpose: validate.
-grafana-util profile validate --profile prod --live --output-format json</code></pre>
+grafana-util config profile validate --profile prod --live --output-format json</code></pre>
 <p>Notes:</p>
 <ul><li><code>--live</code> adds a Grafana <code>/api/health</code> check after static validation succeeds.</li><li>Validation does not print secrets.</li></ul>
-<p>Related commands: <code>profile current</code>, <code>profile show</code>, <code>status live</code>, <code>overview live</code>.</p>
+<p>Related commands: <code>config profile current</code>, <code>config profile show</code>, <code>observe live</code>, <code>observe overview</code>.</p>
 <h2 id="add"><code>add</code></h2>
 <p>Purpose: create or replace one named profile without hand-editing <code>grafana-util.yaml</code>.</p>
 <p>When to use: when you want a friendlier path than editing YAML directly, especially for storing reusable auth defaults.</p>
@@ -863,14 +863,14 @@ grafana-util profile validate --profile prod --live --output-format json</code><
 <ul><li><code>--url</code></li><li>auth inputs: <code>--token</code>, <code>--token-env</code>, <code>--prompt-token</code>, <code>--basic-user</code>, <code>--basic-password</code>, <code>--password-env</code>, <code>--prompt-password</code></li><li>storage mode: <code>--store-secret file|os|encrypted-file</code></li><li>encrypted-file options: <code>--secret-file</code>, <code>--prompt-secret-passphrase</code>, <code>--secret-passphrase-env</code></li><li>behavior: <code>--replace-existing</code>, <code>--set-default</code></li></ul>
 <p>Examples:</p>
 <pre><code># Purpose: add.
-grafana-util profile add dev --url http://127.0.0.1:3000 --basic-user admin --password-env GRAFANA_DEV_PASSWORD</code></pre>
+grafana-util config profile add dev --url http://127.0.0.1:3000 --basic-user admin --password-env GRAFANA_DEV_PASSWORD</code></pre>
 <pre><code># Purpose: add.
-grafana-util profile add prod --url https://grafana.example.com --basic-user admin --prompt-password --store-secret os --set-default</code></pre>
+grafana-util config profile add prod --url https://grafana.example.com --basic-user admin --prompt-password --store-secret os --set-default</code></pre>
 <pre><code># Purpose: add.
-grafana-util profile add stage --url https://grafana-stage.example.com --token-env GRAFANA_STAGE_TOKEN --store-secret encrypted-file --prompt-secret-passphrase</code></pre>
+grafana-util config profile add stage --url https://grafana-stage.example.com --token-env GRAFANA_STAGE_TOKEN --store-secret encrypted-file --prompt-secret-passphrase</code></pre>
 <p>Notes:</p>
 <ul><li>Default config path: <code>grafana-util.yaml</code></li><li>Default encrypted secret file: <code>.grafana-util.secrets.yaml</code></li><li>Default local key file for encrypted-file without a passphrase: <code>.grafana-util.secrets.key</code></li><li><code>profile add --store-secret encrypted-file</code> updates the config-directory <code>.gitignore</code> with those helper files when they live under the same directory tree.</li><li>These default secret paths are resolved relative to the config file directory, not a temporary process cwd.</li><li><code>file</code> is the default storage mode.</li><li><code>os</code> and <code>encrypted-file</code> are explicit opt-in modes.</li><li><code>os</code> stores secrets in the macOS Keychain or Linux Secret Service, not in <code>grafana-util.yaml</code>.</li><li><code>os</code> is only supported on macOS and Linux. Headless Linux shells may need <code>password_env</code>, <code>token_env</code>, or <code>encrypted-file</code> instead.</li><li>Prefer profile-backed <code>password_env</code> or <code>token_env</code> entries for repeated automation instead of pasting secrets into every live command.</li></ul>
-<p>Related commands: <code>profile show</code>, <code>profile current</code>, <code>profile example</code>, <code>profile init</code>.</p>
+<p>Related commands: <code>config profile show</code>, <code>config profile current</code>, <code>config profile example</code>, <code>config profile init</code>.</p>
 <h2 id="example"><code>example</code></h2>
 <p>Purpose: print a comment-rich reference config that operators can copy and adapt.</p>
 <p>When to use: when you want one canonical example that explains the supported profile fields and secret storage modes.</p>
@@ -878,14 +878,14 @@ grafana-util profile add stage --url https://grafana-stage.example.com --token-e
 <ul><li><code>--mode basic|full</code></li></ul>
 <p>Examples:</p>
 <pre><code># Purpose: example.
-grafana-util profile example</code></pre>
+grafana-util config profile example</code></pre>
 <pre><code># Purpose: example.
-grafana-util profile example --mode basic</code></pre>
+grafana-util config profile example --mode basic</code></pre>
 <pre><code># Purpose: example.
-grafana-util profile example --mode full</code></pre>
+grafana-util config profile example --mode full</code></pre>
 <p>Notes:</p>
 <ul><li><code>basic</code> is a short starter template.</li><li><code>full</code> includes commented examples for <code>file</code>, <code>os</code>, and <code>encrypted-file</code>.</li><li>The <code>os</code> examples assume macOS Keychain or Linux Secret Service is available.</li></ul>
-<p>Related commands: <code>profile add</code>, <code>profile init</code>, <code>profile show</code>, <code>profile current</code>, <code>profile validate</code>.</p>
+<p>Related commands: <code>config profile add</code>, <code>config profile init</code>, <code>config profile show</code>, <code>config profile current</code>, <code>config profile validate</code>.</p>
 <h2 id="init"><code>init</code></h2>
 <p>Purpose: initialize <code>grafana-util.yaml</code> in the current working directory.</p>
 <p>When to use: when a checkout does not yet have a repo-local profile file and you want the built-in starter template.</p>
@@ -893,12 +893,12 @@ grafana-util profile example --mode full</code></pre>
 <ul><li><code>--overwrite</code></li></ul>
 <p>Examples:</p>
 <pre><code># Purpose: init.
-grafana-util profile init</code></pre>
+grafana-util config profile init</code></pre>
 <pre><code># Purpose: init.
-grafana-util profile init --overwrite</code></pre>
+grafana-util config profile init --overwrite</code></pre>
 <p>Notes:</p>
 <ul><li><code>init</code> seeds the built-in starter template.</li><li><code>add</code> is the friendlier way to create one real profile entry directly.</li></ul>
-<p>Related commands: <code>profile add</code>, <code>profile example</code>, <code>profile current</code>, <code>profile validate</code>, <code>status live</code>.</p>
+<p>Related commands: <code>config profile add</code>, <code>config profile example</code>, <code>config profile current</code>, <code>config profile validate</code>, <code>observe live</code>.</p>
     
   </article>
   <aside class="sidebar">

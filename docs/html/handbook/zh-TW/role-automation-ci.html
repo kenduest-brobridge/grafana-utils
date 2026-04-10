@@ -780,15 +780,15 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <ol><li>CI 內優先用 <code>--profile</code> 搭配 <code>token_env</code> 或 <code>password_env</code>，讓 pipeline 不直接持有明文秘密。</li><li>direct Basic auth 只留給 bootstrap、除錯或手動救援，不要當成預設做法。</li><li>token 只適合單一 org 或權限邊界很明確的自動化，不要拿它去碰管理員操作。</li><li>若流程會產生 service account token，請把它視為敏感憑證並規劃輪替與撤銷。</li></ol>
 <h2 id="建議先跑的-5-個指令">建議先跑的 5 個指令</h2>
 <pre><code># 用途：建議先跑的 5 個指令。
-grafana-util profile add ci --url https://grafana.example.com --token-env GRAFANA_CI_TOKEN</code></pre>
+grafana-util config profile add ci --url https://grafana.example.com --token-env GRAFANA_CI_TOKEN</code></pre>
 <pre><code># 用途：建議先跑的 5 個指令。
-grafana-util profile show --profile ci --output-format yaml</code></pre>
+grafana-util config profile show --profile ci --output-format yaml</code></pre>
 <pre><code># 用途：建議先跑的 5 個指令。
-grafana-util status staged --desired-file ./desired.json --output-format json</code></pre>
+grafana-util observe staged --desired-file ./desired.json --output-format json</code></pre>
 <pre><code># 用途：建議先跑的 5 個指令。
 grafana-util change check --desired-file ./desired.json --fetch-live --output-format json</code></pre>
 <pre><code># 用途：建議先跑的 5 個指令。
-grafana-util overview live --profile ci --output-format yaml</code></pre>
+grafana-util observe overview live --profile ci --output-format yaml</code></pre>
 <p>如果 pipeline 只需要驗證某個 live 操作面，可把最後一行換成 direct Basic auth 或單一 org token 的等價查詢，但不要把查詢範圍開得比權限更大。</p>
 <h2 id="什麼叫做自動化流程已經穩定">什麼叫做自動化流程已經穩定</h2>
 <ul><li>job 不會卡在 prompt</li><li>同一種 profile 可重複用在多個檢查步驟</li><li>輸出夠穩定，可以放心交給 parser 或 gate 使用</li><li>失敗時可以區分是 credential、scope、staged input，還是 connectivity 的問題</li></ul>

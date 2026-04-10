@@ -7,7 +7,7 @@ The first thing to understand is that `grafana-util` does not force one auth sty
 - pass the Grafana URL and credentials directly on each command
 - prompt for a password or token instead of pasting it into the shell
 - rely on environment variables that the CLI already knows how to read
-- save repeatable defaults in a repo-local profile and call them back with `--profile`
+- save repeatable defaults in a repo-local `config profile` and call them back with `config profile`
 
 Profiles matter because they remove repetition, not because direct flags are unsupported. The normal learning path is:
 
@@ -50,7 +50,7 @@ Profiles matter because they remove repetition, not because direct flags are uns
 - Confirm the installed binary is on `PATH`.
 - Run one direct read-only command against a lab or dev Grafana.
 - Create one repo-local profile once the direct connection works.
-- Run one safe live read and recognize the difference between `status live` and `overview live`.
+- Run one safe live read and recognize the difference between `observe live` and `observe overview`.
 - Learn which docs to keep open before moving on to dashboards, alerts, or access workflows.
 
 ## How Connection And Auth Work
@@ -61,7 +61,7 @@ Profiles matter because they remove repetition, not because direct flags are uns
 - `--basic-user` plus `--basic-password`, or `--prompt-password`, uses Basic auth.
 - `--token`, or `--prompt-token`, uses token auth.
 - `GRAFANA_USERNAME`, `GRAFANA_PASSWORD`, and `GRAFANA_API_TOKEN` can supply the same credentials through environment variables.
-- `--profile` loads the reusable defaults stored in `grafana-util.yaml`.
+- `config profile` loads the reusable defaults stored in `grafana-util.yaml`.
 
 That means you can always start with a one-off command, then move to a profile later if you do not want to keep repeating the same URL and auth flags.
 
@@ -70,7 +70,7 @@ That means you can always start with a one-off command, then move to a profile l
 Use the auth modes in this order:
 
 1. Direct Basic auth with `--prompt-password` for a first local bootstrap or a one-time reachability check.
-2. `--profile` with `password_env`, `token_env`, or an OS-backed secret store for repeatable day-to-day work.
+2. `config profile` with `password_env`, `token_env`, or an OS-backed secret store for repeatable day-to-day work.
 3. Direct token auth only when you already know the token is scoped tightly enough for the read you want.
 
 The key idea is simple: direct flags prove the connection, profiles simplify repeated use.
@@ -84,27 +84,27 @@ grafana-util --version
 
 ```bash
 # Purpose: First Commands To Run.
-grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml
+grafana-util observe live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml
 ```
 
 ```bash
 # Purpose: First Commands To Run.
-grafana-util profile init --overwrite
+grafana-util config profile init --overwrite
 ```
 
 ```bash
 # Purpose: First Commands To Run.
-grafana-util profile example --mode basic
+grafana-util config profile example --mode basic
 ```
 
 ```bash
 # Purpose: First Commands To Run.
-grafana-util profile add dev --url http://127.0.0.1:3000 --basic-user admin --prompt-password
+grafana-util config profile add dev --url http://127.0.0.1:3000 --basic-user admin --prompt-password
 ```
 
 ```bash
 # Purpose: First Commands To Run.
-grafana-util status live --profile dev --output-format yaml
+grafana-util observe live --profile dev --output-format yaml
 ```
 
 The sequence matters:
@@ -118,14 +118,14 @@ If you do not have a profile yet, this is the shortest safe bootstrap:
 
 ```bash
 # Purpose: If you do not have a profile yet, this is the shortest safe bootstrap.
-grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml
+grafana-util observe live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml
 ```
 
 If you already have a scoped token, you can check the same live surface without a profile:
 
 ```bash
 # Purpose: If you already have a scoped token, you can check the same live surface without a profile.
-grafana-util overview live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format json
+grafana-util observe overview --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format json
 ```
 
 If your shell already exports auth variables, you can also keep the command shorter:
@@ -134,7 +134,7 @@ If your shell already exports auth variables, you can also keep the command shor
 # Purpose: If your shell already exports auth variables, you can also keep the command shorter.
 export GRAFANA_USERNAME=admin
 export GRAFANA_PASSWORD=admin
-grafana-util status live --url http://localhost:3000 --output-format yaml
+grafana-util observe live --url http://localhost:3000 --output-format yaml
 ```
 
 ## What Good Looks Like
@@ -143,8 +143,8 @@ You are ready to leave the new-user path when:
 
 - `grafana-util --version` works from your normal shell
 - one direct read-only command succeeds against the Grafana you care about
-- `profile show --profile dev` resolves the fields you expect
-- `status live --profile dev` returns readable output without prompting surprises
+- `config profile show --profile dev` resolves the fields you expect
+- `observe live --profile dev` returns readable output without prompting surprises
 - you know whether your next step is dashboards, alerts, access, or CI automation
 
 ## Read Next
@@ -155,9 +155,9 @@ You are ready to leave the new-user path when:
 
 ## Keep Open
 
-- [profile](../../commands/en/profile.md)
-- [status](../../commands/en/status.md)
-- [overview](../../commands/en/overview.md)
+- [Command Docs](../../commands/en/index.md)
+- [profile compatibility reference](../../commands/en/profile.md)
+- [overview compatibility reference](../../commands/en/overview.md)
 - [dashboard](../../commands/en/dashboard.md)
 
 ## Common Mistakes And Limits

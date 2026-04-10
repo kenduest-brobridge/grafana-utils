@@ -43,10 +43,10 @@ Primary lane：
 - [change preview](../../commands/zh-TW/change-preview.md)
 - [change apply](../../commands/zh-TW/change-apply.md)
 - [status](../../commands/zh-TW/status.md)
-- [status staged](../../commands/zh-TW/status.md#staged)
-- [status live](../../commands/zh-TW/status.md#live)
+- [observe staged](../../commands/zh-TW/observe.md#staged)
+- [observe live](../../commands/zh-TW/observe.md#live)
 - [overview](../../commands/zh-TW/overview.md)
-- [overview live](../../commands/zh-TW/overview.md#live)
+- [observe overview live](../../commands/zh-TW/observe.md#overview-live)
 
 Advanced workflows：
 
@@ -55,11 +55,11 @@ Advanced workflows：
 - [snapshot export](../../commands/zh-TW/snapshot.md#export)
 - [snapshot review](../../commands/zh-TW/snapshot.md#review)
 - [profile](../../commands/zh-TW/profile.md)
-- [profile list](../../commands/zh-TW/profile.md#list)
-- [profile show](../../commands/zh-TW/profile.md#show)
-- [profile add](../../commands/zh-TW/profile.md#add)
-- [profile example](../../commands/zh-TW/profile.md#example)
-- [profile init](../../commands/zh-TW/profile.md#init)
+- [config profile list](../../commands/zh-TW/profile.md#list)
+- [config profile show](../../commands/zh-TW/profile.md#show)
+- [config profile add](../../commands/zh-TW/profile.md#add)
+- [config profile example](../../commands/zh-TW/profile.md#example)
+- [config profile init](../../commands/zh-TW/profile.md#init)
 
 ---
 
@@ -70,12 +70,12 @@ Advanced workflows：
 ### 1. 即時整備度檢查 (Live Check)
 ```bash
 # 用途：1. 即時整備度檢查 (Live Check)。
-grafana-util status live --output-format table
+grafana-util observe live --output-format table
 ```
 
 ```bash
 # 用途：1. 即時整備度檢查 (Live Check)。
-grafana-util status live --profile prod --sync-summary-file ./sync-summary.json --bundle-preflight-file ./bundle-preflight.json --output-format json
+grafana-util observe live --profile prod --sync-summary-file ./sync-summary.json --bundle-preflight-file ./bundle-preflight.json --output-format json
 ```
 **預期輸出：**
 ```text
@@ -86,18 +86,18 @@ Dashboards   ok       32/32 可存取
 Datasources  ok       秘密資訊恢復驗證通過
 Alerts       ok       無孤立規則
 ```
-`status live` 走的是共用的 live 狀態檢查流程。若同時帶入 staged sync 檔案，就能在不改變指令用法的前提下，讓 live 視圖多出更多對照資訊。
+`observe live` 走的是共用的 live 狀態檢查流程。若同時帶入 staged sync 檔案，就能在不改變指令用法的前提下，讓 live 視圖多出更多對照資訊。
 
 ### 2. 暫存整備度檢查 (Staged Check)
 在執行 `apply` 之前，這一步很適合拿來當 CI/CD 的強制檢查。
 ```bash
 # 用途：在執行 apply 之前，這一步很適合拿來當 CI/CD 的強制檢查。
-grafana-util status staged --desired-file ./desired.json --output-format json
+grafana-util observe staged --desired-file ./desired.json --output-format json
 ```
 
 ```bash
 # 用途：在執行 apply 之前，這一步很適合拿來當 CI/CD 的強制檢查。
-grafana-util status staged --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts --desired-file ./desired.json --output-format table
+grafana-util observe staged --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts --desired-file ./desired.json --output-format table
 ```
 **預期輸出：**
 ```json
@@ -107,7 +107,7 @@ grafana-util status staged --dashboard-export-dir ./dashboards/raw --alert-expor
   "warnings": ["1 個儀表板缺少唯一的目錄分配"]
 }
 ```
-`status staged` 比較偏向給腳本或 CI 判讀的驗證結果。`blockers` 代表一定得先處理，`warnings` 則表示需要人工再多看一眼。
+`observe staged` 比較偏向給腳本或 CI 判讀的驗證結果。`blockers` 代表一定得先處理，`warnings` 則表示需要人工再多看一眼。
 
 ---
 
@@ -200,11 +200,11 @@ preview 是現在 task-first 路徑裡對應舊 `plan` 的入口。底層 contra
 
 ## 🖥️ 互動模式 (TUI) 語意
 
-`overview live --output-format interactive` 會透過共用的 live status 路徑顯示 live project overview。
+`observe overview live --output-format interactive` 會透過共用的 live status 路徑顯示 live project overview。
 
 ```bash
 # 用途：overview live --output-format interactive 會透過共用的 live status 路徑顯示 live project overview。
-grafana-util overview live --url http://localhost:3000 --basic-user admin --basic-password admin --output-format interactive
+grafana-util observe overview live --url http://localhost:3000 --basic-user admin --basic-password admin --output-format interactive
 ```
 
 TUI 使用以下視覺語言：
@@ -212,7 +212,7 @@ TUI 使用以下視覺語言：
 - **🟡 黃色**：組件可用，但有警告，例如缺少中繼資料。
 - **🔴 紅色**：組件受阻，在進行任何部署前都需要處理。
 
-如果要看 staged 產物的人工審查畫面，用不帶 `live` 的 `overview`；如果要拿結構化輸出做 live 檢查，改用 `status live`。
+如果要看 staged 產物的人工審查畫面，用不帶 `live` 的 `observe overview`；如果要拿結構化輸出做 live 檢查，改用 `observe live`。
 
 ---
 [⬅️ 上一章：Access 管理](access.md) | [🏠 回首頁](index.md) | [➡️ 下一章：維運情境手冊](scenarios.md)

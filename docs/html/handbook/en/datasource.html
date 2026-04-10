@@ -777,7 +777,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <p>&gt; <strong>Goal</strong>: Keep datasource configuration safe to back up, compare, and replay by using a <strong>Masked Recovery</strong> contract that protects sensitive credentials and still leaves enough structure to restore the estate later.</p>
 <h2 id="command-pages">Command Pages</h2>
 <p>Need the command-by-command surface instead of the workflow guide?</p>
-<ul><li><a href="../../commands/en/datasource.html">datasource command overview</a></li><li><a href="../../commands/en/datasource-types.html">datasource types</a></li><li><a href="../../commands/en/datasource-browse.html">datasource browse</a></li><li><a href="../../commands/en/datasource-list.html">datasource list</a></li><li><a href="../../commands/en/datasource-export.html">datasource export</a></li><li><a href="../../commands/en/datasource-import.html">datasource import</a></li><li><a href="../../commands/en/datasource-diff.html">datasource diff</a></li><li><a href="../../commands/en/datasource-list.html">datasource list</a></li><li><a href="../../commands/en/datasource-add.html">datasource add</a></li><li><a href="../../commands/en/datasource-modify.html">datasource modify</a></li><li><a href="../../commands/en/datasource-delete.html">datasource delete</a></li><li><a href="../../commands/en/index.html">full command index</a></li></ul>
+<ul><li><a href="../../commands/en/advanced.html">advanced datasource command overview</a></li><li><a href="../../commands/en/advanced.html">advanced datasource types</a></li><li><a href="../../commands/en/advanced.html">advanced datasource browse</a></li><li><a href="../../commands/en/advanced.html">advanced datasource list</a></li><li><a href="../../commands/en/export.html">export datasource</a></li><li><a href="../../commands/en/advanced.html">advanced datasource import</a></li><li><a href="../../commands/en/advanced.html">advanced datasource diff</a></li><li><a href="../../commands/en/advanced.html">advanced datasource add</a></li><li><a href="../../commands/en/advanced.html">advanced datasource modify</a></li><li><a href="../../commands/en/advanced.html">advanced datasource delete</a></li><li><a href="../../commands/en/index.html">full command index</a></li></ul>
 <h2 id="what-this-area-is-for">What This Area Is For</h2>
 <p>Use the datasource area when you need to:</p>
 <ul><li><strong>Inventory</strong>: Audit which datasources exist, their types, and backend URLs from live Grafana or a local bundle.</li><li><strong>Recovery &amp; Replay</strong>: Maintain a recoverable export of datasource records.</li><li><strong>Provisioning Projection</strong>: Generate the YAML files required for Grafana&#x27;s file provisioning.</li><li><strong>Drift Review</strong>: Compare staged datasource files with live Grafana.</li><li><strong>Controlled Mutation</strong>: Add, modify, or delete live datasources with dry-run protection.</li></ul>
@@ -788,7 +788,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="reading-live-inventory">Reading Live Inventory</h2>
 <p>Use <code>datasource list</code> to verify the current state of your Grafana plugins and targets.</p>
 <pre><code># Purpose: Use datasource list to verify the current state of your Grafana plugins and targets.
-grafana-util datasource list \
+grafana-util advanced datasource list \
   --url http://localhost:3000 \
   --basic-user admin \
   --basic-password admin \
@@ -804,14 +804,14 @@ dehk4kxat5la8b  Prometheus  prometheus  http://prometheus:9090  true            
 <h2 id="validated-docker-examples">Validated Docker Examples</h2>
 <h3 id="1-export-inventory">1. Export Inventory</h3>
 <pre><code># Purpose: 1. Export Inventory.
-grafana-util datasource export --output-dir ./datasources --overwrite</code></pre>
+grafana-util export datasource --output-dir ./datasources --overwrite</code></pre>
 <p><strong>Output Excerpt:</strong></p>
 <pre><code>Exported datasource inventory -&gt; datasources/datasources.json
 Exported metadata            -&gt; datasources/export-metadata.json
 Datasource export completed: 3 item(s)</code></pre>
 <h3 id="2-dry-run-import-preview">2. Dry-Run Import Preview</h3>
 <pre><code># Purpose: 2. Dry-Run Import Preview.
-grafana-util datasource import --input-dir ./datasources --replace-existing --dry-run --table</code></pre>
+grafana-util advanced datasource import --input-dir ./datasources --replace-existing --dry-run --table</code></pre>
 <p><strong>Output Excerpt:</strong></p>
 <pre><code>UID         NAME               TYPE         ACTION   DESTINATION
 prom-main   prometheus-main    prometheus   update   existing
@@ -819,7 +819,7 @@ loki-prod   loki-prod          loki         create   missing</code></pre>
 <ul><li><strong>ACTION=create</strong>: New datasource record will be created.</li><li><strong>ACTION=update</strong>: Existing record will be replaced.</li><li><strong>DESTINATION=missing</strong>: No live datasource currently owns that UID, so the import would create a new record.</li><li><strong>DESTINATION=existing</strong>: Grafana already has that UID, so the import would replace the current datasource record.</li></ul>
 <h3 id="3-direct-live-add-dry-run">3. Direct Live Add (Dry-Run)</h3>
 <pre><code># Purpose: 3. Direct Live Add (Dry-Run).
-grafana-util datasource add \
+grafana-util advanced datasource add \
   --uid prom-main --name prom-new --type prometheus \
   --datasource-url http://prometheus:9090 --dry-run --table</code></pre>
 <p><strong>Output Excerpt:</strong></p>
@@ -827,7 +827,7 @@ grafana-util datasource add \
 1      prom-new   prometheus   create  would create datasource uid=prom-main</code></pre>
 <h3 id="4-local-inventory-review">4. Local Inventory Review</h3>
 <pre><code># Purpose: 4. Local Inventory Review.
-grafana-util datasource list --input-dir ./datasources --table</code></pre>
+grafana-util advanced datasource list --input-dir ./datasources --table</code></pre>
 <p><strong>Output Excerpt:</strong></p>
 <pre><code>UID             NAME        TYPE        URL                     IS_DEFAULT  ORG  ORG_ID
 --------------  ----------  ----------  ----------------------  ----------  ---  ------
