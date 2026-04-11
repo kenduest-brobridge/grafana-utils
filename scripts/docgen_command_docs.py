@@ -253,7 +253,16 @@ def extract_codeblock(lines: list[str]) -> list[str]:
 def parse_labeled_section(lines: list[str]) -> dict[str, list[str]]:
     labels: dict[str, list[str]] = {}
     current: str | None = None
+    inside_fence = False
     for raw in lines:
+        stripped = raw.strip()
+        if stripped.startswith("```"):
+            inside_fence = not inside_fence
+            continue
+        if inside_fence:
+            if current is not None:
+                labels[current].append(raw)
+            continue
         match = re.match(r"^([^:：]{1,80})[:：]\s*(.*)$", raw)
         if match:
             current = LABEL_ALIASES.get(clean_markdown(match.group(1).strip()), clean_markdown(match.group(1).strip()))

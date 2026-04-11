@@ -781,13 +781,35 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="root">Root</h2>
 <p>Purpose: read live and staged Grafana state through one canonical status surface.</p>
 <p>When to use: when you want readiness, overview, snapshot, or direct live reads without moving into mutation work.</p>
-<p>Description: <code>status</code> is the user-facing read-only entrypoint. Use <code>live</code> for current-state gating, <code>staged</code> for artifact review, <code>overview</code> for project-wide summaries, <code>snapshot</code> for bundle-style review, and <code>resource</code> for direct live reads.</p>
-<p>Examples:</p>
-<pre><code>grafana-util status live --profile prod --output-format yaml
-grafana-util status staged --desired-file ./desired.json --output-format json
-grafana-util status overview --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts --output-format table
+<p>Description: <code>status</code> is the user-facing read-only entrypoint. Use <code>live</code> for current-state gating, <code>staged</code> for local artifact review, <code>overview</code> for project-wide summaries, <code>snapshot</code> for offline bundle capture and review, and <code>resource</code> for generic live reads when a richer domain workflow is not needed yet.</p>
+<h2 id="command-groups">Command groups</h2>
+<ul><li>Live Read-Only: <code>live</code>, <code>overview</code>, <code>resource</code>, <code>snapshot</code></li><li>Staged Review: <code>staged</code>, <code>overview</code></li></ul>
+<p>Open this page when you know the task is read-only but you still need to decide whether the next step is a direct health check, a generic resource lookup, a project-wide overview, or a snapshot export for later review.</p>
+<h2 id="before-after">Before / After</h2>
+<ul><li><strong>Before</strong>: read-only Grafana checks are often split across one-off scripts, direct API calls, ad hoc exports, and workflow-specific commands.</li><li><strong>After</strong>: the <code>status</code> namespace keeps the common read surfaces together so operators can choose the right read path without immediately entering mutation workflows.</li></ul>
+<h2 id="what-success-looks-like">What success looks like</h2>
+<ul><li>the next read path is obvious before you open a deeper command page</li><li>live checks, staged review, and snapshot review share one predictable namespace</li><li>generic resource reads stay available without forcing a full export or domain-specific flow</li></ul>
+<h2 id="failure-checks">Failure checks</h2>
+<ul><li>if a live command returns less data than expected, confirm the auth scope and org visibility first</li><li>if a staged overview looks incomplete, verify the input directories and file paths before assuming the parser is wrong</li><li>if downstream automation reads the output, set <code>--output-format</code> explicitly on the leaf command</li></ul>
+<h3 id="key-flags">Key flags</h3>
+<ul><li>the root <code>status</code> command is a namespace; operational flags live on <code>live</code>, <code>staged</code>, <code>overview</code>, <code>snapshot</code>, and <code>resource</code></li><li><code>--help-schema</code> is available on the <code>status</code> surface for schema-oriented help paths</li></ul>
+<h3 id="examples">Examples</h3>
+<pre><code># inspect the read-only entrypoint before choosing a lane.
+grafana-util status --help</code></pre>
+<pre><code># check live Grafana reachability and health.
+grafana-util status live --profile prod --output-format yaml</code></pre>
+<pre><code># review staged desired-state artifacts before a preview or apply flow.
+grafana-util status staged --desired-file ./desired.json --output-format json</code></pre>
+<pre><code># summarize one staged dashboard and alert tree.
+grafana-util status overview --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts --output-format table</code></pre>
+<pre><code># open the live overview path as an interactive workbench.
 grafana-util status overview live --url http://localhost:3000 --basic-user admin --basic-password admin --output-format interactive</code></pre>
-<p>Related commands: <code>grafana-util export</code>, <code>grafana-util workspace</code>, <code>grafana-util config profile</code>.</p>
+<pre><code># describe the supported generic resource selectors.
+grafana-util status resource describe dashboards --output-format json</code></pre>
+<pre><code># export a snapshot bundle for later offline review.
+grafana-util status snapshot export --profile prod --output-dir ./snapshot</code></pre>
+<h2 id="related-commands">Related commands</h2>
+<ul><li><code>grafana-util export</code></li><li><code>grafana-util workspace</code></li><li><code>grafana-util config profile</code></li></ul>
 <h2 id="live"><code>live</code></h2>
 <p>Purpose: render a live readiness view from Grafana read surfaces.</p>
 <h2 id="staged"><code>staged</code></h2>
@@ -797,13 +819,13 @@ grafana-util status overview live --url http://localhost:3000 --basic-user admin
 <h2 id="snapshot"><code>snapshot</code></h2>
 <p>Purpose: review or export a snapshot-style artifact bundle.</p>
 <h2 id="resource"><code>resource</code></h2>
-<p>Purpose: inspect one live Grafana resource directly.</p>
+<p>Purpose: inspect supported live Grafana resources through a generic read-only query surface.</p>
     
   </article>
   <aside class="sidebar">
   <button class="sidebar-toggle sidebar-toggle-right" type="button" aria-expanded="true" aria-label="Toggle page sidebar">▶</button>
   <div class="sidebar-content">
-    <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#root"><span class="toc-label">Root</span></a></li><li class="toc-level-2"><a href="#live"><span class="toc-label">live`</span></a></li><li class="toc-level-2"><a href="#staged"><span class="toc-label">staged`</span></a></li><li class="toc-level-2"><a href="#overview"><span class="toc-label">overview`</span></a></li><li class="toc-level-2"><a href="#snapshot"><span class="toc-label">snapshot`</span></a></li><li class="toc-level-2"><a href="#resource"><span class="toc-label">resource`</span></a></li></ul></section><section class="sidebar-section"><h2>Related</h2><ul class="sidebar-meta-list"><li><a href="../../handbook/en/status-workspace.html" class="sidebar-meta-link">Matching handbook chapter</a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: English</a></li><li><a href="../zh-TW/status.html" class="sidebar-meta-link">Switch to 繁體中文</a></li></ul></section>
+    <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#root"><span class="toc-label">Root</span></a></li><li class="toc-level-2"><a href="#command-groups"><span class="toc-label">Command groups</span></a></li><li class="toc-level-2"><a href="#before-after"><span class="toc-label">Before / After</span></a></li><li class="toc-level-2"><a href="#what-success-looks-like"><span class="toc-label">What success looks like</span></a></li><li class="toc-level-2"><a href="#failure-checks"><span class="toc-label">Failure checks</span></a></li><li class="toc-level-3"><a href="#key-flags"><span class="toc-label">Key flags</span></a></li><li class="toc-level-3"><a href="#examples"><span class="toc-label">Examples</span></a></li><li class="toc-level-2"><a href="#related-commands"><span class="toc-label">Related commands</span></a></li><li class="toc-level-2"><a href="#live"><span class="toc-label">live`</span></a></li><li class="toc-level-2"><a href="#staged"><span class="toc-label">staged`</span></a></li><li class="toc-level-2"><a href="#overview"><span class="toc-label">overview`</span></a></li><li class="toc-level-2"><a href="#snapshot"><span class="toc-label">snapshot`</span></a></li><li class="toc-level-2"><a href="#resource"><span class="toc-label">resource`</span></a></li></ul></section><section class="sidebar-section"><h2>Related</h2><ul class="sidebar-meta-list"><li><a href="../../handbook/en/status-workspace.html" class="sidebar-meta-link">Matching handbook chapter</a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: English</a></li><li><a href="../zh-TW/status.html" class="sidebar-meta-link">Switch to 繁體中文</a></li></ul></section>
   </div>
 </aside>
 

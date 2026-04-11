@@ -8,6 +8,18 @@ grafana\-util\-status \- read live and staged Grafana state through a shared sta
 read live and staged Grafana state through one canonical status surface.
 .PP
 when you want readiness, overview, snapshot, or direct live reads without moving into mutation work.
+.SH COMMAND GROUPS
+.PP
+\- Live Read\-Only: live, overview, resource, snapshot
+.PP
+\- Staged Review: staged, overview
+.PP
+Open this page when you know the task is read\-only but you still need to decide whether the next step is a direct health check, a generic resource lookup, a project\-wide overview, or a snapshot export for later review.
+.SH BEFORE / AFTER
+.IP \(bu 2
+Before: read\-only Grafana checks are often split across one\-off scripts, direct API calls, ad hoc exports, and workflow\-specific commands.
+.IP \(bu 2
+After: the status namespace keeps the common read surfaces together so operators can choose the right read path without immediately entering mutation workflows.
 .SH SUBCOMMANDS
 .TP
 .B live
@@ -23,23 +35,57 @@ summarize staged artifacts or open the live overview.
 review or export a snapshot\-style artifact bundle.
 .TP
 .B resource
-inspect one live Grafana resource directly.
-.SH EXAMPLES
+inspect supported live Grafana resources through a generic read\-only query surface.
+.SH SUCCESS CRITERIA
+.IP \(bu 2
+the next read path is obvious before you open a deeper command page
+.IP \(bu 2
+live checks, staged review, and snapshot review share one predictable namespace
+.IP \(bu 2
+generic resource reads stay available without forcing a full export or domain\-specific flow
+.SH FAILURE CHECKS
 .PP
-live: render a live readiness view from Grafana read surfaces.
-.EX
-grafana-util status live --profile prod --output-format yaml
-.EE
+\- if a live command returns less data than expected, confirm the auth scope and org visibility first
 .PP
-staged: render a readiness gate from staged artifacts.
-.EX
-grafana-util status staged --desired-file ./desired.json --output-format json
-.EE
+\- if a staged overview looks incomplete, verify the input directories and file paths before assuming the parser is wrong
 .PP
-overview: summarize staged artifacts or open the live overview.
-.EX
-grafana-util status overview --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts --output-format table
-.EE
+\- if downstream automation reads the output, set \-\-output\-format explicitly on the leaf command
+.PP
+### Key flags
+.PP
+\- the root status command is a namespace; operational flags live on live, staged, overview, snapshot, and resource
+.PP
+\- \-\-help\-schema is available on the status surface for schema\-oriented help paths
+.PP
+### Examples
+.PP
+# inspect the read\-only entrypoint before choosing a lane.
+.PP
+grafana\-util status \-\-help
+.PP
+# check live Grafana reachability and health.
+.PP
+grafana\-util status live \-\-profile prod \-\-output\-format yaml
+.PP
+# review staged desired\-state artifacts before a preview or apply flow.
+.PP
+grafana\-util status staged \-\-desired\-file ./desired.json \-\-output\-format json
+.PP
+# summarize one staged dashboard and alert tree.
+.PP
+grafana\-util status overview \-\-dashboard\-export\-dir ./dashboards/raw \-\-alert\-export\-dir ./alerts \-\-output\-format table
+.PP
+# open the live overview path as an interactive workbench.
+.PP
+grafana\-util status overview live \-\-url http://localhost:3000 \-\-basic\-user admin \-\-basic\-password admin \-\-output\-format interactive
+.PP
+# describe the supported generic resource selectors.
+.PP
+grafana\-util status resource describe dashboards \-\-output\-format json
+.PP
+# export a snapshot bundle for later offline review.
+.PP
+grafana\-util status snapshot export \-\-profile prod \-\-output\-dir ./snapshot
 .SH SEE ALSO
 \fBgrafana-util\fR(1),
 \fBgrafana-util-workspace\fR(1),

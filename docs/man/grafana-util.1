@@ -32,7 +32,7 @@ The checked-in English command reference pages under docs/commands/en/ are the h
 grafana\-util dashboard is the namespace for dashboard workflows. It keeps dashboard commands flat for fast terminal use, but groups the help and docs by task: browse and inspect, export and import, review and diff, edit and publish, and capture. The same namespace is also available as grafana\-util db. Use when: You need to inspect dashboards, pull one live dashboard into a local draft, compare local files with Grafana, normalize dashboard JSON for UI upload, or publish a prepared dashboard back to Grafana.
 .TP
 .B alert
-Run the alerting command surface for exporting, importing, diffing, planning, applying, deleting, authoring, and listing Grafana alert resources. Use when: Export local alert bundles from Grafana.; Import or diff alert bundles against live Grafana state.; Build and apply a reviewed alert management plan.; Author staged rules, contact points, routes, and templates.; List live alert rules, contact points, mute timings, and templates.
+Run the alerting command surface for listing, exporting, importing, diffing, planning, applying, deleting, and authoring Grafana alert resources. Use when: Export local alert bundles from Grafana.; Import or diff alert bundles against live Grafana state.; Build and apply a reviewed alert management plan.; Author staged rules, contact points, routes, and templates.; List live alert rules, contact points, mute timings, and templates.
 .TP
 .B datasource
 grafana\-util datasource is the namespace for catalog lookup, inventory reads, export/import, diff, and live create/modify/delete workflows. The same namespace is also available as grafana\-util ds. Use when: You want to inspect supported datasource types, read inventory from live Grafana or a local bundle, export a datasource bundle, compare a local bundle with Grafana, or create and maintain live datasources.
@@ -231,7 +231,7 @@ summarize staged artifacts or open the live overview.
 review or export a snapshot\-style artifact bundle.
 .TP
 .B grafana\-util\-status\-resource(1)
-inspect one live Grafana resource directly.
+inspect supported live Grafana resources through a generic read\-only query surface.
 .SS workspace
 .TP
 .B grafana\-util\-workspace\-scan(1)
@@ -269,7 +269,7 @@ list, inspect, validate, add, and initialize repo\-local grafana\-util profiles 
 .SS resource
 .TP
 .B grafana\-util\-resource\-describe(1)
-Describe the supported live Grafana resource kinds and selector patterns. Use when: You want to know how the generic read\-only resource surface is shaped before you pick resource list or resource get.
+Describe the supported live Grafana resource kinds and selector patterns. Use when: You want to know how the generic read\-only resource surface is shaped before you pick status resource list or status resource get.
 .SS resource
 .TP
 .B grafana\-util\-resource\-get(1)
@@ -277,7 +277,7 @@ Fetch one supported live Grafana resource by selector. Use when: You need the li
 .SS resource
 .TP
 .B grafana\-util\-resource\-kinds(1)
-List the live resource kinds supported by the generic read\-only resource query surface. Use when: You need to confirm whether the generic resource query surface already supports the live Grafana resource kind you want to inspect. If you need the selector pattern or endpoint shape, use resource describe instead.
+List the live resource kinds supported by the generic read\-only status resource query surface. Use when: You need to confirm whether the generic resource query surface already supports the live Grafana resource kind you want to inspect. If you need the selector pattern or endpoint shape, use status resource describe instead.
 .SS resource
 .TP
 .B grafana\-util\-resource\-list(1)
@@ -285,7 +285,7 @@ List one supported live Grafana resource kind. Use when: You need a read\-only l
 .SS resource
 .TP
 .B grafana\-util\-resource(1)
-Read a small set of live Grafana resources through a generic read\-only query surface. Use when: You need a read\-only live lookup before a richer workflow exists in dashboard, alert, datasource, access, or workspace.
+Run generic read\-only Grafana resource queries through the status namespace. Use when: You need a read\-only live lookup before a richer workflow exists in dashboard, alert, datasource, access, or workspace.
 .TP
 .B workspace
 Workspace review and apply workflows for local Grafana artifacts. The public CLI surface and generated manpages live under grafana-util workspace and the grafana-util-workspace*(1) pages.

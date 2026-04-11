@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>resource describe · grafana-util docs</title>
+  <title>grafana-util status resource describe · grafana-util docs</title>
   <style>:root {
   color-scheme: light dark;
   --font-scale: 1;
@@ -758,9 +758,9 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </aside>
 
   <article class="article">
-    <div class="breadcrumbs"><a href="../../index.html">Home</a> / Commands / resource describe</div>
+    <div class="breadcrumbs"><a href="../../index.html">Home</a> / Commands / grafana-util status resource describe</div>
 
-    <h1><span class="hero-title-main">resource describe</span></h1>
+    <h1><span class="hero-title-main">grafana-util status resource describe</span></h1>
 
 
     <section class="command-intro">
@@ -770,25 +770,25 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">When to open this page</p>
-  <ul class="command-intro-list"><li>Use this when you want to know how the generic read-only resource surface is shaped before you pick resource list or resource get.</li></ul>
+  <ul class="command-intro-list"><li>Use this when you want to know how the generic read-only resource surface is shaped before you pick status resource list or status resource get.</li></ul>
 </div>
 </div>
 </section>
 <h2 id="purpose">Purpose</h2>
 <p>Describe the supported live Grafana resource kinds and selector patterns.</p>
 <h2 id="when-to-use">When to use</h2>
-<p>Use this when you want to know how the generic read-only resource surface is shaped before you pick <code>resource list</code> or <code>resource get</code>.</p>
+<p>Use this when you want to know how the generic read-only resource surface is shaped before you pick <code>status resource list</code> or <code>status resource get</code>.</p>
 <h2 id="key-flags">Key flags</h2>
 <ul><li>optional positional <code>KIND</code>: limit the output to one supported resource kind such as <code>dashboards</code>, <code>folders</code>, <code>datasources</code>, <code>alert-rules</code>, or <code>orgs</code></li><li><code>--output-format</code>: choose <code>text</code>, <code>table</code>, <code>json</code>, or <code>yaml</code></li></ul>
 <h2 id="notes">Notes</h2>
 <ul><li>This command is descriptive only. It does not discover live schemas from Grafana.</li><li>Use it when you need the selector format, list endpoint, or get endpoint for a supported kind.</li></ul>
 <h2 id="examples">Examples</h2>
 <pre><code># Purpose: Describe every supported live resource kind.
-grafana-util resource describe</code></pre>
+grafana-util status resource describe</code></pre>
 <pre><code># Purpose: Describe one supported resource kind as JSON.
-grafana-util resource describe dashboards --output-format json</code></pre>
+grafana-util status resource describe dashboards --output-format json</code></pre>
 <pre><code># Purpose: Describe one supported resource kind as a table.
-grafana-util resource describe orgs --output-format table</code></pre>
+grafana-util status resource describe orgs --output-format table</code></pre>
 <h2 id="related-commands">Related commands</h2>
 <ul><li><a href="resource.html">resource</a></li><li><a href="resource-kinds.html">resource kinds</a></li><li><a href="resource-list.html">resource list</a></li><li><a href="resource-get.html">resource get</a></li></ul>
     

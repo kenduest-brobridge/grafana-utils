@@ -27,32 +27,6 @@ package dashboards, alerts, datasources, and metadata into one local handoff art
 .TP
 .B ci
 expose lower\-level contract checks for CI and automation.
-.SH EXAMPLES
-.PP
-scan: discover what is in one local workspace or staged package.
-.EX
-grafana-util workspace scan ./grafana-oac-repo
-.EE
-.PP
-test: validate whether the local workspace is structurally safe to continue.
-.EX
-grafana-util workspace test ./grafana-oac-repo --fetch-live --output-format json
-.EE
-.PP
-preview: show what would change from the current workspace inputs.
-.EX
-grafana-util workspace preview ./grafana-oac-repo --fetch-live --profile prod
-.EE
-.PP
-package: package dashboards, alerts, datasources, and metadata into one local handoff artifact.
-.EX
-grafana-util workspace package ./grafana-oac-repo --output-file ./workspace-package.json
-.EE
-.PP
-apply: turn a reviewed preview into staged or live apply output.
-.EX
-grafana-util workspace apply --preview-file ./workspace-preview.json --approve --execute-live --profile prod
-.EE
 .SH SEE ALSO
 \fBgrafana-util\fR(1),
 \fBgrafana-util-status\fR(1),

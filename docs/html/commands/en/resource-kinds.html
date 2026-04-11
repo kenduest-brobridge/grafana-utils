@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>resource kinds · grafana-util docs</title>
+  <title>grafana-util status resource kinds · grafana-util docs</title>
   <style>:root {
   color-scheme: light dark;
   --font-scale: 1;
@@ -758,33 +758,33 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </aside>
 
   <article class="article">
-    <div class="breadcrumbs"><a href="../../index.html">Home</a> / Commands / resource kinds</div>
+    <div class="breadcrumbs"><a href="../../index.html">Home</a> / Commands / grafana-util status resource kinds</div>
 
-    <h1><span class="hero-title-main">resource kinds</span></h1>
+    <h1><span class="hero-title-main">grafana-util status resource kinds</span></h1>
 
 
     <section class="command-intro">
   <div class="command-intro-grid"><div class="command-intro-block">
   <p class="command-intro-label">What this page covers</p>
-  <p class="command-intro-text">List the live resource kinds supported by the generic read-only resource query surface.</p>
+  <p class="command-intro-text">List the live resource kinds supported by the generic read-only status resource query surface.</p>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">When to open this page</p>
-  <ul class="command-intro-list"><li>Use this when you need to confirm whether the generic resource query surface already supports the live Grafana resource kind you want to inspect. If you need the selector pattern or endpoint shape, use resource describe instead.</li></ul>
+  <ul class="command-intro-list"><li>Use this when you need to confirm whether the generic resource query surface already supports the live Grafana resource kind you want to inspect. If you need the selector pattern or endpoint shape, use status resource describe instead.</li></ul>
 </div>
 </div>
 </section>
 <h2 id="purpose">Purpose</h2>
-<p>List the live resource kinds supported by the generic read-only <code>resource</code> query surface.</p>
+<p>List the live resource kinds supported by the generic read-only <code>status resource</code> query surface.</p>
 <h2 id="when-to-use">When to use</h2>
-<p>Use this when you need to confirm whether the generic resource query surface already supports the live Grafana resource kind you want to inspect. If you need the selector pattern or endpoint shape, use <code>resource describe</code> instead.</p>
+<p>Use this when you need to confirm whether the generic resource query surface already supports the live Grafana resource kind you want to inspect. If you need the selector pattern or endpoint shape, use <code>status resource describe</code> instead.</p>
 <h2 id="key-flags">Key flags</h2>
 <ul><li><code>--output-format</code>: choose <code>text</code>, <code>table</code>, <code>json</code>, or <code>yaml</code>.</li></ul>
 <h2 id="examples">Examples</h2>
 <pre><code># Purpose: Show supported resource kinds as a table.
-grafana-util resource kinds</code></pre>
+grafana-util status resource kinds</code></pre>
 <pre><code># Purpose: Render the same supported resource kinds as JSON.
-grafana-util resource kinds --output-format json</code></pre>
+grafana-util status resource kinds --output-format json</code></pre>
 <h2 id="related-commands">Related commands</h2>
 <ul><li><a href="resource.html">resource</a></li><li><a href="resource-describe.html">resource describe</a></li><li><a href="resource-list.html">resource list</a></li><li><a href="resource-get.html">resource get</a></li></ul>
     

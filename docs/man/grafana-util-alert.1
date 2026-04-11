@@ -5,7 +5,7 @@ grafana\-util\-alert \- alert export, import, planning, apply, routing, and auth
 .SH SYNOPSIS
 .B grafana-util alert [\fISUBCOMMAND\fR] [\fIOPTIONS\fR]
 .SH DESCRIPTION
-Run the alerting command surface for exporting, importing, diffing, planning, applying, deleting, authoring, and listing Grafana alert resources.
+Run the alerting command surface for listing, exporting, importing, diffing, planning, applying, deleting, and authoring Grafana alert resources.
 .IP \(bu 2
 Export local alert bundles from Grafana.
 .IP \(bu 2
@@ -18,22 +18,20 @@ Author staged rules, contact points, routes, and templates.
 List live alert rules, contact points, mute timings, and templates.
 .SH WORKFLOW LANES
 .PP
-\- alert live ...: list\-rules, list\-contact\-points, list\-mute\-timings, list\-templates, and delete.
+\- Inventory: list\-rules, list\-contact\-points, list\-mute\-timings, list\-templates, delete
 .PP
-\- alert export/import/diff ...: move and compare.
+\- Backup: export, import, diff
 .PP
-\- alert author ...: init, rule add|clone, contact\-point add, and route set|preview.
+\- Authoring: add\-rule, clone\-rule, add\-contact\-point, set\-route, preview\-route, new\-rule, new\-contact\-point, new\-template
 .PP
-\- alert scaffold ...: rule, contact\-point, and template.
-.PP
-\- alert plan/apply ...: review and apply.
+\- Review: plan, apply
 .PP
 Choose this page when alert work spans rules, routes, contact points, or templates and you want the workflow before the flags.
 .SH BEFORE / AFTER
 .IP \(bu 2
 Before: alert work is often scattered across rule editors, export scripts, and route tweaks without one grouped path from inventory to reviewed apply.
 .IP \(bu 2
-After: the alert namespace keeps inventory, authoring, diff, planning, and apply in one place so you can read first, then workspace.
+After: the alert namespace keeps inventory, authoring, backup, planning, and apply in one place so you can inspect first, then change deliberately.
 .SH SUBCOMMANDS
 .TP
 .B export
@@ -95,10 +93,10 @@ List live Grafana notification templates. Use when: Inspect template inventory f
 .IP \(bu 2
 \-\-prompt\-password, \-\-prompt\-token, \-\-timeout, \-\-verify\-ssl
 .IP \(bu 2
-Use the nested subcommands for export, import, diff, plan, apply, live, author, and scaffold.
+the root alert command is a namespace; operational flags live on the leaf subcommands
 .SH SUCCESS CRITERIA
 .IP \(bu 2
-you can tell whether the task belongs to inspect, move, or review\-before\-mutate before you open a subcommand
+you can tell whether the task belongs to inventory, backup, authoring, or review before you open a subcommand
 .IP \(bu 2
 a plan or export can move through review without losing routing context
 .IP \(bu 2
@@ -115,9 +113,9 @@ if the result is going to automation, set \-\-output\-format explicitly so the d
 The safest alert workflow is: author or update desired files, inspect the delta with alert plan, then execute only reviewed changes with alert apply.
 .SH EXAMPLES
 .PP
-Run the alerting command surface for exporting, importing, diffing, planning, applying, deleting, authoring, and listing Grafana alert resources.
+Run the alerting command surface for listing, exporting, importing, diffing, planning, applying, deleting, and authoring Grafana alert resources.
 .EX
-grafana-util alert live list-rules --profile prod --json
+grafana-util alert --help
 .EE
 .PP
 export: Export alerting resources into raw/ JSON files.

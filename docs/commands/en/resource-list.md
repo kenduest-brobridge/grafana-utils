@@ -1,4 +1,4 @@
-# resource list
+# `grafana-util status resource list`
 
 ## Purpose
 List one supported live Grafana resource kind.
@@ -14,17 +14,17 @@ Use this when you need a read-only live inventory for one supported resource kin
 ## Examples
 ```bash
 # Purpose: List dashboards as a table from a local Grafana.
-grafana-util resource list dashboards --url http://localhost:3000 --basic-user admin --basic-password admin
+grafana-util status resource list dashboards --url http://localhost:3000 --basic-user admin --basic-password admin
 ```
 
 ```bash
 # Purpose: List folders as YAML.
-grafana-util resource list folders --profile prod --output-format yaml
+grafana-util status resource list folders --profile prod --output-format yaml
 ```
 
 ```bash
 # Purpose: List alert rules as JSON.
-grafana-util resource list alert-rules --profile prod --output-format json
+grafana-util status resource list alert-rules --profile prod --output-format json
 ```
 
 ## Related commands

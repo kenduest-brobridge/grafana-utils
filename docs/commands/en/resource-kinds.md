@@ -1,10 +1,10 @@
-# resource kinds
+# `grafana-util status resource kinds`
 
 ## Purpose
-List the live resource kinds supported by the generic read-only `resource` query surface.
+List the live resource kinds supported by the generic read-only `status resource` query surface.
 
 ## When to use
-Use this when you need to confirm whether the generic resource query surface already supports the live Grafana resource kind you want to inspect. If you need the selector pattern or endpoint shape, use `resource describe` instead.
+Use this when you need to confirm whether the generic resource query surface already supports the live Grafana resource kind you want to inspect. If you need the selector pattern or endpoint shape, use `status resource describe` instead.
 
 ## Key flags
 - `--output-format`: choose `text`, `table`, `json`, or `yaml`.
@@ -12,12 +12,12 @@ Use this when you need to confirm whether the generic resource query surface alr
 ## Examples
 ```bash
 # Purpose: Show supported resource kinds as a table.
-grafana-util resource kinds
+grafana-util status resource kinds
 ```
 
 ```bash
 # Purpose: Render the same supported resource kinds as JSON.
-grafana-util resource kinds --output-format json
+grafana-util status resource kinds --output-format json
 ```
 
 ## Related commands

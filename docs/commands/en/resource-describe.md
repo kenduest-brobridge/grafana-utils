@@ -1,10 +1,10 @@
-# resource describe
+# `grafana-util status resource describe`
 
 ## Purpose
 Describe the supported live Grafana resource kinds and selector patterns.
 
 ## When to use
-Use this when you want to know how the generic read-only resource surface is shaped before you pick `resource list` or `resource get`.
+Use this when you want to know how the generic read-only resource surface is shaped before you pick `status resource list` or `status resource get`.
 
 ## Key flags
 - optional positional `KIND`: limit the output to one supported resource kind such as `dashboards`, `folders`, `datasources`, `alert-rules`, or `orgs`
@@ -17,17 +17,17 @@ Use this when you want to know how the generic read-only resource surface is sha
 ## Examples
 ```bash
 # Purpose: Describe every supported live resource kind.
-grafana-util resource describe
+grafana-util status resource describe
 ```
 
 ```bash
 # Purpose: Describe one supported resource kind as JSON.
-grafana-util resource describe dashboards --output-format json
+grafana-util status resource describe dashboards --output-format json
 ```
 
 ```bash
 # Purpose: Describe one supported resource kind as a table.
-grafana-util resource describe orgs --output-format table
+grafana-util status resource describe orgs --output-format table
 ```
 
 ## Related commands

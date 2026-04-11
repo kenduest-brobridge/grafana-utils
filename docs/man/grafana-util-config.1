@@ -8,7 +8,53 @@ grafana\-util\-config \- manage repo\-local grafana\-util configuration workflow
 open repo\-local configuration workflows for repeatable Grafana access.
 .PP
 when you want to manage repo\-local defaults instead of repeating live connection flags in every command.
+.SH COMMAND GROUPS
+.PP
+\- Connection Setup: profile
+.PP
+Open this page first when the question is not about one profile subcommand yet, but about how this repo should store and reuse Grafana connection details at all.
+.PP
+Primary entrypoint:
+.PP
+\- config profile: add, validate, inspect, and initialize repo\-local profiles
+.SH BEFORE / AFTER
+.IP \(bu 2
+Before: live commands often repeat \-\-url, token, or Basic auth flags in shell history, scripts, and onboarding notes.
+.IP \(bu 2
+After: one repo\-local profile can carry the shared connection defaults so daily commands stay shorter and CI stays easier to audit.
 .SH SUBCOMMANDS
+.SH SUCCESS CRITERIA
+.IP \(bu 2
+one checkout has the connection defaults it actually needs
+.IP \(bu 2
+repeated live commands can use \-\-profile instead of restating credentials
+.IP \(bu 2
+secret storage mode matches the machine and operating model
+.SH FAILURE CHECKS
+.PP
+\- if a saved profile does not behave like a direct command line, inspect it with config profile show
+.PP
+\- if validation fails, confirm the selected secret mode is supported on the current machine
+.PP
+\- if a repo still needs repeated auth flags, check whether the intended profile was created and selected
+.PP
+### Key flags
+.PP
+\- \-\-color: control JSON color output for this namespace
+.PP
+### Examples
+.PP
+# inspect the config namespace before choosing a profile subcommand.
+.PP
+grafana\-util config \-\-help
+.PP
+# initialize a starter config file in the current checkout.
+.PP
+grafana\-util config profile init \-\-overwrite
+.PP
+# add a reusable production profile backed by prompt\-based secrets.
+.PP
+grafana\-util config profile add prod \-\-url https://grafana.example.com \-\-basic\-user admin \-\-prompt\-password \-\-store\-secret encrypted\-file
 .SH SEE ALSO
 \fBgrafana-util\fR(1),
 \fBgrafana-util-status\fR(1),

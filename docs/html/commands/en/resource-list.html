@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>resource list · grafana-util docs</title>
+  <title>grafana-util status resource list · grafana-util docs</title>
   <style>:root {
   color-scheme: light dark;
   --font-scale: 1;
@@ -758,9 +758,9 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </aside>
 
   <article class="article">
-    <div class="breadcrumbs"><a href="../../index.html">Home</a> / Commands / resource list</div>
+    <div class="breadcrumbs"><a href="../../index.html">Home</a> / Commands / grafana-util status resource list</div>
 
-    <h1><span class="hero-title-main">resource list</span></h1>
+    <h1><span class="hero-title-main">grafana-util status resource list</span></h1>
 
 
     <section class="command-intro">
@@ -782,11 +782,11 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <ul><li>positional <code>KIND</code>: one supported resource kind such as <code>dashboards</code>, <code>folders</code>, <code>datasources</code>, <code>alert-rules</code>, or <code>orgs</code></li><li><code>--profile</code>, <code>--url</code>, <code>--token</code>, <code>--basic-user</code>, <code>--basic-password</code>: live Grafana connection settings</li><li><code>--output-format</code>: choose <code>text</code>, <code>table</code>, <code>json</code>, or <code>yaml</code></li></ul>
 <h2 id="examples">Examples</h2>
 <pre><code># Purpose: List dashboards as a table from a local Grafana.
-grafana-util resource list dashboards --url http://localhost:3000 --basic-user admin --basic-password admin</code></pre>
+grafana-util status resource list dashboards --url http://localhost:3000 --basic-user admin --basic-password admin</code></pre>
 <pre><code># Purpose: List folders as YAML.
-grafana-util resource list folders --profile prod --output-format yaml</code></pre>
+grafana-util status resource list folders --profile prod --output-format yaml</code></pre>
 <pre><code># Purpose: List alert rules as JSON.
-grafana-util resource list alert-rules --profile prod --output-format json</code></pre>
+grafana-util status resource list alert-rules --profile prod --output-format json</code></pre>
 <h2 id="related-commands">Related commands</h2>
 <ul><li><a href="resource.html">resource</a></li><li><a href="resource-describe.html">resource describe</a></li><li><a href="resource-kinds.html">resource kinds</a></li><li><a href="resource-get.html">resource get</a></li></ul>
     

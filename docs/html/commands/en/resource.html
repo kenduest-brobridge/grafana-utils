@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>resource · grafana-util docs</title>
+  <title>grafana-util status resource · grafana-util docs</title>
   <style>:root {
   color-scheme: light dark;
   --font-scale: 1;
@@ -758,15 +758,15 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </aside>
 
   <article class="article">
-    <div class="breadcrumbs"><a href="../../index.html">Home</a> / Commands / resource</div>
+    <div class="breadcrumbs"><a href="../../index.html">Home</a> / Commands / grafana-util status resource</div>
 
-    <h1><span class="hero-title-main">resource</span></h1>
+    <h1><span class="hero-title-main">grafana-util status resource</span></h1>
 
 
     <section class="command-intro">
   <div class="command-intro-grid"><div class="command-intro-block">
   <p class="command-intro-label">What this page covers</p>
-  <p class="command-intro-text">Read a small set of live Grafana resources through a generic read-only query surface.</p>
+  <p class="command-intro-text">Run generic read-only Grafana resource queries through the status namespace.</p>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">When to open this page</p>
@@ -775,27 +775,28 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 </section>
 <h2 id="purpose">Purpose</h2>
-<p>Read a small set of live Grafana resources through a generic read-only query surface.</p>
+<p>Run generic read-only Grafana resource queries through the <code>status</code> namespace.</p>
 <h2 id="when-to-use">When to use</h2>
 <p>Use this when you need a read-only live lookup before a richer workflow exists in <code>dashboard</code>, <code>alert</code>, <code>datasource</code>, <code>access</code>, or <code>workspace</code>.</p>
 <h2 id="description">Description</h2>
-<p>This namespace is intentionally narrower and more generic than the main operator workflows. It exists so you can inspect a few supported live Grafana resource kinds without waiting for a full domain-specific command surface.</p>
-<p>Treat it as a read-only utility surface, not as the primary entrypoint for day-to-day mutation work.</p>
+<p>This namespace is intentionally narrower and more generic than the main operator workflows. It exists so you can inspect a supported live Grafana resource kind without waiting for a full domain-specific command surface.</p>
+<p>The old top-level <code>grafana-util resource ...</code> path is no longer the public entrypoint. Use <code>grafana-util status resource ...</code> instead.</p>
+<p>Treat this as a read-only utility surface, not as the primary entrypoint for day-to-day mutation work.</p>
 <h2 id="workflow">Workflow</h2>
-<ul><li>Start with <code>resource describe</code> to see the supported selector patterns and endpoint shape for each kind.</li><li>Use <code>resource kinds</code> to see the currently supported live resource kinds.</li><li>Use <code>resource list &lt;kind&gt;</code> when you need inventory for one kind.</li><li>Use <code>resource get &lt;kind&gt;/&lt;identity&gt;</code> when you need the full live payload for one item.</li></ul>
+<ul><li>Start with <code>status resource describe</code> to see the supported selector patterns and endpoint shape for each kind.</li><li>Use <code>status resource kinds</code> to see the currently supported live resource kinds.</li><li>Use <code>status resource list &lt;kind&gt;</code> when you need inventory for one kind.</li><li>Use <code>status resource get &lt;kind&gt;/&lt;identity&gt;</code> when you need the full live payload for one item.</li></ul>
 <h2 id="supported-kinds">Supported kinds</h2>
 <ul><li><code>dashboards</code></li><li><code>folders</code></li><li><code>datasources</code></li><li><code>alert-rules</code></li><li><code>orgs</code></li></ul>
 <h2 id="output">Output</h2>
 <ul><li><code>kinds</code> supports <code>text</code>, <code>table</code>, <code>json</code>, and <code>yaml</code></li><li><code>list</code> supports <code>text</code>, <code>table</code>, <code>json</code>, and <code>yaml</code></li><li><code>get</code> supports <code>text</code>, <code>table</code>, <code>json</code>, and <code>yaml</code></li></ul>
 <h2 id="examples">Examples</h2>
 <pre><code># Purpose: Describe the supported live resource kinds and selector patterns.
-grafana-util resource describe</code></pre>
+grafana-util status resource describe</code></pre>
 <pre><code># Purpose: Show the currently supported generic resource kinds.
-grafana-util resource kinds</code></pre>
+grafana-util status resource kinds</code></pre>
 <pre><code># Purpose: List live dashboard resources from a local Grafana.
-grafana-util resource list dashboards --url http://localhost:3000 --basic-user admin --basic-password admin</code></pre>
+grafana-util status resource list dashboards --url http://localhost:3000 --basic-user admin --basic-password admin</code></pre>
 <pre><code># Purpose: Fetch one datasource payload as YAML.
-grafana-util resource get datasources/prom-main --profile prod --output-format yaml</code></pre>
+grafana-util status resource get datasources/prom-main --profile prod --output-format yaml</code></pre>
 <h2 id="related-commands">Related commands</h2>
 <ul><li><a href="resource-describe.html">resource describe</a></li><li><a href="resource-kinds.html">resource kinds</a></li><li><a href="resource-list.html">resource list</a></li><li><a href="resource-get.html">resource get</a></li><li><a href="dashboard.html">dashboard</a></li></ul>
     

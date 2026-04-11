@@ -43,11 +43,11 @@ Examples:
 .PP
 # Purpose: Export a local snapshot bundle from live Grafana.
 .PP
-grafana\-util snapshot export \-\-url http://localhost:3000 \-\-basic\-user admin \-\-basic\-password admin \-\-output\-dir ./snapshot
+grafana\-util status snapshot export \-\-url http://localhost:3000 \-\-basic\-user admin \-\-basic\-password admin \-\-output\-dir ./snapshot
 .PP
 # Purpose: Review the exported snapshot bundle as JSON.
 .PP
-grafana\-util snapshot review \-\-input\-dir ./snapshot \-\-output\-format json
+grafana\-util status snapshot review \-\-input\-dir ./snapshot \-\-output\-format json
 .PP
 Related commands: grafana\-util status overview, grafana\-util status staged, grafana\-util workspace package.
 .SH SEE ALSO

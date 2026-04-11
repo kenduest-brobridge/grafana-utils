@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>grafana-util snapshot · grafana-util docs</title>
+  <title>grafana-util status snapshot · grafana-util docs</title>
   <style>:root {
   color-scheme: light dark;
   --font-scale: 1;
@@ -758,9 +758,9 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </aside>
 
   <article class="article">
-    <div class="breadcrumbs"><a href="../../index.html">Home</a> / Commands / grafana-util snapshot</div>
+    <div class="breadcrumbs"><a href="../../index.html">Home</a> / Commands / grafana-util status snapshot</div>
 
-    <h1><span class="hero-title-main">grafana-util snapshot</span></h1>
+    <h1><span class="hero-title-main">grafana-util status snapshot</span></h1>
 
 
     <section class="command-intro">
@@ -781,7 +781,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="root">Root</h2>
 <p>Purpose: export and review Grafana snapshot inventory bundles.</p>
 <p>When to use: when you want a local snapshot root that captures dashboard, datasource, and access inventory for later inspection.</p>
-<p>Description: open this page when you need an offline snapshot of Grafana inventory that can be reviewed later without talking to the server again. The <code>snapshot</code> namespace is useful for handoff, backup, incident review, or any workflow where you want one local artifact before moving into deeper analysis. Snapshot exports now stage dashboard, datasource, and access lanes under one root and also write <code>snapshot-metadata.json</code> so later tooling can discover those lanes without guessing paths.</p>
+<p>Description: open this page when you need an offline snapshot of Grafana inventory that can be reviewed later without talking to the server again. The current public entrypoint is <code>grafana-util status snapshot</code>, not the removed top-level <code>grafana-util snapshot</code> root. This snapshot surface is useful for handoff, backup, incident review, or any workflow where you want one local artifact before moving into deeper analysis. Snapshot exports stage dashboard, datasource, and access lanes under one root and also write <code>snapshot-metadata.json</code> so later tooling can discover those lanes without guessing paths.</p>
 <h2 id="before-after">Before / After</h2>
 <ul><li><strong>Before</strong>: snapshot-style review usually means re-querying Grafana or opening a pile of dashboards, datasources, and access records one by one.</li><li><strong>After</strong>: export first, then review the local bundle as a repeatable artifact without touching the live server again.</li></ul>
 <h2 id="what-success-looks-like">What success looks like</h2>
@@ -791,9 +791,9 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <p>Key flags: the root command is a namespace; the operational flags live on <code>export</code> and <code>review</code>. The shared root flag is <code>--color</code>.</p>
 <p>Examples:</p>
 <pre><code># Purpose: Export a local snapshot bundle from live Grafana.
-grafana-util snapshot export --url http://localhost:3000 --basic-user admin --basic-password admin --output-dir ./snapshot</code></pre>
+grafana-util status snapshot export --url http://localhost:3000 --basic-user admin --basic-password admin --output-dir ./snapshot</code></pre>
 <pre><code># Purpose: Review the exported snapshot bundle as JSON.
-grafana-util snapshot review --input-dir ./snapshot --output-format json</code></pre>
+grafana-util status snapshot review --input-dir ./snapshot --output-format json</code></pre>
 <p>Related commands: <code>grafana-util status overview</code>, <code>grafana-util status staged</code>, <code>grafana-util workspace package</code>.</p>
 <h2 id="export"><code>export</code></h2>
 <p>Purpose: export dashboard, datasource, and access inventory into a local snapshot bundle.</p>
@@ -803,11 +803,11 @@ grafana-util snapshot review --input-dir ./snapshot --output-format json</code><
 <p>Key flags: <code>--output-dir</code>, <code>--overwrite</code>, <code>--prompt</code>, plus the shared Grafana connection and auth flags. <code>--prompt</code> opens a terminal multi-select prompt so you can choose which lanes to export before the snapshot starts. The datasource lane exports config and any <code>secureJsonDataPlaceholders</code>, but it does not export datasource plaintext secrets because Grafana live APIs do not return them.</p>
 <p>Examples:</p>
 <pre><code># Purpose: export.
-grafana-util snapshot export --url http://localhost:3000 --basic-user admin --basic-password admin --output-dir ./snapshot</code></pre>
+grafana-util status snapshot export --url http://localhost:3000 --basic-user admin --basic-password admin --output-dir ./snapshot</code></pre>
 <pre><code># Purpose: export.
-grafana-util snapshot export --profile prod --output-dir ./snapshot --overwrite</code></pre>
+grafana-util status snapshot export --profile prod --output-dir ./snapshot --overwrite</code></pre>
 <pre><code># Purpose: choose snapshot lanes from a terminal prompt before export.
-grafana-util snapshot export --profile prod --prompt --output-dir ./snapshot</code></pre>
+grafana-util status snapshot export --profile prod --prompt --output-dir ./snapshot</code></pre>
 <p>Related commands: <code>snapshot review</code>, <code>workspace package</code>, <code>status overview</code>.</p>
 <h2 id="review"><code>review</code></h2>
 <p>Purpose: review a local snapshot inventory without touching Grafana.</p>
@@ -816,9 +816,9 @@ grafana-util snapshot export --profile prod --prompt --output-dir ./snapshot</co
 <p>Key flags: <code>--input-dir</code>, <code>--interactive</code>, <code>--output-format</code>.</p>
 <p>Examples:</p>
 <pre><code># Purpose: review an exported snapshot root as table, csv, text, json, yaml, or interactive output.
-grafana-util snapshot review --input-dir ./snapshot --output-format table</code></pre>
+grafana-util status snapshot review --input-dir ./snapshot --output-format table</code></pre>
 <pre><code># Purpose: review an exported snapshot root as table, csv, text, json, yaml, or interactive output.
-grafana-util snapshot review --input-dir ./snapshot --interactive</code></pre>
+grafana-util status snapshot review --input-dir ./snapshot --interactive</code></pre>
 <p>Related commands: <code>snapshot export</code>, <code>status overview</code>, <code>status staged</code>.</p>
     
   </article>

@@ -781,21 +781,35 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="root">Root</h2>
 <p>Purpose: open repo-local configuration workflows for repeatable Grafana access.</p>
 <p>When to use: when you want to manage repo-local defaults instead of repeating live connection flags in every command.</p>
-<p>Description: the current public <code>config</code> surface is intentionally small. Today it exists to host <code>config profile</code>, which owns repo-local connection defaults, secret handling, and reusable authentication setup for local work and CI jobs.</p>
+<p>Description: the current public <code>config</code> surface is intentionally small. Today it is a connection-setup namespace that hosts <code>config profile</code>, which owns repo-local connection defaults, secret handling, and reusable authentication setup for local work and CI jobs.</p>
+<h2 id="command-groups">Command groups</h2>
+<ul><li>Connection Setup: <code>profile</code></li></ul>
+<p>Open this page first when the question is not about one profile subcommand yet, but about how this repo should store and reuse Grafana connection details at all.</p>
 <p>Primary entrypoint:</p>
 <ul><li><a href="profile.html"><code>config profile</code></a>: add, validate, inspect, and initialize repo-local profiles</li></ul>
-<p>Examples:</p>
-<pre><code># Purpose: initialize a starter config file in the current checkout.
+<h2 id="before-after">Before / After</h2>
+<ul><li><strong>Before</strong>: live commands often repeat <code>--url</code>, token, or Basic auth flags in shell history, scripts, and onboarding notes.</li><li><strong>After</strong>: one repo-local profile can carry the shared connection defaults so daily commands stay shorter and CI stays easier to audit.</li></ul>
+<h2 id="what-success-looks-like">What success looks like</h2>
+<ul><li>one checkout has the connection defaults it actually needs</li><li>repeated live commands can use <code>--profile</code> instead of restating credentials</li><li>secret storage mode matches the machine and operating model</li></ul>
+<h2 id="failure-checks">Failure checks</h2>
+<ul><li>if a saved profile does not behave like a direct command line, inspect it with <code>config profile show</code></li><li>if validation fails, confirm the selected secret mode is supported on the current machine</li><li>if a repo still needs repeated auth flags, check whether the intended profile was created and selected</li></ul>
+<h3 id="key-flags">Key flags</h3>
+<ul><li><code>--color</code>: control JSON color output for this namespace</li></ul>
+<h3 id="examples">Examples</h3>
+<pre><code># inspect the config namespace before choosing a profile subcommand.
+grafana-util config --help</code></pre>
+<pre><code># initialize a starter config file in the current checkout.
 grafana-util config profile init --overwrite</code></pre>
-<pre><code># Purpose: add a reusable production profile backed by prompt-based secrets.
+<pre><code># add a reusable production profile backed by prompt-based secrets.
 grafana-util config profile add prod --url https://grafana.example.com --basic-user admin --prompt-password --store-secret encrypted-file</code></pre>
-<p>Related commands: <code>grafana-util status live</code>, <code>grafana-util status overview</code>, <code>grafana-util workspace preview</code>.</p>
+<h2 id="related-commands">Related commands</h2>
+<ul><li><code>grafana-util status live</code></li><li><code>grafana-util status overview</code></li><li><code>grafana-util workspace preview</code></li></ul>
     
   </article>
   <aside class="sidebar">
   <button class="sidebar-toggle sidebar-toggle-right" type="button" aria-expanded="true" aria-label="Toggle page sidebar">▶</button>
   <div class="sidebar-content">
-    <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#root"><span class="toc-label">Root</span></a></li></ul></section><section class="sidebar-section"><h2>Related</h2><ul class="sidebar-meta-list"><li><a href="../../handbook/en/getting-started.html" class="sidebar-meta-link">Matching handbook chapter</a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: English</a></li><li><a href="../zh-TW/config.html" class="sidebar-meta-link">Switch to 繁體中文</a></li></ul></section>
+    <section class="sidebar-section"><h2>On This Page</h2><ul class="toc-list"><li class="toc-level-2"><a href="#root"><span class="toc-label">Root</span></a></li><li class="toc-level-2"><a href="#command-groups"><span class="toc-label">Command groups</span></a></li><li class="toc-level-2"><a href="#before-after"><span class="toc-label">Before / After</span></a></li><li class="toc-level-2"><a href="#what-success-looks-like"><span class="toc-label">What success looks like</span></a></li><li class="toc-level-2"><a href="#failure-checks"><span class="toc-label">Failure checks</span></a></li><li class="toc-level-3"><a href="#key-flags"><span class="toc-label">Key flags</span></a></li><li class="toc-level-3"><a href="#examples"><span class="toc-label">Examples</span></a></li><li class="toc-level-2"><a href="#related-commands"><span class="toc-label">Related commands</span></a></li></ul></section><section class="sidebar-section"><h2>Related</h2><ul class="sidebar-meta-list"><li><a href="../../handbook/en/getting-started.html" class="sidebar-meta-link">Matching handbook chapter</a></li></ul></section><section class="sidebar-section"><h2>Version</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>Language</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: English</a></li><li><a href="../zh-TW/config.html" class="sidebar-meta-link">Switch to 繁體中文</a></li></ul></section>
   </div>
 </aside>
 

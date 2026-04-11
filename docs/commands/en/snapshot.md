@@ -1,4 +1,4 @@
-# `grafana-util snapshot`
+# `grafana-util status snapshot`
 
 ## Root
 
@@ -6,7 +6,7 @@ Purpose: export and review Grafana snapshot inventory bundles.
 
 When to use: when you want a local snapshot root that captures dashboard, datasource, and access inventory for later inspection.
 
-Description: open this page when you need an offline snapshot of Grafana inventory that can be reviewed later without talking to the server again. The `snapshot` namespace is useful for handoff, backup, incident review, or any workflow where you want one local artifact before moving into deeper analysis. Snapshot exports now stage dashboard, datasource, and access lanes under one root and also write `snapshot-metadata.json` so later tooling can discover those lanes without guessing paths.
+Description: open this page when you need an offline snapshot of Grafana inventory that can be reviewed later without talking to the server again. The current public entrypoint is `grafana-util status snapshot`, not the removed top-level `grafana-util snapshot` root. This snapshot surface is useful for handoff, backup, incident review, or any workflow where you want one local artifact before moving into deeper analysis. Snapshot exports stage dashboard, datasource, and access lanes under one root and also write `snapshot-metadata.json` so later tooling can discover those lanes without guessing paths.
 
 ## Before / After
 
@@ -32,12 +32,12 @@ Examples:
 
 ```bash
 # Purpose: Export a local snapshot bundle from live Grafana.
-grafana-util snapshot export --url http://localhost:3000 --basic-user admin --basic-password admin --output-dir ./snapshot
+grafana-util status snapshot export --url http://localhost:3000 --basic-user admin --basic-password admin --output-dir ./snapshot
 ```
 
 ```bash
 # Purpose: Review the exported snapshot bundle as JSON.
-grafana-util snapshot review --input-dir ./snapshot --output-format json
+grafana-util status snapshot review --input-dir ./snapshot --output-format json
 ```
 
 Related commands: `grafana-util status overview`, `grafana-util status staged`, `grafana-util workspace package`.
@@ -64,17 +64,17 @@ Examples:
 
 ```bash
 # Purpose: export.
-grafana-util snapshot export --url http://localhost:3000 --basic-user admin --basic-password admin --output-dir ./snapshot
+grafana-util status snapshot export --url http://localhost:3000 --basic-user admin --basic-password admin --output-dir ./snapshot
 ```
 
 ```bash
 # Purpose: export.
-grafana-util snapshot export --profile prod --output-dir ./snapshot --overwrite
+grafana-util status snapshot export --profile prod --output-dir ./snapshot --overwrite
 ```
 
 ```bash
 # Purpose: choose snapshot lanes from a terminal prompt before export.
-grafana-util snapshot export --profile prod --prompt --output-dir ./snapshot
+grafana-util status snapshot export --profile prod --prompt --output-dir ./snapshot
 ```
 
 Related commands: `snapshot review`, `workspace package`, `status overview`.
@@ -93,12 +93,12 @@ Examples:
 
 ```bash
 # Purpose: review an exported snapshot root as table, csv, text, json, yaml, or interactive output.
-grafana-util snapshot review --input-dir ./snapshot --output-format table
+grafana-util status snapshot review --input-dir ./snapshot --output-format table
 ```
 
 ```bash
 # Purpose: review an exported snapshot root as table, csv, text, json, yaml, or interactive output.
-grafana-util snapshot review --input-dir ./snapshot --interactive
+grafana-util status snapshot review --input-dir ./snapshot --interactive
 ```
 
 Related commands: `snapshot export`, `status overview`, `status staged`.

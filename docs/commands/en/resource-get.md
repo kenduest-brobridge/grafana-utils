@@ -1,4 +1,4 @@
-# resource get
+# `grafana-util status resource get`
 
 ## Purpose
 Fetch one supported live Grafana resource by selector.
@@ -18,17 +18,17 @@ Use this when you need the live payload for one supported resource item and want
 ## Examples
 ```bash
 # Purpose: Fetch one live dashboard by UID.
-grafana-util resource get dashboards/cpu-main --url http://localhost:3000 --basic-user admin --basic-password admin
+grafana-util status resource get dashboards/cpu-main --url http://localhost:3000 --basic-user admin --basic-password admin
 ```
 
 ```bash
 # Purpose: Fetch one datasource payload as YAML.
-grafana-util resource get datasources/prom-main --profile prod --output-format yaml
+grafana-util status resource get datasources/prom-main --profile prod --output-format yaml
 ```
 
 ```bash
 # Purpose: Fetch one org payload by numeric ID.
-grafana-util resource get orgs/1 --profile prod --output-format json
+grafana-util status resource get orgs/1 --profile prod --output-format json
 ```
 
 ## Related commands

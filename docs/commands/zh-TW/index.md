@@ -27,6 +27,7 @@
 - [access](./access.md)：user、team、org、service-account workflow
 
 如果舊筆記提到已移除的 root，請直接改用目前的 task name：`status ...`、`workspace ...` 與 `config profile ...`。
+如果舊資料提到 legacy overview root，請改看 `status overview ...`。
 
 ## 我該用哪個指令？
 
