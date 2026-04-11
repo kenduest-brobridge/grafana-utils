@@ -1,4 +1,4 @@
-# New User Handbook
+# First Run / Beginner Path
 
 This page is for someone opening `grafana-util` for the first time, or for a teammate who needs a safe local checklist before touching live Grafana data.
 
@@ -125,7 +125,7 @@ If you already have a scoped token, you can check the same live surface without 
 
 ```bash
 # Purpose: If you already have a scoped token, you can check the same live surface without a profile.
-grafana-util status overview --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format json
+grafana-util status overview live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format json
 ```
 
 If your shell already exports auth variables, you can also keep the command shorter:

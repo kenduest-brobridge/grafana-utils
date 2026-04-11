@@ -50,6 +50,28 @@ WORKSPACE_NOISE_PREFIXES = (
     "test-results/",
 )
 
+ONBOARDING_SOURCE_FILES = {
+    "README.md",
+    "README.zh-TW.md",
+    "docs/landing/en.md",
+    "docs/landing/zh-TW.md",
+    "docs/user-guide/en/index.md",
+    "docs/user-guide/zh-TW/index.md",
+    "docs/user-guide/en/role-new-user.md",
+    "docs/user-guide/zh-TW/role-new-user.md",
+    "docs/user-guide/en/getting-started.md",
+    "docs/user-guide/zh-TW/getting-started.md",
+    "docs/commands/en/index.md",
+    "docs/commands/zh-TW/index.md",
+}
+
+ONBOARDING_FORBIDDEN_SNIPPETS = {
+    "grafana-util observe": "use the current status surface instead of the removed observe root",
+    "grafana-util overview": "use grafana-util status overview, with live for live Grafana reads",
+    "advanced dashboard": "use the flat grafana-util dashboard surface",
+    "grafana-util status overview --url": "live overview requires grafana-util status overview live --url",
+}
+
 MEANINGFUL_INTERNAL_DOC_FILES = {
     "docs/DEVELOPER.md",
     "docs/internal/ai-workflow-note.md",
@@ -119,6 +141,9 @@ def validate_paths(paths: list[str]) -> list[str]:
     touched_meaningful_internal = any(is_meaningful_internal_doc(path) for path in normalized)
     touched_trace = TRACE_FILES.issubset(path_set)
     touched_workspace_noise = [path for path in normalized if is_workspace_noise_path(path)]
+    touched_onboarding_sources = [
+        path for path in normalized if path in ONBOARDING_SOURCE_FILES
+    ]
 
     if touched_html:
         has_html_source = any(
@@ -150,6 +175,12 @@ def validate_paths(paths: list[str]) -> list[str]:
             "changed local workspace noise paths that should stay out of review and commit paths: "
             + ", ".join(touched_workspace_noise)
         )
+
+    for path in touched_onboarding_sources:
+        text = (REPO_ROOT / path).read_text(encoding="utf-8")
+        for snippet, guidance in ONBOARDING_FORBIDDEN_SNIPPETS.items():
+            if snippet in text:
+                errors.append(f"{path} contains '{snippet}'; {guidance}")
 
     return errors
 

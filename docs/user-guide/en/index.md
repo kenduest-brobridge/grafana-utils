@@ -54,13 +54,25 @@ curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main
 grafana-util --version
 ```
 
-### 3. Run Your First Global Audit
+### 3. Run Your First Live Overview
 ```bash
 # Generates a high-level health and inventory report of your Grafana estate
-grafana-util status overview --url http://localhost:3000 --basic-user admin --prompt-password --output-format interactive
+grafana-util status overview live --url http://localhost:3000 --basic-user admin --prompt-password --output-format interactive
 ```
 
 **Why this matters:** In 30 seconds, you have confirmed connectivity, checked dashboards and alerts, and found the first obvious data source problems before you make changes.
+
+## Which command should I use?
+
+| Need | Start with |
+| :--- | :--- |
+| Check that Grafana is reachable | `grafana-util status live` |
+| See the live estate as a human | `grafana-util status overview live` |
+| Save connection defaults | `grafana-util config profile` |
+| Export a backup | `grafana-util export dashboard` / `export alert` / `export datasource` |
+| Review a local change package | `grafana-util workspace scan` then `workspace preview` |
+| Inspect dashboards deeply | `grafana-util dashboard summary` / `dashboard diff` |
+| Manage users, teams, orgs, or service accounts | `grafana-util access ...` |
 
 ---
 

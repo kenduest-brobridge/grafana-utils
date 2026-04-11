@@ -42,21 +42,27 @@ Its main strengths are a review-first workflow, separate paths for dashboard imp
 
 ## Quick Start
 
-### Install
+### First 3 commands
 
 ```bash
-# Install via one-liner
-curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh
-```
-
-```bash
-# Verify the installation
+# Confirm the binary is installed.
 grafana-util --version
 ```
 
 ```bash
-# Inspect current Grafana status through the task-first surface
-grafana-util status live --url http://my-grafana:3000 --basic-user admin --prompt-password --output-format interactive
+# Run one read-only live check.
+grafana-util status live --url http://my-grafana:3000 --basic-user admin --prompt-password --output-format yaml
+```
+
+```bash
+# Save the same connection for repeatable commands.
+grafana-util config profile add dev --url http://my-grafana:3000 --basic-user admin --prompt-password
+```
+
+Install first if `grafana-util --version` is not available:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh
 ```
 
 ### Install Options
@@ -136,7 +142,7 @@ grafana-util status live \
 ### 2. Export dashboards for review
 ```bash
 # Export all dashboards into a reviewable local tree.
-grafana-util export dashboard --all-orgs --output-dir ./backup --progress
+grafana-util export dashboard --profile prod --output-dir ./backup --overwrite
 ```
 
 ### 3. Diff local dashboard artifacts with machine-readable output
@@ -210,10 +216,23 @@ If you prefer a browser view, open the local HTML docs at [docs/html/index.html]
 Open by need:
 
 *   **Getting started**: [docs/user-guide/en/getting-started.md](./docs/user-guide/en/getting-started.md)
+*   **First run / beginner path**: [docs/user-guide/en/role-new-user.md](./docs/user-guide/en/role-new-user.md)
 *   **Full handbook**: [docs/user-guide/en/index.md](./docs/user-guide/en/index.md)
 *   **Command reference**: [docs/commands/en/index.md](./docs/commands/en/index.md)
 *   **Troubleshooting**: [docs/user-guide/en/troubleshooting.md](./docs/user-guide/en/troubleshooting.md)
 *   **Manpage**: [docs/man/grafana-util.1](./docs/man/grafana-util.1)
+
+Which command should I use?
+
+| Need | Start with |
+| :--- | :--- |
+| Check that Grafana is reachable | `grafana-util status live` |
+| See the live estate as a human | `grafana-util status overview live` |
+| Save connection defaults | `grafana-util config profile` |
+| Export a backup | `grafana-util export dashboard` / `export alert` / `export datasource` |
+| Review a local change package | `grafana-util workspace scan` then `workspace preview` |
+| Inspect dashboards deeply | `grafana-util dashboard summary` / `dashboard diff` |
+| Manage users, teams, orgs, or service accounts | `grafana-util access ...` |
 
 Open by role:
 

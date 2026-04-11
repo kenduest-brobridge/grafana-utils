@@ -106,7 +106,7 @@ Profile workflows are repo-local. `grafana-util config profile` works against `g
 | :--- | :--- | :--- |
 | direct Basic auth | quick local checks, bootstrap, admin-only workflows | `grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml` |
 | `config profile` | daily operator workflows and CI jobs once the connection is proven | `grafana-util status live --profile prod --output-format yaml` |
-| direct token | narrow API automation that stays inside one org or one scoped permission set | `grafana-util status overview --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format yaml` |
+| direct token | narrow API automation that stays inside one org or one scoped permission set | `grafana-util status overview live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format yaml` |
 
 Environment variables can supply the same auth without repeating sensitive values on every command:
 

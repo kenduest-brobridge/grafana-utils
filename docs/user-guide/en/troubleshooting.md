@@ -118,8 +118,14 @@ This is one of the most common operator mistakes.
 
 | Term | Definition |
 | :--- | :--- |
-| **Surface** | A high-level interface category such as `Status`, `Overview`, or `Change` |
-| **Lane** | An isolated data path for assets such as `raw/`, `prompt/`, or `provisioning/` |
+| **Live** | The CLI is reading the Grafana server that is running right now. Start here for connectivity checks. |
+| **Staged** | Local files or a prepared change package that has not been applied to Grafana yet. |
+| **Overview** | A human-readable summary that helps you decide where to drill in next. Use `status overview live` for live Grafana. |
+| **Workspace** | A local package of inputs that should be scanned, tested, and previewed before apply. |
+| **Governance** | Policy or rule checks used to catch risk before promotion or apply; it is not the first-run path. |
+| **Promotion** | Moving reviewed assets from one environment or handoff package toward another target environment. |
+| **Surface** | A high-level interface category such as `status`, `dashboard`, `workspace`, or `access`. |
+| **Lane** | An isolated data path for assets such as `raw/`, `prompt/`, or `provisioning/`. |
 | **Contract** | A machine-readable JSON document that defines a readiness or compatibility expectation |
 | **Masked Recovery** | Exporting secrets in masked form, then re-injecting them during import/replay |
 | **Desired State** | The goal configuration stored in Git that the CLI compares against live Grafana |

@@ -18,8 +18,8 @@ use crate::alert::{
     AlertNewResourceArgs, AlertPlanArgs, AlertPreviewRouteArgs, AlertSetRouteArgs,
 };
 pub use crate::cli_help::{
-    maybe_render_unified_help_from_os_args, render_unified_help_full_text,
-    render_unified_help_text, render_unified_version_text,
+    legacy_command_error_hint, maybe_render_unified_help_from_os_args,
+    render_unified_help_full_text, render_unified_help_text, render_unified_version_text,
 };
 use crate::cli_help::{
     UNIFIED_ACCESS_HELP_TEXT, UNIFIED_ALERT_HELP_TEXT, UNIFIED_DATASOURCE_HELP_TEXT,

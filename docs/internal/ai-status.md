@@ -8,6 +8,13 @@ Current AI-maintained status only.
 - Keep this file short and current. Additive historical detail belongs in `docs/internal/archive/`.
 - Detailed 2026-03-29 through 2026-03-31 entries moved to [`archive/ai-status-archive-2026-03-31.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-status-archive-2026-03-31.md).
 
+## 2026-04-11 - Stabilize beginner onboarding around status live
+- State: Done
+- Scope: `rust/src/{bin/grafana-util.rs,cli_help_examples.rs,cli_rust_tests.rs}`, `rust/src/dashboard/help.rs`, `scripts/check_ai_workflow.py`, `README*.md`, `docs/landing/*`, `docs/user-guide/{en,zh-TW}/*`, `docs/commands/{en,zh-TW}/*`, generated docs as needed
+- Baseline: actual root help starts with profile/staged overview examples instead of the shortest first-run path, some source docs still show `status overview --url` without the required `live` subcommand, and `grafana-util dashboard live --help` can panic through the dashboard-specific help hook.
+- Current Update: aligned root help around `First 3 commands`, added current-surface hints for removed roots, fixed the dashboard help hook so removed dashboard groups do not panic, added onboarding drift checks, and tightened README/handbook/command-index source docs in English and zh-TW. Regenerated man/html docs from source Markdown.
+- Result: first-run guidance now starts with `--version`, `status live`, and `config profile add`; live overview examples use `status overview live`; legacy roots such as `observe`, top-level `overview`, `change`, `advanced dashboard`, and `dashboard live` now point operators to current commands instead of leaving generic parser errors or panics.
+
 ## 2026-04-11 - Rename observe/change to status/workspace and flatten operator workflow language
 - State: Done
 - Scope: `rust/src/{cli.rs,cli_help.rs,cli_help_examples.rs,profile_cli_help.rs,project_status_command.rs,overview.rs}`, `rust/src/sync/*`, `docs/commands/{en,zh-TW}/*`, `docs/user-guide/{en,zh-TW}/*`, `schemas/{manifests,help}/*`, generated `docs/man/*` and `docs/html/*`

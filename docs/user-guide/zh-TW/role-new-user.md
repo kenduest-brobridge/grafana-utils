@@ -1,4 +1,4 @@
-# 👤 新手快速入門
+# 第一次執行 / 新手路線
 
 這一頁是給第一次接觸 `grafana-util` 的人。目標不是一開始就背完所有指令，而是先把連線、驗證方式、profile 與唯讀檢查流程搞清楚。
 
@@ -120,7 +120,7 @@ grafana-util status live --url http://localhost:3000 --basic-user admin --prompt
 
 ```bash
 # 用途：如果你手邊已有範圍明確的 token，也可以直接做同一類唯讀檢查。
-grafana-util status overview --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format json
+grafana-util status overview live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format json
 ```
 
 如果你的 shell 已經有環境變數，也可以不先建 profile，直接這樣跑：

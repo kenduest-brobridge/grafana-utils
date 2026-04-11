@@ -28,6 +28,18 @@
 
 如果舊筆記提到已移除的 root，請直接改用目前的 task name：`status ...`、`workspace ...` 與 `config profile ...`。
 
+## 我該用哪個指令？
+
+| 需求 | 先從這裡開始 |
+| :--- | :--- |
+| 確認 Grafana 連得到 | `grafana-util status live` |
+| 用人的角度看 live 總覽 | `grafana-util status overview live` |
+| 儲存連線預設值 | `grafana-util config profile` |
+| 匯出備份 | `grafana-util export dashboard` / `export alert` / `export datasource` |
+| 審查本地變更包 | `grafana-util workspace scan`，再跑 `workspace preview` |
+| 深入檢查 dashboard | `grafana-util dashboard summary` / `dashboard diff` |
+| 管理 user、team、org 或 service account | `grafana-util access ...` |
+
 ## 常用工作
 
 - [workspace](./workspace.md)

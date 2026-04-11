@@ -56,57 +56,63 @@ pub(crate) fn paint_support(text: &str) -> String {
 pub(crate) const HELP_FULL_HINT: &str =
     "Extended Help:\n  --help-full\n          Print help with extended examples\n";
 
-pub(crate) const UNIFIED_HELP_TEXT: &str = help_block!(
-    "Examples:",
-    (
-        "[Config]",
-        "Create one repo-local profile so later commands stay short:",
-        "grafana-util config profile add prod --url https://grafana.example.com --basic-user admin --prompt-password --store-secret encrypted-file"
+pub(crate) const UNIFIED_HELP_TEXT: &str = concat!(
+    help_block!(
+        "First 3 commands:",
+        (
+            "[Version]",
+            "Confirm the binary is installed and on PATH:",
+            "grafana-util --version"
+        ),
+        (
+            "[Status]",
+            "Run one read-only live check before any mutation workflow:",
+            "grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml"
+        ),
+        (
+            "[Profile]",
+            "Save the same connection for repeatable day-to-day commands:",
+            "grafana-util config profile add dev --url http://localhost:3000 --basic-user admin --prompt-password"
+        ),
     ),
+    "\n\n",
+    help_block!(
+    "Next common commands:",
     (
-        "[Status]",
-        "Start with a read-only overview of staged or live state:",
-        "grafana-util status overview --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-format text"
+        "[Overview]",
+        "Open the human-oriented live overview after connectivity works:",
+        "grafana-util status overview live --profile dev --output-format interactive"
     ),
     (
         "[Export]",
-        "Export dashboards through the new task-first backup surface:",
-        "grafana-util export dashboard --url http://localhost:3000 --basic-user admin --basic-password admin --output-dir ./dashboards --overwrite"
-    ),
-    (
-        "[Export]",
-        "Export alerting resources without opening a deeper tree first:",
-        r#"grafana-util export alert --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-dir ./alerts --overwrite"#
+        "Back up dashboards through the task-first export surface:",
+        "grafana-util export dashboard --profile dev --output-dir ./dashboards --overwrite"
     ),
     (
         "[Workspace]",
         "Review a local workspace before touching Grafana:",
-        r#"grafana-util workspace preview ./grafana-oac-repo --fetch-live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN""#
+        "grafana-util workspace preview ./grafana-oac-repo --fetch-live --profile dev"
     ),
     (
         "[Dashboard]",
-        "Work with dashboards through the flat dashboard surface:",
-        "grafana-util dashboard export --url http://localhost:3000 --basic-user admin --basic-password admin --output-dir ./dashboards --overwrite"
-    ),
-    (
-        "[Dashboard]",
-        "Summarize dashboard dependencies and governance inputs before review:",
-        "grafana-util dashboard summary --input-dir ./dashboards/raw --input-format raw --output-format governance"
+        "Inspect local dashboard exports through the flat dashboard surface:",
+        "grafana-util dashboard summary --input-dir ./dashboards/raw --input-format raw --output-format tree-table"
     ),
     (
         "[Alert]",
-        "Export alerting resources through the flat alert surface:",
-        r#"grafana-util alert export --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-dir ./alerts --overwrite"#
+        "Export alerting resources through the task-first export surface:",
+        "grafana-util export alert --profile dev --output-dir ./alerts --overwrite"
     ),
     (
         "[Datasource]",
-        "Import datasource inventory from a local bundle or export tree:",
-        r#"grafana-util datasource import --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --input-dir ./datasources --dry-run --json"#
+        "List datasource inventory from a local bundle:",
+        "grafana-util datasource list --input-dir ./datasources --table"
     ),
     (
         "[Access]",
-        "Inspect access users without leaving the unified root:",
-        r#"grafana-util access user list --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --json"#
+        "Inspect exported access users without calling Grafana:",
+        "grafana-util access user list --input-dir ./access-users --json"
+    )
     )
 );
 
@@ -396,7 +402,12 @@ pub(crate) fn colorize_help_examples(text: &str) -> String {
         let trimmed = line.trim_start();
         let indent = &line[..line.len() - trimmed.len()];
         let colored = match trimmed {
-            "Examples:" | "Extended Examples:" | "Notes:" | "More help:" => paint_section(trimmed),
+            "First 3 commands:"
+            | "Next common commands:"
+            | "Examples:"
+            | "Extended Examples:"
+            | "Notes:"
+            | "More help:" => paint_section(trimmed),
             _ if trimmed.starts_with("grafana-util ") => {
                 format!("{indent}{}", paint_command(trimmed))
             }
@@ -512,5 +523,9 @@ pub(crate) fn colorize_dashboard_subcommand_help(text: &str) -> String {
 }
 
 pub(crate) fn inject_help_full_hint(help: String) -> String {
+    let help = help.replace(
+        "\nFirst 3 commands:\n",
+        &format!("\n{HELP_FULL_HINT}\nFirst 3 commands:\n"),
+    );
     help.replace("\nExamples:\n", &format!("\n{HELP_FULL_HINT}\nExamples:\n"))
 }

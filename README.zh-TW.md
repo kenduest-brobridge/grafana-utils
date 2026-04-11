@@ -33,7 +33,7 @@
 
 | 功能項 | 傳統作法 | 使用 `grafana-util` |
 | :--- | :--- | :--- |
-| **環境盤點** | 需手動切換 UI 或自行組合 API 呼叫以暸解現況。 | 使用 `status live` 或 `status overview` 快速取得環境統一視圖。 |
+| **環境盤點** | 需手動切換 UI 或自行組合 API 呼叫以暸解現況。 | 先用 `status live` 確認連線，再用 `status overview live` 看整體總覽。 |
 | **儀表板路徑** | 難以區分 API 直接匯入與 UI 匯入所需的格式。 | 提供平面化的 `dashboard` 路徑，並搭配 `raw`、`prompt` 與 `provisioning` 格式。 |
 | **資料來源** | 匯出後的憑證資訊不容易安全保存，也不容易直接對應檔案配置。 | 匯出時先遮蔽敏感資訊，匯入時再補回認證，並保留和檔案配置對應的內容。 |
 | **審查機制** | 直接套用變更，缺乏中間審查層。 | 使用 `workspace scan`、`test` 與 `preview`，在變動正式伺服器前先完成審查。 |
@@ -43,21 +43,27 @@
 
 ## 快速上手
 
-### 安裝
+### 前 3 個指令
 
 ```bash
-# 使用一鍵安裝腳本
-curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh
-```
-
-```bash
-# 確認安裝版本
+# 確認執行檔已安裝。
 grafana-util --version
 ```
 
 ```bash
-# 檢視目前 Grafana 狀態
-grafana-util status live --url http://my-grafana:3000 --basic-user admin --prompt-password --output-format interactive
+# 先跑一個唯讀 live 檢查。
+grafana-util status live --url http://my-grafana:3000 --basic-user admin --prompt-password --output-format yaml
+```
+
+```bash
+# 把同一組連線存成可重複使用的 profile。
+grafana-util config profile add dev --url http://my-grafana:3000 --basic-user admin --prompt-password
+```
+
+如果 `grafana-util --version` 還不能執行，請先安裝：
+
+```bash
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh
 ```
 
 ### 安裝選項
@@ -136,8 +142,8 @@ grafana-util status live \
 
 ### 2. 匯出儀表板以供審查
 ```bash
-# 跨組織匯出所有儀表板，建立本地審查目錄樹。
-grafana-util export dashboard --all-orgs --output-dir ./backup --progress
+# 匯出目前 profile 可見的 dashboard，建立本地審查目錄樹。
+grafana-util export dashboard --profile prod --output-dir ./backup --overwrite
 ```
 
 ### 3. 用機器可讀格式比對本地 dashboard artifact
@@ -211,10 +217,23 @@ grafana-util datasource import --input-dir ./datasources --prompt-password
 依需求進入：
 
 *   **開始使用**：[docs/user-guide/zh-TW/getting-started.md](./docs/user-guide/zh-TW/getting-started.md)
+*   **第一次執行 / 新手路線**：[docs/user-guide/zh-TW/role-new-user.md](./docs/user-guide/zh-TW/role-new-user.md)
 *   **完整手冊**：[docs/user-guide/zh-TW/index.md](./docs/user-guide/zh-TW/index.md)
 *   **指令詳細說明**：[docs/commands/zh-TW/index.md](./docs/commands/zh-TW/index.md)
 *   **疑難排解**：[docs/user-guide/zh-TW/troubleshooting.md](./docs/user-guide/zh-TW/troubleshooting.md)
 *   **Man Page**：[docs/man/grafana-util.1](./docs/man/grafana-util.1)
+
+我該用哪個指令？
+
+| 需求 | 先從這裡開始 |
+| :--- | :--- |
+| 確認 Grafana 連得到 | `grafana-util status live` |
+| 用人的角度看 live 總覽 | `grafana-util status overview live` |
+| 儲存連線預設值 | `grafana-util config profile` |
+| 匯出備份 | `grafana-util export dashboard` / `export alert` / `export datasource` |
+| 審查本地變更包 | `grafana-util workspace scan`，再跑 `workspace preview` |
+| 深入檢查 dashboard | `grafana-util dashboard summary` / `dashboard diff` |
+| 管理 user、team、org 或 service account | `grafana-util access ...` |
 
 依角色進入：
 

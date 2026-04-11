@@ -106,7 +106,7 @@ Profile 這套流程是以「專案本地設定」為中心。`grafana-util conf
 | :--- | :--- | :--- |
 | 直接基本驗證 (Basic Auth) | 本機引導、緊急接手 (break-glass)、管理員作業 | `grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml` |
 | `config profile` | 連線已確認後的日常維運、CI、可重複執行工作流 | `grafana-util status live --profile prod --output-format yaml` |
-| 直接 Token 驗證 | 單一組織或權限受限的 API 自動化 | `grafana-util status overview --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format yaml` |
+| 直接 Token 驗證 | 單一組織或權限受限的 API 自動化 | `grafana-util status overview live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format yaml` |
 
 環境變數也可以直接提供同樣的驗證資訊：
 

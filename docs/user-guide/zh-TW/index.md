@@ -66,13 +66,27 @@ curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main
 grafana-util --version
 ```
 
-### 3. 執行第一次完整巡檢
+### 3. 執行第一次 live 總覽
 ```bash
 # 產生整個 Grafana Estate 的高階健康度與資產盤點報告
-grafana-util status overview --url http://localhost:3000 --basic-user admin --prompt-password --output-format interactive
+grafana-util status overview live --url http://localhost:3000 --basic-user admin --prompt-password --output-format interactive
 ```
 
 **為什麼這很重要？** 30 秒內，你就能先確認連線正常，快速看 Dashboard、Alert 和 data source 的狀態，也能先看出哪些設定可能已經失效。
+
+---
+
+## 我該用哪個指令？
+
+| 需求 | 先從這裡開始 |
+| :--- | :--- |
+| 確認 Grafana 連得到 | `grafana-util status live` |
+| 用人的角度看 live 總覽 | `grafana-util status overview live` |
+| 儲存連線預設值 | `grafana-util config profile` |
+| 匯出備份 | `grafana-util export dashboard` / `export alert` / `export datasource` |
+| 審查本地變更包 | `grafana-util workspace scan`，再跑 `workspace preview` |
+| 深入檢查 dashboard | `grafana-util dashboard summary` / `dashboard diff` |
+| 管理 user、team、org 或 service account | `grafana-util access ...` |
 
 ---
 

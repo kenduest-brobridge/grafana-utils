@@ -28,6 +28,18 @@ The public first-run CLI is organized around a small task-first surface:
 
 If older notes mention removed roots, use the current task names instead: `status ...`, `workspace ...`, and `config profile ...`.
 
+## Which command should I use?
+
+| Need | Start with |
+| :--- | :--- |
+| Check that Grafana is reachable | `grafana-util status live` |
+| See the live estate as a human | `grafana-util status overview live` |
+| Save connection defaults | `grafana-util config profile` |
+| Export a backup | `grafana-util export dashboard` / `export alert` / `export datasource` |
+| Review a local change package | `grafana-util workspace scan` then `workspace preview` |
+| Inspect dashboards deeply | `grafana-util dashboard summary` / `dashboard diff` |
+| Manage users, teams, orgs, or service accounts | `grafana-util access ...` |
+
 ## Common Tasks
 
 - [workspace](./workspace.md)

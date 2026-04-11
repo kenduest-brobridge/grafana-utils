@@ -114,8 +114,14 @@ grafana-util dashboard list -v
 
 | 術語 | 定義 |
 | :--- | :--- |
-| **Surface** | 高階操作面分類，例如 `Status`、`Overview`、`Change` |
-| **Lane** | 資料路徑，例如 `raw/`、`prompt/`、`provisioning/` |
+| **Live** | 直接讀目前正在執行的 Grafana；第一次確認連線時先從這裡開始。 |
+| **Staged** | 本地已準備好、但還沒套用到 Grafana 的檔案或變更包。 |
+| **Overview** | 給人快速判斷下一步的總覽；讀 live Grafana 時用 `status overview live`。 |
+| **Workspace** | 一包本地輸入，應該先 scan、test、preview，再決定是否 apply。 |
+| **Governance** | 用政策或規則先抓風險；不是第一次使用時的起手式。 |
+| **Promotion** | 把已審查的資產從一個環境或交付包推往另一個目標環境。 |
+| **Surface** | 高階操作面分類，例如 `status`、`dashboard`、`workspace`、`access`。 |
+| **Lane** | 資料路徑，例如 `raw/`、`prompt/`、`provisioning/`。 |
 | **Contract** | 用來定義 readiness 或 compatibility 的結構化 JSON 文件 |
 | **Masked Recovery** | 匯出時先把 secrets 遮蔽，匯入或 replay 時再補回 |
 | **Desired State** | 儲存在 Git 中、CLI 拿來對照 live Grafana 的目標設定 |

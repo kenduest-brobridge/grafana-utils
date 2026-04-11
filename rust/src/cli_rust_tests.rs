@@ -1,6 +1,6 @@
 use super::{
-    dispatch_with_handlers, maybe_render_unified_help_from_os_args, parse_cli_from,
-    render_unified_help_text, CliArgs, UnifiedCommand,
+    dispatch_with_handlers, legacy_command_error_hint, maybe_render_unified_help_from_os_args,
+    parse_cli_from, render_unified_help_text, CliArgs, UnifiedCommand,
 };
 use crate::alert::AlertGroupCommand;
 use crate::cli_help_examples::{paint_section, paint_support, HELP_PALETTE};
@@ -65,13 +65,21 @@ fn has_examples_section(help: &str) -> bool {
 #[test]
 fn unified_help_mentions_common_surfaces_without_legacy_dashboard_paths() {
     let help = render_unified_help_text(false);
+    assert!(help.contains("First 3 commands:"));
+    assert!(help.contains("grafana-util --version"));
+    assert!(help.contains("grafana-util status live --url http://localhost:3000"));
     assert!(help.contains("config profile add"));
-    assert!(help.contains("status overview"));
+    assert!(help.contains("status overview live"));
     assert!(help.contains("export dashboard"));
     assert!(help.contains("export alert"));
     assert!(help.contains("workspace preview"));
-    assert!(help.contains("dashboard export"));
     assert!(help.contains("dashboard summary"));
+    assert!(help.contains("dashboard summary"));
+    assert!(!help.contains("status overview --dashboard-export-dir"));
+    assert!(!help.contains("--all-orgs"));
+    assert!(!help.contains("--mapping-file"));
+    assert!(!help.contains("governance-json"));
+    assert!(!help.contains("output-format governance"));
     assert!(!help.contains("advanced dashboard"));
     assert!(!help.contains("observe"));
     assert!(!help.contains("change"));
@@ -81,6 +89,41 @@ fn unified_help_mentions_common_surfaces_without_legacy_dashboard_paths() {
     assert!(!help.contains("dashboard analyze"));
     assert!(!help.contains("dashboard capture"));
     assert!(!help.contains("alert migrate export"));
+}
+
+#[test]
+fn legacy_command_error_hints_point_to_current_surfaces() {
+    let observe = ["grafana-util", "observe", "live", "--help"]
+        .iter()
+        .map(|value| (*value).to_string())
+        .collect::<Vec<_>>();
+    assert!(legacy_command_error_hint(&observe)
+        .expect("observe hint")
+        .contains("status live"));
+
+    let overview = ["grafana-util", "overview", "live", "--help"]
+        .iter()
+        .map(|value| (*value).to_string())
+        .collect::<Vec<_>>();
+    assert!(legacy_command_error_hint(&overview)
+        .expect("overview hint")
+        .contains("status overview live"));
+
+    let change = ["grafana-util", "change", "plan", "--help"]
+        .iter()
+        .map(|value| (*value).to_string())
+        .collect::<Vec<_>>();
+    assert!(legacy_command_error_hint(&change)
+        .expect("change hint")
+        .contains("workspace"));
+
+    let dashboard_live = ["grafana-util", "dashboard", "live", "--help"]
+        .iter()
+        .map(|value| (*value).to_string())
+        .collect::<Vec<_>>();
+    assert!(legacy_command_error_hint(&dashboard_live)
+        .expect("dashboard live hint")
+        .contains("status live"));
 }
 
 #[test]
