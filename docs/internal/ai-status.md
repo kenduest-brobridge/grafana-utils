@@ -8,6 +8,13 @@ Current AI-maintained status only.
 - Keep this file short and current. Additive historical detail belongs in `docs/internal/archive/`.
 - Detailed 2026-03-29 through 2026-03-31 entries moved to [`archive/ai-status-archive-2026-03-31.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-status-archive-2026-03-31.md).
 
+## 2026-04-11 - Rename observe/change to status/workspace and flatten operator workflow language
+- State: Done
+- Scope: `rust/src/{cli.rs,cli_help.rs,cli_help_examples.rs,profile_cli_help.rs,project_status_command.rs,overview.rs}`, `rust/src/sync/*`, `docs/commands/{en,zh-TW}/*`, `docs/user-guide/{en,zh-TW}/*`, `schemas/{manifests,help}/*`, generated `docs/man/*` and `docs/html/*`
+- Baseline: the previous regrouping introduced `observe` and `change`, but user feedback showed those names were still too abstract. `change` did not explain the object being worked on, `observe` felt like jargon, and docs/generated artifacts still carried migration-era paths.
+- Current Update: moved the Rust-first public surface to `status` for read-only live/staged state and `workspace` for scan/test/preview/package/apply work. The workspace lane now uses operator verbs (`scan`, `test`, `preview`, `apply`, `package`, `ci`) and the CI subcommands use clearer names such as `input-test`, `package-test`, `promote-test`, and `alert-readiness`. Source docs, schema help, man/html generation, and generator tests were aligned, while stale generated `observe`/`change` artifacts were removed.
+- Result: the maintained public CLI now exposes task-first names that describe both intent and object, and the source docs plus generated docs no longer teach the removed `observe`/`change` roots.
+
 ## 2026-04-10 - Regroup the root CLI around observe/config and task-first dashboard/alert lanes
 - State: In Progress
 - Scope: `rust/src/{cli.rs,cli_help.rs,cli_help_examples.rs,cli_rust_tests.rs,alert.rs}`, `rust/src/access/{cli_defs.rs,access_user_cli.rs,access_service_account_cli.rs}`, `docs/commands/{en,zh-TW}/{index,dashboard,alert}.md`, `docs/internal/{ai-status.md,ai-changes.md}`

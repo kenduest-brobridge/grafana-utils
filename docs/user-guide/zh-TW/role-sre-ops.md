@@ -10,8 +10,8 @@
 
 ## 主要目標
 
-- 先用 `observe live` 和 `observe overview live` 確認現況
-- 先在 `change inspect`、`change check`、`change preview` 擋掉不合理的變更包
+- 先用 `status live` 和 `status overview live` 確認現況
+- 先在 `workspace scan`、`workspace test`、`workspace preview` 擋掉不合理的變更包
 - 先用 `--dry-run` 看匯入結果，再決定要不要真的套用
 - 需要時才用 direct Basic auth 做 break-glass
 
@@ -50,27 +50,27 @@
 
 ```bash
 # 用途：建議先跑的 5 個指令。
-grafana-util observe live --profile prod --output-format table
+grafana-util status live --profile prod --output-format table
 ```
 
 ```bash
 # 用途：建議先跑的 5 個指令。
-grafana-util observe overview live --profile prod --output-format interactive
+grafana-util status overview live --profile prod --output-format interactive
 ```
 
 ```bash
 # 用途：建議先跑的 5 個指令。
-grafana-util change inspect --workspace .
+grafana-util workspace scan .
 ```
 
 ```bash
 # 用途：建議先跑的 5 個指令。
-grafana-util change check --workspace . --fetch-live --output-format json
+grafana-util workspace test . --fetch-live --output-format json
 ```
 
 ```bash
 # 用途：建議先跑的 5 個指令。
-grafana-util change preview --workspace . --fetch-live --output-format json
+grafana-util workspace preview . --fetch-live --output-format json
 ```
 
 ```bash
@@ -87,7 +87,7 @@ grafana-util access org list --table
 
 ## 接下來先讀哪些章節
 
-- [變更與狀態](change-overview-status.md)
+- [Workspace 審查與狀態](status-workspace.md)
 - [Dashboard 管理](dashboard.md)
 - [Data source 管理](datasource.md)
 - [告警治理](alert.md)
@@ -98,7 +98,7 @@ grafana-util access org list --table
 
 - [config profile](../../commands/zh-TW/config.md)
 - [指令詳細說明總索引](../../commands/zh-TW/index.md)
-- [change](../../commands/zh-TW/change.md)
+- [workspace](../../commands/zh-TW/workspace.md)
 - [dashboard](../../commands/zh-TW/dashboard.md)
 - [alert](../../commands/zh-TW/alert.md)
 - [access](../../commands/zh-TW/access.md)
@@ -106,7 +106,7 @@ grafana-util access org list --table
 
 ## 常見錯誤與限制
 
-- 不要把 `observe live` 當成部署前的唯一檢查；`change check` 和 staged 驗證還是要跑。
+- 不要把 `status live` 當成部署前的唯一檢查；`workspace test` 和 staged 驗證還是要跑。
 - 不要在匯入前略過 `--dry-run`，尤其是會覆寫既有資產時。
 - 不要假設 token 看得到所有 org，`--all-orgs` 與管理操作常會受 scope 限制。
 - 不要把 `tokens.json` 當一般輸出檔；它包含敏感資訊。
@@ -116,8 +116,8 @@ grafana-util access org list --table
 
 - 你知道目前的 credential 到底能不能看見要處理的 org 或管理範圍
 - 你能分清楚即時讀取、staged review 與真正 apply 是三種不同流程
-- 重大變更前會先跑 preflight 或 dry-run
-- 問題一旦從 observe 轉進 dashboard、alert 或 access，你知道要切到哪一頁
+- 重大變更前會先跑 input test 或 dry-run
+- 問題一旦從 status 轉進 dashboard、alert 或 access，你知道要切到哪一頁
 
 ## 什麼時候切到更深的文件
 
@@ -129,6 +129,6 @@ grafana-util access org list --table
 ## 下一步
 
 - [回到手冊首頁](index.md)
-- [先看變更與狀態](change-overview-status.md)
+- [先看 Workspace 審查與狀態](status-workspace.md)
 - [再看 Dashboard 管理](dashboard.md)
 - [需要指令細節時查看指令詳細說明總索引](../../commands/zh-TW/index.md)

@@ -17,7 +17,7 @@ This page is especially useful when you need to decide whether the next step is 
 - **Move**: export, import, and diff paths when you are carrying datasource state between environments.
 - **Review Before Mutate**: add, modify, and delete flows before a live datasource changes.
 
-Choose this page when the work might turn into inventory, migration, or a reviewed datasource change and you want to decide the lane first.
+Choose this page when the work might turn into inventory, migration, or a reviewed datasource workspace and you want to decide the lane first.
 
 ## Before / After
 
@@ -43,7 +43,7 @@ Choose this page when the work might turn into inventory, migration, or a review
 - `--color`: control JSON color output for the namespace.
 
 ## Auth notes
-- Prefer `--profile` for repeatable datasource inventory and change flows.
+- Prefer `--profile` for repeatable datasource inventory and workspace flows.
 - Use direct Basic auth for org-spanning or admin-level mutation work.
 - Token auth is acceptable for scoped reads and diffs when the token can see the target org.
 

@@ -1,7 +1,7 @@
-Observe staged JSON schema
+Status staged JSON schema
 
 Command:
-  grafana-util observe staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output-format json
+  grafana-util status staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output-format json
 
 kind:
   grafana-util-project-status
@@ -17,5 +17,5 @@ Top-level keys:
 - nextActions
 
 Notes:
-- This is the same shared contract used by live observe.
+- This is the same shared contract used by live status.
 - Branch on kind plus schemaVersion before reading nested fields.

@@ -521,7 +521,7 @@ pub struct OrgDiffArgs {
     pub diff_dir: PathBuf,
 }
 
-/// Enum definition for OrgCommand.
+/// Organization inventory and lifecycle workflows.
 #[derive(Debug, Clone, Subcommand)]
 pub enum OrgCommand {
     #[command(after_help = ACCESS_ORG_LIST_HELP_TEXT)]
@@ -540,7 +540,7 @@ pub enum OrgCommand {
     Delete(OrgDeleteArgs),
 }
 
-/// Enum definition for TeamCommand.
+/// Team inventory and membership workflows.
 #[derive(Debug, Clone, Subcommand)]
 pub enum TeamCommand {
     #[command(after_help = ACCESS_TEAM_LIST_HELP_TEXT)]
@@ -561,7 +561,7 @@ pub enum TeamCommand {
     Delete(TeamDeleteArgs),
 }
 
-/// Enum definition for AccessCommand.
+/// User, organization, team, and service-account workflows.
 #[derive(Debug, Clone, Subcommand)]
 pub enum AccessCommand {
     #[command(after_help = ACCESS_USER_HELP_TEXT)]

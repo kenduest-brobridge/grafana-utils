@@ -1,44 +1,44 @@
-//! Change CLI parser/help test suite.
-//! Verifies task-first routing and advanced workflow help contracts.
+//! Workspace CLI parser/help test suite.
+//! Verifies task-first routing and CI workflow help contracts.
 use super::{
     SyncAdvancedCommand, SyncCliArgs, SyncGroupCommand, SyncOutputFormat, DEFAULT_REVIEW_TOKEN,
 };
 use clap::{CommandFactory, Parser};
 use std::path::Path;
 
-fn render_change_subcommand_help(name: &str) -> String {
+fn render_workspace_subcommand_help(name: &str) -> String {
     let mut command = SyncCliArgs::command();
     let subcommand = command
         .find_subcommand_mut(name)
-        .unwrap_or_else(|| panic!("missing change subcommand help for {name}"));
+        .unwrap_or_else(|| panic!("missing workspace subcommand help for {name}"));
     let mut output = Vec::new();
     subcommand.write_long_help(&mut output).unwrap();
     String::from_utf8(output).unwrap()
 }
 
-fn render_change_advanced_subcommand_help(name: &str) -> String {
+fn render_workspace_ci_subcommand_help(name: &str) -> String {
     let mut command = SyncCliArgs::command();
-    let advanced = command
-        .find_subcommand_mut("advanced")
-        .expect("missing change advanced help");
-    let subcommand = advanced
+    let ci_command = command
+        .find_subcommand_mut("ci")
+        .expect("missing workspace ci help");
+    let subcommand = ci_command
         .find_subcommand_mut(name)
-        .unwrap_or_else(|| panic!("missing change advanced subcommand help for {name}"));
+        .unwrap_or_else(|| panic!("missing workspace ci subcommand help for {name}"));
     let mut output = Vec::new();
     subcommand.write_long_help(&mut output).unwrap();
     String::from_utf8(output).unwrap()
 }
 
 #[test]
-fn change_inspect_help_includes_examples_and_output_heading() {
-    let help = render_change_subcommand_help("inspect");
+fn workspace_scan_help_includes_examples_and_output_heading() {
+    let help = render_workspace_subcommand_help("scan");
     assert!(help.contains("Examples:"));
     assert!(help.contains("Output Options"));
 }
 
 #[test]
-fn change_check_help_includes_examples_and_live_heading() {
-    let help = render_change_subcommand_help("check");
+fn workspace_test_help_includes_examples_and_live_heading() {
+    let help = render_workspace_subcommand_help("test");
     assert!(help.contains("Examples:"));
     assert!(help.contains("Input Options"));
     assert!(help.contains("Live Options"));
@@ -46,8 +46,8 @@ fn change_check_help_includes_examples_and_live_heading() {
 }
 
 #[test]
-fn change_preview_help_includes_examples_and_live_heading() {
-    let help = render_change_subcommand_help("preview");
+fn workspace_preview_help_includes_examples_and_live_heading() {
+    let help = render_workspace_subcommand_help("preview");
     assert!(help.contains("Examples:"));
     assert!(help.contains("Input Options"));
     assert!(help.contains("Live Options"));
@@ -55,8 +55,8 @@ fn change_preview_help_includes_examples_and_live_heading() {
 }
 
 #[test]
-fn change_apply_help_includes_examples_and_approval_flags() {
-    let help = render_change_subcommand_help("apply");
+fn workspace_apply_help_includes_examples_and_approval_flags() {
+    let help = render_workspace_subcommand_help("apply");
     assert!(help.contains("Examples:"));
     assert!(help.contains("Approval Options"));
     assert!(help.contains("Live Options"));
@@ -68,16 +68,18 @@ fn change_apply_help_includes_examples_and_approval_flags() {
 }
 
 #[test]
-fn change_advanced_help_mentions_lower_level_workflows() {
-    let help = render_change_subcommand_help("advanced");
-    assert!(help.contains("change advanced summary"));
-    assert!(help.contains("change advanced review"));
-    assert!(help.contains("change advanced bundle-preflight"));
+fn workspace_ci_help_mentions_lower_level_workflows() {
+    let help = render_workspace_subcommand_help("ci");
+    assert!(help.contains("summary"));
+    assert!(help.contains("mark-reviewed"));
+    assert!(help.contains("input-test"));
+    assert!(help.contains("package-test"));
+    assert!(help.contains("promote-test"));
 }
 
 #[test]
-fn change_advanced_audit_help_mentions_lock_and_drift_controls() {
-    let help = render_change_advanced_subcommand_help("audit");
+fn workspace_ci_audit_help_mentions_lock_and_drift_controls() {
+    let help = render_workspace_ci_subcommand_help("audit");
     assert!(help.contains("--managed-file"));
     assert!(help.contains("--lock-file"));
     assert!(help.contains("--write-lock"));
@@ -86,14 +88,14 @@ fn change_advanced_audit_help_mentions_lock_and_drift_controls() {
 }
 
 #[test]
-fn change_advanced_review_help_mentions_interactive_review() {
-    let help = render_change_advanced_subcommand_help("review");
+fn workspace_ci_review_help_mentions_interactive_review() {
+    let help = render_workspace_ci_subcommand_help("mark-reviewed");
     assert!(help.contains("--interactive"));
 }
 
 #[test]
-fn change_advanced_bundle_preflight_help_includes_examples_and_grouped_headings() {
-    let help = render_change_advanced_subcommand_help("bundle-preflight");
+fn workspace_ci_package_test_help_includes_examples_and_grouped_headings() {
+    let help = render_workspace_ci_subcommand_help("package-test");
     assert!(help.contains("Examples:"));
     assert!(help.contains("Input Options"));
     assert!(help.contains("Live Options"));
@@ -103,8 +105,8 @@ fn change_advanced_bundle_preflight_help_includes_examples_and_grouped_headings(
 }
 
 #[test]
-fn change_advanced_promotion_preflight_help_includes_mapping_input() {
-    let help = render_change_advanced_subcommand_help("promotion-preflight");
+fn workspace_ci_promote_test_help_includes_mapping_input() {
+    let help = render_workspace_ci_subcommand_help("promote-test");
     assert!(help.contains("Examples:"));
     assert!(help.contains("Input Options"));
     assert!(help.contains("staged review handoff"));
@@ -114,30 +116,28 @@ fn change_advanced_promotion_preflight_help_includes_mapping_input() {
 }
 
 #[test]
-fn change_advanced_bundle_help_includes_examples_and_output_heading() {
-    let help = render_change_advanced_subcommand_help("bundle");
+fn workspace_package_help_includes_examples_and_output_heading() {
+    let help = render_workspace_subcommand_help("package");
     assert!(help.contains("Examples:"));
-    assert!(help.contains("--workspace"));
+    assert!(help.contains("grafana-util workspace package ./grafana-oac-repo"));
     assert!(help.contains("--dashboard-export-dir"));
     assert!(help.contains("--dashboard-provisioning-dir"));
     assert!(help.contains("--output-file"));
     assert!(help.contains("--also-stdout"));
-    assert!(help.contains("Mixed workspace bundle handoff"));
-    assert!(help.contains("grafana-util change bundle --workspace ./grafana-oac-repo"));
-    assert!(help.contains("sync-source-bundle.json"));
+    assert!(help.contains("Mixed workspace package handoff"));
+    assert!(help.contains("workspace-package.json"));
 }
 
 #[test]
-fn change_bundle_help_includes_workspace_example() {
-    let help = render_change_subcommand_help("bundle");
+fn workspace_package_help_includes_workspace_example() {
+    let help = render_workspace_subcommand_help("package");
     assert!(help.contains("Examples:"));
-    assert!(help.contains("--workspace"));
-    assert!(help.contains("grafana-util change bundle --workspace ./grafana-oac-repo"));
-    assert!(help.contains("sync-source-bundle.json"));
+    assert!(help.contains("grafana-util workspace package ./grafana-oac-repo"));
+    assert!(help.contains("workspace-package.json"));
 }
 
 #[test]
-fn change_root_help_includes_task_first_examples() {
+fn workspace_root_help_includes_task_first_examples() {
     let mut command = SyncCliArgs::command();
     let mut output = Vec::new();
     command.write_long_help(&mut output).unwrap();
@@ -147,26 +147,25 @@ fn change_root_help_includes_task_first_examples() {
     assert!(help.contains("source provenance"));
     assert!(help.contains("./grafana-oac-repo/"));
     assert!(help.contains("dashboards/git-sync/provisioning"));
-    assert!(help.contains("grafana-util change inspect --workspace ./grafana-oac-repo"));
-    assert!(help.contains("grafana-util change check --workspace ./grafana-oac-repo"));
-    assert!(help.contains("grafana-util change preview --workspace ./grafana-oac-repo"));
+    assert!(help.contains("grafana-util workspace scan ./grafana-oac-repo"));
+    assert!(help.contains("grafana-util workspace test ./grafana-oac-repo"));
+    assert!(help.contains("grafana-util workspace preview ./grafana-oac-repo"));
     assert!(help.contains("alerts/raw"));
     assert!(help.contains("datasources/provisioning"));
-    assert!(help.contains("grafana-util change inspect"));
-    assert!(help.contains("grafana-util change check"));
-    assert!(help.contains("grafana-util change preview"));
-    assert!(help.contains("grafana-util change apply"));
-    assert!(help.contains("grafana-util change bundle"));
-    assert!(help.contains("grafana-util change advanced bundle"));
-    assert!(help.contains("grafana-util change advanced bundle-preflight"));
+    assert!(help.contains("grafana-util workspace scan"));
+    assert!(help.contains("grafana-util workspace test"));
+    assert!(help.contains("grafana-util workspace preview"));
+    assert!(help.contains("grafana-util workspace apply"));
+    assert!(help.contains("grafana-util workspace package"));
+    assert!(help.contains("grafana-util workspace ci package-test"));
+    assert!(help.contains("grafana-util workspace ci promote-test"));
 }
 
 #[test]
-fn parse_change_cli_supports_bundle_workspace_command() {
+fn parse_workspace_cli_supports_package_workspace_command() {
     let args = SyncCliArgs::parse_from([
         "grafana-util",
-        "bundle",
-        "--workspace",
+        "package",
         "./grafana-oac-repo",
         "--output-file",
         "./sync-source-bundle.json",
@@ -188,10 +187,11 @@ fn parse_change_cli_supports_bundle_workspace_command() {
 }
 
 #[test]
-fn parse_change_cli_supports_inspect_command() {
+fn parse_workspace_cli_supports_scan_command() {
     let args = SyncCliArgs::parse_from([
         "grafana-util",
-        "inspect",
+        "scan",
+        "./grafana-oac-repo",
         "--dashboard-export-dir",
         "./dashboards/raw",
         "--output-format",
@@ -206,15 +206,16 @@ fn parse_change_cli_supports_inspect_command() {
             );
             assert_eq!(inner.output.output_format, SyncOutputFormat::Json);
         }
-        _ => panic!("expected inspect"),
+        _ => panic!("expected scan"),
     }
 }
 
 #[test]
-fn parse_change_cli_supports_check_command() {
+fn parse_workspace_cli_supports_test_command() {
     let args = SyncCliArgs::parse_from([
         "grafana-util",
-        "check",
+        "test",
+        "./grafana-oac-repo",
         "--source-bundle",
         "./bundle.json",
         "--target-inventory",
@@ -243,15 +244,16 @@ fn parse_change_cli_supports_check_command() {
             assert!(inner.fetch_live);
             assert_eq!(inner.output.output_format, SyncOutputFormat::Json);
         }
-        _ => panic!("expected check"),
+        _ => panic!("expected test"),
     }
 }
 
 #[test]
-fn parse_change_cli_supports_preview_command() {
+fn parse_workspace_cli_supports_preview_command() {
     let args = SyncCliArgs::parse_from([
         "grafana-util",
         "preview",
+        "./grafana-oac-repo",
         "--desired-file",
         "./desired.json",
         "--live-file",
@@ -282,10 +284,11 @@ fn parse_change_cli_supports_preview_command() {
 }
 
 #[test]
-fn parse_change_cli_supports_preview_fetch_live_mode() {
+fn parse_workspace_cli_supports_preview_fetch_live_mode() {
     let args = SyncCliArgs::parse_from([
         "grafana-util",
         "preview",
+        "./grafana-oac-repo",
         "--desired-file",
         "./desired.json",
         "--fetch-live",
@@ -313,15 +316,15 @@ fn parse_change_cli_supports_preview_fetch_live_mode() {
 }
 
 #[test]
-fn parse_change_cli_supports_apply_command() {
+fn parse_workspace_cli_supports_apply_command() {
     let args = SyncCliArgs::parse_from([
         "grafana-util",
         "apply",
         "--preview-file",
         "./plan.json",
-        "--preflight-file",
+        "--input-test-file",
         "./preflight.json",
-        "--bundle-preflight-file",
+        "--package-test-file",
         "./bundle-preflight.json",
         "--approve",
         "--output-format",
@@ -347,7 +350,7 @@ fn parse_change_cli_supports_apply_command() {
 }
 
 #[test]
-fn parse_change_cli_supports_apply_execute_live_flags() {
+fn parse_workspace_cli_supports_apply_execute_live_flags() {
     let args = SyncCliArgs::parse_from([
         "grafana-util",
         "apply",
@@ -376,11 +379,11 @@ fn parse_change_cli_supports_apply_execute_live_flags() {
 }
 
 #[test]
-fn parse_change_cli_supports_advanced_review_command() {
+fn parse_workspace_cli_supports_ci_review_command() {
     let args = SyncCliArgs::parse_from([
         "grafana-util",
-        "advanced",
-        "review",
+        "ci",
+        "mark-reviewed",
         "--plan-file",
         "./plan.json",
         "--output-format",
@@ -394,17 +397,17 @@ fn parse_change_cli_supports_advanced_review_command() {
                 assert_eq!(inner.review_token, DEFAULT_REVIEW_TOKEN);
                 assert_eq!(inner.output_format, SyncOutputFormat::Json);
             }
-            _ => panic!("expected advanced review"),
+            _ => panic!("expected workspace ci mark-reviewed"),
         },
-        _ => panic!("expected advanced"),
+        _ => panic!("expected workspace ci"),
     }
 }
 
 #[test]
-fn parse_change_cli_supports_advanced_audit_command() {
+fn parse_workspace_cli_supports_ci_audit_command() {
     let args = SyncCliArgs::parse_from([
         "grafana-util",
-        "advanced",
+        "ci",
         "audit",
         "--managed-file",
         "./desired.json",
@@ -431,18 +434,18 @@ fn parse_change_cli_supports_advanced_audit_command() {
                 assert!(inner.interactive);
                 assert_eq!(inner.output_format, SyncOutputFormat::Json);
             }
-            _ => panic!("expected advanced audit"),
+            _ => panic!("expected workspace ci audit"),
         },
-        _ => panic!("expected advanced"),
+        _ => panic!("expected workspace ci"),
     }
 }
 
 #[test]
-fn parse_change_cli_supports_advanced_promotion_preflight_command() {
+fn parse_workspace_cli_supports_ci_promote_test_command() {
     let args = SyncCliArgs::parse_from([
         "grafana-util",
-        "advanced",
-        "promotion-preflight",
+        "ci",
+        "promote-test",
         "--source-bundle",
         "./bundle.json",
         "--target-inventory",
@@ -464,8 +467,8 @@ fn parse_change_cli_supports_advanced_promotion_preflight_command() {
                 );
                 assert_eq!(inner.output_format, SyncOutputFormat::Json);
             }
-            _ => panic!("expected advanced promotion-preflight"),
+            _ => panic!("expected workspace ci promote-test"),
         },
-        _ => panic!("expected advanced"),
+        _ => panic!("expected workspace ci"),
     }
 }

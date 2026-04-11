@@ -76,7 +76,7 @@ Alert diff rows keep the review surface simple and resource-oriented:
 
 ### `datasource diff`
 
-Datasource diff rows add field-level change details for drift review:
+Datasource diff rows add field-level workspace details for drift review:
 
 - `domain`
 - `resourceKind`

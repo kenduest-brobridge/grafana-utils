@@ -9,7 +9,7 @@ English | [繁體中文](./README.zh-TW.md)
 
 **Standardized Grafana workflows for dashboards, alerts, datasources, access control, and operational review.**
 
-`grafana-util` is a Rust-based CLI designed for day-to-day Grafana operations. It focuses on reviewable inventory, export/import, diff, replay, config profile management, and secret handling so SREs and platform engineers can inspect changes before they apply them.
+`grafana-util` is a Rust-based CLI designed for day-to-day Grafana operations. It focuses on reviewable inventory, export/import, diff, workspace packaging, config profile management, and secret handling so SREs and platform engineers can inspect changes before they apply them.
 
 Its main strengths are a review-first workflow, separate paths for dashboard import/export formats, and reusable connection profiles that keep repeatable operations short and predictable.
 
@@ -21,8 +21,8 @@ Its main strengths are a review-first workflow, separate paths for dashboard imp
 - **Datasources**: Masked recovery, secret-aware imports, and provisioning projection.
 - **Alerts**: Export/import, diffing, planning (`plan`/`apply`), and routing preview.
 - **Access**: Management of users, teams, organizations, service accounts, and tokens.
-- **Change Management**: Review-first workflows (`inspect`, `check`, `preview`) before live mutation.
-- **Observe**: Read-only readiness checks for live and staged environments.
+- **Workspace**: Review-first workflows (`scan`, `test`, `preview`, `apply`) before live mutation.
+- **Status**: Read-only readiness checks for live and staged environments.
 - **Config / Profiles**: Centralized connection management with support for `file`, `os`, and `encrypted-file` secret storage.
 - **Snapshot**: Export and review of resource bundles.
 - **Resource**: Read-only `inspect`/`get`/`list`/`describe` for live Grafana resources.
@@ -33,9 +33,9 @@ Its main strengths are a review-first workflow, separate paths for dashboard imp
 
 | Feature | Legacy Approach | with `grafana-util` |
 | :--- | :--- | :--- |
-| **Discovery** | Manual UI navigation or ad-hoc API calls to understand current state. | Start with `observe live` or `observe overview` for a unified environment snapshot. |
+| **Discovery** | Manual UI navigation or ad-hoc API calls to understand current state. | Start with `status live` or `status overview` for a unified environment snapshot. |
 | **Dashboard Paths** | Ambiguity between API-driven import and UI import formats. | Dedicated flat `dashboard` paths with `raw`, `prompt`, and `provisioning` formats. |
-| **Reviews** | Changes applied directly without an intermediate review surface. | Use `change inspect`, `check`, and `preview` to audit changes before they touch the live server. |
+| **Reviews** | Changes applied directly without an intermediate review surface. | Use `workspace scan`, `test`, and `preview` to audit changes before they touch the live server. |
 | **Security** | Secrets often stored in shell history or plaintext files. | Centralized `config profile` management with OS keyring or encrypted storage. |
 
 ---
@@ -56,7 +56,7 @@ grafana-util --version
 
 ```bash
 # Inspect current Grafana status through the task-first surface
-grafana-util observe live --url http://my-grafana:3000 --basic-user admin --prompt-password --output-format interactive
+grafana-util status live --url http://my-grafana:3000 --basic-user admin --prompt-password --output-format interactive
 ```
 
 ### Install Options
@@ -126,7 +126,7 @@ grafana-util config profile validate --profile prod --live --output-format json
 
 ### 1. Get a live operational overview
 ```bash
-grafana-util observe live \
+grafana-util status live \
   --url http://my-grafana:3000 \
   --basic-user admin \
   --basic-password admin \
@@ -184,7 +184,7 @@ cat cpu.json | grafana-util dashboard review --input - --output-format json
 ### 8. Review alerts before you change them
 ```bash
 # See what the alert changes would do before applying them.
-grafana-util alert change plan --desired-dir ./alerts/desired --prune
+grafana-util alert plan --desired-dir ./alerts/desired --prune
 
 # Preview where an alert would go.
 grafana-util alert author route preview \

@@ -1,12 +1,12 @@
 # What grafana-util is for
 
-`grafana-util` is not just a thin wrapper around the Grafana HTTP API, and it is not only a backup/export tool. Its job is to connect the day-to-day operator workflows around inventory, inspection, review, migration, and replay into one consistent CLI.
+`grafana-util` is not just a thin wrapper around the Grafana HTTP API, and it is not only a backup/export tool. Its job is to connect day-to-day operator workflows around status checks, exports, local workspace review, and safe apply into one consistent CLI.
 
 If you regularly hit problems like these, this is the tool solving them:
 
 - you need a fast picture of what exists across a Grafana estate, not just one UI screen at a time
-- you want to move dashboards, alerts, or data sources without relying only on manual UI clicks
-- you want to know what a change will do before you apply it
+- you want to work from a local Grafana workspace or package instead of doing everything by hand in the UI
+- you want to know what a workspace will do before you apply it
 - you want to keep exports in Git, CI/CD, or review workflows without dumping secrets into plain files
 - you want repeatable operator workflows instead of rebuilding command lines from scratch every time
 
@@ -16,9 +16,9 @@ If you regularly hit problems like these, this is the tool solving them:
 
 | Before | After with `grafana-util` |
 | :--- | :--- |
-| "What changed?" means opening several Grafana screens or hand-rolling API calls. | Start with `observe live`, `observe overview`, or `change inspect` and get one review surface first. |
+| "What changed?" means opening several Grafana screens or hand-rolling API calls. | Start with `status live`, `status overview`, or `workspace scan` and get one review surface first. |
 | Export/import is a fragile action with little context. | Export, inspect, dry-run, and replay in an explicit sequence. |
-| Alerting or access changes are hard to explain in review. | Plans, summaries, and structured output make the intended change visible before apply. |
+| Alerting or access changes are hard to explain in review. | Plans, summaries, and structured output make the intended workspace visible before apply. |
 | Secrets and auth defaults get repeated across shell history and scripts. | Profiles and secret modes make repeated workflows cleaner and safer. |
 
 This is the main design difference: the tool is trying to improve the operating path, not just shorten one command.
@@ -26,7 +26,7 @@ This is the main design difference: the tool is trying to improve the operating 
 ## What success looks like
 
 - You can point to one operational pain point this tool removes.
-- You can name the workflow lane you would use first: inventory, review, replay, or change control.
+- You can name the workflow lane you would use first: status, export, workspace review, or apply.
 - You know whether this repository should help you more than a one-off shell script or Grafana UI click path.
 
 ## Failure checks
@@ -45,9 +45,9 @@ It is a personal long-term tool, not a complete platform and not an attempt to c
 
 It breaks the work into a few clear surfaces:
 
-- **Inventory and observation**: start with `observe`
+- **Status and observation**: start with `status`
 - **Asset operations**: use `dashboard`, `datasource`, `alert`, and `access`
-- **Change review**: use `change` to inspect, check, preview, and apply through one task-first lane
+- **Workspace review**: use `workspace` to scan, test, preview, package, and apply through one task-first lane
 - **Connection and credentials**: use `config profile` to keep URLs, auth defaults, and secret sources repeatable
 
 The goal is not to memorize every command first. The goal is to know what kind of work you are doing.
@@ -68,13 +68,13 @@ These tools can overlap. The useful question is which working style you need fir
 
 | Area | Main command | What you use it for |
 | :--- | :--- | :--- |
-| Readiness and health checks | `observe live` / `observe staged` | Check whether live or staged state is healthy enough to move forward |
-| Estate-wide overview | `observe overview` | Get a fast picture of the Grafana estate and decide where to drill in next |
+| Readiness and health checks | `status live` / `status staged` | Check whether live or staged state is healthy enough to move forward |
+| Estate-wide overview | `status overview` | Get a fast picture of the Grafana estate and decide where to drill in next |
 | Dashboard operations | `dashboard` | Browse, list, export/import, diff, review, patch, summary, dependencies, policy, screenshot, and raw-to-prompt conversion |
 | Data source operations | `datasource` | Inventory, export, import, diff, mutation, and recovery for data sources |
 | Alert governance | `alert` | Alert rules, notification routing, contact points, and plan/apply workflows |
 | Identity and access | `access` | Manage orgs, users, teams, service accounts, and tokens |
-| Change review | `change` | Inspect, check, preview, and apply changes through a reviewable path |
+| Workspace review | `workspace` | Scan, test, preview, package, and apply a local Grafana workspace |
 | Connection and credentials | `config profile` | Keep URLs, auth defaults, and secret sources repeatable |
 
 If all you need is “where do I start?”, use this table first, then move into the matching handbook chapter.
@@ -83,7 +83,7 @@ If all you need is “where do I start?”, use this table first, then move into
 
 Keep the README and handbook home pages short. Show the lanes people reach for first, then leave the deeper command tree in the docs index.
 
-- Show on the README/home page: `observe live`, `observe overview`, `export dashboard|alert|datasource`, `change inspect/check/preview/apply`, `config profile`, `dashboard browse/list/export/import/diff/review/patch/summary/dependencies/policy`, `alert`, `datasource`, and `access`.
+- Show on the README/home page: `status live`, `status overview`, `export dashboard|alert|datasource`, `workspace scan/test/preview/apply`, `config profile`, `dashboard browse/list/export/import/diff/review/patch/summary/dependencies/policy`, `alert`, `datasource`, and `access`.
 - Keep in the docs index and per-command pages: `dashboard get/clone/serve/edit-live/delete/history/variables/impact/screenshot/convert raw-to-prompt`, `datasource browse/types/list/add/modify/delete`, `snapshot`, `resource`, and the compatibility alias pages.
 
 ---
@@ -98,7 +98,7 @@ You want quick answers to questions like:
 - does live state look healthy?
 - where does the estate already look like it is drifting?
 
-This usually starts with `observe live` or `observe overview`.
+This usually starts with `status live` or `status overview`.
 
 ### 2. Export, migration, and replay
 
@@ -116,7 +116,7 @@ You do not want to apply changes blind. You want answers to:
 - is the staged input complete?
 - are routes, secrets, dependencies, and permissions in a sane state?
 
-That is where `change inspect`, `change check`, `change preview`, and `alert plan` matter.
+That is where `workspace scan`, `workspace test`, `workspace preview`, and `alert plan` matter.
 
 ### 4. Automation and CI/CD
 
@@ -136,8 +136,8 @@ If the tool is a good fit, a first successful session usually looks like this:
 
 1. confirm the binary and one safe live read
 2. export one reviewable asset tree
-3. inspect that tree before replay
-4. preview a change before apply
+3. scan that workspace before test
+4. preview a workspace before apply
 
 That path proves the core value faster than reading every command page first.
 

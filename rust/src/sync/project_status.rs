@@ -114,7 +114,7 @@ pub(crate) fn build_sync_domain_status(
     let mut blockers = Vec::new();
     let mut warnings = Vec::new();
     if let Some(document) = bundle_preflight_document {
-        source_kinds.push("bundle-preflight".to_string());
+        source_kinds.push("package-test".to_string());
         signal_keys.extend(
             SYNC_BUNDLE_PREFLIGHT_SIGNAL_KEYS
                 .iter()
@@ -325,7 +325,7 @@ mod tests {
         assert_eq!(status.primary_count, 4);
         assert_eq!(
             status.source_kinds,
-            vec!["sync-summary".to_string(), "bundle-preflight".to_string()]
+            vec!["sync-summary".to_string(), "package-test".to_string()]
         );
         assert_eq!(
             status.signal_keys,
@@ -389,7 +389,7 @@ mod tests {
         assert_eq!(status.status, "ready");
         assert_eq!(status.reason_code, "ready");
         assert_eq!(status.primary_count, 4);
-        assert_eq!(status.source_kinds, vec!["bundle-preflight".to_string()]);
+        assert_eq!(status.source_kinds, vec!["package-test".to_string()]);
         assert_eq!(
             status.signal_keys,
             vec![

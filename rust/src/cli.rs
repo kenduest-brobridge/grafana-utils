@@ -55,7 +55,7 @@ const ALERT_MIGRATE_EXPORT_HELP_TEXT: &str = "Examples:\n\n  Export alerting res
 const ALERT_MIGRATE_IMPORT_HELP_TEXT: &str = "Examples:\n\n  Preview a replace-existing import before execution as structured JSON:\n    grafana-util alert migrate import --url http://localhost:3000 --input-dir ./alerts/raw --replace-existing --dry-run --json\n\n  Re-map linked dashboards and panels during import:\n    grafana-util alert migrate import --url http://localhost:3000 --input-dir ./alerts/raw --replace-existing --dashboard-uid-map ./dashboard-map.json --panel-id-map ./panel-map.json";
 const ALERT_MIGRATE_DIFF_HELP_TEXT: &str = "Examples:\n\n  Compare a local export against Grafana as structured JSON:\n    grafana-util alert migrate diff --url http://localhost:3000 --diff-dir ./alerts/raw --output-format json";
 #[derive(Debug, Clone, Subcommand)]
-pub enum ObserveCommand {
+pub enum StatusCommand {
     #[command(about = "Render shared project-wide live status.")]
     Live(ProjectStatusLiveArgs),
     #[command(about = "Render shared project-wide staged status.")]
@@ -427,10 +427,13 @@ pub enum AlertCommandSurface {
 pub enum UnifiedCommand {
     #[command(about = "Print the current grafana-util version.")]
     Version(VersionArgs),
-    #[command(about = "Read live and staged Grafana state through a shared observe surface.")]
-    Observe {
+    #[command(
+        name = "status",
+        about = "Read live and staged Grafana state through a shared status surface."
+    )]
+    Status {
         #[command(subcommand)]
-        command: ObserveCommand,
+        command: StatusCommand,
     },
     #[command(
         about = "Run common export and backup flows without learning domain-heavy subtrees.",
@@ -464,7 +467,7 @@ pub enum UnifiedCommand {
         command: DatasourceGroupCommand,
     },
     #[command(
-        about = "Manage alert inventory, migration, authoring, and change workflows.",
+        about = "Manage alert inventory, backup, authoring, and apply workflows.",
         after_help = UNIFIED_ALERT_HELP_TEXT
     )]
     Alert {
@@ -484,11 +487,11 @@ pub enum UnifiedCommand {
     )]
     Access(AccessCliArgs),
     #[command(
-        name = "change",
-        about = "Run review-first change workflows with optional live Grafana fetch/apply paths.",
+        name = "workspace",
+        about = "Review a local Grafana workspace before preview and apply.",
         after_help = UNIFIED_SYNC_HELP_TEXT
     )]
-    Change {
+    Workspace {
         #[command(subcommand)]
         command: SyncGroupCommand,
     },
@@ -509,7 +512,7 @@ pub struct VersionArgs {
 #[command(
     name = "grafana-util",
     version = crate::common::TOOL_VERSION_DETAILS,
-    about = "Task-first Grafana CLI for observe, export, dashboard, change review, config, and sync workflows.",
+    about = "Task-first Grafana CLI for status, export, dashboard, workspace review, alert, access, datasource, and config workflows.",
     after_help = UNIFIED_HELP_TEXT,
     styles = crate::help_styles::CLI_HELP_STYLES
 )]
@@ -607,13 +610,13 @@ fn wrap_export_access(command: ExportAccessCommand) -> AccessCliArgs {
     AccessCliArgs { command }
 }
 
-fn wrap_project_status(command: ObserveCommand) -> Option<ProjectStatusCliArgs> {
+fn wrap_project_status(command: StatusCommand) -> Option<ProjectStatusCliArgs> {
     match command {
-        ObserveCommand::Live(inner) => Some(ProjectStatusCliArgs {
+        StatusCommand::Live(inner) => Some(ProjectStatusCliArgs {
             color: json_color_choice(),
             command: ProjectStatusSubcommand::Live(inner),
         }),
-        ObserveCommand::Staged(inner) => Some(ProjectStatusCliArgs {
+        StatusCommand::Staged(inner) => Some(ProjectStatusCliArgs {
             color: json_color_choice(),
             command: ProjectStatusSubcommand::Staged(inner),
         }),
@@ -665,16 +668,16 @@ where
             }
             Ok(())
         }
-        UnifiedCommand::Observe { command } => match command {
-            ObserveCommand::Overview { staged, command } => {
+        UnifiedCommand::Status { command } => match command {
+            StatusCommand::Overview { staged, command } => {
                 run_overview(wrap_overview(staged, command))
             }
-            ObserveCommand::Snapshot { command } => run_snapshot(command),
-            ObserveCommand::Resource { command } => run_resource_cli(ResourceCliArgs {
+            StatusCommand::Snapshot { command } => run_snapshot(command),
+            StatusCommand::Resource { command } => run_resource_cli(ResourceCliArgs {
                 color: json_color_choice(),
                 command,
             }),
-            other => run_project_status(wrap_project_status(other).expect("observe status path")),
+            other => run_project_status(wrap_project_status(other).expect("status command path")),
         },
         UnifiedCommand::Export { command } => match command {
             ExportCommand::Dashboard(inner) => {
@@ -703,7 +706,7 @@ where
             run_alert(normalize_alert_group_command(command))
         }
         UnifiedCommand::Access(inner) => run_access(inner),
-        UnifiedCommand::Change { command } => run_sync(command),
+        UnifiedCommand::Workspace { command } => run_sync(command),
         UnifiedCommand::Config { command } => match command {
             ConfigCommand::Profile(inner) => run_profile(inner),
         },

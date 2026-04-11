@@ -1,13 +1,14 @@
-//! Local/document-only sync CLI wrapper.
+//! Local/document-only workspace CLI wrapper.
 //!
 //! Maintainer note:
 //! - Raw JSON inputs are normalized into `SyncResourceSpec` before staged
-//!   planning, review, audit, and apply documents are built.
+//!   workspace scan, test, preview, package, review, audit, and apply
+//!   documents are built.
 //! - Local contract changes usually start in `sync/workbench.rs`; live request
 //!   mapping starts in `sync/live_fetch.rs` or `sync/live_apply.rs`; routing
 //!   stays in `sync/cli.rs`.
-//! - Keep dry-run/reviewable sync artifacts available even when optional live
-//!   fetch/apply wiring is enabled.
+//! - Keep dry-run/reviewable workspace artifacts available even when optional
+//!   live fetch/apply wiring is enabled.
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use serde_json::{Map, Value};
@@ -70,22 +71,22 @@ use crate::alert_sync::assess_alert_sync_specs;
 use crate::common::{message, Result};
 use crate::dashboard::CommonCliArgs;
 /// Constant for default review token.
-pub const DEFAULT_REVIEW_TOKEN: &str = "reviewed-change-plan";
-const SYNC_ROOT_HELP_TEXT: &str = "Examples:\n\n  Inspect one repo root that carries source provenance for Git Sync dashboards, access bundles, alerts/raw, and datasources/provisioning:\n    grafana-util change inspect --workspace ./grafana-oac-repo --output-format table\n\n  Example mixed workspace tree:\n    ./grafana-oac-repo/\n      dashboards/git-sync/raw/\n      dashboards/git-sync/provisioning/\n      access-users/\n      access-teams/\n      access-orgs/\n      access-service-accounts/\n      alerts/raw/\n      datasources/provisioning/datasources.yaml\n\n  Check whether the staged package looks safe to continue:\n    grafana-util change check --workspace ./grafana-oac-repo --output-format json\n\n  Preview what would change against live Grafana:\n    grafana-util change preview --workspace ./grafana-oac-repo --fetch-live --profile prod --output-format json\n\n  Package the same mixed workspace provenance into one source bundle:\n    grafana-util change bundle --workspace ./grafana-oac-repo --output-file ./sync-source-bundle.json\n\n  Apply a reviewed change back to Grafana:\n    grafana-util change apply --approve --execute-live --profile prod\n\nAdvanced workflows:\n\n  Compare a source bundle against target inventory before apply:\n    grafana-util change advanced bundle-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --output-format json\n\n  Assess staged promotion review handoff:\n    grafana-util change advanced promotion-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --mapping-file ./promotion-map.json --output-format json";
-const SYNC_INSPECT_HELP_TEXT: &str = "Examples:\n\n  grafana-util change inspect --workspace ./grafana-oac-repo --output-format table\n  grafana-util change inspect --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-format json\n\n  Mixed workspace tree:\n    ./grafana-oac-repo/\n      dashboards/git-sync/raw/\n      dashboards/git-sync/provisioning/\n      access-users/\n      access-teams/\n      access-orgs/\n      access-service-accounts/\n      alerts/raw/\n      datasources/provisioning/datasources.yaml";
-const SYNC_CHECK_HELP_TEXT: &str = "Examples:\n\n  grafana-util change check --workspace ./grafana-oac-repo --output-format json\n  grafana-util change check --dashboard-provisioning-dir ./dashboards/provisioning --output-format table\n\n  Same mixed workspace root can carry dashboard, access, alert, and datasource provenance together.";
-const SYNC_PREVIEW_HELP_TEXT: &str = "Examples:\n\n  grafana-util change preview --workspace ./grafana-oac-repo --fetch-live --profile prod --output-format json\n  grafana-util change preview --desired-file ./desired.json --live-file ./live.json\n  grafana-util change preview --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --fetch-live --profile prod --output-file ./change-preview.json\n\n  Preview the same mixed workspace root when dashboards, alerts, and datasources live under one repo tree.";
-const SYNC_SUMMARY_HELP_TEXT: &str = "Examples:\n\n  grafana-util change advanced summary --desired-file ./desired.json\n  grafana-util change advanced summary --desired-file ./desired.json --output-format json";
-const SYNC_PLAN_HELP_TEXT: &str = "Examples:\n\n  grafana-util change advanced plan --desired-file ./desired.json --live-file ./live.json\n  grafana-util change advanced plan --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --allow-prune --output-format json";
-const SYNC_REVIEW_HELP_TEXT: &str = "Examples:\n\n  grafana-util change advanced review --plan-file ./sync-plan.json\n  grafana-util change advanced review --plan-file ./sync-plan.json --review-note 'peer-reviewed' --output-format json";
-const SYNC_APPLY_HELP_TEXT: &str = "Examples:\n\n  grafana-util change apply --preview-file ./change-preview.json --approve\n  grafana-util change apply --preview-file ./change-preview.json --approve --execute-live --allow-folder-delete --profile prod\n  grafana-util change apply --preview-file ./change-preview.json --approve --execute-live --allow-policy-reset --profile prod";
-const SYNC_AUDIT_HELP_TEXT: &str = "Examples:\n\n  grafana-util change advanced audit --managed-file ./desired.json --live-file ./live.json --write-lock ./sync-lock.json\n  grafana-util change advanced audit --lock-file ./sync-lock.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --fail-on-drift --output-format json";
-const SYNC_PREFLIGHT_HELP_TEXT: &str = "Examples:\n\n  grafana-util change advanced preflight --desired-file ./desired.json --availability-file ./availability.json\n  grafana-util change advanced preflight --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-format json";
-const SYNC_ASSESS_ALERTS_HELP_TEXT: &str = "Examples:\n\n  grafana-util change advanced assess-alerts --alerts-file ./alerts.json\n  grafana-util change advanced assess-alerts --alerts-file ./alerts.json --output-format json";
-const SYNC_BUNDLE_PREFLIGHT_HELP_TEXT: &str = "Examples:\n\n  grafana-util change advanced bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json\n  grafana-util change advanced bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json --availability-file ./availability.json --output-format json\n\n  Example availability file:\n    {\n      \"providerNames\": [\"vault\"],\n      \"secretPlaceholderNames\": [\"prom-basic-auth\"]\n    }";
-const SYNC_PROMOTION_PREFLIGHT_HELP_TEXT: &str = "This command is a staged review handoff for promotion; it stays read-only and does not apply live changes.\n\nExamples:\n\n  grafana-util change advanced promotion-preflight --source-bundle ./bundle.json --target-inventory ./target.json\n  grafana-util change advanced promotion-preflight --source-bundle ./bundle.json --target-inventory ./target.json --mapping-file ./promotion-mapping.json --availability-file ./availability.json --output-format json\n\n  Minimal promotion mapping file:\n    {\n      \"kind\": \"grafana-utils-sync-promotion-mapping\",\n      \"schemaVersion\": 1,\n      \"metadata\": {\n        \"sourceEnvironment\": \"staging\",\n        \"targetEnvironment\": \"prod\"\n      },\n      \"folders\": {\n        \"ops-src\": \"ops-prod\"\n      },\n      \"datasources\": {\n        \"uids\": {\n          \"prom-src\": \"prom-prod\"\n        },\n        \"names\": {\n          \"Prometheus Source\": \"Prometheus Prod\"\n        }\n      }\n    }\n\n  Example availability file:\n    {\n      \"providerNames\": [\"vault\"],\n      \"secretPlaceholderNames\": [\"prom-basic-auth\"]\n    }";
-const SYNC_BUNDLE_HELP_TEXT: &str = "Examples:\n\n  grafana-util change bundle --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json\n  grafana-util change bundle --dashboard-export-dir ./dashboards/raw --datasource-export-file ./datasources/datasources.json --output-format json\n  grafana-util change bundle --dashboard-export-dir ./dashboards/raw --datasource-provisioning-file ./datasources/provisioning/datasources.yaml --output-format json\n  grafana-util change bundle --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json\n  grafana-util change bundle --workspace ./grafana-oac-repo --output-file ./sync-source-bundle.json\n\n  Mixed workspace bundle handoff:\n    use one repo root that carries dashboards/git-sync/raw, dashboards/git-sync/provisioning,\n    alerts/raw, and datasources/provisioning/datasources.yaml, then package the surfaced\n    dashboards, alerts, and datasource provenance into ./sync-source-bundle.json.";
-const SYNC_ADVANCED_HELP_TEXT: &str = "Examples:\n\n  grafana-util change advanced summary --desired-file ./desired.json\n  grafana-util change advanced review --plan-file ./sync-plan.json --review-note 'peer-reviewed'\n  grafana-util change advanced bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json --output-format json";
+pub const DEFAULT_REVIEW_TOKEN: &str = "reviewed-workspace-plan";
+const SYNC_ROOT_HELP_TEXT: &str = "Examples:\n\n  Scan one repo root that carries source provenance for Git Sync dashboards, access bundles, alerts/raw, and datasources/provisioning:\n    grafana-util workspace scan ./grafana-oac-repo --output-format table\n\n  Example mixed workspace tree:\n    ./grafana-oac-repo/\n      dashboards/git-sync/raw/\n      dashboards/git-sync/provisioning/\n      access-users/\n      access-teams/\n      access-orgs/\n      access-service-accounts/\n      alerts/raw/\n      datasources/provisioning/datasources.yaml\n\n  Test whether the staged package looks safe to continue:\n    grafana-util workspace test ./grafana-oac-repo --output-format json\n\n  Preview what would change against live Grafana:\n    grafana-util workspace preview ./grafana-oac-repo --fetch-live --profile prod --output-format json\n\n  Package the same mixed workspace into one handoff file:\n    grafana-util workspace package ./grafana-oac-repo --output-file ./workspace-package.json\n\n  Apply a reviewed workspace back to Grafana:\n    grafana-util workspace apply --approve --execute-live --profile prod\n\nCI workflows:\n\n  Test a workspace package against target inventory before apply:\n    grafana-util workspace ci package-test --source-bundle ./workspace-package.json --target-inventory ./target-inventory.json --output-format json\n\n  Test a staged promotion handoff:\n    grafana-util workspace ci promote-test --source-bundle ./workspace-package.json --target-inventory ./target-inventory.json --mapping-file ./promotion-map.json --output-format json";
+const SYNC_SCAN_HELP_TEXT: &str = "Examples:\n\n  grafana-util workspace scan ./grafana-oac-repo --output-format table\n  grafana-util workspace scan ./grafana-oac-repo --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-format json\n\n  Mixed workspace tree:\n    ./grafana-oac-repo/\n      dashboards/git-sync/raw/\n      dashboards/git-sync/provisioning/\n      access-users/\n      access-teams/\n      access-orgs/\n      access-service-accounts/\n      alerts/raw/\n      datasources/provisioning/datasources.yaml";
+const SYNC_TEST_HELP_TEXT: &str = "Examples:\n\n  grafana-util workspace test ./grafana-oac-repo --output-format json\n  grafana-util workspace test ./grafana-oac-repo --dashboard-provisioning-dir ./dashboards/provisioning --output-format table\n\n  Same mixed workspace root can carry dashboard, access, alert, and datasource provenance together.";
+const SYNC_PREVIEW_HELP_TEXT: &str = "Examples:\n\n  grafana-util workspace preview ./grafana-oac-repo --fetch-live --profile prod --output-format json\n  grafana-util workspace preview ./grafana-oac-repo --desired-file ./desired.json --live-file ./live.json\n  grafana-util workspace preview ./grafana-oac-repo --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --fetch-live --profile prod --output-file ./workspace-preview.json\n\n  Preview the same mixed workspace root when dashboards, alerts, and datasources live under one repo tree.";
+const SYNC_SUMMARY_HELP_TEXT: &str = "Examples:\n\n  grafana-util workspace ci summary --desired-file ./desired.json\n  grafana-util workspace ci summary --desired-file ./desired.json --output-format json";
+const SYNC_PLAN_HELP_TEXT: &str = "Examples:\n\n  grafana-util workspace ci plan --desired-file ./desired.json --live-file ./live.json\n  grafana-util workspace ci plan --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --allow-prune --output-format json";
+const SYNC_REVIEW_HELP_TEXT: &str = "Examples:\n\n  grafana-util workspace ci mark-reviewed --plan-file ./workspace-plan.json\n  grafana-util workspace ci mark-reviewed --plan-file ./workspace-plan.json --review-note 'peer-reviewed' --output-format json";
+const SYNC_APPLY_HELP_TEXT: &str = "Examples:\n\n  grafana-util workspace apply --preview-file ./workspace-preview.json --approve\n  grafana-util workspace apply --preview-file ./workspace-preview.json --approve --execute-live --allow-folder-delete --profile prod\n  grafana-util workspace apply --preview-file ./workspace-preview.json --approve --execute-live --allow-policy-reset --profile prod";
+const SYNC_AUDIT_HELP_TEXT: &str = "Examples:\n\n  grafana-util workspace ci audit --managed-file ./desired.json --live-file ./live.json --write-lock ./workspace-lock.json\n  grafana-util workspace ci audit --lock-file ./workspace-lock.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --fail-on-drift --output-format json";
+const SYNC_PREFLIGHT_HELP_TEXT: &str = "Examples:\n\n  grafana-util workspace ci input-test --desired-file ./desired.json --availability-file ./availability.json\n  grafana-util workspace ci input-test --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-format json";
+const SYNC_ASSESS_ALERTS_HELP_TEXT: &str = "Examples:\n\n  grafana-util workspace ci alert-readiness --alerts-file ./alerts.json\n  grafana-util workspace ci alert-readiness --alerts-file ./alerts.json --output-format json";
+const SYNC_BUNDLE_PREFLIGHT_HELP_TEXT: &str = "Examples:\n\n  grafana-util workspace ci package-test --source-bundle ./workspace-package.json --target-inventory ./target.json\n  grafana-util workspace ci package-test --source-bundle ./workspace-package.json --target-inventory ./target.json --availability-file ./availability.json --output-format json\n\n  Example availability file:\n    {\n      \"providerNames\": [\"vault\"],\n      \"secretPlaceholderNames\": [\"prom-basic-auth\"]\n    }";
+const SYNC_PROMOTION_PREFLIGHT_HELP_TEXT: &str = "This command is a staged review handoff for promotion; it stays read-only and does not apply live changes.\n\nExamples:\n\n  grafana-util workspace ci promote-test --source-bundle ./workspace-package.json --target-inventory ./target.json\n  grafana-util workspace ci promote-test --source-bundle ./workspace-package.json --target-inventory ./target.json --mapping-file ./promotion-mapping.json --availability-file ./availability.json --output-format json\n\n  Minimal promotion mapping file:\n    {\n      \"kind\": \"grafana-utils-sync-promotion-mapping\",\n      \"schemaVersion\": 1,\n      \"metadata\": {\n        \"sourceEnvironment\": \"staging\",\n        \"targetEnvironment\": \"prod\"\n      },\n      \"folders\": {\n        \"ops-src\": \"ops-prod\"\n      },\n      \"datasources\": {\n        \"uids\": {\n          \"prom-src\": \"prom-prod\"\n        },\n        \"names\": {\n          \"Prometheus Source\": \"Prometheus Prod\"\n        }\n      }\n    }\n\n  Example availability file:\n    {\n      \"providerNames\": [\"vault\"],\n      \"secretPlaceholderNames\": [\"prom-basic-auth\"]\n    }";
+const SYNC_PACKAGE_HELP_TEXT: &str = "Examples:\n\n  grafana-util workspace package ./grafana-oac-repo --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-file ./workspace-package.json\n  grafana-util workspace package ./grafana-oac-repo --dashboard-export-dir ./dashboards/raw --datasource-export-file ./datasources/datasources.json --output-format json\n  grafana-util workspace package ./grafana-oac-repo --dashboard-export-dir ./dashboards/raw --datasource-provisioning-file ./datasources/provisioning/datasources.yaml --output-format json\n  grafana-util workspace package ./grafana-oac-repo --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts/raw --output-file ./workspace-package.json\n  grafana-util workspace package ./grafana-oac-repo --output-file ./workspace-package.json\n\n  Mixed workspace package handoff:\n    use one repo root that carries dashboards/git-sync/raw, dashboards/git-sync/provisioning,\n    alerts/raw, and datasources/provisioning/datasources.yaml, then package the surfaced\n    dashboards, alerts, and datasource provenance into ./workspace-package.json.";
+const SYNC_CI_HELP_TEXT: &str = "Examples:\n\n  grafana-util workspace ci summary --desired-file ./desired.json\n  grafana-util workspace ci mark-reviewed --plan-file ./workspace-plan.json --review-note 'peer-reviewed'\n  grafana-util workspace ci package-test --source-bundle ./workspace-package.json --target-inventory ./target.json --output-format json";
 
 /// Output formats shared by staged sync document commands.
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
@@ -97,7 +98,7 @@ pub enum SyncOutputFormat {
 #[derive(Debug, Clone, Args)]
 pub struct ChangeStagedInputsArgs {
     #[arg(
-        long,
+        index = 1,
         default_value = ".",
         help = "Workspace root used for auto-discovery when explicit staged inputs are omitted.",
         help_heading = "Input Options"
@@ -208,12 +209,12 @@ pub struct SyncCommandOutput {
     pub text_lines: Vec<String>,
 }
 
-/// Advanced expert workflow namespace under `grafana-util change advanced`.
+/// CI-oriented workspace workflow namespace under `grafana-util workspace ci`.
 #[derive(Debug, Clone, Args)]
 #[command(
-    name = "grafana-util change advanced",
-    about = "Advanced staged change workflows and lower-level review contracts.",
-    after_help = SYNC_ADVANCED_HELP_TEXT,
+    name = "grafana-util workspace ci",
+    about = "CI-oriented workspace workflows and lower-level review contracts.",
+    after_help = SYNC_CI_HELP_TEXT,
     styles = crate::help_styles::CLI_HELP_STYLES
 )]
 pub struct SyncAdvancedCliArgs {
@@ -223,12 +224,12 @@ pub struct SyncAdvancedCliArgs {
 
 #[derive(Debug, Clone, Parser)]
 #[command(
-    name = "grafana-util change",
-    about = "Task-first staged change workflow with optional live Grafana preview and apply paths.",
+    name = "grafana-util workspace",
+    about = "Task-first workspace workflow for scan, test, preview, package, apply, and CI paths.",
     after_help = SYNC_ROOT_HELP_TEXT,
     styles = crate::help_styles::CLI_HELP_STYLES
 )]
-/// Root `grafana-util change` parser wrapper.
+/// Root `grafana-util workspace` parser wrapper.
 pub struct SyncCliArgs {
     #[command(subcommand)]
     pub command: SyncGroupCommand,
@@ -346,7 +347,7 @@ pub struct ChangePreviewArgs {
     #[arg(
         long,
         default_value_t = false,
-        help = "Stamp the preview artifact as reviewed so it can flow directly into change apply.",
+        help = "Stamp the preview artifact as reviewed so it can flow directly into workspace apply.",
         help_heading = "Review Options"
     )]
     pub mark_reviewed: bool,
@@ -521,18 +522,20 @@ pub struct SyncApplyArgs {
     #[arg(
         long = "preview-file",
         alias = "plan-file",
-        help = "Optional JSON file containing the staged preview/plan document. When omitted, change apply looks for a common preview path such as ./change-preview.json or ./sync-plan-reviewed.json.",
+        help = "Optional JSON file containing the staged preview/plan document. When omitted, workspace apply looks for a common preview path such as ./workspace-preview.json or ./sync-plan-reviewed.json.",
         help_heading = "Input Options"
     )]
     pub plan_file: Option<PathBuf>,
     #[arg(
-        long,
-        help = "Optional JSON file containing a staged sync preflight document."
+        long = "input-test-file",
+        alias = "preflight-file",
+        help = "Optional JSON file containing a staged workspace input-test document."
     )]
     pub preflight_file: Option<PathBuf>,
     #[arg(
-        long,
-        help = "Optional JSON file containing a staged sync bundle-preflight document."
+        long = "package-test-file",
+        alias = "bundle-preflight-file",
+        help = "Optional JSON file containing a staged workspace package-test document."
     )]
     pub bundle_preflight_file: Option<PathBuf>,
     #[arg(
@@ -700,7 +703,7 @@ pub struct SyncPreflightArgs {
         long = "output-format",
         value_enum,
         default_value_t = SyncOutputFormat::Text,
-        help = "Render the preflight document as text or json."
+        help = "Render the input-test document as text or json."
     )]
     pub output_format: SyncOutputFormat,
 }
@@ -710,7 +713,7 @@ pub struct SyncPreflightArgs {
 pub struct SyncAssessAlertsArgs {
     #[arg(
         long,
-        help = "JSON file containing the alert change resource list.",
+        help = "JSON file containing the alert workspace resource list.",
         help_heading = "Input Options"
     )]
     pub alerts_file: PathBuf,
@@ -728,7 +731,7 @@ pub struct SyncAssessAlertsArgs {
 pub struct SyncBundlePreflightArgs {
     #[arg(
         long,
-        help = "JSON file containing the staged multi-resource source bundle.",
+        help = "JSON file containing the staged workspace package document.",
         help_heading = "Input Options"
     )]
     pub source_bundle: PathBuf,
@@ -761,7 +764,7 @@ pub struct SyncBundlePreflightArgs {
         long = "output-format",
         value_enum,
         default_value_t = SyncOutputFormat::Text,
-        help = "Render the bundle preflight document as text or json."
+        help = "Render the package-test document as text or json."
     )]
     pub output_format: SyncOutputFormat,
 }
@@ -771,7 +774,7 @@ pub struct SyncBundlePreflightArgs {
 pub struct SyncPromotionPreflightArgs {
     #[arg(
         long,
-        help = "JSON file containing the staged multi-resource source bundle.",
+        help = "JSON file containing the staged workspace package document.",
         help_heading = "Input Options"
     )]
     pub source_bundle: PathBuf,
@@ -809,7 +812,7 @@ pub struct SyncPromotionPreflightArgs {
         long = "output-format",
         value_enum,
         default_value_t = SyncOutputFormat::Text,
-        help = "Render the promotion preflight document as text or json."
+        help = "Render the promote-test document as text or json."
     )]
     pub output_format: SyncOutputFormat,
 }
@@ -818,7 +821,7 @@ pub struct SyncPromotionPreflightArgs {
 #[derive(Debug, Clone, Args)]
 pub struct SyncBundleArgs {
     #[arg(
-        long,
+        index = 1,
         help = "Optional workspace root used for auto-discovery when per-surface bundle inputs are omitted."
     )]
     pub workspace: Option<PathBuf>,
@@ -857,85 +860,116 @@ pub struct SyncBundleArgs {
     pub metadata_file: Option<PathBuf>,
     #[arg(
         long,
-        help = "Optional JSON file path to write the source bundle artifact."
+        help = "Optional JSON file path to write the workspace package artifact."
     )]
     pub output_file: Option<PathBuf>,
     #[arg(
         long,
         default_value_t = false,
         requires = "output_file",
-        help = "When --output-file is set, also print the source bundle document to stdout."
+        help = "When --output-file is set, also print the workspace package document to stdout."
     )]
     pub also_stdout: bool,
     #[arg(
         long = "output-format",
         value_enum,
         default_value_t = SyncOutputFormat::Text,
-        help = "Render the source bundle document as text or json."
+        help = "Render the workspace package document as text or json."
     )]
     pub output_format: SyncOutputFormat,
 }
 
-/// Advanced expert subcommands under `grafana-util change advanced`.
+/// CI-oriented workspace subcommands under `grafana-util workspace ci`.
 #[derive(Debug, Clone, Subcommand)]
 pub enum SyncAdvancedCommand {
-    #[command(about = "Summarize local desired sync resources from JSON.", after_help = SYNC_SUMMARY_HELP_TEXT)]
+    #[command(
+        name = "summary",
+        about = "Summarize local desired workspace resources from JSON.",
+        after_help = SYNC_SUMMARY_HELP_TEXT
+    )]
     Summary(SyncSummaryArgs),
-    #[command(about = "Build a staged sync plan from local desired and live JSON files.", after_help = SYNC_PLAN_HELP_TEXT)]
+    #[command(
+        name = "plan",
+        about = "Build a staged workspace plan from local desired and live JSON files.",
+        after_help = SYNC_PLAN_HELP_TEXT
+    )]
     Plan(SyncPlanArgs),
-    #[command(about = "Mark a staged sync plan JSON document reviewed.", after_help = SYNC_REVIEW_HELP_TEXT)]
+    #[command(
+        name = "mark-reviewed",
+        about = "Mark a staged workspace plan JSON document reviewed.",
+        after_help = SYNC_REVIEW_HELP_TEXT
+    )]
     Review(SyncReviewArgs),
-    #[command(about = "Build a staged sync preflight document from local JSON.", after_help = SYNC_PREFLIGHT_HELP_TEXT)]
+    #[command(
+        name = "input-test",
+        about = "Build a staged workspace input-test document from local JSON.",
+        after_help = SYNC_PREFLIGHT_HELP_TEXT
+    )]
     Preflight(SyncPreflightArgs),
-    #[command(about = "Audit managed Grafana resources against a checksum lock and current live state.", after_help = SYNC_AUDIT_HELP_TEXT)]
+    #[command(
+        name = "audit",
+        about = "Audit managed Grafana resources against a checksum lock and current live state.",
+        after_help = SYNC_AUDIT_HELP_TEXT
+    )]
     Audit(SyncAuditArgs),
-    #[command(about = "Assess alert sync specs for candidate, plan-only, and blocked states.", after_help = SYNC_ASSESS_ALERTS_HELP_TEXT)]
+    #[command(
+        name = "alert-readiness",
+        about = "Assess alert sync specs for candidate, plan-only, and blocked states.",
+        after_help = SYNC_ASSESS_ALERTS_HELP_TEXT
+    )]
     AssessAlerts(SyncAssessAlertsArgs),
     #[command(
-        about = "Package exported dashboards, alerting resources, datasource inventory, and metadata into one local source bundle.",
-        after_help = SYNC_BUNDLE_HELP_TEXT
+        name = "package-test",
+        about = "Build a staged workspace package-test document from local JSON.",
+        after_help = SYNC_BUNDLE_PREFLIGHT_HELP_TEXT
     )]
-    Bundle(SyncBundleArgs),
-    #[command(about = "Build a staged bundle-level sync preflight document from local JSON.", after_help = SYNC_BUNDLE_PREFLIGHT_HELP_TEXT)]
     BundlePreflight(SyncBundlePreflightArgs),
-    #[command(about = "Build a staged promotion review handoff from a source bundle and target inventory.", after_help = SYNC_PROMOTION_PREFLIGHT_HELP_TEXT)]
+    #[command(
+        name = "promote-test",
+        about = "Build a staged promotion review handoff from a workspace package and target inventory.",
+        after_help = SYNC_PROMOTION_PREFLIGHT_HELP_TEXT
+    )]
     PromotionPreflight(SyncPromotionPreflightArgs),
 }
 
-/// Top-level sync subcommands exposed under `grafana-util change`.
+/// Top-level sync subcommands exposed under `grafana-util workspace`.
 #[derive(Debug, Clone, Subcommand)]
 pub enum SyncGroupCommand {
-    #[command(about = "Inspect the staged change package from discovered or explicit inputs.", after_help = SYNC_INSPECT_HELP_TEXT)]
-    Inspect(ChangeInspectArgs),
-    #[command(about = "Check whether the staged package looks structurally safe to continue.", after_help = SYNC_CHECK_HELP_TEXT)]
-    Check(ChangeCheckArgs),
-    #[command(about = "Preview what would change from discovered or explicit staged inputs.", after_help = SYNC_PREVIEW_HELP_TEXT)]
-    Preview(ChangePreviewArgs),
-    #[command(about = "Apply a reviewed staged change with explicit approval.", after_help = SYNC_APPLY_HELP_TEXT)]
-    Apply(SyncApplyArgs),
-    #[command(about = "Open advanced staged change workflows and lower-level review contracts.")]
-    Advanced(SyncAdvancedCliArgs),
-    #[command(hide = true, about = "Summarize local desired sync resources from JSON.", after_help = SYNC_SUMMARY_HELP_TEXT)]
-    Summary(SyncSummaryArgs),
-    #[command(hide = true, about = "Build a staged sync plan from local desired and live JSON files.", after_help = SYNC_PLAN_HELP_TEXT)]
-    Plan(SyncPlanArgs),
-    #[command(hide = true, about = "Mark a staged sync plan JSON document reviewed.", after_help = SYNC_REVIEW_HELP_TEXT)]
-    Review(SyncReviewArgs),
-    #[command(hide = true, about = "Build a staged sync preflight document from local JSON.", after_help = SYNC_PREFLIGHT_HELP_TEXT)]
-    Preflight(SyncPreflightArgs),
-    #[command(hide = true, about = "Audit managed Grafana resources against a checksum lock and current live state.", after_help = SYNC_AUDIT_HELP_TEXT)]
-    Audit(SyncAuditArgs),
-    #[command(hide = true, about = "Assess alert sync specs for candidate, plan-only, and blocked states.", after_help = SYNC_ASSESS_ALERTS_HELP_TEXT)]
-    AssessAlerts(SyncAssessAlertsArgs),
     #[command(
-        about = "Package exported dashboards, alerting resources, datasource inventory, and metadata into one local source bundle.",
-        after_help = SYNC_BUNDLE_HELP_TEXT
+        name = "scan",
+        about = "Scan the staged workspace package from discovered or explicit inputs.",
+        after_help = SYNC_SCAN_HELP_TEXT
+    )]
+    Inspect(ChangeInspectArgs),
+    #[command(
+        name = "test",
+        about = "Test whether the staged workspace package looks structurally safe to continue.",
+        after_help = SYNC_TEST_HELP_TEXT
+    )]
+    Check(ChangeCheckArgs),
+    #[command(
+        name = "preview",
+        about = "Preview what would change in the workspace from discovered or explicit staged inputs.",
+        after_help = SYNC_PREVIEW_HELP_TEXT
+    )]
+    Preview(ChangePreviewArgs),
+    #[command(
+        name = "apply",
+        about = "Apply a reviewed staged workspace with explicit approval.",
+        after_help = SYNC_APPLY_HELP_TEXT
+    )]
+    Apply(SyncApplyArgs),
+    #[command(
+        name = "ci",
+        about = "Open CI-oriented workspace workflows and lower-level review contracts."
+    )]
+    Advanced(SyncAdvancedCliArgs),
+    #[command(
+        name = "package",
+        about = "Package exported dashboards, alerting resources, datasource inventory, and metadata into one local workspace bundle.",
+        after_help = SYNC_PACKAGE_HELP_TEXT
     )]
     Bundle(SyncBundleArgs),
-    #[command(hide = true, about = "Build a staged bundle-level sync preflight document from local JSON.", after_help = SYNC_BUNDLE_PREFLIGHT_HELP_TEXT)]
-    BundlePreflight(SyncBundlePreflightArgs),
-    #[command(hide = true, about = "Build a staged promotion review handoff from a source bundle and target inventory.", after_help = SYNC_PROMOTION_PREFLIGHT_HELP_TEXT)]
-    PromotionPreflight(SyncPromotionPreflightArgs),
 }
 
 pub(crate) use bundle_inputs::{

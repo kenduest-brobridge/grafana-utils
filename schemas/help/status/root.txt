@@ -1,4 +1,4 @@
-Observe JSON schema guide
+Status JSON schema guide
 
 Use this guide when CI, scripts, or external tooling need the machine-readable project-status document.
 
@@ -9,11 +9,11 @@ Contract:
   top-level keys: kind, schemaVersion, toolVersion, scope, overall, domains, topBlockers, nextActions
 
 Quick lookups:
-- grafana-util observe --help-schema
-- grafana-util observe staged --help-schema
-- grafana-util observe live --help-schema
+- grafana-util status --help-schema
+- grafana-util status staged --help-schema
+- grafana-util status live --help-schema
 
 Notes:
-- `observe` and `overview` reuse the same ProjectStatus wire shape.
+- `status` and `overview` reuse the same ProjectStatus wire shape.
 - `staged` and `live` emit the same top-level envelope; they differ only in how the fields are populated.
 - Branch on kind plus schemaVersion before reading nested fields.

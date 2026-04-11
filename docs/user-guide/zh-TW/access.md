@@ -256,4 +256,4 @@ No service account differences across 2 service account(s).
 可以用 diff 輸出判斷快照是否適合匯入，也能先看出 live 環境是否已經發生漂移。
 
 ---
-[⬅️ 上一章：告警治理](alert.md) | [🏠 回首頁](index.md) | [➡️ 下一章：變更與狀態](change-overview-status.md)
+[⬅️ 上一章：告警治理](alert.md) | [🏠 回首頁](index.md) | [➡️ 下一章：Workspace 審查與狀態](status-workspace.md)

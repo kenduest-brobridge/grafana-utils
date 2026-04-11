@@ -1,7 +1,7 @@
-Change assess-alerts JSON schema
+Workspace alert-readiness JSON schema
 
 Command:
-  grafana-util change assess-alerts --alerts-file ./alerts.json --output-format json
+  grafana-util workspace ci alert-readiness --alerts-file ./alerts.json --output-format json
 
 kind:
   grafana-utils-alert-sync-plan

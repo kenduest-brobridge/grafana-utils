@@ -64,9 +64,9 @@ pub(crate) const UNIFIED_HELP_TEXT: &str = help_block!(
         "grafana-util config profile add prod --url https://grafana.example.com --basic-user admin --prompt-password --store-secret encrypted-file"
     ),
     (
-        "[Observe]",
+        "[Status]",
         "Start with a read-only overview of staged or live state:",
-        "grafana-util observe overview --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-format text"
+        "grafana-util status overview --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-format text"
     ),
     (
         "[Export]",
@@ -79,9 +79,9 @@ pub(crate) const UNIFIED_HELP_TEXT: &str = help_block!(
         r#"grafana-util export alert --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-dir ./alerts --overwrite"#
     ),
     (
-        "[Change]",
-        "Review a staged change before touching Grafana:",
-        r#"grafana-util change preview --workspace ./grafana-oac-repo --fetch-live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN""#
+        "[Workspace]",
+        "Review a local workspace before touching Grafana:",
+        r#"grafana-util workspace preview ./grafana-oac-repo --fetch-live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN""#
     ),
     (
         "[Dashboard]",
@@ -113,9 +113,9 @@ pub(crate) const UNIFIED_HELP_TEXT: &str = help_block!(
 pub(crate) const UNIFIED_HELP_FULL_TEXT: &str = help_block!(
     "Extended Examples:",
     (
-        "[Observe]",
-        "Query generic Grafana resources through the canonical observe surface:",
-        "grafana-util observe resource describe dashboards --output-format json"
+        "[Status]",
+        "Query generic Grafana resources through the canonical status surface:",
+        "grafana-util status resource describe dashboards --output-format json"
     ),
     (
         "[Export]",
@@ -128,9 +128,9 @@ pub(crate) const UNIFIED_HELP_FULL_TEXT: &str = help_block!(
         "grafana-util export access service-account --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-dir ./access-service-accounts"
     ),
     (
-        "[Change]",
-        "Review a staged change before touching Grafana:",
-        r#"grafana-util change preview --workspace ./grafana-oac-repo --fetch-live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format json"#
+        "[Workspace]",
+        "Review a local workspace before touching Grafana:",
+        r#"grafana-util workspace preview ./grafana-oac-repo --fetch-live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format json"#
     ),
     (
         "[Dashboard]",
@@ -309,47 +309,47 @@ pub(crate) const ACCESS_HELP_FULL_TEXT: &str = help_block!(
 pub(crate) const SYNC_HELP_FULL_TEXT: &str = help_block!(
     "Extended Examples:",
     (
-        "[Change Summary]",
-        "Render the desired resource summary as JSON:",
-        "grafana-util change inspect --dashboard-export-dir ./dashboards/raw --output-format json"
+        "[Workspace Summary]",
+        "Render the staged workspace package as JSON:",
+        "grafana-util workspace scan ./grafana-oac-repo --dashboard-export-dir ./dashboards/raw --output-format json"
     ),
     (
-        "[Change Audit]",
+        "[Workspace Advanced Audit]",
         "Compare the current live state against a staged checksum lock:",
-        r#"grafana-util change audit --lock-file ./sync-lock.json --fetch-live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --fail-on-drift --output-format json"#
+        r#"grafana-util workspace ci audit --lock-file ./sync-lock.json --fetch-live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --fail-on-drift --output-format json"#
     ),
     (
-        "[Change Bundle]",
-        "Package exported dashboard and alert artifacts into one source bundle:",
-        "grafana-util change bundle --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json"
+        "[Workspace Bundle]",
+        "Package exported dashboard and alert artifacts into one workspace package:",
+        "grafana-util workspace package ./grafana-oac-repo --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json"
     ),
     (
-        "[Change Bundle Preflight]",
-        "Compare a source bundle against a target inventory snapshot:",
-        "grafana-util change bundle-preflight --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --output-format json"
+        "[Workspace Bundle Preflight]",
+        "Compare a workspace package against a target inventory snapshot:",
+        "grafana-util workspace ci package-test --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --output-format json"
     ),
     (
-        "[Change Plan]",
+        "[Workspace Preview]",
         "Build a live-backed plan with prune candidates:",
-        r#"grafana-util change preview --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --allow-prune --output-format json"#
+        r#"grafana-util workspace preview --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --allow-prune --output-format json"#
     ),
     (
-        "[Change Review]",
+        "[Workspace Review]",
         "Stamp a reviewed plan with reviewer metadata:",
-        "grafana-util change review --plan-file ./sync-plan.json --review-note 'peer-reviewed' --reviewed-by ops-user --output-format json"
+        "grafana-util workspace ci mark-reviewed --plan-file ./sync-plan.json --review-note 'peer-reviewed' --reviewed-by ops-user --output-format json"
     ),
     (
-        "[Change Apply]",
+        "[Workspace Apply]",
         "Emit a reviewed local apply intent:",
-        "grafana-util change apply --plan-file ./sync-plan-reviewed.json --approve"
+        "grafana-util workspace apply --preview-file ./sync-plan-reviewed.json --approve"
     )
 );
 
 pub(crate) const HELP_EXAMPLE_LABELS: [(&str, &str); 42] = [
     ("[Config]", HELP_PALETTE.section),
-    ("[Observe]", HELP_PALETTE.section),
+    ("[Status]", HELP_PALETTE.section),
     ("[Export]", HELP_PALETTE.section),
-    ("[Change]", HELP_PALETTE.section),
+    ("[Workspace]", HELP_PALETTE.section),
     ("[Dashboard]", HELP_PALETTE.section),
     ("[Alert]", HELP_PALETTE.section),
     ("[Datasource]", HELP_PALETTE.section),
@@ -379,11 +379,11 @@ pub(crate) const HELP_EXAMPLE_LABELS: [(&str, &str); 42] = [
     ("[Profile Init]", HELP_PALETTE.section),
     ("[Profile Add]", HELP_PALETTE.section),
     ("[Profile Example]", HELP_PALETTE.section),
-    ("[Change Planning]", HELP_PALETTE.section),
-    ("[Change Summary]", HELP_PALETTE.section),
-    ("[Change Plan]", HELP_PALETTE.section),
-    ("[Change Review]", HELP_PALETTE.section),
-    ("[Change Apply]", HELP_PALETTE.section),
+    ("[Workspace Planning]", HELP_PALETTE.section),
+    ("[Workspace Summary]", HELP_PALETTE.section),
+    ("[Workspace Plan]", HELP_PALETTE.section),
+    ("[Workspace Review]", HELP_PALETTE.section),
+    ("[Workspace Apply]", HELP_PALETTE.section),
     ("[Overview Staged]", HELP_PALETTE.section),
     ("[Overview Bundle]", HELP_PALETTE.section),
     ("[Project Status Staged]", HELP_PALETTE.section),

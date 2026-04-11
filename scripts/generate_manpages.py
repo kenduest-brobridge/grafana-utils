@@ -14,7 +14,7 @@ from docgen_common import REPO_ROOT, VERSION, check_outputs, print_written_outpu
 
 MAN_DIR = REPO_ROOT / "docs" / "man"
 DATE = "2026-04-03"
-LEGACY_ROOT_SOURCE_PAGES = {"status.md", "overview.md"}
+LEGACY_ROOT_SOURCE_PAGES = {"overview.md"}
 
 
 @dataclass(frozen=True)
@@ -64,7 +64,7 @@ NAMESPACE_SPECS: tuple[NamespaceSpec, ...] = (
         related_manpages=(
             "grafana-util",
             "grafana-util-datasource",
-            "grafana-util-observe",
+            "grafana-util-status",
             "grafana-util-snapshot",
         ),
         workflow_notes=(
@@ -100,8 +100,8 @@ NAMESPACE_SPECS: tuple[NamespaceSpec, ...] = (
         ),
         related_manpages=(
             "grafana-util",
-            "grafana-util-change",
-            "grafana-util-observe",
+            "grafana-util-workspace",
+            "grafana-util-status",
         ),
         workflow_notes=(
             "The safest alert workflow is: author or update desired files, inspect the delta with alert plan, then execute only reviewed changes with alert apply.",
@@ -127,7 +127,7 @@ NAMESPACE_SPECS: tuple[NamespaceSpec, ...] = (
         related_manpages=(
             "grafana-util",
             "grafana-util-dashboard",
-            "grafana-util-observe",
+            "grafana-util-status",
             "grafana-util-snapshot",
         ),
         workflow_notes=(
@@ -149,7 +149,7 @@ NAMESPACE_SPECS: tuple[NamespaceSpec, ...] = (
         related_manpages=(
             "grafana-util",
             "grafana-util-config",
-            "grafana-util-observe",
+            "grafana-util-status",
         ),
     ),
     NamespaceSpec(
@@ -159,18 +159,18 @@ NAMESPACE_SPECS: tuple[NamespaceSpec, ...] = (
         root_doc="config.md",
         related_manpages=(
             "grafana-util",
-            "grafana-util-observe",
+            "grafana-util-status",
             "grafana-util-access",
         ),
     ),
     NamespaceSpec(
-        stem="grafana-util-observe",
-        cli_path="grafana-util observe",
-        title="read live and staged Grafana state through a shared observe surface",
-        root_doc="observe.md",
+        stem="grafana-util-status",
+        cli_path="grafana-util status",
+        title="read live and staged Grafana state through a shared status surface",
+        root_doc="status.md",
         related_manpages=(
             "grafana-util",
-            "grafana-util-change",
+            "grafana-util-workspace",
             "grafana-util-config",
             "grafana-util-dashboard",
             "grafana-util-alert",
@@ -180,13 +180,13 @@ NAMESPACE_SPECS: tuple[NamespaceSpec, ...] = (
         ),
     ),
     NamespaceSpec(
-        stem="grafana-util-change",
-        cli_path="grafana-util change",
-        title="review-first sync, preflight, audit, and apply workflows",
-        root_doc="change.md",
+        stem="grafana-util-workspace",
+        cli_path="grafana-util workspace",
+        title="workspace scan, test, preview, apply, package, and ci workflows",
+        root_doc="workspace.md",
         related_manpages=(
             "grafana-util",
-            "grafana-util-observe",
+            "grafana-util-status",
             "grafana-util-alert",
             "grafana-util-snapshot",
         ),
@@ -198,10 +198,10 @@ NAMESPACE_SPECS: tuple[NamespaceSpec, ...] = (
         root_doc="snapshot.md",
         related_manpages=(
             "grafana-util",
-            "grafana-util-observe",
+            "grafana-util-status",
             "grafana-util-dashboard",
             "grafana-util-datasource",
-            "grafana-util-change",
+            "grafana-util-workspace",
         ),
     ),
 )
@@ -467,7 +467,7 @@ def generate_top_level_manpage(*, command_docs_dir: Path, version: str = VERSION
     emit_header(
         lines,
         "grafana-util",
-        "unified CLI for Grafana dashboards, alerts, datasources, access, status, and sync workflows",
+        "unified CLI for Grafana dashboards, alerts, datasources, access, status, workspace, and snapshot workflows",
         version=version,
     )
     lines.extend(
@@ -531,8 +531,8 @@ def generate_top_level_manpage(*, command_docs_dir: Path, version: str = VERSION
     lines.extend(
         [
             ".TP",
-            ".B change",
-            "Declarative sync planning and gated apply workflows. Sync is the workflow family; the public CLI surface and generated manpages live under grafana-util change and the grafana-util-change*(1) pages.",
+            ".B workspace",
+            "Workspace review and apply workflows for local Grafana artifacts. The public CLI surface and generated manpages live under grafana-util workspace and the grafana-util-workspace*(1) pages.",
             ".SH COMMON CONNECTION AND AUTH PATTERN",
             "Many live Grafana commands accept a shared connection pattern. Prefer repo-local profiles for repeatable work, use direct Basic auth for bootstrap or admin-heavy flows, and use direct tokens for scoped automation where the permission envelope is already understood.",
         ]
@@ -581,9 +581,9 @@ def generate_top_level_manpage(*, command_docs_dir: Path, version: str = VERSION
         [
             ("Open the unified CLI help and command namespace list.", "grafana-util --help"),
             ("Inspect the dashboard namespace help before choosing a live or file-based workflow.", "grafana-util dashboard --help"),
-            ("Render staged or live estate state through a repo-local profile.", "grafana-util observe live --profile prod --output yaml"),
-            ("Render live estate state with direct Basic auth during bootstrap or break-glass work.", "grafana-util observe live --url http://localhost:3000 --basic-user admin --prompt-password --output yaml"),
-            ("Summarize live Grafana inventory as JSON under the observe overview namespace.", "grafana-util observe overview live --url http://localhost:3000 --token $GRAFANA_API_TOKEN --output json"),
+            ("Render staged or live estate state through a repo-local profile.", "grafana-util status live --profile prod --output yaml"),
+            ("Render live estate state with direct Basic auth during bootstrap or break-glass work.", "grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output yaml"),
+            ("Summarize live Grafana inventory as JSON under the status overview namespace.", "grafana-util status overview live --url http://localhost:3000 --token $GRAFANA_API_TOKEN --output json"),
             ("Export live dashboards into a local working tree for review or promotion.", "grafana-util dashboard export --url http://localhost:3000 --export-dir ./dashboards"),
             ("Build a reviewable alert plan from desired-state files before apply.", "grafana-util alert plan --desired-dir ./alerts/desired --prune --output json"),
             ("Export datasource inventory into a normalized local bundle.", "grafana-util datasource export --url http://localhost:3000 --export-dir ./datasources --overwrite"),

@@ -27,28 +27,19 @@ fn render_cli_help_path(path: &[&str]) -> String {
     current.render_help().to_string()
 }
 
-fn render_dashboard_help_path(path: &[&str]) -> String {
-    let mut command = DashboardCliArgs::command();
-    let mut current = &mut command;
-    for segment in path {
-        current = current
-            .find_subcommand_mut(segment)
-            .unwrap_or_else(|| panic!("missing dashboard subcommand {segment}"));
-    }
-    current.render_help().to_string()
-}
-
 #[test]
 fn unified_help_mentions_common_surfaces_without_legacy_dashboard_paths() {
     let help = render_unified_help_text(false);
     assert!(help.contains("config profile add"));
-    assert!(help.contains("observe overview"));
+    assert!(help.contains("status overview"));
     assert!(help.contains("export dashboard"));
     assert!(help.contains("export alert"));
-    assert!(help.contains("change preview"));
+    assert!(help.contains("workspace preview"));
     assert!(help.contains("dashboard export"));
     assert!(help.contains("dashboard summary"));
     assert!(!help.contains("advanced dashboard"));
+    assert!(!help.contains("observe"));
+    assert!(!help.contains("change"));
     assert!(!help.contains("dashboard live"));
     assert!(!help.contains("dashboard draft"));
     assert!(!help.contains("dashboard sync"));
@@ -161,13 +152,13 @@ fn export_dashboard_help_colorizes_option_descriptions_as_secondary_text() {
 }
 
 #[test]
-fn observe_overview_help_uses_canonical_examples() {
+fn status_overview_help_uses_canonical_examples() {
     assert!(crate::overview::OVERVIEW_HELP_TEXT
-        .contains("grafana-util observe overview --dashboard-export-dir ./dashboards/raw"));
+        .contains("grafana-util status overview --dashboard-export-dir ./dashboards/raw"));
     assert!(crate::overview::OVERVIEW_LIVE_HELP_TEXT
-        .contains("grafana-util observe overview live --url http://localhost:3000 --token"));
-    let help = render_cli_help_path(&["observe", "overview"]);
-    assert!(!help.contains("grafana-util overview"));
+        .contains("grafana-util status overview live --url http://localhost:3000 --token"));
+    let help = render_cli_help_path(&["status", "overview"]);
+    assert!(!help.contains("grafana-util observe overview"));
 }
 
 #[test]
@@ -179,7 +170,7 @@ fn config_profile_help_uses_canonical_examples() {
     assert!(help.contains("grafana-util config profile add prod --url https://grafana.example.com"));
     assert!(help.contains("grafana-util config profile init --overwrite"));
     let current_help = render_cli_help_path(&["config", "profile", "current"]);
-    assert!(current_help.contains("observe live, observe overview"));
+    assert!(current_help.contains("status live, status overview"));
     assert!(!help.contains("grafana-util profile"));
 }
 
@@ -235,26 +226,37 @@ fn dashboard_short_help_uses_flat_paths_only() {
 }
 
 #[test]
-fn alert_short_help_uses_grouped_lanes_only() {
+fn alert_short_help_uses_flat_task_groups_only() {
     let help =
         maybe_render_unified_help_from_os_args(["grafana-util", "alert", "-h"], false).unwrap();
+    assert!(help.contains("inventory"));
+    assert!(help.contains("backup"));
+    assert!(help.contains("authoring"));
+    assert!(help.contains("review"));
     assert!(help.contains("list-rules"));
-    assert!(help.contains("list-contact-points"));
+    assert!(help.contains("export"));
+    assert!(help.contains("add-rule"));
+    assert!(help.contains("plan"));
+    assert!(!help.contains("live         list-rules"));
+    assert!(!help.contains("migrate      export, import, diff"));
+    assert!(!help.contains("author       init, rule add|clone"));
+    assert!(!help.contains("scaffold     rule, contact-point, template"));
+    assert!(!help.contains("change       plan, apply"));
 }
 
 #[test]
-fn parse_cli_supports_observe_surface() {
-    let live_args: CliArgs = parse_cli_from(["grafana-util", "observe", "live", "--all-orgs"]);
+fn parse_cli_supports_status_surface() {
+    let live_args: CliArgs = parse_cli_from(["grafana-util", "status", "live", "--all-orgs"]);
     let overview_args: CliArgs = parse_cli_from([
         "grafana-util",
-        "observe",
+        "status",
         "overview",
         "--dashboard-export-dir",
         "./dashboards/raw",
     ]);
     let resource_args: CliArgs = parse_cli_from([
         "grafana-util",
-        "observe",
+        "status",
         "resource",
         "describe",
         "dashboards",
@@ -263,39 +265,65 @@ fn parse_cli_supports_observe_surface() {
     ]);
 
     match live_args.command {
-        UnifiedCommand::Observe { command } => match command {
-            super::ObserveCommand::Live(inner) => assert!(inner.all_orgs),
-            _ => panic!("expected observe live"),
+        UnifiedCommand::Status { command } => match command {
+            super::StatusCommand::Live(inner) => assert!(inner.all_orgs),
+            _ => panic!("expected status live"),
         },
-        _ => panic!("expected observe command"),
+        _ => panic!("expected status command"),
     }
 
     match overview_args.command {
-        UnifiedCommand::Observe { command } => match command {
-            super::ObserveCommand::Overview { staged, command } => {
+        UnifiedCommand::Status { command } => match command {
+            super::StatusCommand::Overview { staged, command } => {
                 assert!(command.is_none());
                 assert_eq!(
                     staged.dashboard_export_dir.as_deref(),
                     Some(Path::new("./dashboards/raw"))
                 );
             }
-            _ => panic!("expected observe overview"),
+            _ => panic!("expected status overview"),
         },
-        _ => panic!("expected observe command"),
+        _ => panic!("expected status command"),
     }
 
     match resource_args.command {
-        UnifiedCommand::Observe { command } => match command {
-            super::ObserveCommand::Resource { command } => match command {
+        UnifiedCommand::Status { command } => match command {
+            super::StatusCommand::Resource { command } => match command {
                 ResourceCommand::Describe(inner) => {
                     assert_eq!(inner.kind, Some(ResourceKind::Dashboards));
                     assert_eq!(inner.output_format, ResourceOutputFormat::Json);
                 }
-                _ => panic!("expected observe resource describe"),
+                _ => panic!("expected status resource describe"),
             },
-            _ => panic!("expected observe resource"),
+            _ => panic!("expected status resource"),
         },
-        _ => panic!("expected observe command"),
+        _ => panic!("expected status command"),
+    }
+}
+
+#[test]
+fn parse_cli_rejects_legacy_status_roots() {
+    for args in [
+        vec!["grafana-util", "observe", "live"],
+        vec!["grafana-util", "change", "inspect"],
+    ] {
+        let _error = CliArgs::try_parse_from(args).unwrap_err();
+    }
+}
+
+#[test]
+fn parse_cli_supports_workspace_surface() {
+    let args: CliArgs =
+        parse_cli_from(["grafana-util", "workspace", "preview", "./grafana-oac-repo"]);
+
+    match args.command {
+        UnifiedCommand::Workspace { command } => match command {
+            super::SyncGroupCommand::Preview(inner) => {
+                assert_eq!(inner.inputs.workspace, Path::new("./grafana-oac-repo"));
+            }
+            _ => panic!("expected workspace preview"),
+        },
+        _ => panic!("expected workspace command"),
     }
 }
 
@@ -580,7 +608,7 @@ fn docs_describe_dashboard_and_legacy_compatibility_surfaces() {
     assert!(!en_index.contains("advanced dashboard"));
     assert!(!en_index.contains("migrate dashboard"));
     assert!(en_index.contains("dashboard"));
-    assert!(en_index.contains("observe"));
+    assert!(en_index.contains("status"));
     assert!(en_index.contains("export"));
     assert!(en_index.contains("config profile"));
 
@@ -590,15 +618,15 @@ fn docs_describe_dashboard_and_legacy_compatibility_surfaces() {
     assert!(zh_index.contains("dashboard convert raw-to-prompt"));
     assert!(!zh_index.contains("advanced dashboard"));
     assert!(!zh_index.contains("migrate dashboard"));
-    assert!(zh_index.contains("observe"));
+    assert!(zh_index.contains("status"));
     assert!(zh_index.contains("export"));
     assert!(zh_index.contains("config profile"));
 }
 
 #[test]
-fn dispatch_routes_observe_live_to_project_status_handler() {
+fn dispatch_routes_status_live_to_project_status_handler() {
     let routed = RefCell::new(Vec::<String>::new());
-    let args: CliArgs = parse_cli_from(["grafana-util", "observe", "live", "--all-orgs"]);
+    let args: CliArgs = parse_cli_from(["grafana-util", "status", "live", "--all-orgs"]);
 
     let result = dispatch_with_handlers(
         args,

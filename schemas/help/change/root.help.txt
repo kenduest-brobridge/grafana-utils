@@ -1,21 +1,21 @@
-Change JSON schema guide
+Workspace JSON schema guide
 
-Use this help surface when CI, scripts, or external tooling need to understand which JSON document each `change` subcommand emits.
+Use this help surface when CI, scripts, or external tooling need to understand which JSON document each `workspace` subcommand emits.
 
 General rule:
 - Branch on `kind` plus `schemaVersion` before reading nested fields.
 - `--output-format json` is the machine-readable path.
-- `change bundle` writes a bundle contract through `--output-file`; it does not use `--output-format`.
+- `workspace package` writes a package contract through `--output-file`; it does not use `--output-format`.
 
 Subcommand contracts:
 
-- summary -> grafana-utils-sync-summary
+- scan -> grafana-utils-sync-summary
   top-level keys: kind, schemaVersion, toolVersion, summary, resources
 
-- plan -> grafana-utils-sync-plan
+- preview -> grafana-utils-sync-plan
   top-level keys: kind, schemaVersion, toolVersion, dryRun, reviewRequired, reviewed, allowPrune, summary, alertAssessment, operations, traceId, stage, stepIndex, parentTraceId
 
-- review -> grafana-utils-sync-plan
+- ci mark-reviewed -> grafana-utils-sync-plan
   top-level keys: kind, schemaVersion, toolVersion, dryRun, reviewRequired, reviewed, allowPrune, summary, alertAssessment, operations, traceId, stage, stepIndex, parentTraceId, reviewedBy, reviewedAt, reviewNote
 
 - apply -> grafana-utils-sync-apply-intent
@@ -27,24 +27,24 @@ Subcommand contracts:
 - audit -> grafana-utils-sync-audit
   top-level keys: kind, schemaVersion, toolVersion, summary, currentLock, baselineLock, drifts
 
-- preflight -> grafana-utils-sync-preflight
+- test -> grafana-utils-sync-preflight
   top-level keys: kind, schemaVersion, toolVersion, summary, checks
 
-- assess-alerts -> grafana-utils-alert-sync-plan
+- ci alert-readiness -> grafana-utils-alert-sync-plan
   top-level keys: kind, schemaVersion, toolVersion, summary, alerts
 
-- bundle-preflight -> grafana-utils-sync-bundle-preflight
+- ci package-test -> grafana-utils-sync-bundle-preflight
   top-level keys: kind, schemaVersion, summary, syncPreflight, alertArtifactAssessment, secretPlaceholderAssessment, providerAssessment
 
-- promotion-preflight -> grafana-utils-sync-promotion-preflight
+- ci promote-test -> grafana-utils-sync-promotion-preflight
   top-level keys: kind, schemaVersion, toolVersion, summary, bundlePreflight, mappingSummary, checkSummary, handoffSummary, continuationSummary, checks, resolvedChecks, blockingChecks
 
-- bundle -> grafana-utils-sync-source-bundle
+- package -> grafana-utils-sync-source-bundle
   top-level keys: kind, schemaVersion, toolVersion, summary, resources, providers, secretPlaceholders, alertArtifacts
 
 Quick lookups:
-- grafana-util change --help-schema
-- grafana-util change summary --help-schema
-- grafana-util change plan --help-schema
-- grafana-util change review --help-schema
-- grafana-util change apply --help-schema
+- grafana-util workspace --help-schema
+- grafana-util workspace scan --help-schema
+- grafana-util workspace test --help-schema
+- grafana-util workspace preview --help-schema
+- grafana-util workspace apply --help-schema

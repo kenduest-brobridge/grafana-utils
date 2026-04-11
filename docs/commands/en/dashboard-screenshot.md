@@ -9,7 +9,7 @@ Use this when you need a reproducible dashboard or panel screenshot, especially 
 ## Description
 This page covers the visual-capture workflow under the `dashboard` namespace. Use it when a text export is not enough and you need a reproducible image or PDF artifact that preserves the rendered Grafana state, variable selection, and panel layout.
 
-It is most useful for operators and responders who need screenshots for runbooks, event timelines, visual verification, or before-and-after evidence during debugging and change review.
+It is most useful for operators and responders who need screenshots for runbooks, event timelines, visual verification, or before-and-after evidence during debugging and workspace review.
 
 ## Key flags
 - `--dashboard-uid` or `--dashboard-url`: choose the dashboard to capture.

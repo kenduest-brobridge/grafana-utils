@@ -1,4 +1,4 @@
-//! Task-first `grafana-util change` workflow helpers.
+//! Task-first `grafana-util workspace` workflow helpers.
 
 use std::path::PathBuf;
 
@@ -30,7 +30,7 @@ use crate::project_status_staged::build_staged_project_status;
 fn ensure_any_discovered(discovered: &DiscoveredChangeInputs) -> Result<()> {
     if discovered == &DiscoveredChangeInputs::default() {
         return Err(message(
-            "Change input discovery did not find staged inputs in the current directory. Provide explicit flags such as --desired-file, --dashboard-export-dir, --access-user-export-dir, or --source-bundle.",
+            "Workspace input discovery did not find staged inputs in the current directory. Provide explicit flags such as --desired-file, --dashboard-export-dir, --access-user-export-dir, or a staged workspace package file.",
         ));
     }
     Ok(())
@@ -304,14 +304,14 @@ pub(crate) fn run_sync_preview(args: ChangePreviewArgs) -> Result<()> {
         let output = attach_preview_project_status(
             output,
             OVERVIEW_ARTIFACT_PROMOTION_PREFLIGHT_KIND,
-            "Sync promotion preflight",
+            "Workspace promote test",
             build_preview_project_status_inputs(
                 &args
                     .inputs
                     .source_bundle
                     .clone()
                     .or(discovered.source_bundle.clone())
-                    .expect("promotion preview requires source bundle"),
+                    .expect("promotion preview requires workspace package"),
                 &args
                     .target_inventory
                     .clone()
@@ -345,14 +345,14 @@ pub(crate) fn run_sync_preview(args: ChangePreviewArgs) -> Result<()> {
         let output = attach_preview_project_status(
             output,
             OVERVIEW_ARTIFACT_BUNDLE_PREFLIGHT_KIND,
-            "Sync bundle preflight",
+            "Workspace package test",
             build_preview_project_status_inputs(
                 &args
                     .inputs
                     .source_bundle
                     .clone()
                     .or(discovered.source_bundle.clone())
-                    .expect("bundle preview requires source bundle"),
+                    .expect("bundle preview requires workspace package"),
                 &args
                     .target_inventory
                     .clone()
@@ -412,7 +412,7 @@ pub(crate) fn run_sync_preview(args: ChangePreviewArgs) -> Result<()> {
             args.org_id,
             args.page_size,
             args.live_file.as_ref(),
-            "Change preview requires --live-file unless --fetch-live is used.",
+            "Workspace preview requires --live-file unless --fetch-live is used.",
         )?;
         let document = attach_lineage(
             &attach_trace_id(
@@ -663,13 +663,13 @@ mod task_first_rust_tests {
                     "alertArtifactBlockingCount": 0
                 }
             }),
-            text_lines: vec!["Sync bundle preflight".to_string()],
+            text_lines: vec!["Workspace package test".to_string()],
         };
 
         let attached = attach_preview_project_status(
             output,
             OVERVIEW_ARTIFACT_BUNDLE_PREFLIGHT_KIND,
-            "Sync bundle preflight",
+            "Workspace package test",
             build_preview_project_status_inputs(
                 &PathBuf::from("./bundle.json"),
                 &PathBuf::from("./target.json"),
@@ -685,16 +685,12 @@ mod task_first_rust_tests {
         );
         assert_eq!(
             attached.document["projectStatus"]["domains"][0]["sourceKinds"],
-            serde_json::json!(["bundle-preflight"])
+            serde_json::json!(["package-test"])
         );
         assert_eq!(attached.text_lines[0], "Project status");
         assert!(attached
             .text_lines
             .iter()
-            .any(|line| line.contains("Signals: sync sources=bundle-preflight")));
-        assert!(attached
-            .text_lines
-            .iter()
-            .any(|line| line == "Sync bundle preflight"));
+            .any(|line| line == "Workspace package test"));
     }
 }

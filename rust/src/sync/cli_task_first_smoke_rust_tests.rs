@@ -1,5 +1,5 @@
-//! Task-first `grafana-util change` smoke regressions.
-//! Exercises the repo-local inspect/check/preview/apply lane from one staged workspace.
+//! Task-first `grafana-util workspace` smoke regressions.
+//! Exercises the repo-local scan/test/preview/apply lane from one staged workspace.
 
 use super::{ChangeOutputArgs, ChangePreviewArgs};
 use crate::access::{
@@ -215,7 +215,7 @@ fn write_access_export_fixture(root: &Path, payload_filename: &str, kind: &str) 
     .unwrap();
 }
 
-fn task_first_change_cli_args(
+fn task_first_workspace_cli_args(
     command: &str,
     workspace: &Path,
     live_file: Option<&Path>,
@@ -223,7 +223,7 @@ fn task_first_change_cli_args(
 ) -> SyncCliArgs {
     let mut argv = vec!["grafana-util", command, "--output-format", "json"];
     if command != "apply" {
-        argv.extend(["--workspace", workspace.to_str().unwrap()]);
+        argv.push(workspace.to_str().unwrap());
     }
     if let Some(live_file) = live_file {
         argv.extend(["--live-file", live_file.to_str().unwrap()]);
@@ -232,7 +232,7 @@ fn task_first_change_cli_args(
         argv.extend(["--preview-file", preview_file.to_str().unwrap()]);
     }
     if command == "preview" {
-        argv.extend(["--trace-id", "change-task-first-smoke"]);
+        argv.extend(["--trace-id", "workspace-task-first-smoke"]);
     }
     if command == "apply" {
         argv.push("--approve");
@@ -241,7 +241,7 @@ fn task_first_change_cli_args(
 }
 
 #[test]
-fn task_first_change_lane_smoke_runs_from_repo_local_workspace() {
+fn task_first_workspace_lane_smoke_runs_from_repo_local_workspace() {
     let temp = tempdir().unwrap();
     let workspace = temp.path().join("workspace");
     let dashboards_raw = workspace.join("dashboards").join("raw");
@@ -249,32 +249,35 @@ fn task_first_change_lane_smoke_runs_from_repo_local_workspace() {
 
     let live_file = workspace.join("live.json");
     fs::write(&live_file, "[]").unwrap();
-    let preview_file = workspace.join("change-preview.json");
+    let preview_file = workspace.join("workspace-preview.json");
 
-    let inspect_args = task_first_change_cli_args("inspect", &workspace, None, None);
+    let inspect_args = task_first_workspace_cli_args("scan", &workspace, None, None);
     match inspect_args.command {
         SyncGroupCommand::Inspect(inner) => {
             assert_eq!(inner.inputs.workspace, workspace);
             assert!(run_sync_cli(SyncGroupCommand::Inspect(inner)).is_ok());
         }
-        _ => panic!("expected inspect"),
+        _ => panic!("expected scan"),
     }
 
-    let check_args = task_first_change_cli_args("check", &workspace, None, None);
+    let check_args = task_first_workspace_cli_args("test", &workspace, None, None);
     match check_args.command {
         SyncGroupCommand::Check(inner) => {
             assert_eq!(inner.inputs.workspace, workspace);
             assert!(run_sync_cli(SyncGroupCommand::Check(inner)).is_ok());
         }
-        _ => panic!("expected check"),
+        _ => panic!("expected test"),
     }
 
-    let preview_args = task_first_change_cli_args("preview", &workspace, Some(&live_file), None);
+    let preview_args = task_first_workspace_cli_args("preview", &workspace, Some(&live_file), None);
     match preview_args.command {
         SyncGroupCommand::Preview(inner) => {
             assert_eq!(inner.inputs.workspace, workspace);
             assert_eq!(inner.live_file, Some(live_file.clone()));
-            assert_eq!(inner.trace_id.as_deref(), Some("change-task-first-smoke"));
+            assert_eq!(
+                inner.trace_id.as_deref(),
+                Some("workspace-task-first-smoke")
+            );
             assert!(run_sync_cli(SyncGroupCommand::Preview(ChangePreviewArgs {
                 output: ChangeOutputArgs {
                     output_file: Some(preview_file.clone()),
@@ -294,7 +297,7 @@ fn task_first_change_lane_smoke_runs_from_repo_local_workspace() {
     assert_eq!(preview_document["kind"], json!("grafana-utils-sync-plan"));
     assert_eq!(
         preview_document["traceId"],
-        json!("change-task-first-smoke")
+        json!("workspace-task-first-smoke")
     );
     assert_eq!(preview_document["reviewed"], json!(false));
     assert_eq!(
@@ -302,7 +305,7 @@ fn task_first_change_lane_smoke_runs_from_repo_local_workspace() {
         json!(workspace.display().to_string())
     );
 
-    let apply_args = task_first_change_cli_args("apply", &workspace, None, Some(&preview_file));
+    let apply_args = task_first_workspace_cli_args("apply", &workspace, None, Some(&preview_file));
     match apply_args.command {
         SyncGroupCommand::Apply(inner) => {
             assert_eq!(inner.plan_file, Some(preview_file.clone()));
@@ -317,7 +320,7 @@ fn task_first_change_lane_smoke_runs_from_repo_local_workspace() {
 }
 
 #[test]
-fn task_first_change_lane_smoke_runs_from_git_sync_workspace_root() {
+fn task_first_workspace_lane_smoke_runs_from_git_sync_workspace_root() {
     let temp = tempdir().unwrap();
     let workspace = temp.path().join("workspace");
     fs::create_dir_all(workspace.join(".git")).unwrap();
@@ -326,25 +329,25 @@ fn task_first_change_lane_smoke_runs_from_git_sync_workspace_root() {
     let live_file = workspace.join("live.json");
     fs::write(&live_file, "[]").unwrap();
 
-    let inspect_args = task_first_change_cli_args("inspect", &workspace, None, None);
+    let inspect_args = task_first_workspace_cli_args("scan", &workspace, None, None);
     match inspect_args.command {
         SyncGroupCommand::Inspect(inner) => {
             assert_eq!(inner.inputs.workspace, workspace);
             assert!(run_sync_cli(SyncGroupCommand::Inspect(inner)).is_ok());
         }
-        _ => panic!("expected inspect"),
+        _ => panic!("expected scan"),
     }
 
-    let check_args = task_first_change_cli_args("check", &workspace, None, None);
+    let check_args = task_first_workspace_cli_args("test", &workspace, None, None);
     match check_args.command {
         SyncGroupCommand::Check(inner) => {
             assert_eq!(inner.inputs.workspace, workspace);
             assert!(run_sync_cli(SyncGroupCommand::Check(inner)).is_ok());
         }
-        _ => panic!("expected check"),
+        _ => panic!("expected test"),
     }
 
-    let preview_args = task_first_change_cli_args("preview", &workspace, Some(&live_file), None);
+    let preview_args = task_first_workspace_cli_args("preview", &workspace, Some(&live_file), None);
     match preview_args.command {
         SyncGroupCommand::Preview(inner) => {
             assert_eq!(inner.inputs.workspace, workspace);
@@ -363,7 +366,7 @@ fn task_first_change_lane_smoke_runs_from_git_sync_workspace_root() {
 }
 
 #[test]
-fn task_first_change_lane_smoke_runs_from_git_sync_mixed_workspace_root() {
+fn task_first_workspace_lane_smoke_runs_from_git_sync_mixed_workspace_root() {
     let temp = tempdir().unwrap();
     let workspace = temp.path().join("workspace");
     fs::create_dir_all(workspace.join(".git")).unwrap();
@@ -398,27 +401,27 @@ fn task_first_change_lane_smoke_runs_from_git_sync_mixed_workspace_root() {
     );
     let live_file = workspace.join("live.json");
     fs::write(&live_file, "[]").unwrap();
-    let preview_file = workspace.join("change-preview.json");
+    let preview_file = workspace.join("workspace-preview.json");
 
-    let inspect_args = task_first_change_cli_args("inspect", &workspace, None, None);
+    let inspect_args = task_first_workspace_cli_args("scan", &workspace, None, None);
     match inspect_args.command {
         SyncGroupCommand::Inspect(inner) => {
             let result = run_sync_cli(SyncGroupCommand::Inspect(inner));
             assert!(result.is_ok(), "{result:?}");
         }
-        _ => panic!("expected inspect"),
+        _ => panic!("expected scan"),
     }
 
-    let check_args = task_first_change_cli_args("check", &workspace, None, None);
+    let check_args = task_first_workspace_cli_args("test", &workspace, None, None);
     match check_args.command {
         SyncGroupCommand::Check(inner) => {
             let result = run_sync_cli(SyncGroupCommand::Check(inner));
             assert!(result.is_ok(), "{result:?}");
         }
-        _ => panic!("expected check"),
+        _ => panic!("expected test"),
     }
 
-    let preview_args = task_first_change_cli_args("preview", &workspace, Some(&live_file), None);
+    let preview_args = task_first_workspace_cli_args("preview", &workspace, Some(&live_file), None);
     match preview_args.command {
         SyncGroupCommand::Preview(inner) => {
             let result = run_sync_cli(SyncGroupCommand::Preview(ChangePreviewArgs {

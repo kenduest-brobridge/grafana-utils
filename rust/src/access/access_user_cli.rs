@@ -417,7 +417,7 @@ pub struct UserDiffArgs {
     pub scope: Scope,
 }
 
-/// Enum definition for UserCommand.
+/// User inventory and lifecycle workflows.
 #[derive(Debug, Clone, Subcommand)]
 pub enum UserCommand {
     #[command(after_help = ACCESS_USER_LIST_HELP_TEXT)]

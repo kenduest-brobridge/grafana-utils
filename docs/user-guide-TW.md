@@ -9,7 +9,7 @@
 - [Datasource 手冊](./user-guide/zh-TW/datasource.md)
 - [Alert 手冊](./user-guide/zh-TW/alert.md)
 - [Access 手冊](./user-guide/zh-TW/access.md)
-- [Change、Overview 與 Status 手冊](./user-guide/zh-TW/change-overview-status.md)
+- [Workspace 審查與狀態手冊](./user-guide/zh-TW/status-workspace.md)
 - [情境手冊](./user-guide/zh-TW/scenarios.md)
 
 這個檔案保留作為舊連結的 bridge 頁。

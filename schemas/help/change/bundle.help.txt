@@ -1,7 +1,7 @@
-Change bundle JSON contract
+Workspace package JSON contract
 
 Command:
-  grafana-util change bundle --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json
+  grafana-util workspace package --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-file ./workspace-package.json
 
 kind:
   grafana-utils-sync-source-bundle
@@ -21,6 +21,6 @@ Top-level keys:
   - sourcePath
 
 Notes:
-- `change bundle` writes the contract to `--output-file`.
+- `workspace package` writes the contract to `--output-file`.
 - It does not switch render modes with `--output-format`.
 - Add `--also-stdout` only when you intentionally want both file output and stdout.

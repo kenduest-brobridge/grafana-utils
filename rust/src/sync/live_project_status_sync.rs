@@ -2,8 +2,8 @@
 //!
 //! Maintainer note:
 //! - This module derives one sync-owned domain-status row from staged sync
-//!   summary and bundle-preflight surfaces.
-//! - Keep the producer conservative: bundle-preflight data is preferred when it
+//!   summary and package-test surfaces.
+//! - Keep the producer conservative: package-test data is preferred when it
 //!   exists, staged summary data is only a fallback, and missing surfaces stay
 //!   explicit.
 
@@ -26,7 +26,7 @@ const SYNC_REASON_PARTIAL_MISSING_SURFACES: &str = "partial-missing-surfaces";
 const SYNC_REASON_BLOCKED_BY_BLOCKERS: &str = "blocked-by-blockers";
 
 const SYNC_SOURCE_KIND_SUMMARY: &str = "sync-summary";
-const SYNC_SOURCE_KIND_BUNDLE_PREFLIGHT: &str = "bundle-preflight";
+const SYNC_SOURCE_KIND_BUNDLE_PREFLIGHT: &str = "package-test";
 
 const SYNC_SIGNAL_KEYS_SUMMARY: &[&str] = &["summary.resourceCount"];
 const SYNC_SIGNAL_KEYS_BUNDLE_PREFLIGHT: &[&str] = &[
@@ -55,7 +55,7 @@ const SYNC_RESOLVE_BLOCKERS_ACTIONS: &[&str] = &[
 const SYNC_STAGE_AT_LEAST_ONE_ACTIONS: &[&str] =
     &["stage at least one dashboard, datasource, or alert resource"];
 const SYNC_PROVIDE_PREFLIGHT_ACTIONS: &[&str] =
-    &["provide a staged bundle-preflight document before interpreting live sync readiness"];
+    &["provide a staged package-test document before interpreting live sync readiness"];
 const SYNC_REVIEW_NON_BLOCKING_ACTIONS: &[&str] =
     &["review non-blocking sync findings before promotion or apply"];
 const SYNC_REEXPORT_AFTER_CHANGES_ACTIONS: &[&str] = &["re-run sync summary after staged changes"];
@@ -299,7 +299,7 @@ mod tests {
         assert_eq!(value["primaryCount"], json!(4));
         assert_eq!(value["blockerCount"], json!(6));
         assert_eq!(value["warningCount"], json!(1));
-        assert_eq!(value["sourceKinds"], json!(["bundle-preflight"]));
+        assert_eq!(value["sourceKinds"], json!(["package-test"]));
         assert_eq!(
             value["signalKeys"],
             json!([
@@ -353,7 +353,9 @@ mod tests {
         assert_eq!(value["signalKeys"], json!(["summary.resourceCount"]));
         assert_eq!(
             value["nextActions"],
-            json!(["provide a staged bundle-preflight document before interpreting live sync readiness"])
+            json!([
+                "provide a staged package-test document before interpreting live sync readiness"
+            ])
         );
     }
 
@@ -390,7 +392,7 @@ mod tests {
         assert_eq!(value["status"], json!("ready"));
         assert_eq!(
             value["sourceKinds"],
-            json!(["sync-summary", "bundle-preflight"])
+            json!(["sync-summary", "package-test"])
         );
         assert_eq!(
             value["signalKeys"],

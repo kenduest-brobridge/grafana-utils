@@ -35,7 +35,7 @@ grafana-util datasource diff --profile prod --diff-dir ./datasources --input-for
 
 ## What success looks like
 
-- you can explain the change set before import
+- you can explain the bundle set before import
 - inventory and provisioning inputs both produce a readable summary
 - the output makes it obvious whether the bundle or the live side changed
 

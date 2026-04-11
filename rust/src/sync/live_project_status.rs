@@ -18,10 +18,9 @@ const LIVE_MODE: &str = "transport-only";
 
 const LIVE_SYNC_DOMAIN_ID: &str = "sync";
 const LIVE_SYNC_SOURCE_KIND: &str = "live-sync-status";
-const LIVE_SYNC_SIGNAL_KEYS: &[&str] = &["staged.desired", "staged.bundle-preflight"];
-const LIVE_SYNC_NEXT_ACTIONS: &[&str] = &[
-    "provide staged desired and bundle-preflight inputs before interpreting live sync readiness",
-];
+const LIVE_SYNC_SIGNAL_KEYS: &[&str] = &["staged.desired", "staged.package-test"];
+const LIVE_SYNC_NEXT_ACTIONS: &[&str] =
+    &["provide staged desired and package-test inputs before interpreting live sync readiness"];
 
 const LIVE_PROMOTION_DOMAIN_ID: &str = "promotion";
 const LIVE_PROMOTION_SOURCE_KIND: &str = "live-promotion-status";
@@ -31,7 +30,7 @@ const LIVE_PROMOTION_SIGNAL_KEYS: &[&str] = &[
     "staged.mapping",
 ];
 const LIVE_PROMOTION_NEXT_ACTIONS: &[&str] = &[
-    "provide staged source bundle, target inventory, and mapping inputs before interpreting live promotion readiness",
+    "provide staged workspace package, target inventory, and mapping inputs before interpreting live promotion readiness",
 ];
 
 fn build_unknown_live_domain_status(
@@ -100,7 +99,7 @@ mod tests {
             status.signal_keys,
             vec![
                 "staged.desired".to_string(),
-                "staged.bundle-preflight".to_string(),
+                "staged.package-test".to_string(),
             ]
         );
         assert!(status.blockers.is_empty());
@@ -108,7 +107,7 @@ mod tests {
         assert_eq!(
             status.next_actions,
             vec![
-                "provide staged desired and bundle-preflight inputs before interpreting live sync readiness".to_string(),
+                "provide staged desired and package-test inputs before interpreting live sync readiness".to_string(),
             ]
         );
     }
@@ -142,7 +141,7 @@ mod tests {
         assert_eq!(
             status.next_actions,
             vec![
-                "provide staged source bundle, target inventory, and mapping inputs before interpreting live promotion readiness".to_string(),
+                "provide staged workspace package, target inventory, and mapping inputs before interpreting live promotion readiness".to_string(),
             ]
         );
     }

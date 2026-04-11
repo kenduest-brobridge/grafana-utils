@@ -31,7 +31,7 @@ grafana-util datasource browse --url http://localhost:3000 --basic-user admin --
 
 - you can inspect the live list without losing context
 - edit and delete actions stay close to the rows they affect
-- org-scoped browsing is obvious before you change anything
+- org-scoped browsing is obvious before you workspace anything
 
 ## Failure checks
 

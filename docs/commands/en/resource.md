@@ -4,7 +4,7 @@
 Read a small set of live Grafana resources through a generic read-only query surface.
 
 ## When to use
-Use this when you need a read-only live lookup before a richer workflow exists in `dashboard`, `alert`, `datasource`, `access`, or `change`.
+Use this when you need a read-only live lookup before a richer workflow exists in `dashboard`, `alert`, `datasource`, `access`, or `workspace`.
 
 ## Description
 This namespace is intentionally narrower and more generic than the main operator workflows. It exists so you can inspect a few supported live Grafana resource kinds without waiting for a full domain-specific command surface.

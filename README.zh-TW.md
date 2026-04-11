@@ -9,7 +9,7 @@
 
 **標準化 Grafana 維運流程：包含儀表板、告警、資料源、存取控制與操作審查。**
 
-`grafana-util` 是一款專為 Grafana 日常維運設計的 Rust CLI 工具。它把盤點、匯出/匯入、比對、回放、config profile 管理與 secret 處理整理在一起，讓 SRE 與平台工程師可以先看清楚，再決定要不要變更。
+`grafana-util` 是一款專為 Grafana 日常維運設計的 Rust CLI 工具。它把盤點、匯出/匯入、比對、workspace 打包、config profile 管理與 secret 處理整理在一起，讓 SRE 與平台工程師可以先看清楚，再決定要不要變更。
 
 它的重點是先審查再動手、把儀表板匯入/匯出的不同路徑分清楚，以及用可重複的 profile 讓日常操作保持簡短、穩定。
 
@@ -21,8 +21,8 @@
 - **資料來源 (Datasources)**：匯出時可先遮蔽敏感資訊，匯入時再補回認證，也能對應檔案配置用的輸出。
 - **告警 (Alerts)**：匯出/匯入、比對 (diff)、計畫與套用 (`plan`/`apply`) 以及路由預覽。
 - **存取控制 (Access)**：使用者、團隊、組織、服務帳號 (Service Account) 與 Token 管理。
-- **變更管理 (Change)**：先審查再變更的流程 (`inspect`、`check`、`preview`)，讓正式套用前的狀態更清楚。
-- **Observe**：針對即時環境與暫存資源的唯讀就緒檢查。
+- **Workspace**：先審查再變更的流程 (`scan`、`test`、`preview`、`apply`)，讓正式套用前的狀態更清楚。
+- **Status**：針對即時環境與暫存資源的唯讀就緒檢查。
 - **設定檔 / Config Profiles**：集中管理連線資訊，支援 `file`、`os` (Keyring) 與 `encrypted-file` 等秘密資訊儲存模式。
 - **快照 (Snapshot)**：資源套件的匯出與審查。
 - **資源 (Resource)**：針對 Grafana 資源的唯讀式 `inspect`/`get`/`list`/`describe` 操作。
@@ -33,10 +33,10 @@
 
 | 功能項 | 傳統作法 | 使用 `grafana-util` |
 | :--- | :--- | :--- |
-| **環境盤點** | 需手動切換 UI 或自行組合 API 呼叫以暸解現況。 | 使用 `observe live` 或 `observe overview` 快速取得環境統一視圖。 |
+| **環境盤點** | 需手動切換 UI 或自行組合 API 呼叫以暸解現況。 | 使用 `status live` 或 `status overview` 快速取得環境統一視圖。 |
 | **儀表板路徑** | 難以區分 API 直接匯入與 UI 匯入所需的格式。 | 提供平面化的 `dashboard` 路徑，並搭配 `raw`、`prompt` 與 `provisioning` 格式。 |
 | **資料來源** | 匯出後的憑證資訊不容易安全保存，也不容易直接對應檔案配置。 | 匯出時先遮蔽敏感資訊，匯入時再補回認證，並保留和檔案配置對應的內容。 |
-| **審查機制** | 直接套用變更，缺乏中間審查層。 | 使用 `change inspect`、`check` 與 `preview`，在變動正式伺服器前先完成審查。 |
+| **審查機制** | 直接套用變更，缺乏中間審查層。 | 使用 `workspace scan`、`test` 與 `preview`，在變動正式伺服器前先完成審查。 |
 | **安全性** | 認證資訊容易散落在 Shell 歷史紀錄或明文檔案中。 | 透過 `config profile` 搭配作業系統 Keyring 或加密儲存空間管理憑證。 |
 
 ---
@@ -57,7 +57,7 @@ grafana-util --version
 
 ```bash
 # 檢視目前 Grafana 狀態
-grafana-util observe live --url http://my-grafana:3000 --basic-user admin --prompt-password --output-format interactive
+grafana-util status live --url http://my-grafana:3000 --basic-user admin --prompt-password --output-format interactive
 ```
 
 ### 安裝選項
@@ -127,7 +127,7 @@ grafana-util config profile validate --profile prod --live --output-format json
 
 ### 1. 檢視環境維運總覽
 ```bash
-grafana-util observe live \
+grafana-util status live \
   --url http://my-grafana:3000 \
   --basic-user admin \
   --basic-password admin \
@@ -185,7 +185,7 @@ cat cpu.json | grafana-util dashboard review --input - --output-format json
 ### 8. 先看告警會怎麼變
 ```bash
 # 先看看這次改動會影響哪些告警。
-grafana-util alert change plan --desired-dir ./alerts/desired --prune
+grafana-util alert plan --desired-dir ./alerts/desired --prune
 
 # 先預覽告警最後會送到哪裡。
 grafana-util alert author route preview \

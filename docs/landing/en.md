@@ -75,12 +75,12 @@ If you are solving a real operational problem instead of looking up one flag, st
 
 Use this section to decide what kind of work you are doing before you jump into a handbook chapter or command page.
 
-### Observe
+### Status
 
-Start with `observe` when you need a fast read on live or staged state.
+Start with `status` when you need a fast read on live or staged state.
 
 - [Browse technical reference](../user-guide/en/reference.md)
-- [Browse observe command](../commands/en/observe.md)
+- [Browse status command](../commands/en/status.md)
 
 ### Asset operations
 
@@ -97,12 +97,12 @@ Use this area when the work is about orgs, teams, service accounts, tokens, or p
 - [Browse access chapter](../user-guide/en/access.md)
 - [Browse config profile command](../commands/en/profile.md)
 
-### Change review
+### Workspace review
 
-Start here when you want summary, preflight, plan, and review before apply.
+Start here when you want scan, test, preview, package, and apply for local workspace inputs.
 
-- [Browse change and status chapter](../user-guide/en/change-overview-status.md)
-- [Browse change command](../commands/en/change.md)
+- [Browse workspace and status chapter](../user-guide/en/status-workspace.md)
+- [Browse workspace command](../commands/en/workspace.md)
 
 ## Reference
 

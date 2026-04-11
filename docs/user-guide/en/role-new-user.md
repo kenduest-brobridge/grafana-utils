@@ -19,7 +19,7 @@ Profiles matter because they remove repetition, not because direct flags are uns
 
 - New operators learning the tool.
 - Teammates validating a fresh checkout or a lab Grafana instance.
-- Anyone who needs a read-only path before they own change workflows.
+- Anyone who needs a read-only path before they own workspace workflows.
 
 ## Primary Goals
 
@@ -50,7 +50,7 @@ Profiles matter because they remove repetition, not because direct flags are uns
 - Confirm the installed binary is on `PATH`.
 - Run one direct read-only command against a lab or dev Grafana.
 - Create one repo-local profile once the direct connection works.
-- Run one safe live read and recognize the difference between `observe live` and `observe overview`.
+- Run one safe live read and recognize the difference between `status live` and `status overview`.
 - Learn which docs to keep open before moving on to dashboards, alerts, or access workflows.
 
 ## How Connection And Auth Work
@@ -84,7 +84,7 @@ grafana-util --version
 
 ```bash
 # Purpose: First Commands To Run.
-grafana-util observe live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml
+grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml
 ```
 
 ```bash
@@ -104,7 +104,7 @@ grafana-util config profile add dev --url http://127.0.0.1:3000 --basic-user adm
 
 ```bash
 # Purpose: First Commands To Run.
-grafana-util observe live --profile dev --output-format yaml
+grafana-util status live --profile dev --output-format yaml
 ```
 
 The sequence matters:
@@ -118,14 +118,14 @@ If you do not have a profile yet, this is the shortest safe bootstrap:
 
 ```bash
 # Purpose: If you do not have a profile yet, this is the shortest safe bootstrap.
-grafana-util observe live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml
+grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml
 ```
 
 If you already have a scoped token, you can check the same live surface without a profile:
 
 ```bash
 # Purpose: If you already have a scoped token, you can check the same live surface without a profile.
-grafana-util observe overview --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format json
+grafana-util status overview --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format json
 ```
 
 If your shell already exports auth variables, you can also keep the command shorter:
@@ -134,7 +134,7 @@ If your shell already exports auth variables, you can also keep the command shor
 # Purpose: If your shell already exports auth variables, you can also keep the command shorter.
 export GRAFANA_USERNAME=admin
 export GRAFANA_PASSWORD=admin
-grafana-util observe live --url http://localhost:3000 --output-format yaml
+grafana-util status live --url http://localhost:3000 --output-format yaml
 ```
 
 ## What Good Looks Like
@@ -144,7 +144,7 @@ You are ready to leave the new-user path when:
 - `grafana-util --version` works from your normal shell
 - one direct read-only command succeeds against the Grafana you care about
 - `config profile show --profile dev` resolves the fields you expect
-- `observe live --profile dev` returns readable output without prompting surprises
+- `status live --profile dev` returns readable output without prompting surprises
 - you know whether your next step is dashboards, alerts, access, or CI automation
 
 ## Read Next
@@ -158,7 +158,7 @@ You are ready to leave the new-user path when:
 - [Command Docs](../../commands/en/index.md)
 - [config](../../commands/en/config.md)
 - [config profile](../../commands/en/profile.md)
-- [observe](../../commands/en/observe.md)
+- [status](../../commands/en/status.md)
 - [dashboard](../../commands/en/dashboard.md)
 
 ## Common Mistakes And Limits
@@ -171,7 +171,7 @@ You are ready to leave the new-user path when:
 
 ## When To Switch To Deeper Docs
 
-- Switch to the handbook chapters when you need the workflow story behind dashboards, alerts, or staged change review.
+- Switch to the handbook chapters when you need the workflow story behind dashboards, alerts, or staged workspace review.
 - Switch to the command-reference pages when you are choosing exact flags, output modes, or auth variants.
 - Switch to troubleshooting when the command works syntactically but the returned scope, auth, or output shape is not what you expected.
 

@@ -14,7 +14,7 @@ This guide covers `grafana-util alert` as an operator workflow for alert desired
 
 - Build or import alert desired state without touching live Grafana first.
 - Review plan output before an apply path.
-- Use replay and migration flows without guessing what live resources will change.
+- Use replay and migration flows without guessing what live resources will workspace.
 
 ## Before / After
 
@@ -23,7 +23,7 @@ This guide covers `grafana-util alert` as an operator workflow for alert desired
 
 ## What success looks like
 
-- You can tell whether you are editing desired state, reviewing a plan, or applying a real change.
+- You can tell whether you are editing desired state, reviewing a plan, or applying a real workspace.
 - You can explain which part of the alerting chain is affected before touching live state.
 - You can read the output and know whether the plan is safe to proceed.
 
@@ -39,8 +39,8 @@ This guide covers `grafana-util alert` as an operator workflow for alert desired
 
 Need the command-by-command surface instead of the workflow guide?
 
-- [alert change plan](../../commands/en/change.md)
-- [alert change apply](../../commands/en/change.md)
+- [alert plan](../../commands/en/alert-plan.md)
+- [alert apply](../../commands/en/alert-apply.md)
 - [alert live list-rules](../../commands/en/alert.md)
 - [alert live list-contact-points](../../commands/en/alert.md)
 - [alert live list-mute-timings](../../commands/en/alert.md)
@@ -93,7 +93,7 @@ Use `plan` to build a preview of the delta between your local files and live Gra
 
 ```bash
 # Generate a plan for review
-grafana-util alert change plan \
+grafana-util alert plan \
   --url http://localhost:3000 \
   --basic-user admin --basic-password admin \
   --desired-dir ./alerts/desired --prune --output-format json
@@ -108,7 +108,7 @@ grafana-util alert change plan \
 Only execute after the plan has been reviewed and saved.
 ```bash
 # Purpose: Only execute after the plan has been reviewed and saved.
-grafana-util alert change apply \
+grafana-util alert apply \
   --plan-file ./alert-plan-reviewed.json \
   --approve --output-format json
 ```
@@ -123,8 +123,8 @@ grafana-util alert change apply \
 | **Export** | `grafana-util alert export --output-dir ./alerts --overwrite` |
 | **Import** | `grafana-util alert import --input-dir ./alerts/raw --replace-existing --dry-run --json` |
 | **Diff** | `grafana-util alert diff --diff-dir ./alerts/raw --output-format json` |
-| **Plan** | `grafana-util alert change plan --desired-dir ./alerts/desired --prune --output-format json` |
-| **Apply** | `grafana-util alert change apply --plan-file ./plan.json --approve` |
+| **Plan** | `grafana-util alert plan --desired-dir ./alerts/desired --prune --output-format json` |
+| **Apply** | `grafana-util alert apply --plan-file ./plan.json --approve` |
 | **Set Route** | `grafana-util alert author route set --desired-dir ./alerts/desired --receiver pagerduty` |
 | **Preview Route** | `grafana-util alert author route preview --desired-dir ./alerts/desired --label team=platform --severity critical` |
 
@@ -135,7 +135,7 @@ grafana-util alert change apply \
 ### 1. Alert Plan Excerpt
 ```bash
 # Purpose: 1. Alert Plan Excerpt.
-grafana-util alert change plan --desired-dir ./alerts/desired --prune --output-format json
+grafana-util alert plan --desired-dir ./alerts/desired --prune --output-format json
 ```
 **Output Excerpt:**
 ```json

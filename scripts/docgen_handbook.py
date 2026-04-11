@@ -30,7 +30,7 @@ HANDBOOK_ORDER = (
     "datasource.md",
     "alert.md",
     "access.md",
-    "change-overview-status.md",
+    "status-workspace.md",
     "scenarios.md",
     "recipes.md",
     "reference.md",
@@ -40,7 +40,7 @@ HANDBOOK_NAV_GROUPS = (
     ("start", ("index.md", "what-is-grafana-util.md", "getting-started.md")),
     ("role-paths", ("role-new-user.md", "role-sre-ops.md", "role-automation-ci.md")),
     ("core-operations", ("dashboard.md", "datasource.md", "alert.md", "access.md")),
-    ("governance", ("architecture.md", "change-overview-status.md")),
+    ("governance", ("architecture.md", "status-workspace.md")),
     ("scenarios-reference", ("scenarios.md", "recipes.md", "reference.md", "troubleshooting.md")),
 )
 HANDBOOK_NAV_GROUP_LABELS = {

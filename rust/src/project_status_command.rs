@@ -1,7 +1,7 @@
 //! Shared status command surface.
 //!
 //! Maintainer note:
-//! - This module owns the top-level `grafana-util observe staged/live ...` help and schema surface.
+//! - This module owns the top-level `grafana-util status staged/live ...` help and schema surface.
 //! - It should stay focused on command args, shared rendering, and high-level
 //!   staged/live aggregation handoff.
 //! - Domain-specific staged/live producer logic belongs in the owning domain
@@ -26,9 +26,9 @@ use crate::tabular_output::{print_lines, render_summary_csv, render_summary_tabl
 use serde_json::Value;
 
 pub(crate) const PROJECT_STATUS_DOMAIN_COUNT: usize = 6;
-pub(crate) const PROJECT_STATUS_HELP_TEXT: &str = "Examples:\n\n  Render staged project status as a summary table from raw dashboard artifacts:\n    grafana-util observe staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output-format table\n\n  Render staged project status from dashboard provisioning artifacts:\n    grafana-util observe staged --dashboard-provisioning-dir ./dashboards/provisioning --output-format csv\n\n  Render staged project status from datasource provisioning YAML:\n    grafana-util observe staged --datasource-provisioning-file ./datasources/provisioning/datasources.yaml --output-format yaml\n\n  Render live project status with staged sync context:\n    grafana-util observe live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --sync-summary-file ./sync-summary.json --bundle-preflight-file ./bundle-preflight.json --output-format json\n\nSchema guide:\n  grafana-util observe --help-schema\n  grafana-util observe staged --help-schema\n  grafana-util observe live --help-schema";
-pub(crate) const PROJECT_STATUS_STAGED_HELP_TEXT: &str = "Examples:\n\n  Render staged project status as a summary table from raw dashboard artifacts:\n    grafana-util observe staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output-format table\n\n  Render staged project status from dashboard provisioning artifacts in the interactive workbench:\n    grafana-util observe staged --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts --output-format interactive\n\n  Render staged project status from datasource provisioning YAML:\n    grafana-util observe staged --datasource-provisioning-file ./datasources/provisioning/datasources.yaml --output-format yaml\n\nSchema guide:\n  grafana-util observe staged --help-schema";
-pub(crate) const PROJECT_STATUS_LIVE_HELP_TEXT: &str = "Examples:\n\n  Render live project status as YAML:\n    grafana-util observe live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-format yaml\n\n  Render live status across visible orgs while layering staged sync context:\n    grafana-util observe live --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --sync-summary-file ./sync-summary.json --output-format interactive\n\nSchema guide:\n  grafana-util observe live --help-schema";
+pub(crate) const PROJECT_STATUS_HELP_TEXT: &str = "Examples:\n\n  Render staged project status as a summary table from raw dashboard artifacts:\n    grafana-util status staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output-format table\n\n  Render staged project status from dashboard provisioning artifacts:\n    grafana-util status staged --dashboard-provisioning-dir ./dashboards/provisioning --output-format csv\n\n  Render staged project status from datasource provisioning YAML:\n    grafana-util status staged --datasource-provisioning-file ./datasources/provisioning/datasources.yaml --output-format yaml\n\n  Render live project status with staged workspace context:\n    grafana-util status live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --sync-summary-file ./sync-summary.json --package-test-file ./workspace-package-test.json --output-format json\n\nSchema guide:\n  grafana-util status --help-schema\n  grafana-util status staged --help-schema\n  grafana-util status live --help-schema";
+pub(crate) const PROJECT_STATUS_STAGED_HELP_TEXT: &str = "Examples:\n\n  Render staged project status as a summary table from raw dashboard artifacts:\n    grafana-util status staged --dashboard-export-dir ./dashboards/raw --desired-file ./desired.json --output-format table\n\n  Render staged project status from dashboard provisioning artifacts in the interactive workbench:\n    grafana-util status staged --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts --output-format interactive\n\n  Render staged project status from datasource provisioning YAML:\n    grafana-util status staged --datasource-provisioning-file ./datasources/provisioning/datasources.yaml --output-format yaml\n\nSchema guide:\n  grafana-util status staged --help-schema";
+pub(crate) const PROJECT_STATUS_LIVE_HELP_TEXT: &str = "Examples:\n\n  Render live project status as YAML:\n    grafana-util status live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-format yaml\n\n  Render live status across visible orgs while layering staged sync context:\n    grafana-util status live --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --sync-summary-file ./sync-summary.json --output-format interactive\n\nSchema guide:\n  grafana-util status live --help-schema";
 
 #[cfg(feature = "tui")]
 const PROJECT_STATUS_OUTPUT_HELP: &str =
@@ -96,7 +96,7 @@ pub struct ProjectStatusStagedArgs {
         help = "Access service-account export directory to summarize from staged artifacts."
     )]
     pub access_service_account_export_dir: Option<PathBuf>,
-    #[arg(long, help = "Desired change file to summarize from staged artifacts.")]
+    #[arg(long, help = "Desired staged file to summarize from staged artifacts.")]
     pub desired_file: Option<PathBuf>,
     #[arg(
         long,
@@ -209,17 +209,18 @@ pub struct ProjectStatusLiveArgs {
     pub org_id: Option<i64>,
     #[arg(
         long,
-        help = "Optional staged change-summary JSON used to deepen live change status."
+        help = "Optional staged sync-summary JSON used to deepen live status."
     )]
     pub sync_summary_file: Option<PathBuf>,
     #[arg(
-        long,
-        help = "Optional staged bundle-preflight JSON used to deepen live change status."
+        long = "package-test-file",
+        alias = "bundle-preflight-file",
+        help = "Optional workspace package-test JSON used to deepen live status."
     )]
     pub bundle_preflight_file: Option<PathBuf>,
     #[arg(
         long,
-        help = "Optional staged promotion-preflight JSON used to deepen live promotion status."
+        help = "Optional staged promotion summary JSON used to deepen live promotion status."
     )]
     pub promotion_summary_file: Option<PathBuf>,
     #[arg(
@@ -257,8 +258,8 @@ pub enum ProjectStatusSubcommand {
 
 #[derive(Debug, Clone, Parser)]
 #[command(
-    name = "grafana-util observe",
-    about = "Render project-wide staged or live status through the shared observe contract. Staged subcommands read exports; live subcommands query Grafana.",
+    name = "grafana-util status",
+    about = "Render project-wide staged or live status through a shared status contract. Staged subcommands read exports; live subcommands query Grafana.",
     after_help = PROJECT_STATUS_HELP_TEXT
 )]
 pub struct ProjectStatusCliArgs {

@@ -31,13 +31,13 @@ grafana-util datasource modify --profile prod --uid prom-main --set-default true
 ## Before / After
 
 - **Before**: updating a live datasource usually meant editing a blob of JSON or clicking through multiple UI tabs.
-- **After**: one command can preview the exact live update and keep the change reviewable before it lands.
+- **After**: one command can preview the exact live update and keep the workspace reviewable before it lands.
 
 ## What success looks like
 
 - the UID identifies the intended datasource before the mutation starts
 - `--dry-run` shows the new URL, auth, or JSON fields you expect
-- default flags and secret updates are visible before the live change
+- default flags and secret updates are visible before the live workspace
 
 ## Failure checks
 

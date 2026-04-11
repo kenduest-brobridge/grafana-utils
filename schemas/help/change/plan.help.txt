@@ -1,7 +1,7 @@
-Change plan JSON schema
+Workspace preview JSON schema
 
 Command:
-  grafana-util change plan --desired-file ./desired.json --fetch-live --profile prod --output-format json
+  grafana-util workspace preview --desired-file ./desired.json --fetch-live --profile prod --output-format json
 
 kind:
   grafana-utils-sync-plan

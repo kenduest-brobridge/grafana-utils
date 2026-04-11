@@ -1,16 +1,40 @@
-# Removed root path: `grafana-util status`
+# `grafana-util status`
 
 ## Root
 
-Purpose: migration note for the removed staged/live status root.
+Purpose: read live and staged Grafana state through one canonical status surface.
 
-When to use: when you are translating older docs or scripts to the current `observe` surface.
+When to use: when you want readiness, overview, snapshot, or direct live reads without moving into mutation work.
 
-Description: the public staged/live status surface now lives under `grafana-util observe`. The top-level `status` root is no longer runnable. Use `observe staged`, `observe live`, `observe overview`, or `observe snapshot` instead.
+Description: `status` is the user-facing read-only entrypoint. Use `live` for current-state gating, `staged` for artifact review, `overview` for project-wide summaries, `snapshot` for bundle-style review, and `resource` for direct live reads.
 
-Canonical replacement:
+Examples:
 
-- `grafana-util status staged ...` -> `grafana-util observe staged ...`
-- `grafana-util status live ...` -> `grafana-util observe live ...`
+```bash
+grafana-util status live --profile prod --output-format yaml
+grafana-util status staged --desired-file ./desired.json --output-format json
+grafana-util status overview --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts --output-format table
+grafana-util status overview live --url http://localhost:3000 --basic-user admin --basic-password admin --output-format interactive
+```
 
-Useful next page: [observe](./observe.md)
+Related commands: `grafana-util export`, `grafana-util workspace`, `grafana-util config profile`.
+
+## `live`
+
+Purpose: render a live readiness view from Grafana read surfaces.
+
+## `staged`
+
+Purpose: render a readiness gate from staged artifacts.
+
+## `overview`
+
+Purpose: summarize staged artifacts or open the live overview.
+
+## `snapshot`
+
+Purpose: review or export a snapshot-style artifact bundle.
+
+## `resource`
+
+Purpose: inspect one live Grafana resource directly.

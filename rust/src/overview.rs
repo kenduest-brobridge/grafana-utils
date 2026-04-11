@@ -1,7 +1,7 @@
 //! Artifact-driven project overview assembly.
 //!
 //! This module stays pure and local: it loads staged artifacts, reuses existing
-//! dashboard, access, and change summary builders, and renders a single overview
+//! dashboard, access, and summary builders, and renders a single overview
 //! document for table, csv, text, JSON, YAML, or interactive output.
 
 use clap::{Args, Parser, Subcommand, ValueEnum};
@@ -70,8 +70,8 @@ pub const OVERVIEW_ARTIFACT_SYNC_SUMMARY_KIND: &str = "sync-summary";
 pub const OVERVIEW_ARTIFACT_BUNDLE_PREFLIGHT_KIND: &str = "bundle-preflight";
 pub const OVERVIEW_ARTIFACT_PROMOTION_PREFLIGHT_KIND: &str = "promotion-preflight";
 pub const DATASOURCE_EXPORT_METADATA_FILENAME: &str = "export-metadata.json";
-pub(crate) const OVERVIEW_HELP_TEXT: &str = "Examples:\n\n  Summarize staged exports as a summary table from raw dashboard artifacts:\n    grafana-util observe overview --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts --desired-file ./desired.json --output-format table\n\n  Summarize staged exports from dashboard provisioning artifacts:\n    grafana-util observe overview --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts --output-format csv\n\n  Summarize datasource provisioning YAML instead of datasources.json:\n    grafana-util observe overview --datasource-provisioning-file ./datasources/provisioning/datasources.yaml --output-format yaml\n\n  Summarize bundle and promotion context as text:\n    grafana-util observe overview --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --availability-file ./availability.json --mapping-file ./mapping.json --output-format text\n\n  Open the live overview through the shared observe surface:\n    grafana-util observe overview live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-format interactive";
-pub(crate) const OVERVIEW_LIVE_HELP_TEXT: &str = "Examples:\n\n  Render the live overview as YAML:\n    grafana-util observe overview live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-format yaml\n\n  Open the live overview in the interactive workbench:\n    grafana-util observe overview live --url http://localhost:3000 --basic-user admin --basic-password admin --output-format interactive";
+pub(crate) const OVERVIEW_HELP_TEXT: &str = "Examples:\n\n  Summarize staged exports as a summary table from raw dashboard artifacts:\n    grafana-util status overview --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts --desired-file ./desired.json --output-format table\n\n  Summarize staged exports from dashboard provisioning artifacts:\n    grafana-util status overview --dashboard-provisioning-dir ./dashboards/provisioning --alert-export-dir ./alerts --output-format csv\n\n  Summarize datasource provisioning YAML instead of datasources.json:\n    grafana-util status overview --datasource-provisioning-file ./datasources/provisioning/datasources.yaml --output-format yaml\n\n  Summarize bundle and promotion context as text:\n    grafana-util status overview --source-bundle ./sync-source-bundle.json --target-inventory ./target-inventory.json --availability-file ./availability.json --mapping-file ./mapping.json --output-format text\n\n  Open the live overview through the shared status surface:\n    grafana-util status overview live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-format interactive";
+pub(crate) const OVERVIEW_LIVE_HELP_TEXT: &str = "Examples:\n\n  Render the live overview as YAML:\n    grafana-util status overview live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-format yaml\n\n  Open the live overview in the interactive workbench:\n    grafana-util status overview live --url http://localhost:3000 --basic-user admin --basic-password admin --output-format interactive";
 
 /// Output formats for the overview renderer.
 #[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
@@ -143,7 +143,7 @@ pub struct OverviewArgs {
     pub access_service_account_export_dir: Option<PathBuf>,
     #[arg(
         long,
-        help = "Desired change file to summarize with the existing change summary builder.",
+        help = "Desired staged file to summarize with the existing summary builder.",
         help_heading = "Input Options"
     )]
     pub desired_file: Option<PathBuf>,
@@ -187,11 +187,11 @@ pub struct OverviewArgs {
     pub output_format: OverviewOutputFormat,
 }
 
-/// CLI shape for `grafana-util observe overview`.
+/// CLI shape for `grafana-util status overview`.
 #[derive(Debug, Clone, Parser)]
 #[command(
-    name = "grafana-util observe overview",
-    about = "Render a project-wide overview from staged artifacts, or use `live` as a thin entrypoint into shared observe live status.",
+    name = "grafana-util status overview",
+    about = "Render a project-wide overview from staged artifacts, or use `live` as a thin entrypoint into shared status live state.",
     args_conflicts_with_subcommands = true,
     after_help = OVERVIEW_HELP_TEXT
 )]
@@ -213,7 +213,7 @@ pub struct OverviewCliArgs {
 #[derive(Debug, Clone, Subcommand)]
 pub enum OverviewCommand {
     #[command(
-        about = "Render a live overview by delegating to the shared observe live path.",
+        about = "Render a live overview by delegating to the shared status live path.",
         after_help = OVERVIEW_LIVE_HELP_TEXT
     )]
     Live(OverviewLiveArgs),

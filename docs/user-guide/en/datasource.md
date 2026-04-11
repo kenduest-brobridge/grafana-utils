@@ -4,7 +4,7 @@ This guide is for operators who need to inventory Grafana data sources from live
 
 ## Who It Is For
 
-- Operators responsible for backup, replay, and change control around Grafana data sources.
+- Operators responsible for backup, replay, and workspace control around Grafana data sources.
 - Teams moving data source state into Git, provisioning, or recovery bundles.
 - Anyone who needs to understand which fields are safe to store and which credentials must stay masked.
 

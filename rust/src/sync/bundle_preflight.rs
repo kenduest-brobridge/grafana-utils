@@ -594,16 +594,16 @@ fn build_alert_artifact_assessment(source_bundle: &Map<String, Value>) -> Value 
             };
             let detail = match section {
                 "contactPoints" => {
-                    "Contact points are staged in the source bundle but are not live-wired yet."
+                    "Contact points are staged in the workspace package but are not live-wired yet."
                 }
                 "muteTimings" => {
-                    "Mute timings are staged in the source bundle but are not live-wired yet."
+                    "Mute timings are staged in the workspace package but are not live-wired yet."
                 }
                 "policies" => {
-                    "Notification policies are staged in the source bundle but are not live-wired yet."
+                    "Notification policies are staged in the workspace package but are not live-wired yet."
                 }
                 "templates" => {
-                    "Templates are staged in the source bundle but are not live-wired yet."
+                    "Templates are staged in the workspace package but are not live-wired yet."
                 }
                 _ => "",
             };

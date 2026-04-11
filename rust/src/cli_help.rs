@@ -18,9 +18,9 @@ use crate::sync::SyncCliArgs;
 
 pub(crate) const UNIFIED_DASHBOARD_SHORT_HELP_TEXT: &str = "Usage: grafana-util dashboard <COMMAND>\n\nCommon tasks:\n  browse       Browse dashboards interactively.\n  list         List dashboard summaries.\n  variables    List dashboard variables.\n  get          Fetch one dashboard JSON draft.\n  clone        Clone one dashboard into a local draft.\n  edit-live    Edit one live dashboard through a local editor.\n  delete       Delete live dashboards after explicit selection.\n  history      Inspect dashboard revision history.\n  export       Back up dashboards into raw/, prompt/, and provisioning/.\n  import       Import raw dashboard JSON through the API.\n  diff         Compare local raw dashboards against Grafana.\n  convert      Convert raw dashboard JSON into prompt artifacts.\n  review       Check one local dashboard JSON draft.\n  patch        Modify one local dashboard JSON draft.\n  serve        Preview local dashboard drafts.\n  publish      Publish one local dashboard JSON draft.\n  summary      Analyze live or exported dashboards.\n  dependencies Show dashboard, datasource, variable, and alert dependencies.\n  impact       Show datasource blast radius.\n  policy       Evaluate governance policy.\n  screenshot   Capture dashboard evidence.\n\nMore help:\n  grafana-util dashboard <COMMAND> --help\n  grafana-util dashboard <COMMAND> --help-full\n";
 pub(crate) const UNIFIED_DATASOURCE_HELP_TEXT: &str = "Examples:\n\n  grafana-util datasource browse --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"\n  grafana-util datasource list --input-dir ./datasources --json\n  grafana-util datasource list --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --json\n  grafana-util datasource import --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --input-dir ./datasources --dry-run --json";
-pub(crate) const UNIFIED_SYNC_HELP_TEXT: &str = "Examples:\n\n  grafana-util change inspect --workspace ./grafana-oac-repo --output-format table\n  grafana-util change preview --workspace ./grafana-oac-repo --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-format json\n  grafana-util change apply --preview-file ./change-preview.json --approve --execute-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"";
+pub(crate) const UNIFIED_SYNC_HELP_TEXT: &str = "Examples:\n\n  grafana-util workspace scan ./grafana-oac-repo --output-format table\n  grafana-util workspace preview ./grafana-oac-repo --fetch-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-format json\n  grafana-util workspace apply --preview-file ./workspace-preview.json --approve --execute-live --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\"";
 pub(crate) const UNIFIED_ALERT_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-dir ./alerts --overwrite\n  grafana-util alert import --url http://localhost:3000 --input-dir ./alerts/raw --replace-existing --dry-run --json\n  grafana-util alert list-rules --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --json";
-pub(crate) const ALERT_SHORT_HELP_TEXT: &str = "Usage: grafana-util alert <COMMAND>\n\nChoose the task first:\n  live         list-rules, list-contact-points, list-mute-timings, list-templates, delete\n  migrate      export, import, diff\n  author       init, rule add|clone, contact-point add, route set|preview\n  scaffold     rule, contact-point, template\n  change       plan, apply\n\nMore help:\n  grafana-util alert <COMMAND> --help\n  grafana-util alert <COMMAND> --help-full\n";
+pub(crate) const ALERT_SHORT_HELP_TEXT: &str = "Usage: grafana-util alert <COMMAND>\n\nChoose the task first:\n  inventory    list-rules, list-contact-points, list-mute-timings, list-templates, delete\n  backup       export, import, diff\n  authoring    init, add-rule, clone-rule, add-contact-point, set-route, preview-route, new-rule, new-contact-point, new-template\n  review       plan, apply\n\nMore help:\n  grafana-util alert <COMMAND> --help\n  grafana-util alert <COMMAND> --help-full\n";
 pub(crate) const UNIFIED_ACCESS_HELP_TEXT: &str = "Examples:\n\n  grafana-util access user list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --json\n  grafana-util access user list --input-dir ./access-users --json\n  grafana-util access team import --url http://localhost:3000 --basic-user admin --basic-password admin --input-dir ./access-teams --replace-existing --yes\n  grafana-util access service-account token add --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --name deploy-bot --token-name nightly";
 
 const DASHBOARD_DIFF_SCHEMA_HELP_TEXT: &str = include_str!("../../schemas/help/diff/dashboard.txt");
@@ -78,6 +78,21 @@ fn render_domain_help_full_text(
     ensure_trailing_blank_line(help)
 }
 
+fn render_workspace_domain_help_text(colorize: bool) -> String {
+    render_domain_help_text(
+        SyncCliArgs::command().name("grafana-util workspace"),
+        colorize,
+    )
+}
+
+fn render_workspace_domain_help_full_text(colorize: bool) -> String {
+    render_domain_help_full_text(
+        SyncCliArgs::command().name("grafana-util workspace"),
+        SYNC_HELP_FULL_TEXT,
+        colorize,
+    )
+}
+
 fn render_unified_subcommand_help(path: &[String], colorize: bool) -> Option<String> {
     let mut command = CliArgs::command();
     let mut current = &mut command;
@@ -129,7 +144,7 @@ pub fn render_unified_version_text() -> String {
     crate::common::TOOL_VERSION_TEXT.to_string()
 }
 
-fn render_change_schema_help(target: Option<&str>) -> Option<String> {
+fn render_workspace_schema_help(target: Option<&str>) -> Option<String> {
     match target {
         None => Some(
             include_str!(concat!(
@@ -138,21 +153,21 @@ fn render_change_schema_help(target: Option<&str>) -> Option<String> {
             ))
             .to_string(),
         ),
-        Some("summary") => Some(
+        Some("summary") | Some("scan") => Some(
             include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/../schemas/help/change/summary.help.txt"
             ))
             .to_string(),
         ),
-        Some("plan") => Some(
+        Some("plan") | Some("preview") => Some(
             include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/../schemas/help/change/plan.help.txt"
             ))
             .to_string(),
         ),
-        Some("review") => Some(
+        Some("review") | Some("mark-reviewed") => Some(
             include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/../schemas/help/change/review.help.txt"
@@ -173,35 +188,35 @@ fn render_change_schema_help(target: Option<&str>) -> Option<String> {
             ))
             .to_string(),
         ),
-        Some("preflight") => Some(
+        Some("preflight") | Some("test") | Some("input-test") => Some(
             include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/../schemas/help/change/preflight.help.txt"
             ))
             .to_string(),
         ),
-        Some("assess-alerts") => Some(
+        Some("assess-alerts") | Some("alert-readiness") => Some(
             include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/../schemas/help/change/assess-alerts.help.txt"
             ))
             .to_string(),
         ),
-        Some("bundle-preflight") => Some(
+        Some("bundle-preflight") | Some("package-test") => Some(
             include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/../schemas/help/change/bundle-preflight.help.txt"
             ))
             .to_string(),
         ),
-        Some("promotion-preflight") => Some(
+        Some("promotion-preflight") | Some("promote-test") => Some(
             include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/../schemas/help/change/promotion-preflight.help.txt"
             ))
             .to_string(),
         ),
-        Some("bundle") => Some(
+        Some("bundle") | Some("package") => Some(
             include_str!(concat!(
                 env!("CARGO_MANIFEST_DIR"),
                 "/../schemas/help/change/bundle.help.txt"
@@ -281,14 +296,18 @@ where
         .map(|value| value.into().to_string_lossy().into_owned())
         .collect::<Vec<_>>();
     if args.len() >= 3
-        && args.get(1).map(String::as_str) == Some("change")
+        && args.get(1).map(String::as_str) == Some("workspace")
         && args.iter().any(|value| value == "--help-schema")
     {
         let target = args
-            .get(2)
+            .get(if args.get(2).map(String::as_str) == Some("ci") {
+                3
+            } else {
+                2
+            })
             .filter(|value| !value.starts_with('-'))
             .map(String::as_str);
-        return render_change_schema_help(target);
+        return render_workspace_schema_help(target);
     }
     if args.len() >= 4
         && args.get(1).map(String::as_str) == Some("dashboard")
@@ -323,7 +342,7 @@ where
         return render_diff_schema_help("datasource");
     }
     if args.len() >= 3
-        && matches!(args.get(1).map(String::as_str), Some("status" | "observe"))
+        && args.get(1).map(String::as_str) == Some("status")
         && args.iter().any(|value| value == "--help-schema")
     {
         let target = args
@@ -357,8 +376,10 @@ where
         [_binary, command, flag] if command == "access" && (flag == "--help" || flag == "-h") => {
             Some(render_domain_help_text(access_root_command(), colorize))
         }
-        [_binary, command, flag] if command == "change" && (flag == "--help" || flag == "-h") => {
-            Some(render_domain_help_text(SyncCliArgs::command(), colorize))
+        [_binary, command, flag]
+            if command == "workspace" && (flag == "--help" || flag == "-h") =>
+        {
+            Some(render_workspace_domain_help_text(colorize))
         }
         [_binary, command, flag]
             if command == "dashboard" && (flag == "--help" || flag == "-h") =>
@@ -385,9 +406,9 @@ where
         [_binary, command, flag] if command == "access" && flag == "--help-full" => Some(
             render_domain_help_full_text(access_root_command(), ACCESS_HELP_FULL_TEXT, colorize),
         ),
-        [_binary, command, flag] if command == "change" && flag == "--help-full" => Some(
-            render_domain_help_full_text(SyncCliArgs::command(), SYNC_HELP_FULL_TEXT, colorize),
-        ),
+        [_binary, command, flag] if command == "workspace" && flag == "--help-full" => {
+            Some(render_workspace_domain_help_full_text(colorize))
+        }
         _ => None,
     }
 }

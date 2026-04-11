@@ -13,7 +13,7 @@ Welcome to the `grafana-util` handbook. Start here if you need a practical opera
 
 `grafana-util` is a personal long-term tool built around real Grafana maintenance pain. This handbook is written from that same angle: not "how to expose every API surface", but how to move through inventory, inspection, review, migration, and safer live changes without rebuilding the workflow every time.
 
-This handbook is organized around the way operators actually work: first understand what the tool is for, then get a safe connection working, then move into `observe`, `export`, `change`, `config`, and `advanced` workflows.
+This handbook is organized around the way operators actually work: first understand what the tool is for, then get a safe connection working, then move into `status`, `export`, `workspace`, `config`, and task-specific workflows.
 
 If you want the high-level framing first, including the pain points this tool is meant to solve and when it is the right fit, start here:
 
@@ -32,7 +32,7 @@ If you want the high-level framing first, including the pain points this tool is
 
 ## Failure checks
 
-- If you still do not know whether you need dashboard, alert, access, or change guidance, stop at the purpose page and read the role map first.
+- If you still do not know whether you need dashboard, alert, access, or workspace guidance, stop at the purpose page and read the role map first.
 - If the first live read fails, fix connection or auth before opening mutation chapters.
 - If you only need exact flags, switch to the command docs instead of trying to infer them from the handbook.
 
@@ -57,7 +57,7 @@ grafana-util --version
 ### 3. Run Your First Global Audit
 ```bash
 # Generates a high-level health and inventory report of your Grafana estate
-grafana-util observe overview --url http://localhost:3000 --basic-user admin --prompt-password --output-format interactive
+grafana-util status overview --url http://localhost:3000 --basic-user admin --prompt-password --output-format interactive
 ```
 
 **Why this matters:** In 30 seconds, you have confirmed connectivity, checked dashboards and alerts, and found the first obvious data source problems before you make changes.
@@ -70,7 +70,7 @@ grafana-util observe overview --url http://localhost:3000 --basic-user admin --p
 *   **[What grafana-util is for](what-is-grafana-util.md)**: Start with the problems it solves and the operator workflows it is meant to support.
 *   **[Getting Started](getting-started.md)**: Installation, connection setup, profiles, and auth options.
 *   **[New User Path](role-new-user.md)**: The shortest safe path from install to first successful live read.
-*   **[SRE / Ops Path](role-sre-ops.md)**: The operator path for day-to-day governance, review-first change flows, and troubleshooting.
+*   **[SRE / Ops Path](role-sre-ops.md)**: The operator path for day-to-day governance, review-first workspace flows, and troubleshooting.
 *   **[Automation / CI Path](role-automation-ci.md)**: The profile, output, and command-reference path for scripting and automation.
 *   **[Architecture & Design Principles](architecture.md)**: The reasoning behind the workflow and command design.
 
@@ -83,7 +83,7 @@ grafana-util observe overview --url http://localhost:3000 --basic-user admin --p
 *   **[Access Management](access.md)**: org, user, team, and service account operations.
 
 ### Phase 4: Governance & Readiness
-*   **[Change & Observe](change-overview-status.md)**: staged workflows, project snapshots, and preflight checks.
+*   **[Workspace Review & Status](status-workspace.md)**: staged workflows, project snapshots, and readiness checks.
 
 ### Phase 5: Deep Dive
 *   **[Practical Scenarios](scenarios.md)**: end-to-end task recipes such as backups, DR, and audits.
@@ -102,7 +102,7 @@ Different readers usually need different paths through the handbook:
 *   **New user**
   Start with [What grafana-util is for](what-is-grafana-util.md), then [New User Path](role-new-user.md), then [Getting Started](getting-started.md), then open [Command Docs](../../commands/en/index.md) when you need exact flags.
 *   **SRE / operator**
-  Start with [SRE / Ops Path](role-sre-ops.md), then [Change & Observe](change-overview-status.md), [Dashboard Management](dashboard.md), [Data source Management](datasource.md), and [Troubleshooting](troubleshooting.md).
+  Start with [SRE / Ops Path](role-sre-ops.md), then [Workspace Review & Status](status-workspace.md), [Dashboard Management](dashboard.md), [Data source Management](datasource.md), and [Troubleshooting](troubleshooting.md).
 *   **Identity / access administrator**
   Start with [Access Management](access.md), then [Technical Reference](reference.md), then the [Command Docs](../../commands/en/index.md).
 *   **Automation / CI owner**

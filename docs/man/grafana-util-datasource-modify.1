@@ -12,7 +12,7 @@ Use this when a datasource already exists and you need to update its URL, auth, 
 .IP \(bu 2
 Before: updating a live datasource usually meant editing a blob of JSON or clicking through multiple UI tabs.
 .IP \(bu 2
-After: one command can preview the exact live update and keep the change reviewable before it lands.
+After: one command can preview the exact live update and keep the workspace reviewable before it lands.
 .SH COMMON OPTIONS
 .TP
 .B \-\-uid
@@ -47,7 +47,7 @@ the UID identifies the intended datasource before the mutation starts
 .IP \(bu 2
 \-\-dry\-run shows the new URL, auth, or JSON fields you expect
 .IP \(bu 2
-default flags and secret updates are visible before the live change
+default flags and secret updates are visible before the live workspace
 .SH FAILURE CHECKS
 .IP \(bu 2
 if the preview touches the wrong datasource, confirm the UID before retrying

@@ -4,7 +4,7 @@ use super::live::{
     execute_live_apply_with_request, fetch_live_availability_with_request,
     fetch_live_resource_specs_with_request, load_apply_intent_operations,
 };
-use super::{SyncCliArgs, SyncGroupCommand};
+use super::{SyncAdvancedCommand, SyncCliArgs, SyncGroupCommand};
 use clap::Parser;
 use reqwest::Method;
 use serde_json::json;
@@ -41,6 +41,7 @@ fn load_apply_intent_operations_rejects_wrong_kind() {
 fn parse_sync_cli_supports_plan_fetch_live_mode() {
     let args = SyncCliArgs::parse_from([
         "grafana-util",
+        "ci",
         "plan",
         "--desired-file",
         "./desired.json",
@@ -54,13 +55,16 @@ fn parse_sync_cli_supports_plan_fetch_live_mode() {
     ]);
 
     match args.command {
-        SyncGroupCommand::Plan(inner) => {
-            assert_eq!(inner.desired_file, Path::new("./desired.json"));
-            assert_eq!(inner.live_file, None);
-            assert!(inner.fetch_live);
-            assert_eq!(inner.org_id, Some(7));
-            assert_eq!(inner.page_size, 250);
-        }
+        SyncGroupCommand::Advanced(inner) => match inner.command {
+            SyncAdvancedCommand::Plan(inner) => {
+                assert_eq!(inner.desired_file, Path::new("./desired.json"));
+                assert_eq!(inner.live_file, None);
+                assert!(inner.fetch_live);
+                assert_eq!(inner.org_id, Some(7));
+                assert_eq!(inner.page_size, 250);
+            }
+            _ => panic!("expected plan"),
+        },
         _ => panic!("expected plan"),
     }
 }
@@ -94,10 +98,11 @@ fn parse_sync_cli_supports_apply_execute_live_flags() {
 }
 
 #[test]
-fn parse_sync_cli_supports_preflight_fetch_live_mode() {
+fn parse_sync_cli_supports_input_test_fetch_live_mode() {
     let args = SyncCliArgs::parse_from([
         "grafana-util",
-        "preflight",
+        "ci",
+        "input-test",
         "--desired-file",
         "./desired.json",
         "--fetch-live",
@@ -108,19 +113,23 @@ fn parse_sync_cli_supports_preflight_fetch_live_mode() {
     ]);
 
     match args.command {
-        SyncGroupCommand::Preflight(inner) => {
-            assert!(inner.fetch_live);
-            assert_eq!(inner.org_id, Some(3));
-        }
-        _ => panic!("expected preflight"),
+        SyncGroupCommand::Advanced(inner) => match inner.command {
+            SyncAdvancedCommand::Preflight(inner) => {
+                assert!(inner.fetch_live);
+                assert_eq!(inner.org_id, Some(3));
+            }
+            _ => panic!("expected input-test"),
+        },
+        _ => panic!("expected workspace ci"),
     }
 }
 
 #[test]
-fn parse_sync_cli_supports_bundle_preflight_fetch_live_mode() {
+fn parse_sync_cli_supports_package_test_fetch_live_mode() {
     let args = SyncCliArgs::parse_from([
         "grafana-util",
-        "bundle-preflight",
+        "ci",
+        "package-test",
         "--source-bundle",
         "./bundle.json",
         "--target-inventory",
@@ -133,11 +142,14 @@ fn parse_sync_cli_supports_bundle_preflight_fetch_live_mode() {
     ]);
 
     match args.command {
-        SyncGroupCommand::BundlePreflight(inner) => {
-            assert!(inner.fetch_live);
-            assert_eq!(inner.org_id, Some(5));
-        }
-        _ => panic!("expected bundle-preflight"),
+        SyncGroupCommand::Advanced(inner) => match inner.command {
+            SyncAdvancedCommand::BundlePreflight(inner) => {
+                assert!(inner.fetch_live);
+                assert_eq!(inner.org_id, Some(5));
+            }
+            _ => panic!("expected package-test"),
+        },
+        _ => panic!("expected workspace ci"),
     }
 }
 

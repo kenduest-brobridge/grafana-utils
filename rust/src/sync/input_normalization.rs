@@ -1,8 +1,8 @@
-//! Normalization helpers for task-first `grafana-util change` workflows.
+//! Normalization helpers for task-first `grafana-util workspace` workflows.
 //!
 //! This module is intentionally small and boring: it owns the input assembly
 //! and normalization steps that convert repo-local staged inputs into the
-//! canonical shapes consumed by inspect/check/preview/bundle workflows.
+//! canonical shapes consumed by scan/test/preview/package workflows.
 
 use std::path::PathBuf;
 
@@ -231,7 +231,7 @@ pub(crate) fn select_preview_dashboard_sources<'a>(
 ) -> Result<(Option<&'a PathBuf>, Option<&'a PathBuf>)> {
     if inputs.dashboard_export_dir.is_some() && inputs.dashboard_provisioning_dir.is_some() {
         return Err(message(
-            "Change preview accepts only one dashboard source: --dashboard-export-dir or --dashboard-provisioning-dir.",
+            "Workspace preview accepts only one dashboard source: --dashboard-export-dir or --dashboard-provisioning-dir.",
         ));
     }
     if let Some(path) = inputs.dashboard_export_dir.as_ref() {
@@ -325,13 +325,13 @@ pub(crate) fn load_preview_desired_specs(
     discovered_datasource_provisioning_file: Option<&PathBuf>,
 ) -> Result<Vec<Value>> {
     if let Some(path) = inputs.desired_file.as_ref().or(discovered_desired_file) {
-        return load_json_array_file(path, "Change desired input");
+        return load_json_array_file(path, "Workspace desired input");
     }
     if let Some(path) = inputs.source_bundle.as_ref().or(discovered_source_bundle) {
-        let source_bundle = load_json_value(path, "Change source bundle input")?;
+        let source_bundle = load_json_value(path, "Workspace package input")?;
         let bundle = source_bundle
             .as_object()
-            .ok_or_else(|| message("Change source bundle input must be a JSON object."))?;
+            .ok_or_else(|| message("Workspace package input must be a JSON object."))?;
         let mut desired_specs = Vec::new();
         for key in ["dashboards", "datasources", "folders", "alerts"] {
             if let Some(items) = bundle.get(key).and_then(Value::as_array) {
@@ -350,7 +350,7 @@ pub(crate) fn load_preview_desired_specs(
         return Ok(specs);
     }
     Err(message(
-        "Change preview could not find a staged desired change file, source bundle, or staged export/provisioning inputs.",
+        "Workspace preview could not find a staged desired file, workspace package, or staged export/provisioning inputs.",
     ))
 }
 
@@ -590,7 +590,7 @@ mod input_normalization_tests {
 
         assert_eq!(
             error.to_string(),
-            "Change preview accepts only one dashboard source: --dashboard-export-dir or --dashboard-provisioning-dir."
+            "Workspace preview accepts only one dashboard source: --dashboard-export-dir or --dashboard-provisioning-dir."
         );
     }
 }

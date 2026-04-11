@@ -1,7 +1,7 @@
-Observe live JSON schema
+Status live JSON schema
 
 Command:
-  grafana-util observe live --profile prod --output-format json
+  grafana-util status live --profile prod --output-format json
 
 kind:
   grafana-util-project-status
@@ -17,5 +17,5 @@ Top-level keys:
 - nextActions
 
 Notes:
-- This is the same shared contract used by staged observe.
+- This is the same shared contract used by staged status.
 - Branch on kind plus schemaVersion before reading nested fields.

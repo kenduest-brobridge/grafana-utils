@@ -41,8 +41,8 @@ const ACCESS_READY_NEXT_ACTIONS: &[&str] = &["re-run access export after members
 const ACCESS_NO_DATA_NEXT_ACTIONS: &[&str] =
     &["export at least one access user, team, org, or service-account record"];
 const ACCESS_MIXED_WORKSPACE_REVIEW_ACTIONS: &[&str] = &[
-    "add the missing access export bundles before using this workspace as one mixed change handoff",
-    "re-run change check after the missing access bundles are exported",
+    "add the missing access export bundles before using this workspace as one mixed workspace handoff",
+    "re-run workspace test after the missing access bundles are exported",
 ];
 
 #[derive(Debug, Clone, Copy)]
@@ -234,8 +234,8 @@ mod access_project_status_rust_tests {
             domain.next_actions,
             vec![
                 "export the missing access bundle kinds: teams, service accounts".to_string(),
-                "add the missing access export bundles before using this workspace as one mixed change handoff".to_string(),
-                "re-run change check after the missing access bundles are exported".to_string(),
+                "add the missing access export bundles before using this workspace as one mixed workspace handoff".to_string(),
+                "re-run workspace test after the missing access bundles are exported".to_string(),
             ]
         );
     }

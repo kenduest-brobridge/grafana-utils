@@ -27,7 +27,7 @@ List or browse live and local Grafana teams, create, modify, export, import, dif
 
 - if list, add, modify, or delete fails, confirm the team exists in the selected org and the auth scope is correct
 - if membership looks incomplete, recheck the exact member names and whether `--with-members` was set
-- if an import behaves unexpectedly, verify the source bundle and the target environment before retrying
+- if an import behaves unexpectedly, verify the workspace package and the target environment before retrying
 
 ## Key flags
 

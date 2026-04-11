@@ -24,11 +24,11 @@ Inventory reads can come from live Grafana or from a local export bundle; the wo
 
 - You can tell whether the task is org management, user management, team management, or service-account handling.
 - You can name the exact command family before you start mutating anything.
-- You know when you need a review step before applying a change.
+- You know when you need a review step before applying a workspace.
 
 ## Failure checks
 
-- If an identity change would affect more orgs than you intended, stop and verify the scope first.
+- If an identity workspace would affect more orgs than you intended, stop and verify the scope first.
 - If you are unsure whether a token or service account can perform the task, check the command page before mutation.
 - If the wording still feels split across team/org/user surfaces, return to the glossary and the command reference.
 
@@ -48,7 +48,7 @@ Need the command-by-command surface instead of the workflow guide?
 
 ## org Management
 
-Use `access org` when you need Basic-auth-backed inventory, export, or replay for orgs, especially when you need to verify which orgs exist before a cross-org change. The same `list` command can also read a saved bundle with `--input-dir`.
+Use `access org` when you need Basic-auth-backed inventory, export, or replay for orgs, especially when you need to verify which orgs exist before a cross-org workspace. The same `list` command can also read a saved bundle with `--input-dir`.
 
 ### 1. List, Export, and Replay orgs
 ```bash
@@ -257,4 +257,4 @@ No service account differences across 2 service account(s).
 Use diff output to decide whether a snapshot is safe to import or whether live Grafana has already drifted.
 
 ---
-[⬅️ Previous: Alerting Governance](alert.md) | [🏠 Home](index.md) | [➡️ Next: Change & Observe](change-overview-status.md)
+[⬅️ Previous: Alerting Governance](alert.md) | [🏠 Home](index.md) | [➡️ Next: Workspace Review & Status](status-workspace.md)

@@ -7,7 +7,7 @@
 當您想在匯入前先取得簡潔的線上與本地差異報告時，使用這個指令。
 
 ## 重點旗標
-- `--diff-dir`：要比對的本地 datasource bundle。
+- `--diff-dir`：要比對的本地 dataworkspace package。
 - `--input-format`：選擇 `inventory` 或 `provisioning`。
 - `--output-format`：選擇 `text` 或 `json`。
 

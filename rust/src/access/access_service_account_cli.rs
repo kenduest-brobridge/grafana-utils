@@ -236,7 +236,7 @@ pub struct ServiceAccountTokenAddArgs {
     pub json: bool,
 }
 
-/// Enum definition for ServiceAccountTokenCommand.
+/// Service-account token workflows.
 #[derive(Debug, Clone, Subcommand)]
 pub enum ServiceAccountTokenCommand {
     #[command(after_help = ACCESS_SERVICE_ACCOUNT_TOKEN_ADD_HELP_TEXT)]
@@ -245,7 +245,7 @@ pub enum ServiceAccountTokenCommand {
     Delete(ServiceAccountTokenDeleteArgs),
 }
 
-/// Enum definition for ServiceAccountCommand.
+/// Service-account inventory and lifecycle workflows.
 #[derive(Debug, Clone, Subcommand)]
 pub enum ServiceAccountCommand {
     #[command(after_help = ACCESS_SERVICE_ACCOUNT_LIST_HELP_TEXT)]

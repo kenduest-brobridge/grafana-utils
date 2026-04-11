@@ -75,12 +75,12 @@
 
 先用這裡快速判斷自己遇到的是哪一類工作，再往對應章節或指令說明走。
 
-### Observe
+### Status
 
-想先看 live 或 staged 狀態、快速盤點環境，先從 `observe` 開始。
+想先看 live 或 staged 狀態、快速盤點環境，先從 `status` 開始。
 
 - [瀏覽技術參考](../user-guide/zh-TW/reference.md)
-- [瀏覽 observe 指令](../commands/zh-TW/observe.md)
+- [瀏覽 status 指令](../commands/zh-TW/status.md)
 
 ### 資產操作
 
@@ -97,12 +97,12 @@
 - [瀏覽 Access 章節](../user-guide/zh-TW/access.md)
 - [瀏覽 config profile 指令](../commands/zh-TW/profile.md)
 
-### 變更審查
+### Workspace 審查
 
-如果你不想直接套用變更，而是想先看 summary、preflight、plan 與 review，請從這裡開始。
+如果你不想直接套用 workspace，而是想先做 scan、test、preview 與 package，請從這裡開始。
 
-- [瀏覽變更與狀態](../user-guide/zh-TW/change-overview-status.md)
-- [瀏覽 change 指令](../commands/zh-TW/change.md)
+- [瀏覽 workspace 與狀態](../user-guide/zh-TW/status-workspace.md)
+- [瀏覽 workspace 指令](../commands/zh-TW/workspace.md)
 
 ## 完整參考
 

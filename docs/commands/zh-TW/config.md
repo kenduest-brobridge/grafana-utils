@@ -24,4 +24,4 @@ grafana-util config profile init --overwrite
 grafana-util config profile add prod --url https://grafana.example.com --basic-user admin --prompt-password --store-secret encrypted-file
 ```
 
-相關指令：`grafana-util observe live`、`grafana-util observe overview`、`grafana-util change preview`。
+相關指令：`grafana-util status live`、`grafana-util status overview`、`grafana-util workspace preview`。

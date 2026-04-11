@@ -25,9 +25,9 @@ ACCESS_SERVICE_ACCOUNT_EXPORT_DIR="${WORK_DIR}/access-service-accounts"
 ACCESS_TEAM_REPLAY_EXPORT_DIR="${WORK_DIR}/access-teams-replay"
 ACCESS_USER_REPLAY_EXPORT_DIR="${WORK_DIR}/access-users-replay"
 ACCESS_USER_ORG_REPLAY_EXPORT_DIR="${WORK_DIR}/access-users-org-replay"
-SYNC_BUNDLE_FILE="${WORK_DIR}/sync-source-bundle.json"
+WORKSPACE_PACKAGE_FILE="${WORK_DIR}/workspace-package.json"
 SYNC_TARGET_INVENTORY_FILE="${WORK_DIR}/sync-target-inventory.json"
-SYNC_BUNDLE_PREFLIGHT_FILE="${WORK_DIR}/sync-bundle-preflight.json"
+WORKSPACE_PACKAGE_TEST_FILE="${WORK_DIR}/workspace-package-test.json"
 ALERT_CONTACT_FILE=""
 ALERT_CONTACT_UID=""
 ALERT_MUTE_TIMING_FILE=""
@@ -2662,50 +2662,50 @@ prepare_sync_smoke_fixture() {
 run_sync_smoke() {
   prepare_sync_smoke_fixture
 
-  local change_preview_fetch_live_json="${WORK_DIR}/change-preview-fetch-live.json"
+  local workspace_preview_fetch_live_json="${WORK_DIR}/workspace-preview-fetch-live.json"
 
-  "$(sync_bin)" change advanced bundle \
+  "$(sync_bin)" workspace package \
     --dashboard-export-dir "${DASHBOARD_EXPORT_DIR}/raw" \
     --alert-export-dir "${ALERT_EXPORT_DIR}/raw" \
-    --output-file "${SYNC_BUNDLE_FILE}" \
+    --output-file "${WORKSPACE_PACKAGE_FILE}" \
     --output-format json >/dev/null
 
-  [[ -f "${SYNC_BUNDLE_FILE}" ]] || fail "sync bundle did not write source bundle output"
-  jq -e '.kind == "grafana-utils-sync-source-bundle"' "${SYNC_BUNDLE_FILE}" >/dev/null \
-    || fail "sync bundle did not emit the expected source bundle kind"
-  jq -e '.summary.contactPointCount >= 1' "${SYNC_BUNDLE_FILE}" >/dev/null \
-    || fail "sync bundle did not record exported alert contact point count"
-  jq -e '.alerts | any(.uid == "cpu-high")' "${SYNC_BUNDLE_FILE}" >/dev/null \
-    || fail "sync bundle did not preserve the seeded alert rule in the smoke fixture"
+  [[ -f "${WORKSPACE_PACKAGE_FILE}" ]] || fail "workspace package did not write source bundle output"
+  jq -e '.kind == "grafana-utils-sync-source-bundle"' "${WORKSPACE_PACKAGE_FILE}" >/dev/null \
+    || fail "workspace package did not emit the expected source bundle kind"
+  jq -e '.summary.contactPointCount >= 1' "${WORKSPACE_PACKAGE_FILE}" >/dev/null \
+    || fail "workspace package did not record exported alert contact point count"
+  jq -e '.alerts | any(.uid == "cpu-high")' "${WORKSPACE_PACKAGE_FILE}" >/dev/null \
+    || fail "workspace package did not preserve the seeded alert rule in the smoke fixture"
 
   printf '{}\n' >"${SYNC_TARGET_INVENTORY_FILE}"
 
-  "$(sync_bin)" change advanced bundle-preflight \
-    --source-bundle "${SYNC_BUNDLE_FILE}" \
+  "$(sync_bin)" workspace ci package-test \
+    --source-bundle "${WORKSPACE_PACKAGE_FILE}" \
     --target-inventory "${SYNC_TARGET_INVENTORY_FILE}" \
-    --output-format json >"${SYNC_BUNDLE_PREFLIGHT_FILE}"
+    --output-format json >"${WORKSPACE_PACKAGE_TEST_FILE}"
 
-  jq -e '.kind == "grafana-utils-sync-bundle-preflight"' "${SYNC_BUNDLE_PREFLIGHT_FILE}" >/dev/null \
-    || fail "sync bundle-preflight did not emit the expected document kind"
-  jq -e '.summary.resourceCount >= 2' "${SYNC_BUNDLE_PREFLIGHT_FILE}" >/dev/null \
-    || fail "sync bundle-preflight did not count the bundled dashboard and datasource specs"
+  jq -e '.kind == "grafana-utils-sync-bundle-preflight"' "${WORKSPACE_PACKAGE_TEST_FILE}" >/dev/null \
+    || fail "workspace package-test did not emit the expected document kind"
+  jq -e '.summary.resourceCount >= 2' "${WORKSPACE_PACKAGE_TEST_FILE}" >/dev/null \
+    || fail "workspace package-test did not count the bundled dashboard and datasource specs"
 
-  "$(sync_bin)" change preview \
-    --workspace "${WORK_DIR}" \
+  "$(sync_bin)" workspace preview \
+    "${WORK_DIR}" \
     --fetch-live \
     --url "${GRAFANA_URL}" \
     --token "${GRAFANA_API_TOKEN}" \
     --output-format json \
-    --output-file "${change_preview_fetch_live_json}" >/dev/null
+    --output-file "${workspace_preview_fetch_live_json}" >/dev/null
 
-  [[ -f "${change_preview_fetch_live_json}" ]] || fail "change preview did not write a live preview artifact"
+  [[ -f "${workspace_preview_fetch_live_json}" ]] || fail "workspace preview did not write a live preview artifact"
   jq -e '
     (.kind == "grafana-utils-sync-plan")
     and (.reviewed == false)
     and (.ordering.mode == "dependency-aware")
     and ((.operations | length) >= 1)
-  ' "${change_preview_fetch_live_json}" >/dev/null \
-    || fail "change preview --fetch-live did not emit the expected sync plan contract"
+  ' "${workspace_preview_fetch_live_json}" >/dev/null \
+    || fail "workspace preview --fetch-live did not emit the expected sync plan contract"
 }
 
 main() {

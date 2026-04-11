@@ -17,7 +17,7 @@ pub(crate) const PROFILE_LIST_AFTER_HELP: &str =
 pub(crate) const PROFILE_SHOW_AFTER_HELP: &str =
     "Use --profile NAME to show a specific profile instead of the default-selection rules.";
 pub(crate) const PROFILE_CURRENT_AFTER_HELP: &str =
-    "Use this to confirm which repo-local profile would be selected before running observe live, observe overview, or any Grafana command that accepts --profile.";
+    "Use this to confirm which repo-local profile would be selected before running status live, status overview, or any Grafana command that accepts --profile.";
 pub(crate) const PROFILE_VALIDATE_AFTER_HELP: &str =
     "Static validation checks profile selection, auth shape, env-backed credentials, and secret-store resolution. Add --live to also call Grafana /api/health with the selected profile.";
 pub(crate) const PROFILE_ADD_AFTER_HELP: &str =

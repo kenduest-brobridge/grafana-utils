@@ -6,7 +6,7 @@
 
 - 已經知道自己要做哪一類維運流程的人
 - 想看端到端操作順序，而不是單一 command 的人
-- 需要把 dashboard、access、alert、change 串在一起的人
+- 需要把 dashboard、access、alert、workspace 串在一起的人
 
 ## 主要目標
 
@@ -31,7 +31,7 @@
 - 如果預期輸出跟目前階段對不上，先修正差異再繼續。
 - 如果你其實更需要精確旗標，請改看指令詳細說明，不要硬靠情境頁猜。
 
-如果要對照每個工作流對應的精確旗標，請搭配 [dashboard](../../commands/zh-TW/dashboard.md)、[access](../../commands/zh-TW/access.md)、[alert](../../commands/zh-TW/alert.md)、[change](../../commands/zh-TW/change.md)、[config profile](../../commands/zh-TW/config.md) 與 [指令詳細說明總索引](../../commands/zh-TW/index.md) 一起看。
+如果要對照每個工作流對應的精確旗標，請搭配 [dashboard](../../commands/zh-TW/dashboard.md)、[access](../../commands/zh-TW/access.md)、[alert](../../commands/zh-TW/alert.md)、[workspace](../../commands/zh-TW/workspace.md)、[config profile](../../commands/zh-TW/config.md) 與 [指令詳細說明總索引](../../commands/zh-TW/index.md) 一起看。
 
 ---
 
@@ -50,12 +50,12 @@ grafana-util config profile list
 
 ```bash
 # 用途：在執行任何變更前，先確認連線正確，而且版本沒搞錯。
-grafana-util observe live --profile prod --output-format table
+grafana-util status live --profile prod --output-format table
 ```
 
 ```bash
 # 用途：在執行任何變更前，先確認連線正確，而且版本沒搞錯。
-grafana-util observe overview live --profile prod --output-format interactive
+grafana-util status overview live --profile prod --output-format interactive
 ```
 **預期輸出：**
 ```text
@@ -67,7 +67,7 @@ OVERALL: status=ready
 Project overview
 Live status: ready
 ```
-先用 `config profile list` 確認專案本地的預設值，再用 `observe live` 做驗證，最後用 `observe overview live --output-format interactive` 看同一個 live 操作面的可瀏覽版本。
+先用 `config profile list` 確認專案本地的預設值，再用 `status live` 做驗證，最後用 `status overview live --output-format interactive` 看同一個 live 操作面的可瀏覽版本。
 
 ---
 
@@ -176,21 +176,21 @@ ops-user    Viewer  create   missing
 
 ```bash
 # 用途：告警變更應遵循受審查的生命週期。
-grafana-util change inspect --desired-file ./desired.json
+grafana-util workspace scan --desired-file ./desired.json
 ```
 
 ```bash
 # 用途：告警變更應遵循受審查的生命週期。
-grafana-util change check --desired-file ./desired.json --fetch-live --output-format json
+grafana-util workspace test --desired-file ./desired.json --fetch-live --output-format json
 ```
 
 ```bash
 # 用途：告警變更應遵循受審查的生命週期。
-grafana-util alert change plan --profile prod --desired-dir ./alerts/desired --output-format json
+grafana-util alert plan --profile prod --desired-dir ./alerts/desired --output-format json
 ```
 **預期輸出 (摘要片段)：**
 ```text
-CHANGE PACKAGE SUMMARY:
+WORKSPACE PACKAGE SUMMARY:
 - dashboards: 5 modified, 2 added
 - alerts: 3 modified
 
@@ -203,7 +203,7 @@ PREFLIGHT CHECK:
   "plan_id": "plan-2026-04-02-abc"
 }
 ```
-想先了解變更包規模與形狀時，先跑 `change inspect`；要確認 staged 輸入結構正確時，再跑 `change check`；最後才進入 alert-specific planning。
+想先了解變更包規模與形狀時，先跑 `workspace scan`；要確認 staged 輸入結構正確時，再跑 `workspace test`；最後才進入 alert-specific planning。
 
 ---
 
@@ -241,4 +241,4 @@ ops-user    Viewer  create   missing
 這個工作流是用來安全回放身分狀態的：先看 import dry-run，自動化憑證則透過 service account token 指令做輪替，不必再靠人工猜測目標帳號。
 
 ---
-[⬅️ 上一章：變更與狀態](change-overview-status.md) | [🏠 回首頁](index.md) | [➡️ 下一章：技術參考手冊](reference.md)
+[⬅️ 上一章：Workspace 審查與狀態](status-workspace.md) | [🏠 回首頁](index.md) | [➡️ 下一章：技術參考手冊](reference.md)

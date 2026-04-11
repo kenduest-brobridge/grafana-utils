@@ -278,6 +278,10 @@ fn access_root_help_includes_examples_and_grouped_options() {
     assert!(help.contains("Examples:"));
     assert!(help.contains("grafana-util access user list"));
     assert!(help.contains("grafana-util access service-account token add"));
+    assert!(!help.contains("Enum definition for UserCommand"));
+    assert!(!help.contains("Enum definition for OrgCommand"));
+    assert!(!help.contains("Enum definition for TeamCommand"));
+    assert!(!help.contains("Enum definition for ServiceAccountCommand"));
     assert!(user_add_help.contains("Authentication Options"));
     assert!(user_add_help.contains("Transport Options"));
 }

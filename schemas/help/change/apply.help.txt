@@ -1,8 +1,8 @@
-Change apply JSON schema
+Workspace apply JSON schema
 
 Commands:
-  grafana-util change apply --plan-file ./sync-plan-reviewed.json --approve --output-format json
-  grafana-util change apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --profile prod --output-format json
+  grafana-util workspace apply --plan-file ./sync-plan-reviewed.json --approve --output-format json
+  grafana-util workspace apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --profile prod --output-format json
 
 Contracts:
 

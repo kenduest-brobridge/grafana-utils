@@ -328,14 +328,14 @@ fn run_sync_cli_apply_rejects_bundle_preflight_with_blocked_alert_artifacts() {
                         "kind": "alert-policy",
                         "identity": "grafana-default-email",
                         "status": "blocked",
-                        "detail": "Notification policies are staged in the source bundle but are not live-wired yet.",
+                        "detail": "Notification policies are staged in the workspace package but are not live-wired yet.",
                         "blocking": true
                     },
                     {
                         "kind": "alert-template",
                         "identity": "slack.default",
                         "status": "blocked",
-                        "detail": "Templates are staged in the source bundle but are not live-wired yet.",
+                        "detail": "Templates are staged in the workspace package but are not live-wired yet.",
                         "blocking": true
                     }
                 ]
@@ -366,7 +366,7 @@ fn run_sync_cli_apply_rejects_bundle_preflight_with_blocked_alert_artifacts() {
 
     assert!(error.contains("bundle preflight reports 2 blocking checks"));
     assert!(error.contains("source=alertArtifactAssessment"));
-    assert!(error.contains("Notification policies are staged in the source bundle"));
+    assert!(error.contains("Notification policies are staged in the workspace package"));
 }
 
 #[test]

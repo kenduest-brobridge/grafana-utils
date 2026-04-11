@@ -4,7 +4,7 @@
 Serve one or more dashboard drafts through a lightweight local preview server.
 
 ## When to use
-Use this when you are iterating on one dashboard draft, one draft directory, or one generator command and want a local browser surface without publishing back to Grafana after every change.
+Use this when you are iterating on one dashboard draft, one draft directory, or one generator command and want a local browser surface without publishing back to Grafana after every workspace.
 
 ## Key flags
 - `--input`: local dashboard file or directory to load into the preview server.

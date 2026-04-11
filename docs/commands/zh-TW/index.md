@@ -3,7 +3,7 @@
 ## 語言
 
 - 英文指令說明：[目前頁面](./index.md)
-- 繁體中文指令說明：[目前頁面](./index.md)
+- 繁體中文指令說明：[繁體中文逐指令說明](../zh-TW/index.md)
 - 英文手冊：[Operator Handbook](../../user-guide/en/index.md)
 - 繁體中文手冊：[繁體中文手冊](../../user-guide/zh-TW/index.md)
 
@@ -17,40 +17,36 @@
 
 現在建議的新手入口是比較小的 task-first surface：
 
-- [observe](./observe.md)：唯讀狀態、overview、snapshot、resource 查詢
+- [status](./status.md)：唯讀狀態、overview、snapshot、resource 查詢
 - [config](./config.md)：repo-local 連線與 secret 管理，主要是 `config profile`
 - [export](./export.md)：常見備份與本地 inventory 擷取
-- [change](./change.md)：以 review 為先的 staged change workflow
+- [workspace](./workspace.md)：scan、test、preview、package、apply 的本機 workspace workflow
 - [dashboard](./dashboard.md)：瀏覽、get、clone、export/import、summary、dependencies、policy 與 screenshot workflow
-- [alert](./alert.md)：alert inventory、authoring、change workflow
+- [alert](./alert.md)：alert inventory、authoring、review 與 apply workflow
 - [datasource](./datasource.md)：datasource inventory 與生命週期 workflow
 - [access](./access.md)：user、team、org、service-account workflow
 
-已移除的 root path：
-
-- `status ...` -> `observe staged ...` 或 `observe live ...`
-- `overview ...` -> `observe overview ...`
-- `profile ...` -> `config profile ...`
+如果舊筆記提到已移除的 root，請直接改用目前的 task name：`status ...`、`workspace ...` 與 `config profile ...`。
 
 ## 常用工作
 
-- [change](./change.md)
-- [change inspect](./change-inspect.md)
-- [change check](./change-check.md)
-- [change preview](./change-preview.md)
-- [change apply](./change-apply.md)
+- [workspace](./workspace.md)
+- [workspace scan](./workspace-scan.md)
+- [workspace test](./workspace-test.md)
+- [workspace preview](./workspace-preview.md)
+- [workspace apply](./workspace-apply.md)
 - [export](./export.md)
-- [observe](./observe.md)
+- [status](./status.md)
 - [dashboard convert raw-to-prompt](./dashboard-convert-raw-to-prompt.md)
 - `export dashboard`
 - `export alert`
 - `export datasource`
 - `export access user|org|team|service-account`
-- `observe live`
-- `observe staged`
-- `observe overview`
-- `observe snapshot`
-- `observe resource describe|kinds|list|get`
+- `status live`
+- `status staged`
+- `status overview`
+- `status snapshot`
+- `status resource describe|kinds|list|get`
 - `config profile`
 
 ## Domain 參考頁

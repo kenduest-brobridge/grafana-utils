@@ -91,7 +91,7 @@ pub(crate) fn validate_apply_preflight(document: &Value) -> Result<Value> {
         }
         SYNC_BUNDLE_PREFLIGHT_KIND => {
             return Err(message(
-                "Sync bundle preflight document is not supported via --preflight-file; use --bundle-preflight-file.",
+                "Workspace package-test document is not supported via --input-test-file; use --package-test-file.",
             ))
         }
         _ => return Err(message("Sync preflight document kind is not supported.")),

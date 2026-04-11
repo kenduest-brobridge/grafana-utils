@@ -20,7 +20,7 @@ List live or local Grafana service accounts, create, export, import, diff, or de
 
 - service-account changes stay tied to one named identity instead of a loose UI click path
 - token operations are explicit enough to review or script
-- inventory and bundle output can be passed to later access or change workflows without guesswork
+- inventory and bundle output can be passed to later access or workspace workflows without guesswork
 
 ## Failure checks
 

@@ -1,6 +1,9 @@
 //! Sync CLI review/apply regression test suite.
 //! Verifies lineage and approval gating for staged review/apply flows.
-use super::{run_sync_cli, SyncApplyArgs, SyncGroupCommand, SyncOutputFormat, SyncReviewArgs};
+use super::{
+    run_sync_cli, SyncAdvancedCliArgs, SyncAdvancedCommand, SyncApplyArgs, SyncGroupCommand,
+    SyncOutputFormat, SyncReviewArgs,
+};
 use crate::dashboard::CommonCliArgs;
 use serde_json::json;
 use std::fs;
@@ -48,14 +51,16 @@ fn run_sync_cli_review_rejects_partial_lineage_metadata() {
     )
     .unwrap();
 
-    let error = run_sync_cli(SyncGroupCommand::Review(SyncReviewArgs {
-        plan_file,
-        review_token: super::DEFAULT_REVIEW_TOKEN.to_string(),
-        output_format: SyncOutputFormat::Json,
-        reviewed_by: None,
-        reviewed_at: None,
-        review_note: None,
-        interactive: false,
+    let error = run_sync_cli(SyncGroupCommand::Advanced(SyncAdvancedCliArgs {
+        command: SyncAdvancedCommand::Review(SyncReviewArgs {
+            plan_file,
+            review_token: super::DEFAULT_REVIEW_TOKEN.to_string(),
+            output_format: SyncOutputFormat::Json,
+            reviewed_by: None,
+            reviewed_at: None,
+            review_note: None,
+            interactive: false,
+        }),
     }))
     .unwrap_err()
     .to_string();
@@ -92,14 +97,16 @@ fn run_sync_cli_review_rejects_non_plan_lineage_stage() {
     )
     .unwrap();
 
-    let error = run_sync_cli(SyncGroupCommand::Review(SyncReviewArgs {
-        plan_file,
-        review_token: super::DEFAULT_REVIEW_TOKEN.to_string(),
-        output_format: SyncOutputFormat::Json,
-        reviewed_by: None,
-        reviewed_at: None,
-        review_note: None,
-        interactive: false,
+    let error = run_sync_cli(SyncGroupCommand::Advanced(SyncAdvancedCliArgs {
+        command: SyncAdvancedCommand::Review(SyncReviewArgs {
+            plan_file,
+            review_token: super::DEFAULT_REVIEW_TOKEN.to_string(),
+            output_format: SyncOutputFormat::Json,
+            reviewed_by: None,
+            reviewed_at: None,
+            review_note: None,
+            interactive: false,
+        }),
     }))
     .unwrap_err()
     .to_string();
@@ -136,14 +143,16 @@ fn run_sync_cli_review_rejects_plan_with_wrong_lineage_stage() {
     )
     .unwrap();
 
-    let error = run_sync_cli(SyncGroupCommand::Review(SyncReviewArgs {
-        plan_file,
-        review_token: super::DEFAULT_REVIEW_TOKEN.to_string(),
-        output_format: SyncOutputFormat::Json,
-        reviewed_by: None,
-        reviewed_at: None,
-        review_note: None,
-        interactive: false,
+    let error = run_sync_cli(SyncGroupCommand::Advanced(SyncAdvancedCliArgs {
+        command: SyncAdvancedCommand::Review(SyncReviewArgs {
+            plan_file,
+            review_token: super::DEFAULT_REVIEW_TOKEN.to_string(),
+            output_format: SyncOutputFormat::Json,
+            reviewed_by: None,
+            reviewed_at: None,
+            review_note: None,
+            interactive: false,
+        }),
     }))
     .unwrap_err()
     .to_string();

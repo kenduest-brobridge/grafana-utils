@@ -618,10 +618,10 @@ fn project_status_cli_help_and_parse_support_datasource_provisioning_file() {
     assert!(help.contains("--datasource-provisioning-file"));
     assert!(help.contains("Render project status as table, csv, text, json, yaml"));
     assert!(PROJECT_STATUS_STAGED_HELP_TEXT
-        .contains("grafana-util observe staged --dashboard-export-dir ./dashboards/raw"));
+        .contains("grafana-util status staged --dashboard-export-dir ./dashboards/raw"));
     assert!(PROJECT_STATUS_LIVE_HELP_TEXT
-        .contains("grafana-util observe live --url http://localhost:3000 --token"));
-    assert!(!help.contains("grafana-util status"));
+        .contains("grafana-util status live --url http://localhost:3000 --token"));
+    assert!(!help.contains("grafana-util observe"));
 
     let args = ProjectStatusCliArgs::parse_from([
         "grafana-util",

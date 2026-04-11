@@ -4,7 +4,7 @@
 將線上 Grafana datasource inventory 匯出成標準化 JSON 與 provisioning 檔案。
 
 ## 何時使用
-當您需要一個本地 datasource bundle，供後續檢查、比對或匯入時，使用這個指令。
+當您需要一個本地 dataworkspace package，供後續檢查、比對或匯入時，使用這個指令。
 
 ## 重點旗標
 - `--output-dir`：匯出樹的目標目錄。

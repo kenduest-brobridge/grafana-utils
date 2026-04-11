@@ -2,8 +2,9 @@
 //! Verifies audit rendering/TUI contracts and staged preflight validation.
 use super::audit::{build_sync_audit_document, render_sync_audit_text};
 use super::{
-    build_sync_audit_tui_groups, build_sync_audit_tui_rows, run_sync_cli, SyncApplyArgs,
-    SyncAuditArgs, SyncGroupCommand, SyncOutputFormat, SyncPreflightArgs,
+    build_sync_audit_tui_groups, build_sync_audit_tui_rows, run_sync_cli, SyncAdvancedCliArgs,
+    SyncAdvancedCommand, SyncApplyArgs, SyncAuditArgs, SyncGroupCommand, SyncOutputFormat,
+    SyncPreflightArgs,
 };
 use crate::dashboard::CommonCliArgs;
 use serde_json::json;
@@ -204,18 +205,20 @@ fn run_sync_cli_audit_builds_lock_and_allows_clean_write() {
     )
     .unwrap();
 
-    let result = run_sync_cli(SyncGroupCommand::Audit(SyncAuditArgs {
-        managed_file: Some(managed_file),
-        lock_file: None,
-        live_file: Some(live_file),
-        fetch_live: false,
-        common: sync_common_args(),
-        org_id: None,
-        page_size: 100,
-        write_lock: Some(lock_file.clone()),
-        fail_on_drift: false,
-        output_format: SyncOutputFormat::Json,
-        interactive: false,
+    let result = run_sync_cli(SyncGroupCommand::Advanced(SyncAdvancedCliArgs {
+        command: SyncAdvancedCommand::Audit(SyncAuditArgs {
+            managed_file: Some(managed_file),
+            lock_file: None,
+            live_file: Some(live_file),
+            fetch_live: false,
+            common: sync_common_args(),
+            org_id: None,
+            page_size: 100,
+            write_lock: Some(lock_file.clone()),
+            fail_on_drift: false,
+            output_format: SyncOutputFormat::Json,
+            interactive: false,
+        }),
     }));
 
     assert!(result.is_ok());
@@ -265,18 +268,20 @@ fn run_sync_cli_audit_rejects_drift_when_fail_on_drift_is_set() {
     )
     .unwrap();
 
-    let error = run_sync_cli(SyncGroupCommand::Audit(SyncAuditArgs {
-        managed_file: None,
-        lock_file: Some(lock_file),
-        live_file: Some(live_file),
-        fetch_live: false,
-        common: sync_common_args(),
-        org_id: None,
-        page_size: 100,
-        write_lock: None,
-        fail_on_drift: true,
-        output_format: SyncOutputFormat::Json,
-        interactive: false,
+    let error = run_sync_cli(SyncGroupCommand::Advanced(SyncAdvancedCliArgs {
+        command: SyncAdvancedCommand::Audit(SyncAuditArgs {
+            managed_file: None,
+            lock_file: Some(lock_file),
+            live_file: Some(live_file),
+            fetch_live: false,
+            common: sync_common_args(),
+            org_id: None,
+            page_size: 100,
+            write_lock: None,
+            fail_on_drift: true,
+            output_format: SyncOutputFormat::Json,
+            interactive: false,
+        }),
     }))
     .unwrap_err()
     .to_string();
@@ -349,13 +354,15 @@ fn run_sync_cli_preflight_rejects_non_object_availability_file() {
     .unwrap();
     fs::write(&availability_file, "[]").unwrap();
 
-    let error = run_sync_cli(SyncGroupCommand::Preflight(SyncPreflightArgs {
-        desired_file,
-        availability_file: Some(availability_file),
-        fetch_live: false,
-        common: sync_common_args(),
-        org_id: None,
-        output_format: SyncOutputFormat::Text,
+    let error = run_sync_cli(SyncGroupCommand::Advanced(SyncAdvancedCliArgs {
+        command: SyncAdvancedCommand::Preflight(SyncPreflightArgs {
+            desired_file,
+            availability_file: Some(availability_file),
+            fetch_live: false,
+            common: sync_common_args(),
+            org_id: None,
+            output_format: SyncOutputFormat::Text,
+        }),
     }))
     .unwrap_err()
     .to_string();

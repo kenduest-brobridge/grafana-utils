@@ -11,13 +11,13 @@ This page is for on-call operators and SREs who need a repeatable way to check r
 ## Primary Goals
 
 - Confirm live readiness before you touch anything.
- - Keep a reliable `config profile` for routine checks and repeatable maintenance.
+- Keep a reliable `config profile` for routine checks and repeatable maintenance.
 - Choose an auth path that can actually see the scope you need.
 
 ## Before / After
 
 - Before: SREs had to infer readiness, scope, and replay risk from a chain of ad hoc commands.
-- After: use a repeatable profile, then move through live checks, staged review, and apply only after preflight.
+- After: use a repeatable profile, then move through live checks, staged review, and apply only after input test.
 
 ## What success looks like
 
@@ -50,27 +50,27 @@ Use a profile backed by admin-capable credentials for day-to-day work.
 
 ```bash
 # Purpose: First commands to run.
-grafana-util observe live --profile prod --output-format table
+grafana-util status live --profile prod --output-format table
 ```
 
 ```bash
 # Purpose: First commands to run.
-grafana-util observe overview live --profile prod --output-format interactive
+grafana-util status overview live --profile prod --output-format interactive
 ```
 
 ```bash
 # Purpose: First commands to run.
-grafana-util change inspect --workspace .
+grafana-util workspace scan .
 ```
 
 ```bash
 # Purpose: First commands to run.
-grafana-util change check --workspace . --fetch-live --output-format json
+grafana-util workspace test . --fetch-live --output-format json
 ```
 
 ```bash
 # Purpose: First commands to run.
-grafana-util change preview --workspace . --fetch-live --output-format json
+grafana-util workspace preview . --fetch-live --output-format json
 ```
 
 ```bash
@@ -89,14 +89,14 @@ If you are checking a host directly, Basic auth is the safest fallback for broad
 
 ```bash
 # Purpose: If you are checking a host directly, Basic auth is the safest fallback for broad visibility.
-grafana-util observe live --url http://localhost:3000 --basic-user admin --prompt-password --all-orgs --output-format table
+grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --all-orgs --output-format table
 ```
 
 Use token auth only when the scope matches the work:
 
 ```bash
 # Purpose: Use token auth only when the scope matches the work.
-grafana-util observe overview live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format json
+grafana-util status overview live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format json
 ```
 
 ## What good operator posture looks like
@@ -105,12 +105,12 @@ You are in a good operator posture when:
 
 - you can tell whether the current credential can really see the org or admin scope you need
 - you can separate live reads from staged review from actual apply paths
-- you run preflight or dry-run checks before destructive actions
+- you run input test or dry-run checks before destructive actions
 - you know which command page to open when the surface shifts from read-only checks into dashboard, alert, or access work
 
 ## Read next
 
-- [Change & Observe](change-overview-status.md)
+- [Workspace Review & Status](status-workspace.md)
 - [Dashboard Management](dashboard.md)
 - [Data source Management](datasource.md)
 - [Alerting Governance](alert.md)
@@ -121,10 +121,10 @@ You are in a good operator posture when:
 
 - [config](../../commands/en/config.md)
 - [config profile](../../commands/en/profile.md)
-- [observe](../../commands/en/observe.md)
+- [status](../../commands/en/status.md)
 - [export dashboard](../../commands/en/export.md)
 - [advanced](../../commands/en/advanced.md)
-- [change](../../commands/en/change.md)
+- [workspace](../../commands/en/workspace.md)
 - [full command index](../../commands/en/index.md)
 
 ## Common mistakes and limits
@@ -133,7 +133,7 @@ You are in a good operator posture when:
 - Do not paste `--basic-password` into shared shell history unless you are deliberately in a throwaway session.
 - Do not use `--show-secrets` outside a local, controlled inspection step.
 - Do not treat a successful read-only check as proof that write or admin workflows will also work.
-- Do not skip `change check`, `change preview`, or command-specific `--dry-run` paths before high-impact changes.
+- Do not skip `workspace test`, `workspace preview`, or command-specific `--dry-run` paths before high-impact changes.
 
 ## When to switch to deeper docs
 
@@ -145,6 +145,6 @@ You are in a good operator posture when:
 ## Next steps
 
 - [Home](index.md)
-- [Change & Observe](change-overview-status.md)
+- [Workspace Review & Status](status-workspace.md)
 - [Dashboard Management](dashboard.md)
 - [Command Docs](../../commands/en/index.md)

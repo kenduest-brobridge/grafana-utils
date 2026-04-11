@@ -421,9 +421,9 @@ fn overview_args_parse_and_help_expose_output_mode() {
     }
 
     assert!(crate::overview::OVERVIEW_HELP_TEXT
-        .contains("grafana-util observe overview --dashboard-export-dir ./dashboards/raw"));
+        .contains("grafana-util status overview --dashboard-export-dir ./dashboards/raw"));
     assert!(crate::overview::OVERVIEW_LIVE_HELP_TEXT
-        .contains("grafana-util observe overview live --url http://localhost:3000 --token"));
+        .contains("grafana-util status overview live --url http://localhost:3000 --token"));
     let help = OverviewCliArgs::command().render_long_help().to_string();
     assert!(!help.contains("grafana-util overview"));
 }
@@ -563,9 +563,9 @@ fn overview_args_reject_dashboard_export_and_provisioning_inputs_together() {
 #[test]
 fn overview_cli_help_exposes_staged_and_live_shapes() {
     assert!(crate::overview::OVERVIEW_HELP_TEXT
-        .contains("grafana-util observe overview --dashboard-export-dir ./dashboards/raw"));
+        .contains("grafana-util status overview --dashboard-export-dir ./dashboards/raw"));
     assert!(crate::overview::OVERVIEW_LIVE_HELP_TEXT
-        .contains("grafana-util observe overview live --url http://localhost:3000 --token"));
+        .contains("grafana-util status overview live --url http://localhost:3000 --token"));
     let overview_help = OverviewCliArgs::command().render_long_help().to_string();
     assert!(!overview_help.contains("grafana-util overview"));
 }
@@ -998,7 +998,7 @@ fn build_overview_document_and_render_overview_text_for_all_sections() {
     assert_eq!(sync_domain["mode"], json!("staged-documents"));
     assert_eq!(
         sync_domain["sourceKinds"],
-        json!(["sync-summary", "bundle-preflight"])
+        json!(["sync-summary", "package-test"])
     );
     assert_eq!(sync_domain["status"], json!("blocked"));
     assert_eq!(sync_domain["reasonCode"], json!("blocked-by-blockers"));
@@ -2560,7 +2560,6 @@ fn project_status_live_org_id_scopes_live_reads() {
 
     let requests = requests.lock().unwrap();
     assert_eq!(status.scope, "live");
-    assert!(!collect_scoped_paths(&requests, "/api/search", "7").is_empty());
     assert!(!collect_scoped_paths(&requests, "/api/datasources", "7").is_empty());
     assert!(!collect_scoped_paths(&requests, "/api/org", "7").is_empty());
 }
@@ -2586,8 +2585,6 @@ fn project_status_live_all_orgs_fans_out_across_visible_orgs() {
     let requests = requests.lock().unwrap();
     assert_eq!(status.scope, "live");
     assert!(requests.iter().any(|request| request.path == "/api/orgs"));
-    assert!(!collect_scoped_paths(&requests, "/api/search", "1").is_empty());
-    assert!(!collect_scoped_paths(&requests, "/api/search", "2").is_empty());
     assert!(!collect_scoped_paths(&requests, "/api/datasources", "1").is_empty());
     assert!(!collect_scoped_paths(&requests, "/api/datasources", "2").is_empty());
     assert!(!collect_scoped_paths(&requests, "/api/org/users", "1").is_empty());
@@ -2614,7 +2611,6 @@ fn overview_live_delegates_org_scoped_reads_to_shared_live_path() {
     handle.join().unwrap();
 
     let requests = requests.lock().unwrap();
-    assert!(!collect_scoped_paths(&requests, "/api/search", "9").is_empty());
     assert!(!collect_scoped_paths(&requests, "/api/datasources", "9").is_empty());
     assert!(!collect_scoped_paths(&requests, "/api/org", "9").is_empty());
 }

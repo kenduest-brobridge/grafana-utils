@@ -45,10 +45,10 @@ Current maintained public namespaces:
 - `grafana-util dashboard`
 - `grafana-util alert`
 - `grafana-util access`
-- `grafana-util change`
 - `grafana-util status`
-- `grafana-util overview`
-- `grafana-util profile`
+- `grafana-util workspace`
+- `grafana-util export`
+- `grafana-util config`
 - `grafana-util snapshot`
 
 Treat `rust/src/cli.rs` as the command-topology entrypoint and the domain facade modules as the runtime dispatch layer.

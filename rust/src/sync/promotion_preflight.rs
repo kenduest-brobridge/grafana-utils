@@ -530,7 +530,7 @@ pub fn build_sync_promotion_preflight_document(
     availability: Option<&Value>,
     mapping: Option<&Value>,
 ) -> Result<Value> {
-    let source_bundle = require_json_object(source_bundle, "Sync source bundle input")?;
+    let source_bundle = require_json_object(source_bundle, "Workspace package input")?;
     let target_inventory = require_json_object(target_inventory, "Sync target inventory input")?;
     // Build on bundle-preflight first so the promotion summary reuses the same
     // base blocking semantics before adding remap-specific checks.

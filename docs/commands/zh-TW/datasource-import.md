@@ -4,7 +4,7 @@
 透過 Grafana API 匯入 datasource inventory。
 
 ## 何時使用
-當您有本地 datasource bundle 或 provisioning 樹，想把它推進 Grafana，無論是實際執行或 dry run，都可以使用這個指令。
+當您有本地 dataworkspace package 或 provisioning 樹，想把它推進 Grafana，無論是實際執行或 dry run，都可以使用這個指令。
 
 ## 重點旗標
 - `--input-dir`：inventory 或 provisioning 輸入的來源路徑。
@@ -33,7 +33,7 @@ grafana-util datasource import --url http://localhost:3000 --token "$GRAFANA_API
 
 ## 採用前後對照
 
-- **採用前**：匯入 datasource bundle 時，常常要先手動整理檔案、org 與 secrets，然後才敢碰 Grafana。
+- **採用前**：匯入 dataworkspace package 時，常常要先手動整理檔案、org 與 secrets，然後才敢碰 Grafana。
 - **採用後**：一個匯入指令就能先預覽計畫、整理 org 路由，再用適當的保護機制推進 bundle。
 
 ## 成功判準

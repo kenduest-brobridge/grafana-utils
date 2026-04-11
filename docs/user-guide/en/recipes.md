@@ -106,7 +106,7 @@ grafana-util dashboard dependencies --input-dir ./backups/raw --input-format raw
 
 **Problem**: You need to add a tag such as `ManagedBySRE` to many dashboards at once without hand-editing every file.
 
-**Before**: A simple bulk change turns into manual JSON edits or a risky script with no preview.
+**Before**: A simple bulk workspace turns into manual JSON edits or a risky script with no preview.
 
 **After**: The patch stays mechanical, reviewable, and previewed before live replay.
 
@@ -121,7 +121,7 @@ done
 grafana-util dashboard import --input-dir ./dashboards/raw --replace-existing --dry-run --table
 ```
 
-**Use this when**: the structural change is local and mechanical, and you want to keep the update reviewable.
+**Use this when**: the structural workspace is local and mechanical, and you want to keep the update reviewable.
 
 **Do not use this when**: the patch logic is so complex that a loop hides too much risk, or when the right answer depends on live discovery rather than local artifacts.
 

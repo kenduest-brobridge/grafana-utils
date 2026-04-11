@@ -4,7 +4,7 @@
 Estimate the blast radius of one datasource directly from live Grafana, a local export tree, or reusable dashboard governance artifacts.
 
 ## When to use
-Use this when you are about to change, migrate, or troubleshoot one datasource and need to know which dashboards and alert resources depend on it before you touch the live system. Prefer direct live or local inputs for the common path; keep governance artifacts for reuse.
+Use this when you are about to review a workspace, migrate, or troubleshoot one datasource and need to know which dashboards and alert resources depend on it before you touch the live system. Prefer direct live or local inputs for the common path; keep governance artifacts for reuse.
 
 ## Before / After
 
@@ -61,7 +61,7 @@ grafana-util dashboard impact \
 
 ## What success looks like
 
-- you can name the dashboards affected by one datasource change before you modify the datasource itself
+- you can name the dashboards affected by one datasource workspace before you modify the datasource itself
 - alert resources appear in the same report when alert contract data is available
 - the result is concrete enough to use in a review ticket, migration plan, or incident response handoff
 

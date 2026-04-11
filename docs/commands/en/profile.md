@@ -69,7 +69,7 @@ grafana-util config profile example --mode full
 grafana-util config profile init --overwrite
 ```
 
-Related commands: `grafana-util observe live`, `grafana-util observe overview`, `grafana-util change preview`, `grafana-util config profile current`, `grafana-util config profile validate`.
+Related commands: `grafana-util status live`, `grafana-util status overview`, `grafana-util workspace preview`, `grafana-util config profile current`, `grafana-util config profile validate`.
 
 ## `list`
 
@@ -120,7 +120,7 @@ Notes:
 - Secret values are masked by default.
 - `--show-secrets` reveals plaintext values or resolves secret-store references.
 
-Related commands: `config profile list`, `config profile add`, `config profile current`, `config profile validate`, `observe live`, `observe overview`.
+Related commands: `config profile list`, `config profile add`, `config profile current`, `config profile validate`, `status live`, `status overview`.
 
 ## `current`
 
@@ -148,7 +148,7 @@ Notes:
 - The output is diagnostic only and does not reveal secrets.
 - If the config file is missing, `current` reports that the config does not exist instead of failing.
 
-Related commands: `config profile show`, `config profile validate`, `observe live`, `observe overview`.
+Related commands: `config profile show`, `config profile validate`, `status live`, `status overview`.
 
 ## `validate`
 
@@ -177,7 +177,7 @@ Notes:
 - `--live` adds a Grafana `/api/health` check after static validation succeeds.
 - Validation does not print secrets.
 
-Related commands: `config profile current`, `config profile show`, `observe live`, `observe overview`.
+Related commands: `config profile current`, `config profile show`, `status live`, `status overview`.
 
 ## `add`
 
@@ -281,4 +281,4 @@ Notes:
 - `init` seeds the built-in starter template.
 - `add` is the friendlier way to create one real profile entry directly.
 
-Related commands: `config profile add`, `config profile example`, `config profile current`, `config profile validate`, `observe live`.
+Related commands: `config profile add`, `config profile example`, `config profile current`, `config profile validate`, `status live`.

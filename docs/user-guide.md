@@ -11,7 +11,7 @@ Use the new structure when you need a full operator manual rather than one very 
 - [Alert handbook](./user-guide/en/alert.md)
 - [Datasource handbook](./user-guide/en/datasource.md)
 - [Access handbook](./user-guide/en/access.md)
-- [Change, overview, and status handbook](./user-guide/en/change-overview-status.md)
+- [Workspace review and status handbook](./user-guide/en/status-workspace.md)
 - [Scenarios](./user-guide/en/scenarios.md)
 
 This file stays in place as a compatibility bridge for older links.

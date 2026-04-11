@@ -23,7 +23,7 @@
 這組共用 contract 的 `schemaVersion` 是 family-wide major version。
 
 - 目前版本是 `1`。
-- 只有在會影響所有 diff consumer 的 breaking change 時才提升 `schemaVersion`，例如移除或重新命名 top-level key、變更必要欄位、或改變既有欄位的語意。
+- 只有在會影響所有 diff consumer 的 breaking workspace 時才提升 `schemaVersion`，例如移除或重新命名 top-level key、變更必要欄位、或改變既有欄位的語意。
 - 如果只是新增向下相容欄位，`schemaVersion` 維持不變，但仍要同步更新文件與 contract tests。
 - `dashboard diff`、`alert diff`、`datasource diff` 的 shared envelope 有變更時，三者要一起更新。
 

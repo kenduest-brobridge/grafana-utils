@@ -1,20 +1,20 @@
 [
   {
     "routeId": "root.help",
-    "title": "Change JSON schema guide",
+    "title": "Workspace JSON schema guide",
     "intro": [
-      "Use this help surface when CI, scripts, or external tooling need to understand which JSON document each `change` subcommand emits."
+      "Use this help surface when CI, scripts, or external tooling need to understand which JSON document each `workspace` subcommand emits."
     ],
     "generalRule": [
       "Branch on `kind` plus `schemaVersion` before reading nested fields.",
       "`--output-format json` is the machine-readable path.",
-      "`change bundle` writes a bundle contract through `--output-file`; it does not use `--output-format`."
+      "`workspace package` writes a package contract through `--output-file`; it does not use `--output-format`."
     ],
     "contractSectionHeading": "Subcommand contracts",
     "contractSections": [
-      { "contractId": "sync-summary", "label": "summary" },
-      { "contractId": "sync-plan", "label": "plan" },
-      { "contractId": "sync-plan-reviewed", "label": "review" },
+      { "contractId": "sync-summary", "label": "scan" },
+      { "contractId": "sync-plan", "label": "preview" },
+      { "contractId": "sync-plan-reviewed", "label": "ci mark-reviewed" },
       { "contractId": "sync-apply-intent", "label": "apply" },
       {
         "contractId": "sync-apply-live-result",
@@ -22,25 +22,25 @@
         "shapeLabel": "live apply result"
       },
       { "contractId": "sync-audit", "label": "audit" },
-      { "contractId": "sync-preflight", "label": "preflight" },
-      { "contractId": "alert-sync-plan", "label": "assess-alerts" },
-      { "contractId": "sync-bundle-preflight", "label": "bundle-preflight" },
-      { "contractId": "sync-promotion-preflight", "label": "promotion-preflight" },
-      { "contractId": "sync-source-bundle", "label": "bundle" }
+      { "contractId": "sync-preflight", "label": "test" },
+      { "contractId": "alert-sync-plan", "label": "ci alert-readiness" },
+      { "contractId": "sync-bundle-preflight", "label": "ci package-test" },
+      { "contractId": "sync-promotion-preflight", "label": "ci promote-test" },
+      { "contractId": "sync-source-bundle", "label": "package" }
     ],
     "quickLookups": [
-      "grafana-util change --help-schema",
-      "grafana-util change summary --help-schema",
-      "grafana-util change plan --help-schema",
-      "grafana-util change review --help-schema",
-      "grafana-util change apply --help-schema"
+      "grafana-util workspace --help-schema",
+      "grafana-util workspace scan --help-schema",
+      "grafana-util workspace test --help-schema",
+      "grafana-util workspace preview --help-schema",
+      "grafana-util workspace apply --help-schema"
     ]
   },
   {
     "routeId": "summary.help",
-    "title": "Change summary JSON schema",
+    "title": "Workspace scan JSON schema",
     "commands": [
-      "grafana-util change summary --desired-file ./desired.json --fetch-live --profile prod --output-format json"
+      "grafana-util workspace scan --desired-file ./desired.json --fetch-live --profile prod --output-format json"
     ],
     "contractSections": [
       {
@@ -51,9 +51,9 @@
   },
   {
     "routeId": "plan.help",
-    "title": "Change plan JSON schema",
+    "title": "Workspace preview JSON schema",
     "commands": [
-      "grafana-util change plan --desired-file ./desired.json --fetch-live --profile prod --output-format json"
+      "grafana-util workspace preview --desired-file ./desired.json --fetch-live --profile prod --output-format json"
     ],
     "contractSections": [
       {
@@ -64,9 +64,9 @@
   },
   {
     "routeId": "review.help",
-    "title": "Change review JSON schema",
+    "title": "Workspace mark-reviewed JSON schema",
     "commands": [
-      "grafana-util change review --plan-file ./sync-plan.json --output-format json"
+      "grafana-util workspace ci mark-reviewed --plan-file ./sync-plan.json --output-format json"
     ],
     "contractSections": [
       {
@@ -80,10 +80,10 @@
   },
   {
     "routeId": "apply.help",
-    "title": "Change apply JSON schema",
+    "title": "Workspace apply JSON schema",
     "commands": [
-      "grafana-util change apply --plan-file ./sync-plan-reviewed.json --approve --output-format json",
-      "grafana-util change apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --profile prod --output-format json"
+      "grafana-util workspace apply --plan-file ./sync-plan-reviewed.json --approve --output-format json",
+      "grafana-util workspace apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --profile prod --output-format json"
     ],
     "contractSectionHeading": "Contracts",
     "contractSections": [
@@ -105,9 +105,9 @@
   },
   {
     "routeId": "audit.help",
-    "title": "Change audit JSON schema",
+    "title": "Workspace audit JSON schema",
     "commands": [
-      "grafana-util change audit --lock-file ./sync-lock.json --fetch-live --profile prod --output-format json"
+      "grafana-util workspace ci audit --lock-file ./sync-lock.json --fetch-live --profile prod --output-format json"
     ],
     "contractSections": [
       {
@@ -118,9 +118,9 @@
   },
   {
     "routeId": "preflight.help",
-    "title": "Change preflight JSON schema",
+    "title": "Workspace test JSON schema",
     "commands": [
-      "grafana-util change preflight --desired-file ./desired.json --fetch-live --profile prod --output-format json"
+      "grafana-util workspace test --desired-file ./desired.json --fetch-live --profile prod --output-format json"
     ],
     "contractSections": [
       {
@@ -131,9 +131,9 @@
   },
   {
     "routeId": "assess-alerts.help",
-    "title": "Change assess-alerts JSON schema",
+    "title": "Workspace alert-readiness JSON schema",
     "commands": [
-      "grafana-util change assess-alerts --alerts-file ./alerts.json --output-format json"
+      "grafana-util workspace ci alert-readiness --alerts-file ./alerts.json --output-format json"
     ],
     "contractSections": [
       {
@@ -144,9 +144,9 @@
   },
   {
     "routeId": "bundle-preflight.help",
-    "title": "Change bundle-preflight JSON schema",
+    "title": "Workspace package-test JSON schema",
     "commands": [
-      "grafana-util change bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json --output-format json"
+      "grafana-util workspace ci package-test --source-bundle ./workspace-package.json --target-inventory ./target.json --output-format json"
     ],
     "contractSections": [
       {
@@ -157,9 +157,9 @@
   },
   {
     "routeId": "promotion-preflight.help",
-    "title": "Change promotion-preflight JSON schema",
+    "title": "Workspace promote-test JSON schema",
     "commands": [
-      "grafana-util change promotion-preflight --source-bundle ./bundle.json --target-inventory ./target.json --mapping-file ./promotion-map.json --output-format json"
+      "grafana-util workspace ci promote-test --source-bundle ./workspace-package.json --target-inventory ./target.json --mapping-file ./promotion-map.json --output-format json"
     ],
     "contractSections": [
       {
@@ -170,9 +170,9 @@
   },
   {
     "routeId": "bundle.help",
-    "title": "Change bundle JSON contract",
+    "title": "Workspace package JSON contract",
     "commands": [
-      "grafana-util change bundle --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-file ./sync-source-bundle.json"
+      "grafana-util workspace package --dashboard-export-dir ./dashboards/raw --alert-export-dir ./alerts/raw --output-file ./workspace-package.json"
     ],
     "contractSections": [
       {
@@ -181,7 +181,7 @@
       }
     ],
     "notes": [
-      "`change bundle` writes the contract to `--output-file`.",
+      "`workspace package` writes the contract to `--output-file`.",
       "It does not switch render modes with `--output-format`.",
       "Add `--also-stdout` only when you intentionally want both file output and stdout."
     ]

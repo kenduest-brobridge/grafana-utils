@@ -1,7 +1,7 @@
-Change bundle-preflight JSON schema
+Workspace package-test JSON schema
 
 Command:
-  grafana-util change bundle-preflight --source-bundle ./bundle.json --target-inventory ./target.json --output-format json
+  grafana-util workspace ci package-test --source-bundle ./workspace-package.json --target-inventory ./target.json --output-format json
 
 kind:
   grafana-utils-sync-bundle-preflight

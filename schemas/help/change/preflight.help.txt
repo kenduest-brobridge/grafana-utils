@@ -1,7 +1,7 @@
-Change preflight JSON schema
+Workspace test JSON schema
 
 Command:
-  grafana-util change preflight --desired-file ./desired.json --fetch-live --profile prod --output-format json
+  grafana-util workspace test --desired-file ./desired.json --fetch-live --profile prod --output-format json
 
 kind:
   grafana-utils-sync-preflight

@@ -28,10 +28,10 @@ class GenerateManpagesTests(unittest.TestCase):
 
         self.assertIn("grafana-util-dashboard-screenshot.1", generated)
         self.assertIn("grafana-util-access-service-account-token.1", generated)
-        self.assertIn("grafana-util-profile-add.1", generated)
-        self.assertNotIn("grafana-util-status.1", generated)
+        self.assertIn("grafana-util-status.1", generated)
+        self.assertIn("grafana-util-workspace.1", generated)
         self.assertNotIn("grafana-util-overview.1", generated)
-        self.assertNotIn("grafana-util-profile.1", generated)
+        self.assertIn("grafana-util-profile.1", generated)
 
     def test_subcommand_manpage_contains_command_sections(self):
         module = load_module()
@@ -49,14 +49,14 @@ class GenerateManpagesTests(unittest.TestCase):
         module = load_module()
 
         generated = module.generate_manpages()
-        topology_manpage = generated["grafana-util-dashboard-topology.1"]
+        impact_manpage = generated["grafana-util-dashboard-impact.1"]
 
-        self.assertIn(".SH BEFORE / AFTER", topology_manpage)
-        self.assertIn("one topology run gives you a reproducible graph", topology_manpage)
-        self.assertIn(".SH SUCCESS CRITERIA", topology_manpage)
-        self.assertIn("the same topology can be reviewed in the terminal", topology_manpage)
-        self.assertIn(".SH FAILURE CHECKS", topology_manpage)
-        self.assertIn("if the graph looks empty or too small", topology_manpage)
+        self.assertIn(".SH BEFORE / AFTER", impact_manpage)
+        self.assertIn("one impact run tells you which dashboards", impact_manpage)
+        self.assertIn(".SH SUCCESS CRITERIA", impact_manpage)
+        self.assertIn("you can name the dashboards affected by one datasource", impact_manpage)
+        self.assertIn(".SH FAILURE CHECKS", impact_manpage)
+        self.assertIn("if the result is empty", impact_manpage)
 
     def test_namespace_manpage_subcommands_include_use_case_summary(self):
         module = load_module()
@@ -65,11 +65,11 @@ class GenerateManpagesTests(unittest.TestCase):
         access_manpage = generated["grafana-util-access.1"]
 
         self.assertIn(
-            "List, browse, create, modify, export, import, diff, or delete Grafana users. Use when:",
+            "List or browse live and local Grafana users, create, modify, export, import, diff, or delete Grafana users. Use when:",
             access_manpage,
         )
         self.assertIn(
-            "List, create, export, import, diff, or delete Grafana service accounts, and manage their tokens. Use when:",
+            "List live or local Grafana service accounts, create, export, import, diff, or delete Grafana service accounts, and manage their tokens. Use when:",
             access_manpage,
         )
 
@@ -81,7 +81,7 @@ class GenerateManpagesTests(unittest.TestCase):
 
         self.assertIn(".SH WORKFLOW LANES", dashboard_manpage)
         self.assertIn(".SH WORKFLOW LANES", dashboard_manpage)
-        self.assertIn("Review Before Mutate: review, governance\\-gate, and impact analysis.", dashboard_manpage)
+        self.assertIn("dashboard review / dashboard patch / dashboard serve / dashboard publish", dashboard_manpage)
         self.assertIn("Choose this page when the task is dashboard work", dashboard_manpage)
         self.assertIn(".SH BEFORE / AFTER", dashboard_manpage)
         self.assertIn(".SH SUCCESS CRITERIA", dashboard_manpage)
@@ -110,36 +110,39 @@ class GenerateManpagesTests(unittest.TestCase):
         self.assertIn(".SS access", top_level_manpage)
         self.assertIn(".B grafana\\-util\\-access\\-service\\-account\\-token(1)", top_level_manpage)
 
-    def test_top_level_manpage_points_sync_workflows_to_change_family(self):
+    def test_top_level_manpage_points_sync_workflows_to_workspace_family(self):
         module = load_module()
 
         generated = module.generate_manpages()
         top_level_manpage = generated["grafana-util.1"]
 
-        self.assertIn(".B change", top_level_manpage)
-        self.assertIn("Declarative sync planning and gated apply workflows.", top_level_manpage)
+        self.assertIn(".B workspace", top_level_manpage)
+        self.assertIn("Workspace review and apply workflows for local Grafana artifacts.", top_level_manpage)
         self.assertIn(
-            "public CLI surface and generated manpages live under grafana-util change",
+            "public CLI surface and generated manpages live under grafana-util workspace",
             top_level_manpage,
         )
-        self.assertIn("grafana-util-change*(1) pages.", top_level_manpage)
+        self.assertIn("grafana-util-workspace*(1) pages.", top_level_manpage)
         self.assertNotIn("does not yet carry a generated sync namespace manpage", top_level_manpage)
-        self.assertNotIn("grafana-util status --profile prod", top_level_manpage)
+        self.assertNotIn("grafana-util observe --profile prod", top_level_manpage)
         self.assertNotIn("grafana-util overview live --url", top_level_manpage)
-        self.assertIn("grafana-util observe live --profile prod --output yaml", top_level_manpage)
-        self.assertIn("grafana-util observe overview live --url", top_level_manpage)
+        self.assertIn("grafana-util status live --profile prod --output yaml", top_level_manpage)
+        self.assertIn("grafana-util status overview live --url", top_level_manpage)
 
     def test_removed_root_migration_pages_do_not_generate_outputs(self):
         module = load_module()
 
         generated = module.generate_manpages()
 
-        self.assertNotIn("grafana-util-status.1", generated)
+        self.assertIn("grafana-util-status.1", generated)
+        self.assertIn("grafana-util-workspace.1", generated)
+        self.assertNotIn("grafana-util-change.1", generated)
+        self.assertNotIn("grafana-util-observe.1", generated)
         self.assertNotIn("grafana-util-overview.1", generated)
-        self.assertNotIn("grafana-util-profile.1", generated)
-        self.assertNotIn("grafana-util-status-live.1", generated)
+        self.assertIn("grafana-util-profile.1", generated)
+        self.assertIn("grafana-util-status-live.1", generated)
+        self.assertIn("grafana-util-workspace-scan.1", generated)
         self.assertNotIn("grafana-util-overview-live.1", generated)
-        self.assertNotIn("grafana-util-profile-add.1", generated)
 
     def test_namespace_manpage_examples_include_caption_lines(self):
         module = load_module()
@@ -148,7 +151,7 @@ class GenerateManpagesTests(unittest.TestCase):
         access_manpage = generated["grafana-util-access.1"]
 
         self.assertIn(
-            ".PP\nuser: List, browse, create, modify, export, import, diff, or delete Grafana users.",
+            ".PP\nuser: List or browse live and local Grafana users, create, modify, export, import, diff, or delete Grafana users.",
             access_manpage,
         )
         self.assertIn(

@@ -1,11 +1,11 @@
 # Dashboard Operator Handbook
 
-This guide is for operators who need to inventory dashboards, export or import them safely, inspect dependencies, capture screenshots, or review drift before a live change.
+This guide is for operators who need to inventory dashboards, export or import them safely, inspect dependencies, capture screenshots, or review drift before a live workspace.
 
 ## Who It Is For
 
 - SREs and platform engineers responsible for dashboard inventory, promotion, or review.
-- Operators who need screenshots, dependency checks, or export trees before a change.
+- Operators who need screenshots, dependency checks, or export trees before a workspace.
 - Teams that want dashboard work to fit into Git, review, and CI flows.
 
 ## Primary Goals

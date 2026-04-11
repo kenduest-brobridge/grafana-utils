@@ -17,40 +17,36 @@ Use these pages when you want one stable page per command or subcommand instead 
 
 The public first-run CLI is organized around a small task-first surface:
 
-- [observe](./observe.md): read-only status, overview, snapshot, and resource queries
+- [status](./status.md): read-only status, overview, snapshot, and resource queries
 - [config](./config.md): repo-local configuration workflows and profile management
 - [export](./export.md): common backup and local-inventory capture
-- [change](./change.md): review-first staged change workflows
+- [workspace](./workspace.md): scan, test, preview, package, and apply local Grafana workspaces
 - [dashboard](./dashboard.md): browse, get, clone, export/import, summary, dependencies, policy, and screenshot workflows
-- [alert](./alert.md): alert inventory, authoring, and change workflows
+- [alert](./alert.md): alert inventory, authoring, review, and apply workflows
 - [datasource](./datasource.md): datasource inventory and lifecycle workflows
 - [access](./access.md): user, team, org, and service-account workflows
 
-Removed root paths as migration notes only:
-
-- `status ...` -> `observe staged ...` or `observe live ...`
-- `overview ...` -> `observe overview ...`
-- `profile ...` -> `config profile ...`
+If older notes mention removed roots, use the current task names instead: `status ...`, `workspace ...`, and `config profile ...`.
 
 ## Common Tasks
 
-- [change](./change.md)
-- [change inspect](./change-inspect.md)
-- [change check](./change-check.md)
-- [change preview](./change-preview.md)
-- [change apply](./change-apply.md)
+- [workspace](./workspace.md)
+- [workspace scan](./workspace-scan.md)
+- [workspace test](./workspace-test.md)
+- [workspace preview](./workspace-preview.md)
+- [workspace apply](./workspace-apply.md)
 - [export](./export.md)
-- [observe](./observe.md)
+- [status](./status.md)
 - [dashboard convert raw-to-prompt](./dashboard-convert-raw-to-prompt.md)
 - `export dashboard`
 - `export alert`
 - `export datasource`
 - `export access user|org|team|service-account`
-- `observe live`
-- `observe staged`
-- `observe overview`
-- `observe snapshot`
-- `observe resource describe|kinds|list|get`
+- `status live`
+- `status staged`
+- `status overview`
+- `status snapshot`
+- `status resource describe|kinds|list|get`
 - `config profile`
 
 ## Domain Reference

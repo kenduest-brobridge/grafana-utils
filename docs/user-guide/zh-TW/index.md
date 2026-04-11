@@ -30,7 +30,7 @@
 
 ## 失敗時先檢查
 
-- 如果還不知道自己該看 dashboard、alert、access 還是 change，先回到用途頁和角色路線圖。
+- 如果還不知道自己該看 dashboard、alert、access 還是 workspace，先回到用途頁和角色路線圖。
 - 如果第一條即時唯讀命令失敗，先修連線或驗證，不要先往變更章節走。
 - 如果你只是在找精確旗標，請直接切到指令詳細說明，不要硬從手冊猜。
 
@@ -69,7 +69,7 @@ grafana-util --version
 ### 3. 執行第一次完整巡檢
 ```bash
 # 產生整個 Grafana Estate 的高階健康度與資產盤點報告
-grafana-util observe overview --url http://localhost:3000 --basic-user admin --prompt-password --output-format interactive
+grafana-util status overview --url http://localhost:3000 --basic-user admin --prompt-password --output-format interactive
 ```
 
 **為什麼這很重要？** 30 秒內，你就能先確認連線正常，快速看 Dashboard、Alert 和 data source 的狀態，也能先看出哪些設定可能已經失效。
@@ -95,7 +95,7 @@ grafana-util observe overview --url http://localhost:3000 --basic-user admin --p
 *   **[Access 管理](access.md)**：看 org、使用者、team 與 service account 管理作業。
 
 ### 🛡️ 第四階段：治理與整備度
-*   **[變更與狀態 (Change & Status)](change-overview-status.md)**：看變更前後的檢查、狀態確認與快照流程。
+*   **[Workspace 審查與狀態](status-workspace.md)**：看 workspace 前後的檢查、狀態確認與快照流程。
 
 ### 📖 第五階段：深度探索
 *   **[維運情境手冊](scenarios.md)**：看備份、災難復原、稽核等端到端任務範例。
@@ -114,7 +114,7 @@ grafana-util observe overview --url http://localhost:3000 --basic-user admin --p
 *   **新使用者**
   先看 [這個工具是做什麼的](what-is-grafana-util.md)，再看 [新手快速入門](role-new-user.md) 與 [開始使用](getting-started.md)，需要查精確旗標時再查看 [指令詳細說明](../../commands/zh-TW/index.md)。
 *   **SRE / 維運人員**
-  先看 [SRE / 維運角色導讀](role-sre-ops.md)，再看 [變更與狀態](change-overview-status.md)、[Dashboard 管理](dashboard.md)、[Data source 管理](datasource.md)、[疑難排解](troubleshooting.md)。
+  先看 [SRE / 維運角色導讀](role-sre-ops.md)，再看 [Workspace 審查與狀態](status-workspace.md)、[Dashboard 管理](dashboard.md)、[Data source 管理](datasource.md)、[疑難排解](troubleshooting.md)。
 *   **身份 / 權限管理者**
   先看 [Access 管理](access.md)，再看 [技術參考手冊](reference.md)，最後搭配 [指令詳細說明](../../commands/zh-TW/index.md)。
 *   **自動化 / CI 維護者**

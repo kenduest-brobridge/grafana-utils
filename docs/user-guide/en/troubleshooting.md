@@ -38,7 +38,7 @@ It helps you diagnose real failures instead of guessing. The most useful split i
 - command shape versus output shape
 - local profile wiring versus remote Grafana behavior
 
-If you are tracing auth or connection setup, keep [config](../../commands/en/config.md), [config profile](../../commands/en/profile.md), [observe](../../commands/en/observe.md), and [access](../../commands/en/access.md) open beside this chapter.
+If you are tracing auth or connection setup, keep [config](../../commands/en/config.md), [config profile](../../commands/en/profile.md), [status](../../commands/en/status.md), and [access](../../commands/en/access.md) open beside this chapter.
 
 ---
 
@@ -52,7 +52,7 @@ When a command fails or behaves unexpectedly, use these techniques to look under
 
 ```bash
 # Purpose: grafana-util uses standard Rust logging. You can increase verbosity to see the exact API requests and responses.
-RUST_LOG=debug grafana-util observe overview live --profile prod
+RUST_LOG=debug grafana-util status overview live --profile prod
 grafana-util dashboard list -v
 ```
 
@@ -92,9 +92,9 @@ This is one of the most common operator mistakes.
 
 | Symptom | What is really happening | Fix |
 | :--- | :--- | :--- |
-| `observe staged` looks healthy but live apply still fails | staged files are structurally valid, but live state or permissions differ | run `observe live`, then `change check`, `change preview`, or command-specific dry-run paths |
-| `observe overview live` looks good so you skip change review | live readability is not the same as staged correctness | run the staged gate and preview path before apply |
-| import or apply changes more than expected | the staged package was never inspected or previewed first | use `change inspect`, `change preview`, and `--dry-run` before execution |
+| `status staged` looks healthy but live apply still fails | staged files are structurally valid, but live state or permissions differ | run `status live`, then `workspace test`, `workspace preview`, or command-specific dry-run paths |
+| `status overview live` looks good so you skip workspace review | live readability is not the same as staged correctness | run the staged gate and preview path before apply |
+| import or apply changes more than expected | the staged package was never inspected or previewed first | use `workspace scan`, `workspace preview`, and `--dry-run` before execution |
 
 ### 5. Secret and profile problems
 

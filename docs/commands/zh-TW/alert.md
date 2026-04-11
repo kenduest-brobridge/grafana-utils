@@ -27,7 +27,7 @@
 - `alert migrate ...`
 - `alert author ...`
 - `alert scaffold ...`
-- `alert change ...`
+- `alert plan/apply ...`
 
 ## 採用前後對照
 
@@ -50,7 +50,7 @@
 
 - `--profile`、`--url`、`--token`、`--basic-user`、`--basic-password`
 - `--prompt-password`、`--prompt-token`、`--timeout`、`--verify-ssl`
-- 巢狀子命令主要分成 `live`、`migrate`、`author`、`scaffold`、`change`
+- 巢狀子命令主要分成 `live`、`export`、`import`、`diff`、`plan`、`apply`、`author`、`scaffold`
 
 ## 範例
 
@@ -66,7 +66,7 @@ grafana-util alert migrate export --url http://localhost:3000 --basic-user admin
 
 ```bash
 # 先試跑規劃，不要直接套用。
-grafana-util alert change plan --desired-dir ./alerts/desired --output-format json
+grafana-util alert plan --desired-dir ./alerts/desired --output-format json
 ```
 
 ## 相關命令

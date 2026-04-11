@@ -49,7 +49,7 @@ grafana-util dashboard policy --policy-source builtin --builtin-policy default -
 
 - policy checks fail before promotion, not after a dashboard lands in the wrong environment
 - text output is readable enough for manual review, while JSON output is stable enough for CI gates
-- the same artifacts can be rechecked after a policy change without rerunning export or inspect from scratch
+- the same artifacts can be rechecked after a policy workspace without rerunning export or inspect from scratch
 
 ## Failure checks
 

@@ -19,7 +19,7 @@ List live or local Grafana organizations, create, modify, export, import, diff, 
 
 ## What success looks like
 
-- org names and ids stay exact across inventory and change flows
+- org names and ids stay exact across inventory and workspace flows
 - export and import bundles can be reused when moving between environments
 - privileged actions stay tied to an explicit admin-backed profile instead of an ad hoc token
 

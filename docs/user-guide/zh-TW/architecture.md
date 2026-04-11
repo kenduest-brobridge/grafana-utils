@@ -5,7 +5,7 @@
 ## 適用對象
 
 - 想理解這套工具為什麼這樣分層的人
-- 要決定團隊怎麼用 observe / change / config profile 的人
+- 要決定團隊怎麼用 status / workspace / config profile 的人
 - 想知道 lane、masked recovery 與 staged/live 差異的人
 
 ## 主要目標
@@ -31,7 +31,7 @@
 - 如果 runtime 的形狀和文件的形狀開始分岔，要把它當成架構問題，而不只是文件問題。
 - 如果你還不確定這個切分為什麼存在，先回去重讀 surface 與 lane 的段落，再往下加工作。
 
-如果想對照這些概念實際對應到哪些指令，請搭配 [change](../../commands/zh-TW/change.md)、[dashboard](../../commands/zh-TW/dashboard.md)、[指令詳細說明總索引](../../commands/zh-TW/index.md) 一起看。
+如果想對照這些概念實際對應到哪些指令，請搭配 [workspace](../../commands/zh-TW/workspace.md)、[dashboard](../../commands/zh-TW/dashboard.md)、[指令詳細說明總索引](../../commands/zh-TW/index.md) 一起看。
 
 ---
 
@@ -46,16 +46,16 @@
 
 ### 什麼時候該選哪一個操作面
 
-- 需要 gate、結構化輸出，或明確 pass/fail 判斷時，用 `observe live` 或 `observe staged`
-- 需要從人的角度先看整個 estate、決定接下來往哪裡鑽時，用 `observe overview`
-- 已經知道有變更意圖，要做 inspect、check、preview、apply 時，用 `change`
+- 需要 gate、結構化輸出，或明確 pass/fail 判斷時，用 `status live` 或 `status staged`
+- 需要從人的角度先看整個 estate、決定接下來往哪裡鑽時，用 `status overview`
+- 已經知道有變更意圖，要做 inspect、check、preview、apply 時，用 `workspace`
 
 常見判斷：
 
-- 「我現在能不能放心往下做？」 -> `observe live`
-- 「整個 Grafana 環境現在長什麼樣？」 -> `observe overview live`
-- 「我的 staged 套件結構和檢查結果是否合理？」 -> `observe staged` + `change check`
-- 「到底會改到什麼？」 -> `change inspect`、`change preview`、`change apply`
+- 「我現在能不能放心往下做？」 -> `status live`
+- 「整個 Grafana 環境現在長什麼樣？」 -> `status overview live`
+- 「我的 staged 套件結構和檢查結果是否合理？」 -> `status staged` + `workspace test`
+- 「到底會改到什麼？」 -> `workspace scan`、`workspace preview`、`workspace apply`
 
 ### 為什麼這個切分很重要
 
@@ -63,7 +63,7 @@
 
 - 拿給人看的摘要去當成 CI gate
 - 把 live 讀取結果當成 staged 套件也正確的依據
-- 因為目前 live 狀態看起來沒問題，就直接跳過 preflight / review
+- 因為目前 live 狀態看起來沒問題，就直接跳過 input test / review
 
 這個設計是刻意分清楚的，目的就是讓你不用猜哪個輸出適合拿去自動化，哪個輸出比較適合給人判斷方向。
 
@@ -142,7 +142,7 @@
 ### 快速判斷
 
 - 你第一個問題是「這是不是正確的 replay artifact？」時，通常是 dashboard 思維
-- 你第一個問題是「它到底會造成什麼 delta？」時，通常是 alert / change 思維
+- 你第一個問題是「它到底會造成什麼 delta？」時，通常是 alert / workspace 思維
 
 ---
 
@@ -150,7 +150,7 @@
 
 當下面幾點成立時，代表這套架構不是只有名詞，而是真的落地：
 
-- 團隊能清楚分辨 `observe`、`change`、`config profile`
+- 團隊能清楚分辨 `status`、`workspace`、`config profile`
 - live check 與 staged check 不再被當成可互換
 - dashboard lanes 不會被隨意混用
 - 被遮蔽的 secret 匯出被當成安全輸出物，而不是完整回放內容

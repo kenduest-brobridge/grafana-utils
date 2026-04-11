@@ -1,8 +1,8 @@
 # 🏛️ Architecture & Design Principles
 
-Use this chapter when you want to understand why the handbook and command surfaces are split the way they are, and how that split should change your day-to-day operator choices.
+Use this chapter when you want to understand why the handbook and command surfaces are split the way they are, and how that split should workspace your day-to-day operator choices.
 
-Understanding the architectural philosophy of `grafana-util` is key to managing large-scale Grafana estates effectively. This chapter explains the "Why" behind the design decisions, but it also tells you how those decisions should change the way you operate.
+Understanding the architectural philosophy of `grafana-util` is key to managing large-scale Grafana estates effectively. This chapter explains the "Why" behind the design decisions, but it also tells you how those decisions should workspace the way you operate.
 
 ## Who It Is For
 
@@ -33,7 +33,7 @@ Understanding the architectural philosophy of `grafana-util` is key to managing 
 - If the runtime shape and the docs shape drift apart, treat that as an architecture bug, not just a docs bug.
 - If you are not sure why the split exists, reread the surface and lane sections before adding new work.
 
-For the command surface behind these ideas, see [observe](../../commands/en/observe.md), [change](../../commands/en/change.md), [dashboard](../../commands/en/dashboard.md), [config](../../commands/en/config.md), and [config profile](../../commands/en/profile.md).
+For the command surface behind these ideas, see [status](../../commands/en/status.md), [workspace](../../commands/en/workspace.md), [dashboard](../../commands/en/dashboard.md), [config](../../commands/en/config.md), and [config profile](../../commands/en/profile.md).
 
 ---
 
@@ -48,16 +48,16 @@ For the command surface behind these ideas, see [observe](../../commands/en/obse
 
 ### How to choose the right surface
 
-- Use `observe live` when you need a gate, a machine-readable result, or a clean pass/fail readout.
-- Use `observe overview live` when you need to look across the estate as a human and decide where to drill in next.
-- Use `change` when you already know there is intended work and need to inspect, check, preview, or apply it.
+- Use `status live` when you need a gate, a machine-readable result, or a clean pass/fail readout.
+- Use `status overview live` when you need to look across the estate as a human and decide where to drill in next.
+- Use `workspace` when you already know there is intended work and need to inspect, check, preview, or apply it.
 
 Typical operator decisions:
 
-- "Can I trust the current state enough to proceed?" -> `observe live`
-- "What does this Grafana estate look like right now?" -> `observe overview live`
-- "Is my staged package structurally and operationally sane?" -> `observe staged` plus `change check`
-- "What exactly will change?" -> `change inspect`, `change preview`, then `change apply`
+- "Can I trust the current state enough to proceed?" -> `status live`
+- "What does this Grafana estate look like right now?" -> `status overview live`
+- "Is my staged package structurally and operationally sane?" -> `status staged` plus `workspace test`
+- "What exactly will change?" -> `workspace scan`, `workspace preview`, then `workspace apply`
 
 ### Why the split matters
 
@@ -149,7 +149,7 @@ Operational consequence:
 ### Decision guide
 
 - if your first concern is "is this file the right artifact to replay?" you are in dashboard thinking
-- if your first concern is "what delta will this create?" you are in alert/change thinking
+- if your first concern is "what delta will this create?" you are in alert/workspace thinking
 
 ---
 
@@ -157,7 +157,7 @@ Operational consequence:
 
 The architecture is working for you when:
 
-- your team can explain the difference between `observe`, `change`, and `advanced`
+- your team can explain the difference between `status`, `workspace`, and `advanced`
 - live checks and staged checks are not treated as interchangeable
 - dashboard lanes are not mixed casually
 - masked secret exports are treated as safe artifacts, not as complete replay payloads

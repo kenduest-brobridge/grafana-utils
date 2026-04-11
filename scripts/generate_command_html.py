@@ -65,16 +65,15 @@ def render_template(name: str, **values: str) -> str:
 
 HANDBOOK_CONTEXT_BY_COMMAND = {
     "index": "index",
-    "observe": "change-overview-status",
     "config": "getting-started",
     "dashboard": "dashboard",
     "datasource": "datasource",
     "alert": "alert",
     "access": "access",
-    "change": "change-overview-status",
-    "status": "change-overview-status",
-    "overview": "change-overview-status",
-    "snapshot": "change-overview-status",
+    "status": "status-workspace",
+    "workspace": "status-workspace",
+    "overview": "status-workspace",
+    "snapshot": "status-workspace",
     "profile": "getting-started",
 }
 
@@ -99,10 +98,6 @@ COMMAND_AUDIENCE_HINTS = {
         "en": "Best for anyone setting up repo-local connection defaults, secret handling, and repeatable live-command authentication.",
         "zh-TW": "適合想整理 repo-local 連線預設、secret 處理，以及可重複執行的 live 指令認證方式的人。",
     },
-    "observe": {
-        "en": "Best for readers who want one safe read-only surface for staged checks, live checks, overview, snapshots, and generic resource reads.",
-        "zh-TW": "適合想用同一個安全的唯讀入口查看 staged 檢查、live 檢查、overview、snapshot 與 generic resource reads 的人。",
-    },
     "profile": {
         "en": "Best for anyone setting up repeatable connection defaults, secret handling, and non-interactive runs.",
         "zh-TW": "適合想整理可重複連線預設、secret 處理與非互動式執行方式的人。",
@@ -111,13 +106,13 @@ COMMAND_AUDIENCE_HINTS = {
         "en": "Best for operators who need fast live or staged readiness checks before they change anything.",
         "zh-TW": "適合想在動手前先做 live 或 staged readiness 檢查的人。",
     },
+    "workspace": {
+        "en": "Best for operators who need one local workspace flow to scan, test, preview, package, and apply staged changes.",
+        "zh-TW": "適合想用一條本機 workspace 流程完成掃描、檢查、預覽、打包與套用 staged 變更的人。",
+    },
     "overview": {
         "en": "Best for readers who need a fast cross-surface inventory and health overview of the current Grafana estate.",
         "zh-TW": "適合想快速盤點目前 Grafana 環境、先看健康度與資產概況的人。",
-    },
-    "change": {
-        "en": "Best for review-first workflows where you want summary, preflight, plan, and apply to stay explicit.",
-        "zh-TW": "適合 review-first 流程，想把 summary、preflight、plan 與 apply 清楚分開的人。",
     },
     "snapshot": {
         "en": "Best for readers who need a local snapshot bundle for offline review, backup, or handoff work.",

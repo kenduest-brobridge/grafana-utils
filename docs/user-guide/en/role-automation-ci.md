@@ -60,17 +60,17 @@ grafana-util config profile show --profile ci --output-format yaml
 
 ```bash
 # Purpose: First commands to run.
-grafana-util observe staged --desired-file ./desired.json --output-format json
+grafana-util status staged --desired-file ./desired.json --output-format json
 ```
 
 ```bash
 # Purpose: First commands to run.
-grafana-util change check --desired-file ./desired.json --fetch-live --output-format json
+grafana-util workspace test --desired-file ./desired.json --fetch-live --output-format json
 ```
 
 ```bash
 # Purpose: First commands to run.
-grafana-util observe overview live --profile ci --output-format yaml
+grafana-util status overview live --profile ci --output-format yaml
 ```
 
 If the job only needs to validate one live surface, you can replace the last line with an equivalent direct Basic-auth or narrow-token read, but do not ask the credential to see more than its real scope.
@@ -79,14 +79,14 @@ If you need a bootstrap check before the profile is wired, use Basic auth with a
 
 ```bash
 # Purpose: If you need a bootstrap check before the profile is wired, use Basic auth with a prompted password.
-grafana-util observe live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml
+grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml
 ```
 
 If the job already receives a scoped token, you can call the live surface directly:
 
 ```bash
 # Purpose: If the job already receives a scoped token, you can call the live surface directly.
-grafana-util observe overview live --url https://grafana.example.com --token "$GRAFANA_CI_TOKEN" --output-format json
+grafana-util status overview live --url https://grafana.example.com --token "$GRAFANA_CI_TOKEN" --output-format json
 ```
 
 ## What a stable automation path looks like
@@ -102,15 +102,15 @@ Your automation path is in good shape when:
 
 - [Getting Started](getting-started.md)
 - [Technical Reference](reference.md)
-- [Change & Observe](change-overview-status.md)
+- [Workspace & Status](status-workspace.md)
 - [Access Management](access.md)
 
 ## Keep open
 
 - [config](../../commands/en/config.md)
 - [config profile](../../commands/en/profile.md)
-- [observe](../../commands/en/observe.md)
-- [change](../../commands/en/change.md)
+- [status](../../commands/en/status.md)
+- [workspace](../../commands/en/workspace.md)
 - [access service-account](../../commands/en/access.md)
 - [access service-account token](../../commands/en/access.md)
 - [full command index](../../commands/en/index.md)
@@ -118,7 +118,7 @@ Your automation path is in good shape when:
 ## Common mistakes and limits
 
 - Do not pass raw secrets on the command line if the job can read them from `GRAFANA_CI_TOKEN` or another env-backed profile field.
-- Do not treat `observe staged` as `apply`; it is a gate, not the mutating step.
+- Do not treat `status staged` as `apply`; it is a gate, not the mutating step.
 - Do not expect narrow tokens or service-account tokens to see every org or admin-only surface.
 - Do not rely on interactive output in CI; prefer `json`, `yaml`, `table`, or explicit exit codes.
 - Do not forget that `--show-secrets` is a local inspection aid, not a CI logging mode.
@@ -136,7 +136,7 @@ Your automation path is in good shape when:
 ## When to switch to deeper docs
 
 - Switch to [Technical Reference](reference.md) for output formats, exit codes, and profile-backed secret guidance.
-- Switch to [Change & Observe](change-overview-status.md) when the pipeline needs staged gates, preflight, or promotion review.
+- Switch to [Workspace & Status](status-workspace.md) when the pipeline needs staged gates, input test, or promotion review.
 - Switch to [Access Management](access.md) when automation starts rotating or managing service-account credentials.
 - Switch to the [Command Docs](../../commands/en/index.md) when you need the exact supported flags for one namespace.
 

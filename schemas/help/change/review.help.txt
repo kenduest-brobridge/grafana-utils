@@ -1,7 +1,7 @@
-Change review JSON schema
+Workspace mark-reviewed JSON schema
 
 Command:
-  grafana-util change review --plan-file ./sync-plan.json --output-format json
+  grafana-util workspace ci mark-reviewed --plan-file ./sync-plan.json --output-format json
 
 kind:
   grafana-utils-sync-plan

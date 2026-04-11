@@ -20,7 +20,7 @@
 
 - service-account 變更會明確綁定到一個命名識別，而不是依賴一個模糊的 UI 點擊路徑
 - token 操作足夠明確，可以被審查或腳本化
-- inventory 與套件輸出能不費力地交給後續 access 或 change 工作流程
+- inventory 與套件輸出能不費力地交給後續 access 或 workspace 工作流程
 
 ## 失敗時先檢查
 

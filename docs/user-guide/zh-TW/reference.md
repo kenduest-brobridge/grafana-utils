@@ -1,6 +1,6 @@
 # 技術參考手冊 (Technical Reference)
 
-本章整理 `grafana-util` 目前常用的指令、共用旗標，以及 config profile 解析、輸出格式與 observe / change 用法。
+本章整理 `grafana-util` 目前常用的指令、共用旗標，以及 config profile 解析、輸出格式與 status / workspace 用法。
 
 如果你想逐條對照指令與旗標，請搭配 [config profile](../../commands/zh-TW/config.md)、[指令詳細說明總索引](../../commands/zh-TW/index.md) 與 [access](../../commands/zh-TW/access.md) 一起看。
 
@@ -46,9 +46,9 @@
 
 如果你不確定某個 command 到底支援哪些格式，最準的還是該 command 的獨立說明頁。
 
-### 給 CI 用的 `change` JSON 文件
+### 給 CI 用的 `workspace` JSON 文件
 
-`change` 指令群組會輸出多種 JSON contract。最穩妥的判斷順序是：
+`workspace` 指令群組會輸出多種 JSON contract。最穩妥的判斷順序是：
 
 1. 先看 `kind`
 2. 再確認 `schemaVersion`
@@ -56,28 +56,28 @@
 
 CLI 內建快速查詢：
 
-- `grafana-util change --help-schema`
-- `grafana-util change preview --help-schema`
-- `grafana-util change apply --help-schema`
-- `grafana-util change advanced audit --help-schema`
+- `grafana-util workspace --help-schema`
+- `grafana-util workspace preview --help-schema`
+- `grafana-util workspace apply --help-schema`
+- `grafana-util workspace ci audit --help-schema`
 
 常見對應：
 
-- `change inspect --output-format json` -> 依輸入類型輸出 staged 變更摘要或 overview 風格的 inspection 結果
-- `change preview --output-format json` -> `grafana-utils-sync-plan`
-- `change apply --output-format json` -> `grafana-utils-sync-apply-intent`
-- `change apply --execute-live --output-format json` -> live apply result
-- `change advanced summary --output-format json` -> `grafana-utils-sync-summary`
-- `change advanced review --output-format json` -> `grafana-utils-sync-plan`
-- `change advanced audit --output-format json` -> `grafana-utils-sync-audit`
-- `change advanced preflight --output-format json` -> `grafana-utils-sync-preflight`
-- `change advanced assess-alerts --output-format json` -> `grafana-utils-alert-sync-plan`
-- `change advanced bundle-preflight --output-format json` -> `grafana-utils-sync-bundle-preflight`
-- `change advanced promotion-preflight --output-format json` -> `grafana-utils-sync-promotion-preflight`
+- `workspace scan --output-format json` -> 依輸入類型輸出 staged 變更摘要或 overview 風格的 inspection 結果
+- `workspace preview --output-format json` -> `grafana-utils-sync-plan`
+- `workspace apply --output-format json` -> `grafana-utils-sync-apply-intent`
+- `workspace apply --execute-live --output-format json` -> live apply result
+- `workspace ci summary --output-format json` -> `grafana-utils-sync-summary`
+- `workspace ci mark-reviewed --output-format json` -> `grafana-utils-sync-plan`
+- `workspace ci audit --output-format json` -> `grafana-utils-sync-audit`
+- `workspace ci input-test --output-format json` -> `grafana-utils-sync-input test`
+- `workspace ci alert-readiness --output-format json` -> `grafana-utils-alert-sync-plan`
+- `workspace ci package-test --output-format json` -> `grafana-utils-sync-bundle-input test`
+- `workspace ci promote-test --output-format json` -> `grafana-utils-sync-promotion-input test`
 
 對於 `grafana-utils-sync-plan`，審查者與 CI 也應該直接讀取 preview 文件上的排序欄位：`ordering.mode`、`operations[].orderIndex`、`operations[].orderGroup`、`operations[].kindOrder`，以及 `summary.blocked_reasons`。
 
-如果你需要每種文件的 top-level 欄位細節，直接看 [change 指令頁](../../commands/zh-TW/change.md) 會最快。
+如果你需要每種文件的 top-level 欄位細節，直接看 [workspace 指令頁](../../commands/zh-TW/workspace.md) 會最快。
 
 ### 給 CI 用的 `dashboard history` JSON 文件
 
@@ -131,9 +131,9 @@ CLI schema 快速查詢：
 - `grafana-util alert diff --help-schema`
 - `grafana-util datasource diff --help-schema`
 
-### 給 CI 用的 `observe` JSON 文件
+### 給 CI 用的 `status` JSON 文件
 
-`observe staged` 與 `observe live` 現在共用同一個明確的 machine-readable contract：
+`status staged` 與 `status live` 現在共用同一個明確的 machine-readable contract：
 
 1. 先看 `kind`
 2. 再確認 `schemaVersion`
@@ -146,14 +146,14 @@ CLI schema 快速查詢：
 
 CLI schema 快速查詢：
 
-- `grafana-util observe --help-schema`
-- `grafana-util observe staged --help-schema`
-- `grafana-util observe live --help-schema`
+- `grafana-util status --help-schema`
+- `grafana-util status staged --help-schema`
+- `grafana-util status live --help-schema`
 
 常見對應：
 
-- `observe staged --output-format json` -> `grafana-util-project-status`
-- `observe live --output-format json` -> `grafana-util-project-status`
+- `status staged --output-format json` -> `grafana-util-project-status`
+- `status live --output-format json` -> `grafana-util-project-status`
 
 ---
 
@@ -311,7 +311,7 @@ profiles:
   prod_plaintext:
     url: https://grafana.example.com
     username: admin
-    password: change-me
+    password: workspace-me
     verify_ssl: true
 
   # OS 密碼保管庫範例。密碼會放進 macOS Keychain 或 Linux Secret Service。
@@ -344,17 +344,17 @@ profiles:
 ### 5. 日常使用時的三種常見驗證範例
 ```bash
 # 用途：5. 日常使用時的三種常見驗證範例。
-grafana-util observe live --profile prod --output-format yaml
+grafana-util status live --profile prod --output-format yaml
 ```
 
 ```bash
 # 用途：5. 日常使用時的三種常見驗證範例。
-grafana-util observe live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml
+grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml
 ```
 
 ```bash
 # 用途：5. 日常使用時的三種常見驗證範例。
-grafana-util observe overview live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format json
+grafana-util status overview live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format json
 ```
 預設請以 `--profile` 為主。直接 Basic auth 比較適合管理員型流程；token 則適合你已經很清楚權限邊界的 scoped automation。
 
@@ -362,13 +362,13 @@ grafana-util observe overview live --url http://localhost:3000 --token "$GRAFANA
 
 ```bash
 # 用環境變數承載密碼，建立可重複使用的本機 profile。
-export GRAFANA_PROD_PASSWORD='change-me'
+export GRAFANA_PROD_PASSWORD='workspace-me'
 grafana-util config profile add prod --url https://grafana.example.com --basic-user admin --password-env GRAFANA_PROD_PASSWORD
 ```
 
 ```bash
 # 用環境變數承載密碼，建立可重複使用的本機 profile。
-grafana-util observe live --profile prod --output-format yaml
+grafana-util status live --profile prod --output-format yaml
 ```
 
 ```bash
@@ -378,7 +378,7 @@ grafana-util config profile add prod-os --url https://grafana.example.com --basi
 
 ```bash
 # 在 macOS 或 Linux 桌面上，把 secret 放進 OS secret store。
-grafana-util observe overview live --profile prod-os --output-format interactive
+grafana-util status overview live --profile prod-os --output-format interactive
 ```
 
 ```bash
@@ -388,7 +388,7 @@ grafana-util config profile add prod-encrypted --url https://grafana.example.com
 
 ```bash
 # 使用帶 passphrase 的加密 secret file。
-grafana-util observe live --profile prod-encrypted --output-format yaml
+grafana-util status live --profile prod-encrypted --output-format yaml
 ```
 
 ```bash
@@ -399,7 +399,7 @@ grafana-util config profile add ci --url https://grafana.example.com --token-env
 
 ```bash
 # 在自動化流程中，以環境變數承載 scoped token。
-grafana-util observe overview live --profile ci --output-format json
+grafana-util status overview live --profile ci --output-format json
 ```
 
 這組範例的重點是：
@@ -439,7 +439,7 @@ grafana-util observe overview live --profile ci --output-format json
 | :--- | :--- | :--- | :--- |
 | 直接切換常見格式 | `--text`、`--table`、`--csv`、`--json`、`--yaml` | `text` / `table` / `csv` / `json` / `yaml` | 適合 list、review、inspect、部分 import / delete dry-run 這類輸出面。 |
 | 用單一旗標切換格式 | `--output-format <FORMAT>` | `text` / `table` / `csv` / `json` / `yaml` | 也可能出現 command 專用值，例如 `governance`、`governance-json`、`queries-json`、`mermaid`、`dot`。 |
-| observe live / overview 類入口 | `--output-format <FORMAT>` | `table` / `csv` / `text` / `json` / `yaml` / `interactive` | 這條路徑現在也統一使用 `--output-format`。 |
+| status live / overview 類入口 | `--output-format <FORMAT>` | `table` / `csv` / `text` / `json` / `yaml` / `interactive` | 這條路徑現在也統一使用 `--output-format`。 |
 | 將結果另外寫入檔案 | `--output-file <PATH>` 或 command 專用旗標 | 視指令而定 | 常見於 dependencies、policy、screenshot 這類輸出型指令。 |
 
 ### 1. 表格或 JSON 的選擇
@@ -461,12 +461,12 @@ grafana-util dashboard list -h
 ### 2. Observe live 與 overview 的輸出選擇器
 ```bash
 # 用途：2. Observe live 與 overview 的輸出選擇器。
-grafana-util observe live -h
+grafana-util status live -h
 ```
 
 ```bash
 # 用途：2. Observe live 與 overview 的輸出選擇器。
-grafana-util observe overview live -h
+grafana-util status overview live -h
 ```
 **預期輸出：**
 ```text
@@ -475,7 +475,7 @@ Render project status from live Grafana read surfaces. Use current Grafana state
 --output-format <OUTPUT_FORMAT>
     Render project status as table, csv, text, json, yaml, or interactive output.
 
-Render a live overview by delegating to the shared observe live path.
+Render a live overview by delegating to the shared status live path.
 ...
 --output-format <OUTPUT_FORMAT>
     Render project status as table, csv, text, json, yaml, or interactive output.
@@ -506,7 +506,7 @@ grafana-util dashboard list --profile prod --json | jq -r '.[] | select(.orgId =
 ### 2. 處理結束代碼 (Exit Codes)
 ```bash
 # 用途：2. 處理結束代碼 (Exit Codes)。
-grafana-util observe live --profile prod --output-format json
+grafana-util status live --profile prod --output-format json
 if [ $? -eq 2 ]; then
   echo "CRITICAL: Grafana 連線受阻！"
   exit 1

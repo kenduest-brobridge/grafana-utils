@@ -20,17 +20,17 @@ This is the right entrypoint for SREs, platform operators, and anyone who wants 
 ## Workflow lanes
 
 - **`alert live ...`**: list-rules, list-contact-points, list-mute-timings, list-templates, and delete.
-- **`alert migrate ...`**: export, import, and diff.
+- **`alert export/import/diff ...`**: move and compare.
 - **`alert author ...`**: init, `rule add|clone`, `contact-point add`, and `route set|preview`.
 - **`alert scaffold ...`**: rule, contact-point, and template.
-- **`alert change ...`**: plan and apply.
+- **`alert plan/apply ...`**: review and apply.
 
 Choose this page when alert work spans rules, routes, contact points, or templates and you want the workflow before the flags.
 
 ## Before / After
 
 - **Before**: alert work is often scattered across rule editors, export scripts, and route tweaks without one grouped path from inventory to reviewed apply.
-- **After**: the `alert` namespace keeps inventory, authoring, diff, planning, and apply in one place so you can read first, then change.
+- **After**: the `alert` namespace keeps inventory, authoring, diff, planning, and apply in one place so you can read first, then workspace.
 
 ## What success looks like
 
@@ -48,7 +48,7 @@ Choose this page when alert work spans rules, routes, contact points, or templat
 
 - `--profile`, `--url`, `--token`, `--basic-user`, `--basic-password`
 - `--prompt-password`, `--prompt-token`, `--timeout`, `--verify-ssl`
-- Use the nested subcommands for `migrate`, `change`, `live`, `author`, and `scaffold`.
+- Use the nested subcommands for `export`, `import`, `diff`, `plan`, `apply`, `live`, `author`, and `scaffold`.
 
 ## Auth notes
 

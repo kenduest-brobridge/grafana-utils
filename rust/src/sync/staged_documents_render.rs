@@ -287,7 +287,7 @@ pub fn render_sync_apply_intent_text(document: &Value) -> Result<Vec<String>> {
     ];
     if let Some(preflight_summary) = document.get("preflightSummary").and_then(Value::as_object) {
         lines.push(format!(
-            "Preflight: kind={} checks={} ok={} blocking={}",
+            "Input-test: kind={} checks={} ok={} blocking={}",
             preflight_summary
                 .get("kind")
                 .and_then(Value::as_str)
@@ -311,7 +311,7 @@ pub fn render_sync_apply_intent_text(document: &Value) -> Result<Vec<String>> {
         .and_then(Value::as_object)
     {
         lines.push(format!(
-            "Bundle preflight: resources={} sync-blocking={} provider-blocking={} secret-placeholder-blocking={} alert-artifacts={} plan-only={} blocking={}",
+            "Package-test: resources={} sync-blocking={} provider-blocking={} secret-placeholder-blocking={} alert-artifacts={} plan-only={} blocking={}",
             bundle_summary
                 .get("resourceCount")
                 .and_then(Value::as_i64)
@@ -342,7 +342,7 @@ pub fn render_sync_apply_intent_text(document: &Value) -> Result<Vec<String>> {
                 .unwrap_or(0),
         ));
         lines.push(
-            "Reason: preflight and bundle-preflight blocking must be 0 before apply; missing provider or secret placeholder availability blocks apply; plan-only alert artifacts stay staged."
+            "Reason: input-test and package-test blocking must be 0 before apply; missing provider or secret placeholder availability blocks apply; plan-only alert artifacts stay staged."
                 .to_string(),
         );
     }

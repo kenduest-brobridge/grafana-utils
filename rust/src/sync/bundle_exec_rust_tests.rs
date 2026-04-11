@@ -3,8 +3,8 @@
 
 use super::sync_common_args;
 use crate::sync::{
-    render_sync_apply_intent_text, run_sync_cli, SyncBundleArgs, SyncBundlePreflightArgs,
-    SyncGroupCommand, SyncOutputFormat,
+    render_sync_apply_intent_text, run_sync_cli, SyncAdvancedCliArgs, SyncAdvancedCommand,
+    SyncBundleArgs, SyncBundlePreflightArgs, SyncGroupCommand, SyncOutputFormat,
 };
 use serde_json::json;
 use std::fs;
@@ -929,14 +929,16 @@ fn run_sync_cli_bundle_preflight_accepts_local_bundle_inputs() {
     )
     .unwrap();
 
-    let result = run_sync_cli(SyncGroupCommand::BundlePreflight(SyncBundlePreflightArgs {
-        source_bundle,
-        target_inventory,
-        availability_file: None,
-        fetch_live: false,
-        common: sync_common_args(),
-        org_id: None,
-        output_format: SyncOutputFormat::Json,
+    let result = run_sync_cli(SyncGroupCommand::Advanced(SyncAdvancedCliArgs {
+        command: SyncAdvancedCommand::BundlePreflight(SyncBundlePreflightArgs {
+            source_bundle,
+            target_inventory,
+            availability_file: None,
+            fetch_live: false,
+            common: sync_common_args(),
+            org_id: None,
+            output_format: SyncOutputFormat::Json,
+        }),
     }));
 
     assert!(result.is_ok());
@@ -983,9 +985,7 @@ fn render_sync_apply_intent_text_includes_alert_artifact_bundle_counts() {
     assert!(output.contains("alert-artifacts=4"));
     assert!(output.contains("plan-only=1"));
     assert!(output.contains("blocking=3"));
-    assert!(
-        output.contains("Reason: preflight and bundle-preflight blocking must be 0 before apply")
-    );
+    assert!(output.contains("Reason: input-test and package-test blocking must be 0 before apply"));
 }
 
 #[test]

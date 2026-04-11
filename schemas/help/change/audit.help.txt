@@ -1,7 +1,7 @@
-Change audit JSON schema
+Workspace audit JSON schema
 
 Command:
-  grafana-util change audit --lock-file ./sync-lock.json --fetch-live --profile prod --output-format json
+  grafana-util workspace ci audit --lock-file ./sync-lock.json --fetch-live --profile prod --output-format json
 
 kind:
   grafana-utils-sync-audit

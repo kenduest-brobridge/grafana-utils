@@ -31,7 +31,7 @@ This chapter turns command families into end-to-end operator workflows so you ca
 - If the expected output does not line up with the stage you are in, resolve the mismatch before continuing.
 - If you still need exact flags more than workflow context, switch to the command reference.
 
-For the exact flags behind each workflow, see [observe](../../commands/en/observe.md), [export](../../commands/en/export.md), [change](../../commands/en/change.md), [config](../../commands/en/config.md), and [config profile](../../commands/en/profile.md).
+For the exact flags behind each workflow, see [status](../../commands/en/status.md), [export](../../commands/en/export.md), [workspace](../../commands/en/workspace.md), [config](../../commands/en/config.md), and [config profile](../../commands/en/profile.md).
 
 ---
 
@@ -50,12 +50,12 @@ grafana-util config profile list
 
 ```bash
 # Purpose: Prove connectivity and version alignment before making changes.
-grafana-util observe live --profile prod --output-format table
+grafana-util status live --profile prod --output-format table
 ```
 
 ```bash
 # Purpose: Prove connectivity and version alignment before making changes.
-grafana-util observe overview live --profile prod --output-format interactive
+grafana-util status overview live --profile prod --output-format interactive
 ```
 **Expected Output:**
 ```text
@@ -67,7 +67,7 @@ OVERALL: status=ready
 Project overview
 Live status: ready
 ```
-Start with `config profile list` to confirm which repo-local defaults are active, then use `observe live` for the gate and `observe overview live --output-format interactive` when you want the same live surface in a browsable TUI.
+Start with `config profile list` to confirm which repo-local defaults are active, then use `status live` for the gate and `status overview live --output-format interactive` when you want the same live surface in a browsable TUI.
 
 ---
 
@@ -176,25 +176,25 @@ Move alerting changes through a reviewed lifecycle.
 
 ```bash
 # Purpose: Move alerting changes through a reviewed lifecycle.
-grafana-util change inspect --desired-file ./desired.json
+grafana-util workspace scan --desired-file ./desired.json
 ```
 
 ```bash
 # Purpose: Move alerting changes through a reviewed lifecycle.
-grafana-util change check --desired-file ./desired.json --fetch-live --output-format json
+grafana-util workspace test --desired-file ./desired.json --fetch-live --output-format json
 ```
 
 ```bash
 # Purpose: Move alerting changes through a reviewed lifecycle.
-grafana-util alert change plan --profile prod --desired-dir ./alerts/desired --output-format json
+grafana-util alert plan --profile prod --desired-dir ./alerts/desired --output-format json
 ```
 **Expected Output (Snippet):**
 ```text
-CHANGE PACKAGE SUMMARY:
+WORKSPACE PACKAGE SUMMARY:
 - dashboards: 5 modified, 2 added
 - alerts: 3 modified
 
-PREFLIGHT CHECK:
+WORKSPACE TEST:
 - dashboards: valid (7 files)
 - result: 0 errors, 0 blockers
 
@@ -203,7 +203,7 @@ PREFLIGHT CHECK:
   "plan_id": "plan-2026-04-02-abc"
 }
 ```
-Run `change inspect` first when you want to understand the size and shape of the staged package, then `change check` when you need to confirm the staged inputs are structurally sound before alert-specific planning.
+Run `workspace scan` first when you want to understand the size and shape of the staged package, then `workspace test` when you need to confirm the staged inputs are structurally sound before alert-specific planning.
 
 ---
 
@@ -241,4 +241,4 @@ ops-user    Viewer  create   missing
 This workflow is for replaying identity state safely: use import dry-run for users, and use the service-account token commands when you need to rotate automation credentials without guessing at the target account.
 
 ---
-[⬅️ Previous: Change & Observe](change-overview-status.md) | [🏠 Home](index.md) | [➡️ Next: Technical Reference](reference.md)
+[⬅️ Previous: Workspace & Status](status-workspace.md) | [🏠 Home](index.md) | [➡️ Next: Technical Reference](reference.md)

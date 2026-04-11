@@ -12,7 +12,7 @@
 
 - 先把連線設定收斂成可重複的 profile
 - 先用 JSON 或 table 類輸出讓腳本穩定判讀
-- 先在 `observe staged` 與 `change check` 擋掉有問題的變更
+- 先在 `status staged` 與 `workspace test` 擋掉有問題的變更
 - 只在確定 scope 合理時才用 token 或 service account token
 
 ## 採用前後對照
@@ -60,17 +60,17 @@ grafana-util config profile show --profile ci --output-format yaml
 
 ```bash
 # 用途：建議先跑的 5 個指令。
-grafana-util observe staged --desired-file ./desired.json --output-format json
+grafana-util status staged --desired-file ./desired.json --output-format json
 ```
 
 ```bash
 # 用途：建議先跑的 5 個指令。
-grafana-util change check --desired-file ./desired.json --fetch-live --output-format json
+grafana-util workspace test --desired-file ./desired.json --fetch-live --output-format json
 ```
 
 ```bash
 # 用途：建議先跑的 5 個指令。
-grafana-util observe overview live --profile ci --output-format yaml
+grafana-util status overview live --profile ci --output-format yaml
 ```
 
 如果 pipeline 只需要驗證某個 live 操作面，可把最後一行換成 direct Basic auth 或單一 org token 的等價查詢，但不要把查詢範圍開得比權限更大。
@@ -86,13 +86,13 @@ grafana-util observe overview live --profile ci --output-format yaml
 
 - [開始使用](getting-started.md)
 - [技術參考手冊](reference.md)
-- [變更與狀態](change-overview-status.md)
+- [Workspace 審查與狀態](status-workspace.md)
 - [Access 管理](access.md)
 
 ## 建議同時開著哪些指令頁
 
 - [config profile](../../commands/zh-TW/config.md)
-- [change](../../commands/zh-TW/change.md)
+- [workspace](../../commands/zh-TW/workspace.md)
 - [指令詳細說明總索引](../../commands/zh-TW/index.md)
 - [access service-account](../../commands/zh-TW/access-service-account.md)
 - [access service-account token](../../commands/zh-TW/access-service-account-token.md)
@@ -101,7 +101,7 @@ grafana-util observe overview live --profile ci --output-format yaml
 ## 常見錯誤與限制
 
 - 不要在 CI log 裡直接印出 token 或 password。
-- 不要把 `observe staged` 當成 `apply`；它是檢查關卡，不是變更執行器。
+- 不要把 `status staged` 當成 `apply`；它是檢查關卡，不是變更執行器。
 - 不要假設 token 或 service account token 能跨 org 使用。
 - 不要依賴互動式輸出做自動化判讀；自動化流程應以 JSON、table 或明確的 exit code 為準。
 - 不要在 pipeline 裡臨時手刻明文設定檔，應把秘密來源固定在 env 或 secret store。
@@ -118,7 +118,7 @@ grafana-util observe overview live --profile ci --output-format yaml
 ## 什麼時候切到更深的文件
 
 - output format、exit code、profile secret 規則，切到 [技術參考手冊](reference.md)
-- staged gate、preflight、promotion review，切到 [變更與狀態](change-overview-status.md)
+- staged gate、input test、promotion review，切到 [Workspace 審查與狀態](status-workspace.md)
 - 需要處理 service account 憑證輪替或管理時，切到 [Access 管理](access.md)
 - 只差精確旗標或 command 細節時，切到 [指令詳細說明總索引](../../commands/zh-TW/index.md)
 

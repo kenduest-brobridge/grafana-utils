@@ -2,7 +2,7 @@
 
 Use this chapter when you already know the workflow and need the exact command behavior, output flags, profile rules, or secret-handling details.
 
-This manual provides the current command surface for `grafana-util`, including profile resolution, output flags, and observe entrypoints.
+This manual provides the current command surface for `grafana-util`, including profile resolution, output flags, and status entrypoints.
 
 ## Who It Is For
 
@@ -16,7 +16,7 @@ This manual provides the current command surface for `grafana-util`, including p
 - Clarify which output modes exist on which command surfaces.
 - Reduce time spent jumping between individual command pages for shared behavior.
 
-Use this chapter alongside [config](../../commands/en/config.md), [config profile](../../commands/en/profile.md), [observe](../../commands/en/observe.md), [change](../../commands/en/change.md), and [access](../../commands/en/access.md) when you want the command-by-command surface.
+Use this chapter alongside [config](../../commands/en/config.md), [config profile](../../commands/en/profile.md), [status](../../commands/en/status.md), [workspace](../../commands/en/workspace.md), and [access](../../commands/en/access.md) when you want the command-by-command surface.
 
 ---
 
@@ -47,9 +47,9 @@ The long form is usually better for scripts and reusable snippets. The short for
 
 If you are unsure, always trust the per-command reference page over a generic rule of thumb.
 
-### `change` JSON documents for CI
+### `workspace` JSON documents for CI
 
-The `change` family emits several different JSON contracts. The safest routing rule is:
+The `workspace` family emits several different JSON contracts. The safest routing rule is:
 
 1. inspect `kind`
 2. confirm `schemaVersion`
@@ -57,28 +57,28 @@ The `change` family emits several different JSON contracts. The safest routing r
 
 Fast lookups from the CLI:
 
-- `grafana-util change --help-schema`
-- `grafana-util change preview --help-schema`
-- `grafana-util change apply --help-schema`
-- `grafana-util change advanced audit --help-schema`
+- `grafana-util workspace --help-schema`
+- `grafana-util workspace preview --help-schema`
+- `grafana-util workspace apply --help-schema`
+- `grafana-util workspace ci audit --help-schema`
 
 Practical mapping:
 
-- `change inspect --output-format json` -> staged change summary or overview-style inspection output, depending on selected inputs
-- `change preview --output-format json` -> `grafana-utils-sync-plan`
-- `change apply --output-format json` -> `grafana-utils-sync-apply-intent`
-- `change apply --execute-live --output-format json` -> live apply result
-- `change advanced summary --output-format json` -> `grafana-utils-sync-summary`
-- `change advanced review --output-format json` -> `grafana-utils-sync-plan`
-- `change advanced audit --output-format json` -> `grafana-utils-sync-audit`
-- `change advanced preflight --output-format json` -> `grafana-utils-sync-preflight`
-- `change advanced assess-alerts --output-format json` -> `grafana-utils-alert-sync-plan`
-- `change advanced bundle-preflight --output-format json` -> `grafana-utils-sync-bundle-preflight`
-- `change advanced promotion-preflight --output-format json` -> `grafana-utils-sync-promotion-preflight`
+- `workspace scan --output-format json` -> staged workspace summary or overview-style inspection output, depending on selected inputs
+- `workspace preview --output-format json` -> `grafana-utils-sync-plan`
+- `workspace apply --output-format json` -> `grafana-utils-sync-apply-intent`
+- `workspace apply --execute-live --output-format json` -> live apply result
+- `workspace ci summary --output-format json` -> `grafana-utils-sync-summary`
+- `workspace ci mark-reviewed --output-format json` -> `grafana-utils-sync-plan`
+- `workspace ci audit --output-format json` -> `grafana-utils-sync-audit`
+- `workspace ci input-test --output-format json` -> `grafana-utils-sync-input test`
+- `workspace ci alert-readiness --output-format json` -> `grafana-utils-alert-sync-plan`
+- `workspace ci package-test --output-format json` -> `grafana-utils-sync-bundle-input test`
+- `workspace ci promote-test --output-format json` -> `grafana-utils-sync-promotion-input test`
 
 For `grafana-utils-sync-plan`, reviewers and CI should also expect ordering metadata on the reviewed preview document itself: `ordering.mode`, `operations[].orderIndex`, `operations[].orderGroup`, `operations[].kindOrder`, and `summary.blocked_reasons`.
 
-Use the dedicated [change command reference](../../commands/en/change.md) when you need the exact top-level keys for each document.
+Use the dedicated [workspace command reference](../../commands/en/workspace.md) when you need the exact top-level keys for each document.
 
 ### `dashboard history` JSON documents for CI
 
@@ -132,9 +132,9 @@ CLI schema lookups:
 - `grafana-util alert diff --help-schema`
 - `grafana-util datasource diff --help-schema`
 
-### `observe` JSON documents for CI
+### `status` JSON documents for CI
 
-`observe staged` and `observe live` now share one explicit machine-readable contract:
+`status staged` and `status live` now share one explicit machine-readable contract:
 
 1. inspect `kind`
 2. confirm `schemaVersion`
@@ -147,14 +147,14 @@ Stable routing:
 
 CLI schema lookups:
 
-- `grafana-util observe --help-schema`
-- `grafana-util observe staged --help-schema`
-- `grafana-util observe live --help-schema`
+- `grafana-util status --help-schema`
+- `grafana-util status staged --help-schema`
+- `grafana-util status live --help-schema`
 
 Practical mapping:
 
-- `observe staged --output-format json` -> `grafana-util-project-status`
-- `observe live --output-format json` -> `grafana-util-project-status`
+- `status staged --output-format json` -> `grafana-util-project-status`
+- `status live --output-format json` -> `grafana-util-project-status`
 
 ---
 
@@ -312,7 +312,7 @@ profiles:
   prod_plaintext:
     url: https://grafana.example.com
     username: admin
-    password: change-me
+    password: workspace-me
     verify_ssl: true
 
   # OS secret store example. The secret is kept in macOS Keychain or Linux Secret Service.
@@ -345,17 +345,17 @@ profiles:
 ### 5. Daily-use examples in the common auth styles
 ```bash
 # Purpose: 5. Daily-use examples in the common auth styles.
-grafana-util observe live --profile prod --output-format yaml
+grafana-util status live --profile prod --output-format yaml
 ```
 
 ```bash
 # Purpose: 5. Daily-use examples in the common auth styles.
-grafana-util observe live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml
+grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml
 ```
 
 ```bash
 # Purpose: 5. Daily-use examples in the common auth styles.
-grafana-util observe overview live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format json
+grafana-util status overview live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format json
 ```
 Use the `--profile` form by default. Keep direct Basic auth for admin-heavy workflows and token auth for scoped automation where you understand the permission envelope.
 
@@ -363,13 +363,13 @@ Use the `--profile` form by default. Keep direct Basic auth for admin-heavy work
 
 ```bash
 # Environment-backed password for a repeatable local profile.
-export GRAFANA_PROD_PASSWORD='change-me'
+export GRAFANA_PROD_PASSWORD='workspace-me'
 grafana-util config profile add prod --url https://grafana.example.com --basic-user admin --password-env GRAFANA_PROD_PASSWORD
 ```
 
 ```bash
 # Environment-backed password for a repeatable local profile.
-grafana-util observe live --profile prod --output-format yaml
+grafana-util status live --profile prod --output-format yaml
 ```
 
 ```bash
@@ -379,7 +379,7 @@ grafana-util config profile add prod-os --url https://grafana.example.com --basi
 
 ```bash
 # OS secret store for a desktop operator workflow on macOS or Linux.
-grafana-util observe overview live --profile prod-os --output-format interactive
+grafana-util status overview live --profile prod-os --output-format interactive
 ```
 
 ```bash
@@ -389,7 +389,7 @@ grafana-util config profile add prod-encrypted --url https://grafana.example.com
 
 ```bash
 # Encrypted file with a prompted passphrase.
-grafana-util observe live --profile prod-encrypted --output-format yaml
+grafana-util status live --profile prod-encrypted --output-format yaml
 ```
 
 ```bash
@@ -400,7 +400,7 @@ grafana-util config profile add ci --url https://grafana.example.com --token-env
 
 ```bash
 # Scoped token from the environment for automation.
-grafana-util observe overview live --profile ci --output-format json
+grafana-util status overview live --profile ci --output-format json
 ```
 
 Why these examples matter:
@@ -440,7 +440,7 @@ Why these examples matter:
 | :--- | :--- | :--- | :--- |
 | Direct format selectors | `--text`, `--table`, `--csv`, `--json`, `--yaml` | `text` / `table` / `csv` / `json` / `yaml` | Common on list, review, inspect, and some dry-run mutation surfaces. |
 | Single selector for common formats | `--output-format <FORMAT>` | `text` / `table` / `csv` / `json` / `yaml` | Some commands also define command-specific values such as `governance`, `governance-json`, `queries-json`, `mermaid`, or `dot`. |
-| Live `observe` entrypoint | `--output-format <FORMAT>` | `table` / `csv` / `text` / `json` / `yaml` / `interactive` | These live entrypoints now use the same standard selector. |
+| Live `status` entrypoint | `--output-format <FORMAT>` | `table` / `csv` / `text` / `json` / `yaml` / `interactive` | These live entrypoints now use the same standard selector. |
 | Write the rendered result to a file | `--output-file <PATH>` or a command-specific flag | command-specific | Common on dependencies, policy, screenshot, and similar output-producing commands. |
 
 ### 1. Table or JSON selection
@@ -459,15 +459,15 @@ grafana-util dashboard list -h
 ```
 Use `--json` for automation, `--table` for quick human review, and `--output-format` when you want to switch output with a single flag. The older `--limit` example is no longer current; the command now uses `--page-size` for fetch sizing and `--output-columns` for column selection.
 
-### 2. Live observe output selectors
+### 2. Live status output selectors
 ```bash
-# Purpose: 2. Live observe output selectors.
-grafana-util observe live -h
+# Purpose: 2. Live status output selectors.
+grafana-util status live -h
 ```
 
 ```bash
-# Purpose: 2. Live observe overview output selectors.
-grafana-util observe overview live -h
+# Purpose: 2. Live status overview output selectors.
+grafana-util status overview live -h
 ```
 **Expected Output:**
 ```text
@@ -476,7 +476,7 @@ Render live Grafana read surfaces. Use current Grafana state plus optional stage
 --output-format <OUTPUT_FORMAT>
     Render live output as table, csv, text, json, yaml, or interactive output.
 
-Render a live overview by delegating to the shared observe live path.
+Render a live overview by delegating to the shared status live path.
 ...
 --output-format <OUTPUT_FORMAT>
     Render live output as table, csv, text, json, yaml, or interactive output.
@@ -507,7 +507,7 @@ This is the current JSON path for scripting. If you need fewer or different fiel
 ### 2. Handling Exit Codes
 ```bash
 # Purpose: 2. Handling Exit Codes.
-grafana-util observe live --profile prod --output-format json
+grafana-util status live --profile prod --output-format json
 if [ $? -eq 2 ]; then
   echo "CRITICAL: Grafana connection blocked!"
   exit 1

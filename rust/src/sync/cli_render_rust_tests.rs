@@ -143,7 +143,7 @@ fn render_sync_apply_intent_text_renders_counts() {
     assert!(lines[6].contains("sync-blocking=0"));
     assert!(lines[6].contains("secret-placeholder-blocking=1"));
     assert!(
-        lines[7].contains("Reason: preflight and bundle-preflight blocking must be 0 before apply")
+        lines[7].contains("Reason: input-test and package-test blocking must be 0 before apply")
     );
     assert!(lines[8].contains("bob"));
     assert!(lines[9].contains("staged:sync-trace-demo:applied"));

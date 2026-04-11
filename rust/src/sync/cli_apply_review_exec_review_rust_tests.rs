@@ -1,8 +1,8 @@
 //! Sync CLI review/trace-lineage regression tests.
 //! Covers review token handling and lineage validation for review/apply flows.
 use super::super::{
-    run_sync_cli, SyncApplyArgs, SyncGroupCommand, SyncOutputFormat, SyncPlanArgs, SyncReviewArgs,
-    DEFAULT_REVIEW_TOKEN,
+    run_sync_cli, SyncAdvancedCliArgs, SyncAdvancedCommand, SyncApplyArgs, SyncGroupCommand,
+    SyncOutputFormat, SyncPlanArgs, SyncReviewArgs, DEFAULT_REVIEW_TOKEN,
 };
 use super::sync_common_args;
 use serde_json::json;
@@ -35,14 +35,16 @@ fn run_sync_cli_review_marks_plan_reviewed() {
     )
     .unwrap();
 
-    let result = run_sync_cli(SyncGroupCommand::Review(SyncReviewArgs {
-        plan_file,
-        review_token: DEFAULT_REVIEW_TOKEN.to_string(),
-        output_format: SyncOutputFormat::Json,
-        reviewed_by: Some("alice".to_string()),
-        reviewed_at: Some("manual-review".to_string()),
-        review_note: Some("peer-reviewed".to_string()),
-        interactive: false,
+    let result = run_sync_cli(SyncGroupCommand::Advanced(SyncAdvancedCliArgs {
+        command: SyncAdvancedCommand::Review(SyncReviewArgs {
+            plan_file,
+            review_token: DEFAULT_REVIEW_TOKEN.to_string(),
+            output_format: SyncOutputFormat::Json,
+            reviewed_by: Some("alice".to_string()),
+            reviewed_at: Some("manual-review".to_string()),
+            review_note: Some("peer-reviewed".to_string()),
+            interactive: false,
+        }),
     }));
 
     assert!(result.is_ok());
@@ -74,14 +76,16 @@ fn run_sync_cli_review_rejects_wrong_review_token() {
     )
     .unwrap();
 
-    let error = run_sync_cli(SyncGroupCommand::Review(SyncReviewArgs {
-        plan_file,
-        review_token: "wrong-token".to_string(),
-        output_format: SyncOutputFormat::Json,
-        reviewed_by: None,
-        reviewed_at: None,
-        review_note: None,
-        interactive: false,
+    let error = run_sync_cli(SyncGroupCommand::Advanced(SyncAdvancedCliArgs {
+        command: SyncAdvancedCommand::Review(SyncReviewArgs {
+            plan_file,
+            review_token: "wrong-token".to_string(),
+            output_format: SyncOutputFormat::Json,
+            reviewed_by: None,
+            reviewed_at: None,
+            review_note: None,
+            interactive: false,
+        }),
     }))
     .unwrap_err()
     .to_string();
@@ -114,14 +118,16 @@ fn run_sync_cli_review_rejects_missing_trace_id() {
     )
     .unwrap();
 
-    let error = run_sync_cli(SyncGroupCommand::Review(SyncReviewArgs {
-        plan_file,
-        review_token: DEFAULT_REVIEW_TOKEN.to_string(),
-        output_format: SyncOutputFormat::Json,
-        reviewed_by: None,
-        reviewed_at: None,
-        review_note: None,
-        interactive: false,
+    let error = run_sync_cli(SyncGroupCommand::Advanced(SyncAdvancedCliArgs {
+        command: SyncAdvancedCommand::Review(SyncReviewArgs {
+            plan_file,
+            review_token: DEFAULT_REVIEW_TOKEN.to_string(),
+            output_format: SyncOutputFormat::Json,
+            reviewed_by: None,
+            reviewed_at: None,
+            review_note: None,
+            interactive: false,
+        }),
     }))
     .unwrap_err()
     .to_string();
@@ -137,16 +143,18 @@ fn run_sync_cli_plan_accepts_explicit_trace_id() {
     fs::write(&desired_file, "[]").unwrap();
     fs::write(&live_file, "[]").unwrap();
 
-    let result = run_sync_cli(SyncGroupCommand::Plan(SyncPlanArgs {
-        desired_file,
-        live_file: Some(live_file),
-        fetch_live: false,
-        common: sync_common_args(),
-        org_id: None,
-        page_size: 500,
-        allow_prune: false,
-        output_format: SyncOutputFormat::Json,
-        trace_id: Some("plan-trace-123".to_string()),
+    let result = run_sync_cli(SyncGroupCommand::Advanced(SyncAdvancedCliArgs {
+        command: SyncAdvancedCommand::Plan(SyncPlanArgs {
+            desired_file,
+            live_file: Some(live_file),
+            fetch_live: false,
+            common: sync_common_args(),
+            org_id: None,
+            page_size: 500,
+            allow_prune: false,
+            output_format: SyncOutputFormat::Json,
+            trace_id: Some("plan-trace-123".to_string()),
+        }),
     }));
 
     assert!(result.is_ok());
@@ -282,14 +290,16 @@ fn run_sync_cli_review_accepts_explicit_audit_metadata() {
     )
     .unwrap();
 
-    let result = run_sync_cli(SyncGroupCommand::Review(SyncReviewArgs {
-        plan_file,
-        review_token: DEFAULT_REVIEW_TOKEN.to_string(),
-        output_format: SyncOutputFormat::Json,
-        reviewed_by: Some("alice".to_string()),
-        reviewed_at: Some("manual-review".to_string()),
-        review_note: Some("peer-reviewed".to_string()),
-        interactive: false,
+    let result = run_sync_cli(SyncGroupCommand::Advanced(SyncAdvancedCliArgs {
+        command: SyncAdvancedCommand::Review(SyncReviewArgs {
+            plan_file,
+            review_token: DEFAULT_REVIEW_TOKEN.to_string(),
+            output_format: SyncOutputFormat::Json,
+            reviewed_by: Some("alice".to_string()),
+            reviewed_at: Some("manual-review".to_string()),
+            review_note: Some("peer-reviewed".to_string()),
+            interactive: false,
+        }),
     }));
 
     assert!(result.is_ok());

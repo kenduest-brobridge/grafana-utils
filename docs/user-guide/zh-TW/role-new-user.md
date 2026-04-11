@@ -26,7 +26,7 @@ profile 的價值是把重複的連線資訊收斂起來，不是代表前面那
 - 先確認執行檔、Grafana 連線與唯讀檢查都正常。
 - 了解這個工具支援哪些連線與驗證方式。
 - 釐清何時直接帶旗標就夠，何時應該改用 profile 簡化。
-- 熟悉 `observe live` 與 `observe overview` 的差異。
+- 熟悉 `status live` 與 `status overview` 的差異。
 - 了解 token 比較適合權限範圍明確的單一 org 自動化作業。
 
 ## 採用前後對照
@@ -51,7 +51,7 @@ profile 的價值是把重複的連線資訊收斂起來，不是代表前面那
 - 確認執行檔已加入 `PATH` 環境變數。
 - 先對本地實驗環境或開發用 Grafana 跑一次直接的唯讀檢查。
 - 確認沒問題後，再為同一個 Grafana 建立 profile。
-- 執行一次安全的即時讀取 (Live Read)，並區分 `observe live` 與 `observe overview` 的差異。
+- 執行一次安全的即時讀取 (Live Read)，並區分 `status live` 與 `status overview` 的差異。
 - 瞭解後續進行儀表板、告警或存取權限管理時應參考的說明文件。
 
 ## 先搞懂連線與驗證是怎麼運作的
@@ -83,7 +83,7 @@ grafana-util --version
 
 ```bash
 # 用途：建議先執行的 5 個指令。
-grafana-util observe live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml
+grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml
 ```
 
 ```bash
@@ -98,7 +98,7 @@ grafana-util config profile add dev --url http://127.0.0.1:3000 --basic-user adm
 
 ```bash
 # 用途：建議先執行的 5 個指令。
-grafana-util observe live --profile dev --output-format yaml
+grafana-util status live --profile dev --output-format yaml
 ```
 
 這個順序不是隨便排的：
@@ -113,14 +113,14 @@ grafana-util observe live --profile dev --output-format yaml
 
 ```bash
 # 用途：如果你暫時還沒有 profile，這就是最短的安全起手式。
-grafana-util observe live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml
+grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml
 ```
 
 如果你手邊已有範圍明確的 token，也可以直接做同一類唯讀檢查：
 
 ```bash
 # 用途：如果你手邊已有範圍明確的 token，也可以直接做同一類唯讀檢查。
-grafana-util observe overview --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format json
+grafana-util status overview --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format json
 ```
 
 如果你的 shell 已經有環境變數，也可以不先建 profile，直接這樣跑：
@@ -129,7 +129,7 @@ grafana-util observe overview --url http://localhost:3000 --token "$GRAFANA_API_
 # 用途：如果你的 shell 已經有環境變數，也可以不先建 profile，直接這樣跑。
 export GRAFANA_USERNAME=admin
 export GRAFANA_PASSWORD=admin
-grafana-util observe live --url http://localhost:3000 --output-format yaml
+grafana-util status live --url http://localhost:3000 --output-format yaml
 ```
 
 ## 學習進度檢核
@@ -139,7 +139,7 @@ grafana-util observe live --url http://localhost:3000 --output-format yaml
 - 可在常用的終端機環境中正常執行 `grafana-util --version`。
 - 至少有一個直接的唯讀指令能穩定連到目標 Grafana。
 - `config profile show --profile dev` 解析出的欄位符合預期。
-- `observe live --profile dev` 能穩定回傳可讀的結果。
+- `status live --profile dev` 能穩定回傳可讀的結果。
 - 已清楚後續要進行 dashboard、alert 或 access 管理的操作流程。
 
 ## 後續閱讀建議
@@ -160,7 +160,7 @@ grafana-util observe live --url http://localhost:3000 --output-format yaml
 - **旗標誤用**：請勿混用 `--output-format` 與 `--output`，這兩個旗標位於不同的輸出控制層級。
 - **設定檔安全性**：請勿在 `grafana-util.yaml` 中寫入明文密碼，除非僅用於一次性的實驗或展示。
 - **Token 權限限制**：窄權限 token 無法執行所有操作，特別是跨 org 盤點或管理類任務。
-- **循序漸進**：在熟悉 config profile 與 observe 的讀取流程前，建議先不要執行匯入或套用變更的作業。
+- **循序漸進**：在熟悉 config profile 與 status 的讀取流程前，建議先不要執行匯入或套用變更的作業。
 
 ## 何時切換至深度文件
 

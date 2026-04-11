@@ -20,20 +20,20 @@ List live alert rules, contact points, mute timings, and templates.
 .PP
 \- alert live ...: list\-rules, list\-contact\-points, list\-mute\-timings, list\-templates, and delete.
 .PP
-\- alert migrate ...: export, import, and diff.
+\- alert export/import/diff ...: move and compare.
 .PP
 \- alert author ...: init, rule add|clone, contact\-point add, and route set|preview.
 .PP
 \- alert scaffold ...: rule, contact\-point, and template.
 .PP
-\- alert change ...: plan and apply.
+\- alert plan/apply ...: review and apply.
 .PP
 Choose this page when alert work spans rules, routes, contact points, or templates and you want the workflow before the flags.
 .SH BEFORE / AFTER
 .IP \(bu 2
 Before: alert work is often scattered across rule editors, export scripts, and route tweaks without one grouped path from inventory to reviewed apply.
 .IP \(bu 2
-After: the alert namespace keeps inventory, authoring, diff, planning, and apply in one place so you can read first, then change.
+After: the alert namespace keeps inventory, authoring, diff, planning, and apply in one place so you can read first, then workspace.
 .SH SUBCOMMANDS
 .TP
 .B export
@@ -95,7 +95,7 @@ List live Grafana notification templates. Use when: Inspect template inventory f
 .IP \(bu 2
 \-\-prompt\-password, \-\-prompt\-token, \-\-timeout, \-\-verify\-ssl
 .IP \(bu 2
-Use the nested subcommands for migrate, change, live, author, and scaffold.
+Use the nested subcommands for export, import, diff, plan, apply, live, author, and scaffold.
 .SH SUCCESS CRITERIA
 .IP \(bu 2
 you can tell whether the task belongs to inspect, move, or review\-before\-mutate before you open a subcommand
@@ -146,5 +146,5 @@ grafana-util alert apply --plan-file ./alert-plan-reviewed.json --approve
 .EE
 .SH SEE ALSO
 \fBgrafana-util\fR(1),
-\fBgrafana-util-change\fR(1),
-\fBgrafana-util-observe\fR(1)
+\fBgrafana-util-workspace\fR(1),
+\fBgrafana-util-status\fR(1)

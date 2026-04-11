@@ -1,8 +1,8 @@
 //! Sync CLI test suite.
 //! Verifies sync routing and rendering contracts that remain outside the split execution slices.
 use super::{
-    run_sync_cli, SyncAssessAlertsArgs, SyncGroupCommand, SyncOutputFormat, SyncPlanArgs,
-    SyncSummaryArgs,
+    run_sync_cli, SyncAdvancedCliArgs, SyncAdvancedCommand, SyncAssessAlertsArgs, SyncGroupCommand,
+    SyncOutputFormat, SyncPlanArgs, SyncSummaryArgs,
 };
 use crate::dashboard::CommonCliArgs;
 use serde_json::json;
@@ -29,9 +29,11 @@ fn run_sync_cli_summary_accepts_local_desired_file() {
     )
     .unwrap();
 
-    let result = run_sync_cli(SyncGroupCommand::Summary(SyncSummaryArgs {
-        desired_file,
-        output_format: SyncOutputFormat::Json,
+    let result = run_sync_cli(SyncGroupCommand::Advanced(SyncAdvancedCliArgs {
+        command: SyncAdvancedCommand::Summary(SyncSummaryArgs {
+            desired_file,
+            output_format: SyncOutputFormat::Json,
+        }),
     }));
 
     assert!(result.is_ok(), "{result:?}");
@@ -59,27 +61,29 @@ fn run_sync_cli_plan_accepts_local_inputs() {
     .unwrap();
     fs::write(&live_file, "[]").unwrap();
 
-    let result = run_sync_cli(SyncGroupCommand::Plan(SyncPlanArgs {
-        desired_file,
-        live_file: Some(live_file),
-        fetch_live: false,
-        common: CommonCliArgs {
-            color: crate::common::CliColorChoice::Auto,
-            profile: None,
-            url: "http://127.0.0.1:3000".to_string(),
-            api_token: Some("test-token".to_string()),
-            username: None,
-            password: None,
-            prompt_password: false,
-            prompt_token: false,
-            timeout: 30,
-            verify_ssl: false,
-        },
-        org_id: None,
-        page_size: 500,
-        allow_prune: false,
-        output_format: SyncOutputFormat::Json,
-        trace_id: None,
+    let result = run_sync_cli(SyncGroupCommand::Advanced(SyncAdvancedCliArgs {
+        command: SyncAdvancedCommand::Plan(SyncPlanArgs {
+            desired_file,
+            live_file: Some(live_file),
+            fetch_live: false,
+            common: CommonCliArgs {
+                color: crate::common::CliColorChoice::Auto,
+                profile: None,
+                url: "http://127.0.0.1:3000".to_string(),
+                api_token: Some("test-token".to_string()),
+                username: None,
+                password: None,
+                prompt_password: false,
+                prompt_token: false,
+                timeout: 30,
+                verify_ssl: false,
+            },
+            org_id: None,
+            page_size: 500,
+            allow_prune: false,
+            output_format: SyncOutputFormat::Json,
+            trace_id: None,
+        }),
     }));
 
     assert!(result.is_ok());
@@ -106,9 +110,11 @@ fn run_sync_cli_assess_alerts_accepts_local_inputs() {
     )
     .unwrap();
 
-    let result = run_sync_cli(SyncGroupCommand::AssessAlerts(SyncAssessAlertsArgs {
-        alerts_file,
-        output_format: SyncOutputFormat::Json,
+    let result = run_sync_cli(SyncGroupCommand::Advanced(SyncAdvancedCliArgs {
+        command: super::SyncAdvancedCommand::AssessAlerts(SyncAssessAlertsArgs {
+            alerts_file,
+            output_format: SyncOutputFormat::Json,
+        }),
     }));
 
     assert!(result.is_ok());

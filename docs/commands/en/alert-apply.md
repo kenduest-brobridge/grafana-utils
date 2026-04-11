@@ -36,7 +36,7 @@ grafana-util alert apply --url http://localhost:3000 --basic-user admin --basic-
 
 - a reviewed alert plan can be applied without hand-editing YAML or replaying a sequence of UI clicks
 - the live apply step keeps approval explicit instead of hiding it in shell history
-- JSON output is stable enough to feed into CI, change records, or a post-apply verification step
+- JSON output is stable enough to feed into CI, workspace records, or a post-apply verification step
 
 ## Failure checks
 

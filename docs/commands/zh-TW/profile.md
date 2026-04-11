@@ -69,7 +69,7 @@ grafana-util config profile example --mode full
 grafana-util config profile init --overwrite
 ```
 
-相關指令：`grafana-util observe live`、`grafana-util observe overview`、`grafana-util change preview`、`grafana-util config profile current`、`grafana-util config profile validate`。
+相關指令：`grafana-util status live`、`grafana-util status overview`、`grafana-util workspace preview`、`grafana-util config profile current`、`grafana-util config profile validate`。
 
 ## `list`
 
@@ -120,7 +120,7 @@ grafana-util config profile show --profile prod --show-secrets --output-format y
 - 預設會遮蔽秘密值。
 - 加上 `--show-secrets` 才會顯示明文，或解出 secret-store 參照。
 
-相關指令：`config profile list`、`config profile add`、`config profile current`、`config profile validate`、`observe live`、`observe overview`。
+相關指令：`config profile list`、`config profile add`、`config profile current`、`config profile validate`、`status live`、`status overview`。
 
 ## `current`
 
@@ -148,7 +148,7 @@ grafana-util config profile current --profile prod --output-format json
 - 輸出只做診斷用途，不會揭露 secret。
 - 如果設定檔不存在，`current` 會回報設定檔不存在，而不是直接失敗。
 
-相關指令：`config profile show`、`config profile validate`、`observe live`、`observe overview`。
+相關指令：`config profile show`、`config profile validate`、`status live`、`status overview`。
 
 ## `validate`
 
@@ -177,7 +177,7 @@ grafana-util config profile validate --profile prod --live --output-format json
 - `--live` 會在靜態驗證成功後，再額外呼叫 Grafana `/api/health`。
 - 驗證不會輸出 secret。
 
-相關指令：`config profile current`、`config profile show`、`observe live`、`observe overview`。
+相關指令：`config profile current`、`config profile show`、`status live`、`status overview`。
 
 ## `add`
 
@@ -281,4 +281,4 @@ grafana-util config profile init --overwrite
 - `init` 會寫入內建起手範本。
 - 如果你是想直接建立一個真正可用的 profile，通常 `add` 會比較順手。
 
-相關指令：`config profile add`、`config profile example`、`config profile current`、`config profile validate`、`observe live`。
+相關指令：`config profile add`、`config profile example`、`config profile current`、`config profile validate`、`status live`。

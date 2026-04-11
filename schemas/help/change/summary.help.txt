@@ -1,7 +1,7 @@
-Change summary JSON schema
+Workspace scan JSON schema
 
 Command:
-  grafana-util change summary --desired-file ./desired.json --fetch-live --profile prod --output-format json
+  grafana-util workspace scan --desired-file ./desired.json --fetch-live --profile prod --output-format json
 
 kind:
   grafana-utils-sync-summary
