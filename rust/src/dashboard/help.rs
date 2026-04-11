@@ -82,6 +82,19 @@ where
         .map(|value| value.into().to_string_lossy().into_owned())
         .collect::<Vec<String>>();
     let rest = args.get(1..).unwrap_or(&[]);
+    if rest.first().map(String::as_str) == Some("dashboard")
+        && rest.iter().any(|value| value == "--help" || value == "-h")
+    {
+        if let Some(command) = rest
+            .get(1)
+            .filter(|value| !value.starts_with('-'))
+            .map(String::as_str)
+        {
+            if !matches!(command, "history" | "convert") {
+                return Some(render_dashboard_subcommand_help_text(command, colorize));
+            }
+        }
+    }
     match rest {
         [dashboard, command, flag]
             if dashboard == "dashboard" && (flag == "--help" || flag == "-h") =>

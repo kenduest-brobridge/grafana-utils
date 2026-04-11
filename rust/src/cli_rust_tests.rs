@@ -3,7 +3,7 @@ use super::{
     render_unified_help_text, CliArgs, UnifiedCommand,
 };
 use crate::alert::AlertGroupCommand;
-use crate::cli_help_examples::{paint_section, paint_support};
+use crate::cli_help_examples::{paint_section, paint_support, HELP_PALETTE};
 use crate::dashboard::SimpleOutputFormat;
 use crate::dashboard::{
     parse_cli_from as parse_dashboard_cli_from, DashboardCliArgs, DashboardCommand,
@@ -125,6 +125,177 @@ fn export_dashboard_help_ends_with_blank_line() {
 }
 
 #[test]
+fn datasource_subcommand_help_uses_readable_option_spacing() {
+    let help = maybe_render_unified_help_from_os_args(
+        ["grafana-util", "datasource", "list", "--help"],
+        false,
+    )
+    .expect("expected datasource list help");
+    assert!(help.contains("Help Options:\n  -h, --help\n          Print help"));
+    assert!(help.contains("Scope Options:\n      --org-id <ORG_ID>\n          List datasources"));
+    assert!(help.contains("\n\n      --all-orgs\n          Enumerate all visible Grafana orgs"));
+    assert!(help
+        .contains("Connection Options:\n      --color <COLOR>\n          Colorize JSON output."));
+    assert!(!help.contains("--org-id <ORG_ID>  List datasources"));
+}
+
+#[test]
+fn status_live_help_groups_options_by_purpose() {
+    let help =
+        maybe_render_unified_help_from_os_args(["grafana-util", "status", "live", "--help"], false)
+            .expect("expected status live help");
+    for heading in [
+        "Help Options:",
+        "Connection Options:",
+        "Transport Options:",
+        "Scope Options:",
+        "Input Options:",
+        "Mapping Options:",
+        "Output Options:",
+    ] {
+        assert!(help.contains(heading), "missing heading {heading}");
+    }
+    assert!(help.contains("Connection Options:\n      --profile <PROFILE>"));
+    assert!(help.contains("Input Options:\n      --sync-summary-file <SYNC_SUMMARY_FILE>"));
+    assert!(help.contains("Mapping Options:\n      --mapping-file <MAPPING_FILE>"));
+    assert!(!help.contains("\nOptions:\n      --profile <PROFILE>"));
+}
+
+#[test]
+fn colored_contextual_help_keeps_grouped_sections() {
+    let help =
+        maybe_render_unified_help_from_os_args(["grafana-util", "status", "live", "--help"], true)
+            .expect("expected colored status live help");
+    assert!(help.contains("Connection Options"));
+    assert!(help.contains("Transport Options"));
+    assert!(help.contains("Input Options"));
+    assert!(help.contains("--sync-summary-file"));
+    assert!(!help.contains("\nOptions:\n      --profile <PROFILE>"));
+}
+
+#[test]
+fn profile_add_help_uses_secret_and_profile_groups() {
+    let help = maybe_render_unified_help_from_os_args(
+        ["grafana-util", "config", "profile", "add", "--help"],
+        false,
+    )
+    .expect("expected profile add help");
+    assert!(help.contains("Secret Storage Options:\n      --token-env <TOKEN_ENV>"));
+    assert!(help.contains("Profile Options:\n      --set-default"));
+    assert!(help.contains("Safety Options:\n      --replace-existing"));
+    assert!(help.contains("Creates or updates one profile entry"));
+    assert!(!help.contains("Other Options:"));
+}
+
+#[test]
+fn access_create_help_uses_operator_groups_and_about_text() {
+    let paths: &[&[&str]] = &[
+        &["grafana-util", "access", "user", "add", "--help"],
+        &["grafana-util", "access", "team", "add", "--help"],
+        &["grafana-util", "access", "service-account", "add", "--help"],
+        &[
+            "grafana-util",
+            "access",
+            "service-account",
+            "token",
+            "add",
+            "--help",
+        ],
+    ];
+    for path in paths {
+        let help =
+            maybe_render_unified_help_from_os_args(*path, false).expect("expected access add help");
+        assert!(!help.contains("Struct definition for"));
+        assert!(!help.contains("Command Options:"));
+        assert!(!help.contains("Other Options:"));
+    }
+
+    let user_help = maybe_render_unified_help_from_os_args(
+        ["grafana-util", "access", "user", "add", "--help"],
+        false,
+    )
+    .expect("expected access user add help");
+    assert!(user_help.contains("Create one Grafana user"));
+    assert!(user_help.contains("Account Options:\n      --org-role <ORG_ROLE>"));
+    assert!(user_help.contains("\n\n      --grafana-admin <GRAFANA_ADMIN>"));
+
+    let team_help = maybe_render_unified_help_from_os_args(
+        ["grafana-util", "access", "team", "add", "--help"],
+        false,
+    )
+    .expect("expected access team add help");
+    assert!(team_help.contains("Create one Grafana team"));
+    assert!(team_help.contains("Membership Options:\n      --member <MEMBERS>"));
+    assert!(team_help.contains("\n\n      --admin <ADMINS>"));
+}
+
+#[test]
+fn contextual_subcommand_help_preserves_parent_options() {
+    let help = maybe_render_unified_help_from_os_args(
+        ["grafana-util", "alert", "export", "--help"],
+        false,
+    )
+    .expect("expected alert export help");
+    assert!(help.contains("--color <COLOR>"));
+    assert!(help.contains("Override JSON/YAML/table color for the alert namespace."));
+    assert!(help.contains("\n\n      --output-dir <OUTPUT_DIR>\n          Directory to write"));
+    assert!(!help.contains("--output-dir <OUTPUT_DIR>  Directory to write"));
+}
+
+#[test]
+fn dashboard_subcommand_help_keeps_dashboard_notes_and_examples() {
+    let help = maybe_render_unified_help_from_os_args(
+        ["grafana-util", "dashboard", "export", "--help"],
+        false,
+    );
+    assert!(help.is_none());
+    let help = crate::dashboard::maybe_render_dashboard_subcommand_help_from_os_args(
+        ["grafana-util", "dashboard", "export", "--help"],
+        false,
+    )
+    .expect("expected dashboard export help");
+    assert!(help.contains("Notes:"));
+    assert!(help.contains("Examples:"));
+    assert!(help.contains("Export dashboards to raw/, prompt/, provisioning/"));
+}
+
+#[test]
+fn dashboard_nested_help_uses_readable_contextual_spacing() {
+    let help = maybe_render_unified_help_from_os_args(
+        ["grafana-util", "dashboard", "history", "list", "--help"],
+        false,
+    )
+    .expect("expected dashboard history list help");
+    assert!(help.contains("Usage: grafana-util dashboard history list [OPTIONS]"));
+    assert!(help.contains(
+        "Target Options:\n      --dashboard-uid <DASHBOARD_UID>\n          Dashboard UID to inspect."
+    ));
+    assert!(help.contains(
+        "Input Options:\n      --input <FILE>\n          Read one local history artifact"
+    ));
+    assert!(!help.contains("--dashboard-uid <DASHBOARD_UID>  Dashboard UID"));
+}
+
+#[test]
+fn dashboard_direct_help_with_options_keeps_dashboard_renderer() {
+    let help = crate::dashboard::maybe_render_dashboard_subcommand_help_from_os_args(
+        [
+            "grafana-util",
+            "dashboard",
+            "export",
+            "--output-dir",
+            "./dashboards",
+            "--help",
+        ],
+        false,
+    )
+    .expect("expected dashboard export help");
+    assert!(help.contains("Notes:"));
+    assert!(help.contains("Examples:"));
+    assert!(help.contains("Export dashboards to raw/, prompt/, provisioning/"));
+}
+
+#[test]
 fn export_dashboard_help_colorizes_default_context_bright_green() {
     let help = maybe_render_unified_help_from_os_args(
         ["grafana-util", "export", "dashboard", "--help"],
@@ -152,8 +323,8 @@ fn export_dashboard_help_colorizes_option_descriptions_as_secondary_text() {
     )
     .expect("expected export dashboard help");
     assert!(help.contains(&format!(
-        "          {}",
-        paint_support("Set the generated provisioning provider name.")
+        "          {}Set the generated provisioning provider name.",
+        HELP_PALETTE.support
     )));
 }
 

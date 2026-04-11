@@ -170,7 +170,7 @@ pub struct UserBrowseArgs {
     pub per_page: usize,
 }
 
-/// Struct definition for UserAddArgs.
+/// Create one Grafana user with optional initial org and admin state.
 #[derive(Debug, Clone, Args)]
 pub struct UserAddArgs {
     #[command(flatten)]

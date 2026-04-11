@@ -157,7 +157,7 @@ pub struct TeamBrowseArgs {
     pub per_page: usize,
 }
 
-/// Struct definition for TeamAddArgs.
+/// Create one Grafana team with optional contact and membership data.
 #[derive(Debug, Clone, Args)]
 pub struct TeamAddArgs {
     #[command(flatten)]

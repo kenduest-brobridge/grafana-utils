@@ -89,7 +89,7 @@ pub struct ServiceAccountListArgs {
     pub output_format: Option<ListOutputFormat>,
 }
 
-/// Struct definition for ServiceAccountAddArgs.
+/// Create one Grafana service account with an initial org role.
 #[derive(Debug, Clone, Args)]
 pub struct ServiceAccountAddArgs {
     #[command(flatten)]
@@ -203,7 +203,7 @@ pub struct ServiceAccountDiffArgs {
     pub diff_dir: PathBuf,
 }
 
-/// Struct definition for ServiceAccountTokenAddArgs.
+/// Create one token for an existing Grafana service account.
 #[derive(Debug, Clone, Args)]
 pub struct ServiceAccountTokenAddArgs {
     #[command(flatten)]
