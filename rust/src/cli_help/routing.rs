@@ -14,6 +14,10 @@ use crate::cli_help_examples::{
     colorize_dashboard_subcommand_help, colorize_help_examples, ACCESS_HELP_FULL_TEXT,
     ALERT_HELP_FULL_TEXT, DATASOURCE_HELP_FULL_TEXT, SYNC_HELP_FULL_TEXT, UNIFIED_HELP_FULL_TEXT,
 };
+use crate::dashboard::{
+    maybe_render_dashboard_help_full_from_os_args,
+    maybe_render_dashboard_subcommand_help_from_os_args,
+};
 use crate::datasource::root_command as datasource_root_command;
 use crate::sync::SyncCliArgs;
 
@@ -774,6 +778,16 @@ where
                 return Some(help);
             }
         }
+        if let Some(help) =
+            maybe_render_dashboard_subcommand_help_from_os_args(args.clone(), colorize)
+        {
+            return Some(help);
+        }
+    }
+    if args.iter().any(|value| value == "--help-full") {
+        if let Some(help) = maybe_render_dashboard_help_full_from_os_args(args.clone()) {
+            return Some(help);
+        }
     }
     match args.as_slice() {
         [_binary] => Some(render_unified_help_text(colorize)),
@@ -781,6 +795,9 @@ where
             Some(render_unified_help_text(colorize))
         }
         [_binary, flag] if flag == "--help-full" => Some(render_unified_help_full_text(colorize)),
+        [_binary, command, flag] if command == "dashboard" && flag == "--help-full" => {
+            maybe_render_dashboard_help_full_from_os_args(args.clone())
+        }
         [_binary, command, flag] if command == "alert" && flag == "--help-full" => Some(
             render_domain_help_full_text(alert_root_command(), ALERT_HELP_FULL_TEXT, colorize),
         ),

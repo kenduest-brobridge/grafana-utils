@@ -8,14 +8,13 @@
 use clap::{Args, Parser, Subcommand};
 
 use crate::access::{
-    run_access_cli, AccessCliArgs, AccessCommand, OrgCommand, OrgExportArgs, ServiceAccountCommand,
-    ServiceAccountExportArgs, TeamCommand, TeamExportArgs, UserCommand, UserExportArgs,
+    AccessCliArgs, OrgExportArgs, ServiceAccountExportArgs, TeamExportArgs, UserExportArgs,
 };
 use crate::alert::{
-    normalize_alert_group_command, run_alert_cli, AlertAddContactPointArgs, AlertAddRuleArgs,
-    AlertApplyArgs, AlertCliArgs, AlertCloneRuleArgs, AlertDeleteArgs, AlertDiffArgs,
-    AlertExportArgs, AlertGroupCommand, AlertImportArgs, AlertInitArgs, AlertListArgs,
-    AlertNewResourceArgs, AlertPlanArgs, AlertPreviewRouteArgs, AlertSetRouteArgs,
+    AlertAddContactPointArgs, AlertAddRuleArgs, AlertApplyArgs, AlertCloneRuleArgs,
+    AlertDeleteArgs, AlertDiffArgs, AlertExportArgs, AlertGroupCommand, AlertImportArgs,
+    AlertInitArgs, AlertListArgs, AlertNewResourceArgs, AlertPlanArgs, AlertPreviewRouteArgs,
+    AlertSetRouteArgs,
 };
 pub use crate::cli_help::{
     legacy_command_error_hint, maybe_render_unified_help_from_os_args,
@@ -26,24 +25,23 @@ use crate::cli_help::{
     UNIFIED_SYNC_HELP_TEXT,
 };
 use crate::cli_help_examples::UNIFIED_HELP_TEXT;
-use crate::common::{json_color_choice, message, set_json_color_choice, CliColorChoice, Result};
+use crate::common::{set_json_color_choice, CliColorChoice, Result};
 use crate::dashboard::{
-    run_dashboard_cli, run_raw_to_prompt, AnalyzeArgs, BrowseArgs, CloneLiveArgs, DashboardCliArgs,
-    DashboardCommand, DashboardHistoryArgs, DeleteArgs, DiffArgs, EditLiveArgs,
-    ExportArgs as DashboardExportArgs, GetArgs, GovernanceGateArgs, ImpactArgs, ImportArgs,
-    InspectVarsArgs, ListArgs, PatchFileArgs, PublishArgs, RawToPromptArgs, ReviewArgs,
+    AnalyzeArgs, BrowseArgs, CloneLiveArgs, DashboardHistoryArgs, DeleteArgs, DiffArgs,
+    EditLiveArgs, ExportArgs as DashboardExportArgs, GetArgs, GovernanceGateArgs, ImpactArgs,
+    ImportArgs, InspectVarsArgs, ListArgs, PatchFileArgs, PublishArgs, RawToPromptArgs, ReviewArgs,
     ScreenshotArgs, ServeArgs, TopologyArgs,
 };
-use crate::datasource::{run_datasource_cli, DatasourceExportArgs, DatasourceGroupCommand};
-use crate::overview::{run_overview_cli, OverviewArgs, OverviewCliArgs, OverviewCommand};
-use crate::profile_cli::{run_profile_cli, ProfileCliArgs};
+use crate::datasource::{DatasourceExportArgs, DatasourceGroupCommand};
+use crate::overview::{OverviewArgs, OverviewCommand};
+use crate::profile_cli::ProfileCliArgs;
 use crate::project_status_command::{
-    run_project_status_cli, ProjectStatusCliArgs, ProjectStatusLiveArgs, ProjectStatusStagedArgs,
-    ProjectStatusSubcommand, PROJECT_STATUS_LIVE_HELP_TEXT, PROJECT_STATUS_STAGED_HELP_TEXT,
+    ProjectStatusLiveArgs, ProjectStatusStagedArgs, PROJECT_STATUS_LIVE_HELP_TEXT,
+    PROJECT_STATUS_STAGED_HELP_TEXT,
 };
-use crate::resource::{run_resource_cli, ResourceCliArgs, ResourceCommand};
-use crate::snapshot::{run_snapshot_cli, SnapshotCommand};
-use crate::sync::{run_sync_cli, SyncGroupCommand};
+use crate::resource::ResourceCommand;
+use crate::snapshot::SnapshotCommand;
+use crate::sync::SyncGroupCommand;
 
 const EXPORT_HELP_TEXT: &str = "Examples:\n\n  [Dashboard backup]\n    grafana-util export dashboard --output-dir ./dashboards --overwrite\n\n  [Alert backup]\n    grafana-util export alert --output-dir ./alerts --overwrite\n\n  [Datasource inventory]\n    grafana-util export datasource --output-dir ./datasources\n\n  [Access inventory]\n    grafana-util export access service-account --output-dir ./access-service-accounts";
 const EXPORT_ACCESS_HELP_TEXT: &str = "Examples:\n\n  Export Grafana users into a local bundle:\n    grafana-util export access user --output-dir ./access-users --overwrite\n\n  Export Grafana teams into a local bundle:\n    grafana-util export access team --output-dir ./access-teams --overwrite\n\n  Export Grafana service accounts into a local bundle:\n    grafana-util export access service-account --output-dir ./access-service-accounts --overwrite";
@@ -564,201 +562,24 @@ where
     CliArgs::parse_from(iter)
 }
 
-fn wrap_dashboard(command: DashboardCommand) -> DashboardCliArgs {
-    DashboardCliArgs {
-        color: json_color_choice(),
-        command,
-    }
-}
-
-fn wrap_dashboard_root(command: DashboardRootCommand) -> DashboardCliArgs {
-    match command {
-        DashboardRootCommand::Browse(inner) => wrap_dashboard(DashboardCommand::Browse(inner)),
-        DashboardRootCommand::List(inner) => wrap_dashboard(DashboardCommand::List(inner)),
-        DashboardRootCommand::Variables(inner) => {
-            wrap_dashboard(DashboardCommand::InspectVars(inner))
-        }
-        DashboardRootCommand::Get(inner) => wrap_dashboard(DashboardCommand::Get(inner)),
-        DashboardRootCommand::History(inner) => wrap_dashboard(DashboardCommand::History(inner)),
-        DashboardRootCommand::Clone(inner) => wrap_dashboard(DashboardCommand::CloneLive(inner)),
-        DashboardRootCommand::EditLive(inner) => wrap_dashboard(DashboardCommand::EditLive(inner)),
-        DashboardRootCommand::Delete(inner) => wrap_dashboard(DashboardCommand::Delete(inner)),
-        DashboardRootCommand::Export(inner) => wrap_dashboard(DashboardCommand::Export(inner)),
-        DashboardRootCommand::Import(inner) => wrap_dashboard(DashboardCommand::Import(inner)),
-        DashboardRootCommand::Diff(inner) => wrap_dashboard(DashboardCommand::Diff(inner)),
-        DashboardRootCommand::Convert { .. } => {
-            unreachable!("convert is handled before dashboard dispatch")
-        }
-        DashboardRootCommand::Review(inner) => wrap_dashboard(DashboardCommand::Review(inner)),
-        DashboardRootCommand::Patch(inner) => wrap_dashboard(DashboardCommand::PatchFile(inner)),
-        DashboardRootCommand::Serve(inner) => wrap_dashboard(DashboardCommand::Serve(inner)),
-        DashboardRootCommand::Publish(inner) => wrap_dashboard(DashboardCommand::Publish(inner)),
-        DashboardRootCommand::Summary(inner) => wrap_dashboard(DashboardCommand::Analyze(inner)),
-        DashboardRootCommand::Dependencies(inner) => {
-            wrap_dashboard(DashboardCommand::Topology(inner))
-        }
-        DashboardRootCommand::Impact(inner) => wrap_dashboard(DashboardCommand::Impact(inner)),
-        DashboardRootCommand::Policy(inner) => {
-            wrap_dashboard(DashboardCommand::GovernanceGate(inner))
-        }
-        DashboardRootCommand::Screenshot(inner) => {
-            wrap_dashboard(DashboardCommand::Screenshot(inner))
-        }
-    }
-}
-
-fn wrap_overview(staged: OverviewArgs, command: Option<OverviewCommand>) -> OverviewCliArgs {
-    OverviewCliArgs {
-        color: json_color_choice(),
-        staged,
-        command,
-    }
-}
-
-fn run_dashboard_sync_convert(args: RawToPromptArgs) -> Result<()> {
-    set_json_color_choice(args.color);
-    run_raw_to_prompt(&args)
-}
-
-fn wrap_export_access(command: ExportAccessCommand) -> AccessCliArgs {
-    let command = match command {
-        ExportAccessCommand::User(inner) => AccessCommand::User {
-            command: UserCommand::Export(inner),
-        },
-        ExportAccessCommand::Org(inner) => AccessCommand::Org {
-            command: OrgCommand::Export(inner),
-        },
-        ExportAccessCommand::Team(inner) => AccessCommand::Team {
-            command: TeamCommand::Export(inner),
-        },
-        ExportAccessCommand::ServiceAccount(inner) => AccessCommand::ServiceAccount {
-            command: ServiceAccountCommand::Export(inner),
-        },
-    };
-    AccessCliArgs { command }
-}
-
-fn wrap_project_status(command: StatusCommand) -> Option<ProjectStatusCliArgs> {
-    match command {
-        StatusCommand::Live(inner) => Some(ProjectStatusCliArgs {
-            color: json_color_choice(),
-            command: ProjectStatusSubcommand::Live(inner),
-        }),
-        StatusCommand::Staged(inner) => Some(ProjectStatusCliArgs {
-            color: json_color_choice(),
-            command: ProjectStatusSubcommand::Staged(inner),
-        }),
-        _ => None,
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn dispatch_with_handlers<FD, FS, FY, FA, FX, FP, FR, FO, FQ>(
-    args: CliArgs,
-    mut run_dashboard: FD,
-    mut run_datasource: FS,
-    mut run_sync: FY,
-    mut run_alert: FA,
-    mut run_access: FX,
-    mut run_profile: FP,
-    mut run_snapshot: FR,
-    mut run_overview: FO,
-    mut run_project_status: FQ,
-) -> Result<()>
-where
-    FD: FnMut(DashboardCliArgs) -> Result<()>,
-    FS: FnMut(DatasourceGroupCommand) -> Result<()>,
-    FY: FnMut(SyncGroupCommand) -> Result<()>,
-    FA: FnMut(AlertCliArgs) -> Result<()>,
-    FX: FnMut(AccessCliArgs) -> Result<()>,
-    FP: FnMut(ProfileCliArgs) -> Result<()>,
-    FR: FnMut(SnapshotCommand) -> Result<()>,
-    FO: FnMut(OverviewCliArgs) -> Result<()>,
-    FQ: FnMut(ProjectStatusCliArgs) -> Result<()>,
-{
-    let default_color = args.color;
-    match args.command {
-        UnifiedCommand::Version(args) => {
-            if args.json {
-                let payload = serde_json::json!({
-                    "schemaVersion": crate::common::TOOL_VERSION_SCHEMA_VERSION,
-                    "name": "grafana-util",
-                    "version": crate::common::tool_version(),
-                    "commit": crate::common::tool_git_commit(),
-                    "buildTime": crate::common::tool_build_time(),
-                });
-                print!(
-                    "{}",
-                    crate::common::render_json_value_with_choice(&payload, default_color, false)?
-                );
-            } else {
-                print!("{}", render_unified_version_text());
-            }
-            Ok(())
-        }
-        UnifiedCommand::Status { command } => match command {
-            StatusCommand::Overview { staged, command } => {
-                run_overview(wrap_overview(staged, command))
-            }
-            StatusCommand::Snapshot { command } => run_snapshot(command),
-            StatusCommand::Resource { command } => run_resource_cli(ResourceCliArgs {
-                color: json_color_choice(),
-                command,
-            }),
-            other => run_project_status(
-                wrap_project_status(other)
-                    .ok_or_else(|| message("Unsupported status command path."))?,
-            ),
-        },
-        UnifiedCommand::Export { command } => match command {
-            ExportCommand::Dashboard(inner) => {
-                run_dashboard(wrap_dashboard(DashboardCommand::Export(inner)))
-            }
-            ExportCommand::Alert(inner) => run_alert(normalize_alert_group_command(
-                AlertGroupCommand::Export(inner),
-            )),
-            ExportCommand::Datasource(inner) => {
-                run_datasource(DatasourceGroupCommand::Export(inner))
-            }
-            ExportCommand::Access { command } => run_access(wrap_export_access(command)),
-        },
-        UnifiedCommand::Dashboard { command } => match command {
-            DashboardRootCommand::Convert {
-                command: DashboardConvertCommand::RawToPrompt(inner),
-            } => run_dashboard_sync_convert(inner),
-            other => run_dashboard(wrap_dashboard_root(other)),
-        },
-        UnifiedCommand::Datasource { color, command } => {
-            set_json_color_choice(color.unwrap_or(default_color));
-            run_datasource(command)
-        }
-        UnifiedCommand::Alert { color, command } => {
-            set_json_color_choice(color.unwrap_or(default_color));
-            run_alert(normalize_alert_group_command(command))
-        }
-        UnifiedCommand::Access(inner) => run_access(inner),
-        UnifiedCommand::Workspace { command } => run_sync(command),
-        UnifiedCommand::Config { command } => match command {
-            ConfigCommand::Profile(inner) => run_profile(inner),
-        },
-    }
-}
-
 pub fn run_cli(args: CliArgs) -> Result<()> {
     set_json_color_choice(args.color);
     dispatch_with_handlers(
         args,
-        run_dashboard_cli,
-        run_datasource_cli,
-        run_sync_cli,
-        run_alert_cli,
-        run_access_cli,
-        run_profile_cli,
-        run_snapshot_cli,
-        run_overview_cli,
-        run_project_status_cli,
+        crate::dashboard::run_dashboard_cli,
+        crate::datasource::run_datasource_cli,
+        crate::sync::run_sync_cli,
+        crate::alert::run_alert_cli,
+        crate::access::run_access_cli,
+        crate::profile_cli::run_profile_cli,
+        crate::snapshot::run_snapshot_cli,
+        crate::resource::run_resource_cli,
+        crate::overview::run_overview_cli,
+        crate::project_status_command::run_project_status_cli,
     )
 }
+
+pub(crate) use crate::cli_dispatch::dispatch_with_handlers;
 
 #[cfg(test)]
 #[path = "cli_rust_tests.rs"]

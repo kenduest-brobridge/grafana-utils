@@ -7,18 +7,13 @@
 use grafana_utils_rust::cli::{
     legacy_command_error_hint, maybe_render_unified_help_from_os_args, parse_cli_from, run_cli,
 };
-use grafana_utils_rust::dashboard::{
-    maybe_render_dashboard_help_full_from_os_args,
-    maybe_render_dashboard_subcommand_help_from_os_args,
-};
 use std::io::IsTerminal;
 
 /// Binary entrypoint for the Rust unified CLI.
 ///
 /// Resolution order:
-/// 1) unified pre-flight help hooks (including `--help-full`)
-/// 2) dashboard-specific full help hook
-/// 3) normal parse + dispatch via `run_cli`
+/// 1) unified pre-flight help hooks (including dashboard extensions)
+/// 2) normal parse + dispatch via `run_cli`
 fn main() {
     let args = std::env::args_os().collect::<Vec<_>>();
     let string_args = args
@@ -28,18 +23,6 @@ fn main() {
     if let Some(help_text) =
         maybe_render_unified_help_from_os_args(args.clone(), std::io::stdout().is_terminal())
     {
-        print!("{help_text}");
-        return;
-    }
-    // Dashboard help has special formatting behavior; keep this dispatch before parse.
-    if let Some(help_text) = maybe_render_dashboard_help_full_from_os_args(args.clone()) {
-        print!("{help_text}");
-        return;
-    }
-    if let Some(help_text) = maybe_render_dashboard_subcommand_help_from_os_args(
-        args.clone(),
-        std::io::stdout().is_terminal(),
-    ) {
         print!("{help_text}");
         return;
     }

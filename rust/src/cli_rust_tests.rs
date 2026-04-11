@@ -54,9 +54,7 @@ fn render_public_leaf_help(path: &[String]) -> Option<String> {
     let mut args = vec!["grafana-util".to_string()];
     args.extend(path.iter().cloned());
     args.push("--help".to_string());
-    maybe_render_unified_help_from_os_args(args.clone(), false).or_else(|| {
-        crate::dashboard::maybe_render_dashboard_subcommand_help_from_os_args(args, false)
-    })
+    maybe_render_unified_help_from_os_args(args, false)
 }
 
 fn has_examples_section(help: &str) -> bool {
@@ -191,11 +189,7 @@ fn inferred_root_subcommand_keeps_grouped_help_and_color() {
 #[test]
 fn inferred_nested_dashboard_subcommand_keeps_dashboard_help_renderer() {
     let args = ["grafana-util", "dashboard", "li", "--help"];
-    assert!(
-        maybe_render_unified_help_from_os_args(args, false).is_none(),
-        "direct dashboard leaf help should stay on the dashboard renderer"
-    );
-    let help = crate::dashboard::maybe_render_dashboard_subcommand_help_from_os_args(args, false)
+    let help = maybe_render_unified_help_from_os_args(args, false)
         .expect("expected inferred dashboard list help");
     assert!(help.contains("Usage: grafana-util dashboard list"));
     assert!(help.contains("Examples:"));
@@ -204,12 +198,10 @@ fn inferred_nested_dashboard_subcommand_keeps_dashboard_help_renderer() {
 
 #[test]
 fn inferred_dashboard_help_full_keeps_dashboard_full_help_renderer() {
-    let help = crate::dashboard::maybe_render_dashboard_help_full_from_os_args([
-        "grafana-util",
-        "dashb",
-        "summ",
-        "--help-full",
-    ])
+    let help = maybe_render_unified_help_from_os_args(
+        ["grafana-util", "dashb", "summ", "--help-full"],
+        false,
+    )
     .expect("expected inferred dashboard summary full help");
     assert!(help.contains("Usage: grafana-util dashboard summary"));
     assert!(help.contains("Extended Examples:"));
@@ -568,8 +560,11 @@ fn dashboard_subcommand_help_keeps_dashboard_notes_and_examples() {
     let help = maybe_render_unified_help_from_os_args(
         ["grafana-util", "dashboard", "export", "--help"],
         false,
-    );
-    assert!(help.is_none());
+    )
+    .expect("expected dashboard export help");
+    assert!(help.contains("Notes:"));
+    assert!(help.contains("Examples:"));
+    assert!(help.contains("Export dashboards to raw/, prompt/, provisioning/"));
     let help = crate::dashboard::maybe_render_dashboard_subcommand_help_from_os_args(
         ["grafana-util", "dashboard", "export", "--help"],
         false,
@@ -1141,6 +1136,7 @@ fn dispatch_routes_status_live_to_project_status_handler() {
         |_access_args| Ok(()),
         |_profile_args| Ok(()),
         |_snapshot_args| Ok(()),
+        |_resource_args| Ok(()),
         |_overview_args| Ok(()),
         |_status_args| {
             routed.borrow_mut().push("status".to_string());
@@ -1175,6 +1171,7 @@ fn dispatch_routes_export_dashboard_to_dashboard_handler() {
         |_access_args| Ok(()),
         |_profile_args| Ok(()),
         |_snapshot_args| Ok(()),
+        |_resource_args| Ok(()),
         |_overview_args| Ok(()),
         |_status_args| Ok(()),
     );

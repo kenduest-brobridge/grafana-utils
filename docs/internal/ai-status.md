@@ -8,6 +8,13 @@ Current AI-maintained status only.
 - Keep this file short and current. Additive historical detail belongs in `docs/internal/archive/`.
 - Detailed 2026-03-29 through 2026-03-31 entries moved to [`archive/ai-status-archive-2026-03-31.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-status-archive-2026-03-31.md).
 
+## 2026-04-12 - Split CLI dispatch and domain runtime spines
+- State: Done
+- Scope: `rust/src/{cli.rs,cli_dispatch.rs,bin/grafana-util.rs,cli_help/routing.rs,cli_rust_tests.rs}`, `rust/src/dashboard/{mod.rs,command_runner.rs}`, `rust/src/{datasource.rs,datasource_runtime.rs,datasource_browse_support.rs}`, `rust/src/{alert_cli_defs.rs,alert_help_texts.rs,datasource_cli_defs.rs,datasource_help_texts.rs,sync/mod.rs,sync/help_texts.rs}`
+- Baseline: the Rust CLI's parser, routing, help preflight, and domain execution glue were still concentrated in a few large modules. That made it too easy for future command work to add one-off branches in `cli.rs`, `dashboard/mod.rs`, or `datasource.rs` instead of extending a deliberate layer.
+- Current Update: introduced a crate-private `cli_dispatch` spine for parsed command routing, moved dashboard and datasource execution orchestration into dedicated runtime modules, pulled alert/datasource/sync help prose into source-layer help text modules, and folded dashboard-specific help preflight behind the unified help entrypoint.
+- Result: `cli.rs` now owns command topology and parser declarations, the binary only calls one help preflight before parse/dispatch, dashboard and datasource facades are smaller re-export boundaries, and regression tests cover unified dashboard help plus injected dispatch handlers.
+
 ## 2026-04-12 - Support unique-prefix CLI subcommands
 - State: Done
 - Scope: `rust/src/cli.rs`, `rust/src/cli_help.rs`, `rust/src/dashboard/help.rs`, `rust/src/cli_rust_tests.rs`

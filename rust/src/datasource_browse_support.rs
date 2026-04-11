@@ -3,7 +3,7 @@
 use serde_json::{Map, Value};
 
 use crate::common::{message, string_field, Result};
-use crate::dashboard::DEFAULT_ORG_ID;
+use crate::dashboard::{build_auth_context, build_http_client_for_org, DEFAULT_ORG_ID};
 use crate::http::JsonHttpClient;
 
 use super::DatasourceBrowseArgs;
@@ -185,7 +185,7 @@ fn load_all_orgs_document(
     common: &super::CommonCliArgs,
     client: &JsonHttpClient,
 ) -> Result<DatasourceBrowseDocument> {
-    let context = super::build_auth_context(common)?;
+    let context = build_auth_context(common)?;
     if context.auth_mode != "basic" {
         return Err(message(
             "Datasource browse with --all-orgs requires Basic auth (--basic-user / --basic-password).",
@@ -210,7 +210,7 @@ fn load_all_orgs_document(
         let org_name = string_field(org, "name", "");
         let org_id = org.get("id").and_then(Value::as_i64).unwrap_or(1);
         let org_id_text = org_id.to_string();
-        let scoped_client = super::build_http_client_for_org(common, org_id)?;
+        let scoped_client = build_http_client_for_org(common, org_id)?;
         let datasource_items = datasource_rows_for_org(&scoped_client, &org_name, &org_id_text, 1)?;
         datasource_count += datasource_items.len();
         items.push(org_row(

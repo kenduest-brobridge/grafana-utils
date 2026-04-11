@@ -7,29 +7,11 @@ use crate::common::{set_json_color_choice, CliColorChoice, DiffOutputFormat, Res
 use crate::grafana_api::{AuthInputs, GrafanaConnection};
 use crate::profile_config::ConnectionMergeInput;
 
-use super::{ALERT_HELP_TEXT, DEFAULT_OUTPUT_DIR, DEFAULT_TIMEOUT, DEFAULT_URL};
+#[path = "alert_help_texts.rs"]
+mod alert_help_texts;
+use self::alert_help_texts::*;
 
-const ALERT_EXPORT_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert export --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-dir ./alerts --overwrite\n  grafana-util alert export --url http://localhost:3000 --basic-user admin --basic-password admin --output-dir ./alerts --flat";
-const ALERT_IMPORT_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert import --url http://localhost:3000 --input-dir ./alerts/raw --replace-existing\n  grafana-util alert import --url http://localhost:3000 --input-dir ./alerts/raw --replace-existing --dry-run --json\n  grafana-util alert import --url http://localhost:3000 --input-dir ./alerts/raw --replace-existing --dashboard-uid-map ./dashboard-map.json --panel-id-map ./panel-map.json";
-const ALERT_DIFF_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert diff --url http://localhost:3000 --diff-dir ./alerts/raw\n  grafana-util alert diff --url http://localhost:3000 --diff-dir ./alerts/raw --output-format json";
-const ALERT_PLAN_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert plan --desired-dir ./alerts/desired\n  grafana-util alert plan --desired-dir ./alerts/desired --prune --dashboard-uid-map ./dashboard-map.json --panel-id-map ./panel-map.json --output-format json";
-const ALERT_APPLY_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert apply --plan-file ./alert-plan-reviewed.json --approve\n  grafana-util alert apply --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --plan-file ./alert-plan-reviewed.json --approve --output-format json";
-const ALERT_DELETE_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert delete --kind rule --identity cpu-main\n  grafana-util alert delete --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --kind policy-tree --identity default --allow-policy-reset --output-format json";
-const ALERT_INIT_HELP_TEXT: &str =
-    "Examples:\n\n  grafana-util alert init --desired-dir ./alerts/desired";
-const ALERT_ADD_RULE_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert add-rule --desired-dir ./alerts/desired --name cpu-high --folder platform-alerts --rule-group cpu --receiver pagerduty-primary --severity critical --expr 'A' --threshold 80 --above --for 5m --label team=platform --annotation summary='CPU high'\n  grafana-util alert add-rule --desired-dir ./alerts/desired --name cpu-high --folder platform-alerts --rule-group cpu --receiver pagerduty-primary --dry-run";
-const ALERT_CLONE_RULE_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert clone-rule --desired-dir ./alerts/desired --source cpu-high --name cpu-high-staging --folder staging-alerts --rule-group cpu --receiver slack-platform\n  grafana-util alert clone-rule --desired-dir ./alerts/desired --source cpu-high --name cpu-high-staging --dry-run";
-const ALERT_ADD_CONTACT_POINT_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert add-contact-point --desired-dir ./alerts/desired --name pagerduty-primary\n  grafana-util alert add-contact-point --desired-dir ./alerts/desired --name pagerduty-primary --dry-run";
-const ALERT_SET_ROUTE_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert set-route --desired-dir ./alerts/desired --receiver pagerduty-primary --label team=platform --severity critical\n  grafana-util alert set-route --desired-dir ./alerts/desired --receiver pagerduty-primary --label team=platform --severity critical --dry-run";
-const ALERT_PREVIEW_ROUTE_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert preview-route --desired-dir ./alerts/desired --label team=platform --severity critical";
-const ALERT_NEW_RULE_HELP_TEXT: &str =
-    "Examples:\n\n  grafana-util alert new-rule --desired-dir ./alerts/desired --name cpu-main\n  grafana-util alert add-rule --desired-dir ./alerts/desired --name cpu-main --folder platform-alerts --rule-group cpu --receiver pagerduty-primary";
-const ALERT_NEW_CONTACT_POINT_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert new-contact-point --desired-dir ./alerts/desired --name pagerduty-primary\n  grafana-util alert add-contact-point --desired-dir ./alerts/desired --name pagerduty-primary";
-const ALERT_NEW_TEMPLATE_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert new-template --desired-dir ./alerts/desired --name sev1-notification";
-const ALERT_LIST_RULES_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert list-rules --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --table\n  grafana-util alert list-rules --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-format text\n  grafana-util alert list-rules --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --output-format yaml";
-const ALERT_LIST_CONTACT_POINTS_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert list-contact-points --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --table\n  grafana-util alert list-contact-points --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-format text\n  grafana-util alert list-contact-points --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --output-format yaml";
-const ALERT_LIST_MUTE_TIMINGS_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert list-mute-timings --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --table\n  grafana-util alert list-mute-timings --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-format text\n  grafana-util alert list-mute-timings --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --output-format yaml";
-const ALERT_LIST_TEMPLATES_HELP_TEXT: &str = "Examples:\n\n  grafana-util alert list-templates --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --table\n  grafana-util alert list-templates --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --output-format text\n  grafana-util alert list-templates --url http://localhost:3000 --basic-user admin --basic-password admin --all-orgs --output-format yaml";
+use super::{ALERT_HELP_TEXT, DEFAULT_OUTPUT_DIR, DEFAULT_TIMEOUT, DEFAULT_URL};
 
 #[derive(Debug, Clone, Parser)]
 #[command(
