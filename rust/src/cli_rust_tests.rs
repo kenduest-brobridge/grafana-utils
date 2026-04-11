@@ -130,6 +130,17 @@ fn root_command_entrypoints_use_grouped_help_for_bare_and_help_forms() {
 }
 
 #[test]
+fn top_level_version_flags_stay_on_clap_version_path() {
+    for args in [["grafana-util", "--version"], ["grafana-util", "-V"]] {
+        assert!(
+            maybe_render_unified_help_from_os_args(args, false).is_none(),
+            "pre-flight help should not consume {}",
+            args.join(" ")
+        );
+    }
+}
+
+#[test]
 fn grouped_help_color_uses_muted_blue_cyan_palette() {
     for (args, heading, command) in [
         (

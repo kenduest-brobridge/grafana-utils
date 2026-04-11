@@ -103,6 +103,7 @@ pub(crate) fn format_routed_datasource_source_org_label(
     }
 }
 
+#[cfg(test)]
 pub(crate) fn format_routed_datasource_scope_summary_fields(
     source_org_id: i64,
     source_org_name: &str,

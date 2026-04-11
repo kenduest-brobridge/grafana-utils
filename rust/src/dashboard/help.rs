@@ -20,9 +20,7 @@ fn ensure_trailing_blank_line(mut text: String) -> String {
 }
 
 fn render_dashboard_subcommand_help_text(subcommand_name: &str, colorize: bool) -> Option<String> {
-    let canonical_name = match subcommand_name {
-        other => other,
-    };
+    let canonical_name = subcommand_name;
     let mut command = DashboardCliArgs::command();
     let configured = std::mem::take(&mut command)
         .styles(crate::help_styles::CLI_HELP_STYLES)

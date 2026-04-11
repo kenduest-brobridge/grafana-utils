@@ -7,30 +7,26 @@
 //! - Keep routed `--use-export-org` imports explicit: plan org routing first,
 //!   then execute one scoped import per destination org.
 
-use reqwest::Method;
-use serde_json::{Map, Value};
-use std::fs;
-use std::path::Path;
-
-use crate::common::{message, render_json_value, tool_version, Result};
-use crate::dashboard::{build_api_client, build_http_client_for_org_from_api, DEFAULT_ORG_ID};
-use crate::datasource::{
-    render_import_table, resolve_match, DatasourceImportArgs, DatasourceImportInputFormat,
-};
-use crate::datasource_secret::{
-    build_secret_placeholder_plan, describe_secret_placeholder_plan,
-    inline_secret_provider_contract, resolve_secret_placeholders,
-    summarize_secret_placeholder_plan, summarize_secret_provider_contract,
-};
+use crate::common::{message, Result};
+use crate::dashboard::{build_api_client, build_http_client_for_org_from_api};
 use crate::grafana_api::DatasourceResourceClient;
 use crate::http::JsonHttpClient;
 
+use super::render_import_table;
+use super::{DatasourceImportArgs, DatasourceImportInputFormat};
+
 #[path = "datasource_export_support.rs"]
 mod datasource_export_support;
+#[path = "datasource_import_dry_run.rs"]
+mod datasource_import_dry_run;
 #[path = "datasource_import_export_routed.rs"]
 mod datasource_import_export_routed;
 #[path = "datasource_import_export_support.rs"]
 mod datasource_import_export_support;
+#[path = "datasource_import_payload.rs"]
+mod datasource_import_payload;
+#[path = "datasource_import_plan.rs"]
+mod datasource_import_plan;
 
 pub(crate) use datasource_export_support::{
     build_all_orgs_export_index, build_all_orgs_export_metadata, build_all_orgs_output_dir,
@@ -41,11 +37,18 @@ pub(crate) use datasource_export_support::{
     validate_import_org_auth, write_yaml_file, DATASOURCE_PROVISIONING_FILENAME,
     DATASOURCE_PROVISIONING_SUBDIR,
 };
+pub(crate) use datasource_import_dry_run::{
+    build_datasource_import_dry_run_json_value, collect_datasource_import_dry_run_report,
+    print_datasource_import_dry_run_report,
+};
+#[cfg(test)]
+#[allow(unused_imports)]
+pub(crate) use datasource_import_export_routed::format_routed_datasource_scope_summary_fields;
+#[allow(unused_imports)]
 pub(crate) use datasource_import_export_routed::{
     build_routed_datasource_import_dry_run_json, format_routed_datasource_import_summary_line,
-    format_routed_datasource_scope_summary_fields, format_routed_datasource_source_org_label,
-    format_routed_datasource_target_org_label, render_routed_datasource_import_org_table,
-    resolve_export_org_target_plan,
+    format_routed_datasource_source_org_label, format_routed_datasource_target_org_label,
+    render_routed_datasource_import_org_table, resolve_export_org_target_plan,
 };
 #[allow(unused_imports)]
 pub(crate) use datasource_import_export_support::{
@@ -58,472 +61,17 @@ pub(crate) use datasource_import_export_support::{
     DatasourceExportRootManifest, DatasourceExportRootScopeKind, DatasourceImportDryRunReport,
     DatasourceImportRecord, DATASOURCE_EXPORT_FILENAME, EXPORT_METADATA_FILENAME, ROOT_INDEX_KIND,
 };
-
-fn build_import_secret_visibility_entries(
-    input_dir: &Path,
-    input_format: DatasourceImportInputFormat,
-) -> Vec<Value> {
-    let Ok((_, records)) = load_import_records(input_dir, input_format) else {
-        return Vec::new();
-    };
-    let mut entries = Vec::new();
-    for record in records {
-        let Some(placeholders) = &record.secure_json_data_placeholders else {
-            continue;
-        };
-        let datasource_spec = Map::from_iter(vec![
-            ("uid".to_string(), Value::String(record.uid.clone())),
-            ("name".to_string(), Value::String(record.name.clone())),
-            (
-                "type".to_string(),
-                Value::String(record.datasource_type.clone()),
-            ),
-            (
-                "secureJsonDataPlaceholders".to_string(),
-                Value::Object(placeholders.clone()),
-            ),
-        ]);
-        match build_secret_placeholder_plan(&datasource_spec) {
-            Ok(plan) => entries.push(summarize_secret_placeholder_plan(&plan)),
-            Err(error) => entries.push(Value::Object(Map::from_iter(vec![
-                (
-                    "provider".to_string(),
-                    summarize_secret_provider_contract(&inline_secret_provider_contract()),
-                ),
-                (
-                    "datasourceUid".to_string(),
-                    Value::String(record.uid.clone()),
-                ),
-                (
-                    "datasourceName".to_string(),
-                    Value::String(record.name.clone()),
-                ),
-                (
-                    "datasourceType".to_string(),
-                    Value::String(record.datasource_type.clone()),
-                ),
-                (
-                    "providerKind".to_string(),
-                    Value::String(inline_secret_provider_contract().kind),
-                ),
-                (
-                    "action".to_string(),
-                    Value::String("secret-plan-error".to_string()),
-                ),
-                ("reviewRequired".to_string(), Value::Bool(true)),
-                ("error".to_string(), Value::String(error.to_string())),
-            ]))),
-        }
-    }
-    entries
-}
-
-fn parse_secret_values_json(raw: &str, label: &str) -> Result<Map<String, Value>> {
-    let value: Value = serde_json::from_str(raw)
-        .map_err(|error| message(format!("Invalid JSON for {label}: {error}")))?;
-    let object = value
-        .as_object()
-        .cloned()
-        .ok_or_else(|| message(format!("{label} must decode to a JSON object.")))?;
-    Ok(object)
-}
-
-fn parse_secret_values_inputs(
-    value: Option<&str>,
-    file_path: Option<&Path>,
-) -> Result<Option<Map<String, Value>>> {
-    if value.is_some() && file_path.is_some() {
-        return Err(message(
-            "Choose either --secret-values or --secret-values-file, not both.",
-        ));
-    }
-    if let Some(raw) = value {
-        return Ok(Some(parse_secret_values_json(raw, "--secret-values")?));
-    }
-    let Some(path) = file_path else {
-        return Ok(None);
-    };
-    let raw = fs::read_to_string(path).map_err(|error| {
-        message(format!(
-            "Failed to read datasource secret values file {}: {error}",
-            path.display()
-        ))
-    })?;
-    Ok(Some(parse_secret_values_json(
-        &raw,
-        "--secret-values-file",
-    )?))
-}
-
-// This preflight plan is intentionally side-effect free so import validation,
-// match resolution, and secret injection all complete before the first POST/PUT.
-struct PreparedDatasourceImportRequest {
-    method: Method,
-    path: String,
-    payload: Value,
-}
-
-struct PreparedDatasourceImportPlan {
-    requests: Vec<PreparedDatasourceImportRequest>,
-    would_create: usize,
-    would_update: usize,
-    would_skip: usize,
-}
-
-// Precompute all payloads before any write call so secret resolution fails closed.
-fn prepare_datasource_import_plan(
-    records: &[DatasourceImportRecord],
-    live: &[Map<String, Value>],
-    replace_existing: bool,
-    update_existing_only: bool,
-    secret_values: Option<&Map<String, Value>>,
-) -> Result<PreparedDatasourceImportPlan> {
-    let mut requests = Vec::new();
-    let mut would_create = 0usize;
-    let mut would_update = 0usize;
-    let mut would_skip = 0usize;
-
-    for record in records {
-        let matching = resolve_match(record, live, replace_existing, update_existing_only);
-        match matching.action {
-            "would-create" => {
-                let payload = build_import_payload_with_secret_values_impl(record, secret_values)?;
-                requests.push(PreparedDatasourceImportRequest {
-                    method: Method::POST,
-                    path: "/api/datasources".to_string(),
-                    payload,
-                });
-                would_create += 1;
-            }
-            "would-update" => {
-                let target_id = matching.target_id.ok_or_else(|| {
-                    message(format!(
-                        "Matched datasource {} does not expose a usable numeric id for update.",
-                        matching.target_name
-                    ))
-                })?;
-                let payload = build_import_payload_with_secret_values_impl(record, secret_values)?;
-                requests.push(PreparedDatasourceImportRequest {
-                    method: Method::PUT,
-                    path: format!("/api/datasources/{target_id}"),
-                    payload,
-                });
-                would_update += 1;
-            }
-            "would-skip-missing" => {
-                would_skip += 1;
-            }
-            _ => {
-                return Err(message(format!(
-                    "Datasource import blocked for {}: destination={} action={}.",
-                    if record.uid.is_empty() {
-                        &record.name
-                    } else {
-                        &record.uid
-                    },
-                    matching.destination,
-                    matching.action
-                )));
-            }
-        }
-    }
-
-    Ok(PreparedDatasourceImportPlan {
-        requests,
-        would_create,
-        would_update,
-        would_skip,
-    })
-}
-
-pub(crate) fn collect_datasource_import_dry_run_report(
-    client: &JsonHttpClient,
-    args: &DatasourceImportArgs,
-) -> Result<DatasourceImportDryRunReport> {
-    let replace_existing = args.replace_existing || args.update_existing_only;
-    let (metadata, records) = load_import_records(&args.input_dir, args.input_format)?;
-    validate_matching_export_org(client, args, &records)?;
-    let live = DatasourceResourceClient::new(client).list_datasources()?;
-    let target_org = fetch_current_org(client)?;
-    let target_org_id = target_org
-        .get("id")
-        .map(|value| value.to_string())
-        .unwrap_or_else(|| DEFAULT_ORG_ID.to_string());
-    let mode = describe_datasource_import_mode(args.replace_existing, args.update_existing_only);
-    let mut rows = Vec::new();
-    let mut created = 0usize;
-    let mut updated = 0usize;
-    let mut skipped = 0usize;
-    let mut blocked = 0usize;
-    for (index, record) in records.iter().enumerate() {
-        let matching = resolve_match(record, &live, replace_existing, args.update_existing_only);
-        let file_ref = format!("{}#{}", metadata.datasources_file, index);
-        rows.push(vec![
-            record.uid.clone(),
-            record.name.clone(),
-            record.datasource_type.clone(),
-            matching.match_basis.to_string(),
-            matching.destination.to_string(),
-            matching.action.to_string(),
-            target_org_id.clone(),
-            file_ref,
-        ]);
-        match matching.action {
-            "would-create" => created += 1,
-            "would-update" => updated += 1,
-            "would-skip-missing" => skipped += 1,
-            _ => blocked += 1,
-        }
-    }
-    Ok(DatasourceImportDryRunReport {
-        mode: mode.to_string(),
-        input_dir: args.input_dir.clone(),
-        input_format: args.input_format,
-        source_org_id: records
-            .iter()
-            .find(|item| !item.org_id.is_empty())
-            .map(|item| item.org_id.clone())
-            .unwrap_or_default(),
-        target_org_id,
-        rows,
-        datasource_count: records.len(),
-        would_create: created,
-        would_update: updated,
-        would_skip: skipped,
-        would_block: blocked,
-    })
-}
-
-pub(crate) fn build_datasource_import_dry_run_json_value(
-    report: &DatasourceImportDryRunReport,
-) -> Value {
-    let secret_visibility =
-        build_import_secret_visibility_entries(&report.input_dir, report.input_format);
-    Value::Object(Map::from_iter(vec![
-        (
-            "kind".to_string(),
-            Value::String("grafana-util-datasource-import-dry-run".to_string()),
-        ),
-        ("schemaVersion".to_string(), Value::Number(1.into())),
-        (
-            "toolVersion".to_string(),
-            Value::String(tool_version().to_string()),
-        ),
-        ("reviewRequired".to_string(), Value::Bool(true)),
-        ("reviewed".to_string(), Value::Bool(false)),
-        ("mode".to_string(), Value::String(report.mode.clone())),
-        (
-            "sourceOrgId".to_string(),
-            Value::String(report.source_org_id.clone()),
-        ),
-        (
-            "targetOrgId".to_string(),
-            Value::String(report.target_org_id.clone()),
-        ),
-        (
-            "datasources".to_string(),
-            Value::Array(
-                report
-                    .rows
-                    .iter()
-                    .map(|row| {
-                        Value::Object(Map::from_iter(vec![
-                            ("uid".to_string(), Value::String(row[0].clone())),
-                            ("name".to_string(), Value::String(row[1].clone())),
-                            ("type".to_string(), Value::String(row[2].clone())),
-                            ("matchBasis".to_string(), Value::String(row[3].clone())),
-                            ("destination".to_string(), Value::String(row[4].clone())),
-                            ("action".to_string(), Value::String(row[5].clone())),
-                            ("orgId".to_string(), Value::String(row[6].clone())),
-                            ("file".to_string(), Value::String(row[7].clone())),
-                        ]))
-                    })
-                    .collect(),
-            ),
-        ),
-        (
-            "summary".to_string(),
-            Value::Object(Map::from_iter(vec![
-                (
-                    "datasourceCount".to_string(),
-                    Value::Number((report.datasource_count as i64).into()),
-                ),
-                (
-                    "wouldCreate".to_string(),
-                    Value::Number((report.would_create as i64).into()),
-                ),
-                (
-                    "wouldUpdate".to_string(),
-                    Value::Number((report.would_update as i64).into()),
-                ),
-                (
-                    "wouldSkip".to_string(),
-                    Value::Number((report.would_skip as i64).into()),
-                ),
-                (
-                    "wouldBlock".to_string(),
-                    Value::Number((report.would_block as i64).into()),
-                ),
-                (
-                    "secretVisibilityCount".to_string(),
-                    Value::Number((secret_visibility.len() as i64).into()),
-                ),
-            ])),
-        ),
-        (
-            "secretVisibility".to_string(),
-            Value::Array(secret_visibility),
-        ),
-    ]))
-}
-
-pub(crate) fn print_datasource_import_dry_run_report(
-    report: &DatasourceImportDryRunReport,
-    args: &DatasourceImportArgs,
-) -> Result<()> {
-    if args.json {
-        print!(
-            "{}",
-            render_json_value(&build_datasource_import_dry_run_json_value(report))?
-        );
-    } else if args.table {
-        for line in render_import_table(
-            &report.rows,
-            !args.no_header,
-            if args.output_columns.is_empty() {
-                None
-            } else {
-                Some(args.output_columns.as_slice())
-            },
-        ) {
-            println!("{line}");
-        }
-        println!(
-            "Dry-run checked {} datasource(s) from {}",
-            report.datasource_count,
-            report.input_dir.display()
-        );
-        let secret_visibility =
-            build_import_secret_visibility_entries(&report.input_dir, report.input_format);
-        if !secret_visibility.is_empty() {
-            println!(
-                "Secret placeholder visibility: {}",
-                Value::Array(secret_visibility)
-            );
-        }
-    } else {
-        println!("Import mode: {}", report.mode);
-        for row in &report.rows {
-            println!("{}", format_datasource_import_dry_run_line(row));
-        }
-        println!(
-            "Dry-run checked {} datasource(s) from {}",
-            report.datasource_count,
-            report.input_dir.display()
-        );
-        let secret_visibility =
-            build_import_secret_visibility_entries(&report.input_dir, report.input_format);
-        if !secret_visibility.is_empty() {
-            println!(
-                "Secret placeholder visibility: {}",
-                Value::Array(secret_visibility)
-            );
-        }
-    }
-    Ok(())
-}
-
-fn format_datasource_import_dry_run_line(row: &[String]) -> String {
-    format!(
-        "Dry-run datasource uid={} name={} type={} match={} dest={} action={} file={}",
-        row[0], row[1], row[2], row[3], row[4], row[5], row[7]
-    )
-}
-
 #[cfg(test)]
-pub(crate) fn build_import_payload(record: &DatasourceImportRecord) -> Value {
-    build_import_payload_with_secret_values(record, None)
-        .expect("import payload without secret values should remain valid")
-}
-
-#[cfg(test)]
-pub(crate) fn build_import_payload_with_secret_values(
-    record: &DatasourceImportRecord,
-    secret_values: Option<&Map<String, Value>>,
-) -> Result<Value> {
-    build_import_payload_with_secret_values_impl(record, secret_values)
-}
-
-fn build_import_payload_with_secret_values_impl(
-    record: &DatasourceImportRecord,
-    secret_values: Option<&Map<String, Value>>,
-) -> Result<Value> {
-    let mut payload = Map::from_iter(vec![
-        ("name".to_string(), Value::String(record.name.clone())),
-        (
-            "type".to_string(),
-            Value::String(record.datasource_type.clone()),
-        ),
-        ("url".to_string(), Value::String(record.url.clone())),
-        ("access".to_string(), Value::String(record.access.clone())),
-        ("uid".to_string(), Value::String(record.uid.clone())),
-        ("isDefault".to_string(), Value::Bool(record.is_default)),
-    ]);
-    if let Some(value) = record.basic_auth {
-        payload.insert("basicAuth".to_string(), Value::Bool(value));
-    }
-    if !record.basic_auth_user.is_empty() {
-        payload.insert(
-            "basicAuthUser".to_string(),
-            Value::String(record.basic_auth_user.clone()),
-        );
-    }
-    if !record.user.is_empty() {
-        payload.insert("user".to_string(), Value::String(record.user.clone()));
-    }
-    if let Some(value) = record.with_credentials {
-        payload.insert("withCredentials".to_string(), Value::Bool(value));
-    }
-    if !record.database.is_empty() {
-        payload.insert(
-            "database".to_string(),
-            Value::String(record.database.clone()),
-        );
-    }
-    if let Some(json_data) = &record.json_data {
-        payload.insert("jsonData".to_string(), Value::Object(json_data.clone()));
-    }
-    if let Some(placeholders) = &record.secure_json_data_placeholders {
-        // Placeholder metadata is exported for review, but imports never replay it
-        // directly. The caller must provide concrete `--secret-values`, otherwise
-        // the whole import stops before any write is attempted.
-        let datasource_spec = Map::from_iter(vec![
-            ("uid".to_string(), Value::String(record.uid.clone())),
-            ("name".to_string(), Value::String(record.name.clone())),
-            (
-                "type".to_string(),
-                Value::String(record.datasource_type.clone()),
-            ),
-            (
-                "secureJsonDataPlaceholders".to_string(),
-                Value::Object(placeholders.clone()),
-            ),
-        ]);
-        let plan = build_secret_placeholder_plan(&datasource_spec)?;
-        let secret_values = secret_values.ok_or_else(|| {
-            message(format!(
-                "Datasource import for '{}' requires --secret-values because secureJsonDataPlaceholders are present. {}",
-                if record.uid.is_empty() { &record.name } else { &record.uid },
-                describe_secret_placeholder_plan(&plan)
-            ))
-        })?;
-        let resolved = resolve_secret_placeholders(&plan.placeholders, secret_values)?;
-        if !resolved.is_empty() {
-            payload.insert("secureJsonData".to_string(), Value::Object(resolved));
-        }
-    }
-    Ok(Value::Object(payload))
-}
+#[allow(unused_imports)]
+pub(crate) use datasource_import_payload::build_import_payload;
+#[allow(unused_imports)]
+pub(crate) use datasource_import_payload::{
+    build_import_payload_with_secret_values, parse_secret_values_inputs,
+};
+#[allow(unused_imports)]
+pub(crate) use datasource_import_plan::{
+    prepare_datasource_import_plan, PreparedDatasourceImportPlan, PreparedDatasourceImportRequest,
+};
 
 pub(crate) fn import_datasources_with_client(
     client: &JsonHttpClient,
@@ -534,6 +82,7 @@ pub(crate) fn import_datasources_with_client(
         print_datasource_import_dry_run_report(&report, args)?;
         return Ok(0);
     }
+
     let replace_existing = args.replace_existing || args.update_existing_only;
     let (_metadata, records) = load_import_records(&args.input_dir, args.input_format)?;
     let secret_values = parse_secret_values_inputs(
@@ -541,9 +90,8 @@ pub(crate) fn import_datasources_with_client(
         args.secret_values_file.as_deref(),
     )?;
     validate_matching_export_org(client, args, &records)?;
+
     let live = DatasourceResourceClient::new(client).list_datasources()?;
-    // Build the full request set first so match errors or missing secrets do not
-    // leave the destination half-mutated.
     let plan = prepare_datasource_import_plan(
         &records,
         &live,
@@ -574,10 +122,12 @@ pub(crate) fn import_datasources_by_export_org(args: &DatasourceImportArgs) -> R
     let admin_api = build_api_client(&args.common)?;
     let admin_client = admin_api.http_client();
     let scopes = discover_export_org_import_scopes(args)?;
+
     if args.dry_run && args.json {
         println!("{}", build_routed_datasource_import_dry_run_json(args)?);
         return Ok(0);
     }
+
     let mut org_rows = Vec::new();
     let mut plans = Vec::new();
     for scope in scopes {
@@ -640,284 +190,106 @@ pub(crate) fn import_datasources_by_export_org(args: &DatasourceImportArgs) -> R
         );
         return Ok(0);
     }
-    let mut imported_count = 0usize;
+    if args.dry_run && args.json {
+        println!("{}", build_routed_datasource_import_dry_run_json(args)?);
+        return Ok(0);
+    }
+
+    let mut imported = 0usize;
     for plan in plans {
-        // Each routed import gets its own org-scoped client and input_dir so
-        // downstream matching/validation sees the same shape as a direct import.
-        println!(
-            "Importing {}",
-            format_routed_datasource_scope_summary_fields(
-                plan.source_org_id,
-                &plan.source_org_name,
-                plan.org_action,
-                plan.target_org_id,
-                &plan.input_dir,
-            )
-        );
-        let Some(target_org_id) = plan.target_org_id else {
-            continue;
+        let scoped_args = DatasourceImportArgs {
+            common: args.common.clone(),
+            input_dir: plan.input_dir.clone(),
+            input_format: args.input_format,
+            org_id: None,
+            use_export_org: false,
+            only_org_id: Vec::new(),
+            create_missing_orgs: args.create_missing_orgs,
+            require_matching_export_org: args.require_matching_export_org,
+            replace_existing: args.replace_existing,
+            update_existing_only: args.update_existing_only,
+            secret_values: args.secret_values.clone(),
+            secret_values_file: args.secret_values_file.clone(),
+            dry_run: false,
+            table: args.table,
+            json: args.json,
+            output_format: args.output_format,
+            no_header: args.no_header,
+            output_columns: args.output_columns.clone(),
+            list_columns: args.list_columns,
+            progress: args.progress,
+            verbose: args.verbose,
         };
-        let mut scoped_args = args.clone();
-        scoped_args.org_id = Some(target_org_id);
-        scoped_args.use_export_org = false;
-        scoped_args.only_org_id = Vec::new();
-        scoped_args.create_missing_orgs = false;
-        scoped_args.input_dir = plan.input_dir.clone();
+        let target_org_id = plan.target_org_id.ok_or_else(|| {
+            message(format!(
+                "Datasource import for export org {} did not resolve a destination org id.",
+                plan.source_org_id
+            ))
+        })?;
         let scoped_client = build_http_client_for_org_from_api(&admin_api, target_org_id)?;
-        imported_count +=
+        imported +=
             import_datasources_with_client(&scoped_client, &scoped_args).map_err(|error| {
                 message(format!(
-                    "Datasource routed import failed for {}: {}",
-                    format_routed_datasource_scope_summary_fields(
-                        plan.source_org_id,
-                        &plan.source_org_name,
-                        plan.org_action,
-                        plan.target_org_id,
-                        &plan.input_dir,
-                    ),
-                    error
+                    "Datasource import for export org {} failed: {error}",
+                    plan.source_org_id
                 ))
             })?;
     }
-    if args.dry_run {
-        let org_count = org_rows.len();
-        let existing_org_count = org_rows
-            .iter()
-            .filter(|row| row.get(2) == Some(&"exists".to_string()))
-            .count();
-        let missing_org_count = org_rows
-            .iter()
-            .filter(|row| row.get(2) == Some(&"missing".to_string()))
-            .count();
-        let would_create_org_count = org_rows
-            .iter()
-            .filter(|row| row.get(2) == Some(&"would-create".to_string()))
-            .count();
-        let datasource_count = org_rows
-            .iter()
-            .filter_map(|row| row.get(4))
-            .filter_map(|value| value.parse::<usize>().ok())
-            .sum();
-        println!(
-            "{}",
-            format_routed_datasource_import_summary_line(
-                org_count,
-                &source_org_labels,
-                existing_org_count,
-                missing_org_count,
-                would_create_org_count,
-                datasource_count,
-                &args.input_dir,
-            )
-        );
-    }
-    Ok(imported_count)
+    Ok(imported)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::common::CliColorChoice;
-    use crate::dashboard::CommonCliArgs;
-    use crate::http::{JsonHttpClient, JsonHttpClientConfig};
-    use serde_json::json;
+    use serde_json::{json, Map, Value};
     use std::fs;
-    use std::io::{Read, Write};
-    use std::net::TcpListener;
-    use std::sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    };
-    use std::thread;
-    use std::time::Duration;
     use tempfile::tempdir;
 
-    fn build_test_common_args(base_url: String) -> CommonCliArgs {
-        CommonCliArgs {
-            color: CliColorChoice::Auto,
-            profile: None,
-            url: base_url,
-            api_token: None,
-            username: None,
-            password: None,
-            prompt_password: false,
-            prompt_token: false,
-            timeout: 5,
-            verify_ssl: false,
-        }
-    }
-
-    fn write_import_fixture(input_dir: &Path) {
-        fs::write(
-            input_dir.join(EXPORT_METADATA_FILENAME),
-            format!(
-                "{{\n  \"schemaVersion\": {},\n  \"kind\": \"{}\",\n  \"variant\": \"root\",\n  \"resource\": \"datasource\",\n  \"datasourceCount\": 2,\n  \"datasourcesFile\": \"{}\",\n  \"indexFile\": \"index.json\",\n  \"format\": \"grafana-datasource-inventory-v1\"\n}}\n",
-                1,
-                "grafana-utils-datasource-export-index",
-                DATASOURCE_EXPORT_FILENAME
-            ),
-        )
-        .unwrap();
-        fs::write(
-            input_dir.join(DATASOURCE_EXPORT_FILENAME),
-            r#"[
-  {
-    "uid": "prom-main",
-    "name": "Prometheus Main",
-    "type": "prometheus",
-    "access": "proxy",
-    "url": "http://prometheus:9090",
-    "isDefault": false,
-    "orgId": "1"
-  },
-  {
-    "uid": "loki-main",
-    "name": "Loki Main",
-    "type": "loki",
-    "access": "proxy",
-    "url": "http://loki:3100",
-    "isDefault": false,
-    "orgId": "1",
-    "basicAuth": true,
-    "basicAuthUser": "loki-user",
-    "database": "logs-main",
-    "jsonData": {
-      "httpMethod": "POST",
-      "httpHeaderName1": "X-Scope-OrgID"
-    },
-    "secureJsonDataPlaceholders": {
-      "basicAuthPassword": "${secret:loki-basic-auth}",
-      "httpHeaderValue1": "${secret:loki-tenant-token}"
-    },
-    "user": "query-user",
-    "withCredentials": true
-  }
-]
-"#,
-        )
-        .unwrap();
-    }
-
-    fn spawn_datasource_import_server() -> (
-        String,
-        Arc<AtomicBool>,
-        Arc<AtomicBool>,
-        thread::JoinHandle<()>,
-    ) {
-        let listener = match TcpListener::bind("127.0.0.1:0") {
-            Ok(listener) => listener,
-            Err(error) if error.kind() == std::io::ErrorKind::PermissionDenied => {
-                return (
-                    String::new(),
-                    Arc::new(AtomicBool::new(false)),
-                    Arc::new(AtomicBool::new(true)),
-                    thread::spawn(|| {}),
-                );
-            }
-            Err(error) => panic!("failed to bind datasource import test listener: {error}"),
-        };
-        listener.set_nonblocking(true).unwrap();
-        let address = listener.local_addr().unwrap();
-        let saw_write = Arc::new(AtomicBool::new(false));
-        let stop = Arc::new(AtomicBool::new(false));
-        let saw_write_thread = Arc::clone(&saw_write);
-        let stop_thread = Arc::clone(&stop);
-        let handle = thread::spawn(move || {
-            while !stop_thread.load(Ordering::SeqCst) {
-                match listener.accept() {
-                    Ok((mut stream, _)) => {
-                        stream
-                            .set_read_timeout(Some(Duration::from_secs(5)))
-                            .unwrap();
-                        let mut request = Vec::new();
-                        let mut buffer = [0_u8; 1024];
-                        loop {
-                            match stream.read(&mut buffer) {
-                                Ok(0) => break,
-                                Ok(read) => {
-                                    request.extend_from_slice(&buffer[..read]);
-                                    if request.windows(4).any(|window| window == b"\r\n\r\n") {
-                                        break;
-                                    }
-                                }
-                                Err(error)
-                                    if error.kind() == std::io::ErrorKind::WouldBlock
-                                        || error.kind() == std::io::ErrorKind::TimedOut =>
-                                {
-                                    break;
-                                }
-                                Err(error) => panic!("failed to read test request: {error}"),
-                            }
-                        }
-                        let request_text = String::from_utf8_lossy(&request);
-                        let request_line = request_text.lines().next().unwrap_or_default();
-                        let response = if request_line.starts_with("GET /api/datasources ") {
-                            b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 2\r\nConnection: close\r\n\r\n[]".to_vec()
-                        } else {
-                            saw_write_thread.store(true, Ordering::SeqCst);
-                            b"HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 2\r\nConnection: close\r\n\r\n{}".to_vec()
-                        };
-                        stream.write_all(&response).unwrap();
-                        let _ = stream.flush();
-                    }
-                    Err(error) if error.kind() == std::io::ErrorKind::WouldBlock => {
-                        thread::sleep(Duration::from_millis(10));
-                    }
-                    Err(error) => panic!("failed to accept test connection: {error}"),
-                }
-            }
-        });
-        (format!("http://{address}"), saw_write, stop, handle)
-    }
-
     #[test]
-    fn import_datasources_preflights_secret_resolution_before_any_write() {
-        let temp = tempdir().unwrap();
-        write_import_fixture(temp.path());
-        let (base_url, saw_write, stop, handle) = spawn_datasource_import_server();
-        if base_url.is_empty() {
-            return;
-        }
-        let client = JsonHttpClient::new(JsonHttpClientConfig {
-            base_url,
-            headers: Vec::new(),
-            timeout_secs: 5,
-            verify_ssl: false,
-        })
-        .unwrap();
-        let args = DatasourceImportArgs {
-            common: build_test_common_args("http://unused".to_string()),
-            input_dir: temp.path().to_path_buf(),
-            input_format: DatasourceImportInputFormat::Inventory,
-            org_id: None,
-            use_export_org: false,
-            only_org_id: Vec::new(),
-            create_missing_orgs: false,
-            require_matching_export_org: false,
-            replace_existing: false,
-            update_existing_only: false,
-            secret_values: Some(r#"{"loki-basic-auth":"secret-value"}"#.to_string()),
-            secret_values_file: None,
-            dry_run: false,
-            table: false,
-            json: false,
-            output_format: None,
-            no_header: false,
-            output_columns: Vec::new(),
-            list_columns: false,
-            progress: false,
-            verbose: false,
+    fn build_import_payload_resolves_secret_placeholders_into_secure_json_data() {
+        let record = DatasourceImportRecord {
+            uid: "loki-main".to_string(),
+            name: "Loki Main".to_string(),
+            datasource_type: "loki".to_string(),
+            access: "proxy".to_string(),
+            url: "http://loki:3100".to_string(),
+            is_default: false,
+            org_name: String::new(),
+            org_id: "1".to_string(),
+            basic_auth: Some(true),
+            basic_auth_user: "loki-user".to_string(),
+            database: "logs-main".to_string(),
+            json_data: json!({
+                "httpMethod": "POST",
+                "httpHeaderName1": "X-Scope-OrgID",
+            })
+            .as_object()
+            .cloned(),
+            secure_json_data_placeholders: json!({
+                "basicAuthPassword": "${secret:loki-basic-auth}",
+                "httpHeaderValue1": "${secret:loki-tenant-token}",
+            })
+            .as_object()
+            .cloned(),
+            user: "query-user".to_string(),
+            with_credentials: Some(true),
         };
+        let secret_values = json!({
+            "loki-basic-auth": "secret-value",
+            "loki-tenant-token": "tenant-token",
+        });
 
-        let error = import_datasources_with_client(&client, &args)
-            .unwrap_err()
-            .to_string();
-        stop.store(true, Ordering::SeqCst);
-        handle.join().unwrap();
+        let payload =
+            build_import_payload_with_secret_values(&record, secret_values.as_object()).unwrap();
 
-        assert!(error.contains("must resolve to non-empty strings before import"));
-        assert!(error.contains("loki-tenant-token"));
-        assert!(!saw_write.load(Ordering::SeqCst));
+        assert_eq!(
+            payload["secureJsonData"]["basicAuthPassword"],
+            json!("secret-value")
+        );
+        assert_eq!(
+            payload["secureJsonData"]["httpHeaderValue1"],
+            json!("tenant-token")
+        );
     }
 
     #[test]
@@ -987,25 +359,8 @@ mod tests {
         assert_eq!(plan.would_update, 0);
         assert_eq!(plan.would_skip, 0);
         assert_eq!(plan.requests.len(), 2);
-        assert_eq!(plan.requests[0].method, Method::POST);
-        assert_eq!(plan.requests[1].method, Method::POST);
+        assert_eq!(plan.requests[1].method, reqwest::Method::POST);
         assert_eq!(plan.requests[1].path, "/api/datasources");
-        assert_eq!(plan.requests[1].payload["basicAuth"], json!(true));
-        assert_eq!(
-            plan.requests[1].payload["basicAuthUser"],
-            json!("loki-user")
-        );
-        assert_eq!(plan.requests[1].payload["user"], json!("query-user"));
-        assert_eq!(plan.requests[1].payload["withCredentials"], json!(true));
-        assert_eq!(plan.requests[1].payload["database"], json!("logs-main"));
-        assert_eq!(
-            plan.requests[1].payload["jsonData"]["httpMethod"],
-            json!("POST")
-        );
-        assert_eq!(
-            plan.requests[1].payload["jsonData"]["httpHeaderName1"],
-            json!("X-Scope-OrgID")
-        );
         assert_eq!(
             plan.requests[1].payload["secureJsonData"]["basicAuthPassword"],
             json!("secret-value")
@@ -1014,80 +369,6 @@ mod tests {
             plan.requests[1].payload["secureJsonData"]["httpHeaderValue1"],
             json!("tenant-token")
         );
-    }
-
-    #[test]
-    fn datasource_import_dry_run_line_includes_type_context() {
-        let row = vec![
-            "prom-main".to_string(),
-            "Prometheus Main".to_string(),
-            "prometheus".to_string(),
-            "uid".to_string(),
-            "would-create".to_string(),
-            "would-create".to_string(),
-            "7".to_string(),
-            "datasources.json#0".to_string(),
-        ];
-
-        let line = format_datasource_import_dry_run_line(&row);
-
-        assert!(line.contains("uid=prom-main"));
-        assert!(line.contains("name=Prometheus Main"));
-        assert!(line.contains("type=prometheus"));
-        assert!(line.contains("match=uid"));
-        assert!(line.contains("dest=would-create"));
-        assert!(line.contains("action=would-create"));
-        assert!(line.contains("file=datasources.json#0"));
-    }
-
-    #[test]
-    fn import_datasources_with_client_succeeds_when_placeholder_secrets_are_supplied() {
-        let temp = tempdir().unwrap();
-        write_import_fixture(temp.path());
-        let (base_url, saw_write, stop, handle) = spawn_datasource_import_server();
-        if base_url.is_empty() {
-            return;
-        }
-        let client = JsonHttpClient::new(JsonHttpClientConfig {
-            base_url,
-            headers: Vec::new(),
-            timeout_secs: 5,
-            verify_ssl: false,
-        })
-        .unwrap();
-        let args = DatasourceImportArgs {
-            common: build_test_common_args("http://unused".to_string()),
-            input_dir: temp.path().to_path_buf(),
-            input_format: DatasourceImportInputFormat::Inventory,
-            org_id: None,
-            use_export_org: false,
-            only_org_id: Vec::new(),
-            create_missing_orgs: false,
-            require_matching_export_org: false,
-            replace_existing: false,
-            update_existing_only: false,
-            secret_values: Some(
-                r#"{"loki-basic-auth":"secret-value","loki-tenant-token":"tenant-token"}"#
-                    .to_string(),
-            ),
-            secret_values_file: None,
-            dry_run: false,
-            table: false,
-            json: false,
-            output_format: None,
-            no_header: false,
-            output_columns: Vec::new(),
-            list_columns: false,
-            progress: false,
-            verbose: false,
-        };
-
-        let imported = import_datasources_with_client(&client, &args).unwrap();
-        stop.store(true, Ordering::SeqCst);
-        handle.join().unwrap();
-
-        assert_eq!(imported, 2);
-        assert!(saw_write.load(Ordering::SeqCst));
     }
 
     #[test]

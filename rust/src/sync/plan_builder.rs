@@ -354,6 +354,7 @@ pub(crate) fn build_sync_alert_assessment_document(operations: &[Value]) -> Valu
 }
 
 #[cfg(test)]
+#[allow(clippy::items_after_test_module)]
 mod tests {
     use super::*;
     use serde_json::json;

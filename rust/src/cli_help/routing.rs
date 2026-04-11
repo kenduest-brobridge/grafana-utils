@@ -820,6 +820,9 @@ where
                 .take_while(|value| !value.starts_with('-'))
                 .cloned()
                 .collect::<Vec<_>>();
+            if path.is_empty() {
+                return None;
+            }
             render_grouped_entrypoint(&path, colorize)
         }
         _ => None,

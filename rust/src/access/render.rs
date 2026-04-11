@@ -75,7 +75,7 @@ fn value_string_array(value: Option<&Value>) -> Vec<Value> {
     }
 }
 
-fn value_object<'a>(value: Option<&'a Value>) -> Option<&'a Map<String, Value>> {
+fn value_object(value: Option<&Value>) -> Option<&Map<String, Value>> {
     match value {
         Some(Value::Object(map)) => Some(map),
         _ => None,
@@ -335,10 +335,7 @@ pub(crate) fn build_access_delete_review_document(
                 ),
             ])),
         ),
-        (
-            "rows".to_string(),
-            Value::Array(rows.iter().cloned().collect()),
-        ),
+        ("rows".to_string(), Value::Array(rows.to_vec())),
     ]))
 }
 
@@ -533,6 +530,7 @@ pub(crate) fn normalize_service_account_row(team: &Map<String, Value>) -> Map<St
 }
 
 #[cfg(test)]
+#[allow(clippy::items_after_test_module)]
 mod tests {
     use super::{
         access_delete_summary_line, access_diff_review_line, access_diff_summary_line,

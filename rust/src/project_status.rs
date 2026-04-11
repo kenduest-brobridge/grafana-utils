@@ -126,6 +126,7 @@ pub(crate) fn status_finding(kind: &str, count: usize, source: &str) -> ProjectS
     }
 }
 
+#[allow(dead_code)]
 pub(crate) fn render_domain_finding_summary(findings: &[ProjectStatusFinding]) -> Option<String> {
     if findings.is_empty() {
         return None;
@@ -139,6 +140,7 @@ pub(crate) fn render_domain_finding_summary(findings: &[ProjectStatusFinding]) -
     )
 }
 
+#[allow(dead_code)]
 pub(crate) fn render_project_status_decision_order(status: &ProjectStatus) -> Option<Vec<String>> {
     let mut ordered_domains = Vec::new();
     for blocker in &status.top_blockers {
@@ -181,6 +183,7 @@ pub(crate) fn render_project_status_decision_order(status: &ProjectStatus) -> Op
     Some(lines)
 }
 
+#[allow(dead_code)]
 pub(crate) fn render_project_status_signal_summary(status: &ProjectStatus) -> Option<String> {
     let mut fragments = Vec::new();
     for domain in &status.domains {

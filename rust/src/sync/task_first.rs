@@ -1,6 +1,6 @@
 //! Task-first `grafana-util workspace` workflow helpers.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use super::{
     attach_lineage, attach_trace_id, build_sync_plan_document,
@@ -56,8 +56,8 @@ fn emit_preview_output(
 }
 
 fn build_preview_project_status_inputs(
-    source_bundle: &PathBuf,
-    target_inventory: &PathBuf,
+    source_bundle: &Path,
+    target_inventory: &Path,
     mapping_file: Option<&PathBuf>,
     availability_file: Option<&PathBuf>,
 ) -> Vec<OverviewInputField> {
@@ -121,6 +121,7 @@ fn normalize_change_dashboard_args(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 fn ensure_change_inputs_present(
     discovered: &DiscoveredChangeInputs,
     dashboard_export_dir: Option<&PathBuf>,

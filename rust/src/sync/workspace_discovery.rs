@@ -40,6 +40,7 @@ pub(crate) struct DiscoveredChangeInputs {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(clippy::enum_variant_names)]
 enum DashboardWorkspaceLayout {
     RawExport,
     ProvisioningExport,
@@ -108,9 +109,7 @@ fn resolve_dashboard_workspace_dir(
     if direct_candidate.is_dir() {
         return Some(direct_candidate);
     }
-    let Some(wrapper_subdir) = layout.wrapper_subdir() else {
-        return None;
-    };
+    let wrapper_subdir = layout.wrapper_subdir()?;
     let wrapped_candidate = dashboards_dir
         .join(wrapper_subdir)
         .join(layout.workspace_subdir());

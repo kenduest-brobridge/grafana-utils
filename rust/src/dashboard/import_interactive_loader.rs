@@ -38,7 +38,7 @@ pub(crate) fn load_interactive_import_context_from_source(
         .collect();
     let mut items = Vec::new();
     for path in dashboard_files {
-        let document = super::load_json_file(&path)?;
+        let document = super::load_json_file(path)?;
         let document_object =
             value_as_object(&document, "Dashboard payload must be a JSON object.")?;
         let dashboard = super::extract_dashboard_object(document_object)?;

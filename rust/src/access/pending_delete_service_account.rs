@@ -438,14 +438,11 @@ fn service_account_token_delete_summary_line(result: &Map<String, Value>) -> Str
             parts.push(format!("{label}={value}"));
         }
     }
-    parts.extend(
-        [
-            format!("tokenId={}", map_get_text(result, "tokenId")),
-            format!("tokenName={}", map_get_text(result, "tokenName")),
-            format!("message={}", map_get_text(result, "message")),
-        ]
-        .into_iter(),
-    );
+    parts.extend([
+        format!("tokenId={}", map_get_text(result, "tokenId")),
+        format!("tokenName={}", map_get_text(result, "tokenName")),
+        format!("message={}", map_get_text(result, "message")),
+    ]);
     parts.join(" ")
 }
 

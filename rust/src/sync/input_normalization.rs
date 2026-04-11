@@ -28,6 +28,7 @@ pub(crate) struct NormalizedChangeDashboardInputs {
     pub(crate) dashboard_provisioning_dir: Option<PathBuf>,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn build_overview_args(
     args: &ChangeInspectArgs,
     discovered_dashboard_export_dir: Option<&PathBuf>,
@@ -137,6 +138,7 @@ pub(crate) fn normalize_change_dashboard_inputs(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn build_status_args(
     args: &ChangeCheckArgs,
     discovered_dashboard_export_dir: Option<&PathBuf>,

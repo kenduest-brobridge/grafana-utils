@@ -60,6 +60,7 @@ const VERSION_HELP_TEXT: &str =
     "Examples:\n\n  Print the human-readable version:\n    grafana-util version\n\n  Print machine-readable version details:\n    grafana-util version --json";
 const DASHBOARD_RAW_TO_PROMPT_HELP_TEXT: &str = "Examples:\n\n  Convert one raw dashboard JSON file into a prompt artifact:\n    grafana-util dashboard convert raw-to-prompt --input ./dashboards/raw/cpu-main.json --output ./dashboards/prompt/cpu-main.prompt.json\n\n  Convert a raw export tree into the prompt lane:\n    grafana-util dashboard convert raw-to-prompt --input-dir ./dashboards/raw --output-dir ./dashboards/prompt --output-format table";
 #[derive(Debug, Clone, Subcommand)]
+#[allow(clippy::large_enum_variant)]
 pub enum StatusCommand {
     #[command(
         about = "Render shared project-wide live status.",
