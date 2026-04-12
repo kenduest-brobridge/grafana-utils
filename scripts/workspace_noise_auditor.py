@@ -42,6 +42,10 @@ NOISE_FILENAMES: list[str] = [
     ".gitkeep",
 ]
 
+ALLOWED_NOISE_LIKE_SUFFIXES: tuple[str, ...] = (
+    ".tmpl",
+)
+
 
 @dataclass(frozen=True)
 class NoisePath:
@@ -67,36 +71,50 @@ def discover_noise_paths(root: Path) -> list[NoisePath]:
     if not root.exists():
         return noise
 
-    for path in root.rglob("*"):
-        if path == root:
+    pending_dirs = [root]
+    while pending_dirs:
+        current = pending_dirs.pop()
+        try:
+            children = list(current.iterdir())
+        except OSError:
             continue
-        name = path.name
-        if path.is_dir() and path.name in NOISE_DIRECTORIES:
-            noise.append(
-                NoisePath(
-                    path=path,
-                    category="directory",
-                    reason="known temporary or build directory",
+
+        for path in children:
+            name = path.name
+            if path.is_dir():
+                if name in NOISE_DIRECTORIES:
+                    noise.append(
+                        NoisePath(
+                            path=path,
+                            category="directory",
+                            reason="known temporary or build directory",
+                        )
+                    )
+                    continue
+                pending_dirs.append(path)
+                continue
+
+            if not path.is_file():
+                continue
+            if path.suffix in ALLOWED_NOISE_LIKE_SUFFIXES:
+                continue
+            if _contains_marker(path, DEFAULT_NOISE_MARKERS):
+                noise.append(
+                    NoisePath(
+                        path=path,
+                        category="artifact",
+                        reason="filename or suffix matches common workspace noise",
+                    )
                 )
-            )
-            continue
-        if path.is_file() and _contains_marker(path, DEFAULT_NOISE_MARKERS):
-            noise.append(
-                NoisePath(
-                    path=path,
-                    category="artifact",
-                    reason="filename or suffix matches common workspace noise",
+                continue
+            if name in NOISE_FILENAMES:
+                noise.append(
+                    NoisePath(
+                        path=path,
+                        category="ignored-file",
+                        reason="explicit ignore marker entry",
+                    )
                 )
-            )
-            continue
-        if path.is_file() and name in NOISE_FILENAMES:
-            noise.append(
-                NoisePath(
-                    path=path,
-                    category="ignored-file",
-                    reason="explicit ignore marker entry",
-                )
-            )
     return noise
 
 

@@ -54,13 +54,22 @@ If you cannot reach that state yet, stop at the first failing read-only command 
 
 For the exact flags behind this chapter, keep [config](../../commands/en/config.md), [config profile](../../commands/en/profile.md), [status live](../../commands/en/status.md), and [status overview](../../commands/en/status.md) open beside it.
 
+## Pick the first path
+
+| If your job is... | Start here | Why |
+| :--- | :--- | :--- |
+| prove one connection works | `status live --output-format yaml` | it is read-only and shows auth, URL, and scope problems early |
+| understand a live estate | `status overview live --output-format interactive` | it gives a browsable summary before you drill into one resource type |
+| migrate dashboards or datasources | `export`, then `diff`, then dry-run `import` | it keeps review before replay |
+| automate a local package | `workspace scan`, then `workspace preview`, then `workspace test` | it turns staged files into a reviewable plan before apply |
+
 ---
 
 ## Step 1: Installation
 
 ### Download and Install
 ```bash
-# Download and Install.
+# Install the latest release.
 curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh
 ```
 
@@ -83,7 +92,7 @@ sh ./scripts/install.sh --help
 
 ### Verify Version
 ```bash
-# Verify Version.
+# Confirm the installed binary and version.
 grafana-util --version
 ```
 **Expected Output:**

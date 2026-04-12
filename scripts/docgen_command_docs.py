@@ -207,6 +207,9 @@ def command_doc_cli_path(path: Path, fallback_cli_path: str | None = None) -> st
     cleaned = clean_markdown(title)
     if cleaned.startswith("grafana-util "):
         return cleaned
+    match = re.search(r"\bgrafana-util(?:\s+[a-z0-9][a-z0-9-]*)+", cleaned)
+    if match:
+        return match.group(0)
     if re.fullmatch(r"[a-z0-9][a-z0-9 -]*", cleaned):
         return f"grafana-util {cleaned}"
     return fallback_cli_path

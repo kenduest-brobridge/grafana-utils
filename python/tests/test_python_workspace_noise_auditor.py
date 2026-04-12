@@ -46,6 +46,32 @@ class WorkspaceNoiseAuditorTests(unittest.TestCase):
 
             self.assertEqual(items, [])
 
+    def test_discover_noise_paths_does_not_descend_into_known_build_dirs(self):
+        module = load_module()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            target_dir = root / "rust" / "target"
+            target_dir.mkdir(parents=True)
+            (target_dir / "object.tmp").write_text("noise\n", encoding="utf-8")
+
+            items = module.discover_noise_paths(root)
+
+            self.assertEqual(len(items), 1)
+            self.assertEqual(items[0].path.resolve(), target_dir.resolve())
+            self.assertEqual(items[0].category, "directory")
+
+    def test_discover_noise_paths_allows_html_template_files(self):
+        module = load_module()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            template_dir = root / "scripts" / "templates"
+            template_dir.mkdir(parents=True)
+            (template_dir / "base.html.tmpl").write_text("{{ content }}\n", encoding="utf-8")
+
+            items = module.discover_noise_paths(root)
+
+            self.assertEqual(items, [])
+
 
 if __name__ == "__main__":
     unittest.main()

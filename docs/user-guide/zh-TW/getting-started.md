@@ -54,13 +54,22 @@ profile 的重點是讓日常操作少重打重複參數，不是代表一開始
 
 若要對照本章提到的旗標，請一併參考 [config profile](../../commands/zh-TW/profile.md) 與 [指令參考](../../commands/zh-TW/index.md)。
 
+## 先選第一條路
+
+| 你現在要做的是... | 從這裡開始 | 原因 |
+| :--- | :--- | :--- |
+| 確認一組連線可用 | `status live --output-format yaml` | 唯讀，而且能先暴露 auth、URL 與 scope 問題 |
+| 快速理解 live Grafana 現況 | `status overview live --output-format interactive` | 先看可瀏覽總覽，再決定要鑽 dashboard、datasource、alert 或 access |
+| 搬移 dashboard 或 datasource | `export`，再 `diff`，最後 dry-run `import` | 保持先 review、再 replay |
+| 自動化一包本地變更 | `workspace scan`，再 `workspace preview`，再 `workspace test` | 先把 staged files 變成可審查 plan，再進 apply |
+
 ---
 
 ## 步驟 1：安裝
 
 ### 下載並安裝
 ```bash
-# 下載並安裝。
+# 安裝最新 release。
 curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh
 ```
 
@@ -83,7 +92,7 @@ sh ./scripts/install.sh --help
 
 ### 檢查版本
 ```bash
-# 檢查版本。
+# 確認目前 shell 找得到 binary，且版本正確。
 grafana-util --version
 ```
 **預期輸出：**

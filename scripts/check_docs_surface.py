@@ -401,6 +401,15 @@ def validate_links(path: Path, text: str) -> list[Finding]:
                     findings.append(Finding(path, line_number, f"public docs must not link to absolute local path `{target}`"))
                 continue
             resolved = (path.parent / target).resolve()
+            if (
+                not resolved.exists()
+                and path.parts[-3:-1] == ("docs", "landing")
+                and target.startswith("../man/")
+                and target.endswith(".html")
+            ):
+                generated_manpage = REPO_ROOT / "docs" / "html" / "man" / Path(target).name
+                if generated_manpage.exists():
+                    continue
             if not resolved.exists():
                 findings.append(Finding(path, line_number, f"local Markdown link target does not exist: `{target}`"))
     return findings

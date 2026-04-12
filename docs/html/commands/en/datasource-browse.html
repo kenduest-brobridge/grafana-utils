@@ -941,7 +941,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">When to open this page</p>
-  <ul class="command-intro-list"><li>Use this when you want an interactive inventory view for inspecting, editing, or deleting live datasources.</li></ul>
+  <ul class="command-intro-list"><li>Use this when you want an interactive inventory view for inspecting, editing, or deleting live datasources.</li><li>Use datasource list --output-format yaml or --output-format json instead when you are in CI, piping output, or saving an artifact. browse is for an interactive terminal session.</li></ul>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">Who this page is for</p>
@@ -953,6 +953,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <p>Open a live datasource browser against Grafana with in-place modify and delete actions.</p>
 <h2 id="when-to-use">When to use</h2>
 <p>Use this when you want an interactive inventory view for inspecting, editing, or deleting live datasources.</p>
+<p>Use <code>datasource list --output-format yaml</code> or <code>--output-format json</code> instead when you are in CI, piping output, or saving an artifact. <code>browse</code> is for an interactive terminal session.</p>
 <h2 id="key-flags">Key flags</h2>
 <ul><li><code>--org-id</code>: browse one explicit Grafana org.</li><li><code>--all-orgs</code>: aggregate datasource browsing across visible orgs. Requires Basic auth.</li><li>Shared live flags: <code>--url</code>, <code>--token</code>, <code>--basic-user</code>, <code>--basic-password</code>.</li></ul>
 <h2 id="examples">Examples</h2>
@@ -965,7 +966,7 @@ grafana-util datasource browse --url http://localhost:3000 --basic-user admin --
 <h2 id="what-success-looks-like">What success looks like</h2>
 <ul><li>you can inspect the live list without losing context</li><li>edit and delete actions stay close to the rows they affect</li><li>org-scoped browsing is obvious before you workspace anything</li></ul>
 <h2 id="failure-checks">Failure checks</h2>
-<ul><li>if the browser opens with missing rows, verify the org scope and the credentials used for the view</li><li>if edit or delete actions are missing, confirm that the account actually has permission to mutate datasources</li><li>if the org switch looks wrong, check whether <code>--all-orgs</code> or <code>--org-id</code> is being used intentionally</li></ul>
+<ul><li>if the command says it needs a TTY, switch to <code>datasource list</code> with <code>--output-format yaml</code> or <code>json</code></li><li>if the browser opens with missing rows, verify the org scope and the credentials used for the view</li><li>if edit or delete actions are missing, confirm that the account actually has permission to mutate datasources</li><li>if the org switch looks wrong, check whether <code>--all-orgs</code> or <code>--org-id</code> is being used intentionally</li></ul>
 <h2 id="related-commands">Related commands</h2>
 <ul><li><a href="datasource-list.html">datasource list</a></li><li><a href="datasource-modify.html">datasource modify</a></li><li><a href="datasource-delete.html">datasource delete</a></li></ul>
 

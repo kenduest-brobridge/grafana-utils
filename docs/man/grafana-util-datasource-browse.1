@@ -32,6 +32,8 @@ edit and delete actions stay close to the rows they affect
 org\-scoped browsing is obvious before you workspace anything
 .SH FAILURE CHECKS
 .IP \(bu 2
+if the command says it needs a TTY, switch to datasource list with \-\-output\-format yaml or json
+.IP \(bu 2
 if the browser opens with missing rows, verify the org scope and the credentials used for the view
 .IP \(bu 2
 if edit or delete actions are missing, confirm that the account actually has permission to mutate datasources

@@ -6,6 +6,8 @@ Open a live datasource browser against Grafana with in-place modify and delete a
 ## When to use
 Use this when you want an interactive inventory view for inspecting, editing, or deleting live datasources.
 
+Use `datasource list --output-format yaml` or `--output-format json` instead when you are in CI, piping output, or saving an artifact. `browse` is for an interactive terminal session.
+
 ## Key flags
 - `--org-id`: browse one explicit Grafana org.
 - `--all-orgs`: aggregate datasource browsing across visible orgs. Requires Basic auth.
@@ -35,6 +37,7 @@ grafana-util datasource browse --url http://localhost:3000 --basic-user admin --
 
 ## Failure checks
 
+- if the command says it needs a TTY, switch to `datasource list` with `--output-format yaml` or `json`
 - if the browser opens with missing rows, verify the org scope and the credentials used for the view
 - if edit or delete actions are missing, confirm that the account actually has permission to mutate datasources
 - if the org switch looks wrong, check whether `--all-orgs` or `--org-id` is being used intentionally

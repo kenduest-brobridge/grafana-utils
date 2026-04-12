@@ -135,6 +135,23 @@ class CheckDocsSurfaceTests(unittest.TestCase):
 
         self.assertTrue(any("escapes page command surface" in finding.message for finding in findings))
 
+    def test_validate_links_accepts_landing_manpage_html_mirror(self):
+        module = load_module()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            landing = root / "docs" / "landing"
+            man_html = root / "docs" / "html" / "man"
+            landing.mkdir(parents=True)
+            man_html.mkdir(parents=True)
+            source = landing / "en.md"
+            source.write_text("[grafana-util(1)](../man/grafana-util.html)\n", encoding="utf-8")
+            (man_html / "grafana-util.html").write_text("<html></html>\n", encoding="utf-8")
+
+            with patch.object(module, "REPO_ROOT", root):
+                findings = module.validate_links(source, source.read_text(encoding="utf-8"))
+
+        self.assertEqual(findings, [])
+
 
 if __name__ == "__main__":
     unittest.main()

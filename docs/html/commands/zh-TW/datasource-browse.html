@@ -941,7 +941,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">什麼時候看這頁</p>
-  <ul class="command-intro-list"><li>當您想用互動式清單視圖來檢視、編輯或刪除線上 datasource 時，使用這個指令。</li></ul>
+  <ul class="command-intro-list"><li>當您想用互動式清單視圖來檢視、編輯或刪除線上 datasource 時，使用這個指令。</li><li>如果是在 CI、pipe 輸出或保存 artifact，請改用 datasource list --output-format yaml 或 --output-format json。browse 是給互動式終端機使用的。</li></ul>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">適合誰</p>
@@ -953,6 +953,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <p>在 Grafana 上開啟線上 datasource 瀏覽器，並可在同一介面進行修改與刪除。</p>
 <h2 id="何時使用">何時使用</h2>
 <p>當您想用互動式清單視圖來檢視、編輯或刪除線上 datasource 時，使用這個指令。</p>
+<p>如果是在 CI、pipe 輸出或保存 artifact，請改用 <code>datasource list --output-format yaml</code> 或 <code>--output-format json</code>。<code>browse</code> 是給互動式終端機使用的。</p>
 <h2 id="重點旗標">重點旗標</h2>
 <ul><li><code>--org-id</code>：瀏覽指定的 Grafana org。</li><li><code>--all-orgs</code>：彙整所有可見 org 的 datasource 瀏覽結果。需要 Basic auth。</li><li>共用線上旗標：<code>--url</code>、<code>--token</code>、<code>--basic-user</code>、<code>--basic-password</code>。</li></ul>
 <h2 id="範例">範例</h2>
@@ -967,7 +968,7 @@ grafana-util datasource browse --url http://localhost:3000 --token &quot;$GRAFAN
 <h2 id="成功判準">成功判準</h2>
 <ul><li>您可以在不離開清單的情況下檢視 live datasource</li><li>修改與刪除動作都貼近正在看的那一列</li><li>在變更前，org 範圍已經很清楚</li></ul>
 <h2 id="失敗時先檢查">失敗時先檢查</h2>
-<ul><li>如果瀏覽器開出來少了資料，先確認 org 範圍與驗證資訊是否正確</li><li>如果看不到修改或刪除動作，先確認帳號是否真的有變更 datasource 的權限</li><li>如果 org 切換看起來不對，先確認是不是刻意使用了 <code>--all-orgs</code> 或 <code>--org-id</code></li></ul>
+<ul><li>如果指令提示需要 TTY，請改用 <code>datasource list</code> 搭配 <code>--output-format yaml</code> 或 <code>json</code></li><li>如果瀏覽器開出來少了資料，先確認 org 範圍與驗證資訊是否正確</li><li>如果看不到修改或刪除動作，先確認帳號是否真的有變更 datasource 的權限</li><li>如果 org 切換看起來不對，先確認是不是刻意使用了 <code>--all-orgs</code> 或 <code>--org-id</code></li></ul>
 <h2 id="相關指令">相關指令</h2>
 <ul><li><a href="datasource-list.html">datasource list</a></li><li><a href="datasource-modify.html">datasource modify</a></li><li><a href="datasource-delete.html">datasource delete</a></li></ul>
 

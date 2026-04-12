@@ -6,6 +6,8 @@
 ## 何時使用
 當您想用互動式清單視圖來檢視、編輯或刪除線上 datasource 時，使用這個指令。
 
+如果是在 CI、pipe 輸出或保存 artifact，請改用 `datasource list --output-format yaml` 或 `--output-format json`。`browse` 是給互動式終端機使用的。
+
 ## 重點旗標
 - `--org-id`：瀏覽指定的 Grafana org。
 - `--all-orgs`：彙整所有可見 org 的 datasource 瀏覽結果。需要 Basic auth。
@@ -40,6 +42,7 @@ grafana-util datasource browse --url http://localhost:3000 --token "$GRAFANA_API
 
 ## 失敗時先檢查
 
+- 如果指令提示需要 TTY，請改用 `datasource list` 搭配 `--output-format yaml` 或 `json`
 - 如果瀏覽器開出來少了資料，先確認 org 範圍與驗證資訊是否正確
 - 如果看不到修改或刪除動作，先確認帳號是否真的有變更 datasource 的權限
 - 如果 org 切換看起來不對，先確認是不是刻意使用了 `--all-orgs` 或 `--org-id` 
