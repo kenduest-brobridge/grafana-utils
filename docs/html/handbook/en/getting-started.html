@@ -448,7 +448,9 @@ html[lang="zh-TW"] .nav-command-root-link { font-family: var(--font-zh); }
 .article ul li::marker,
 .article ol li::marker { color: var(--heading); }
 .article table {
+  display: block;
   width: 100%;
+  max-width: 100%;
   margin: 1.25rem 0 1.75rem;
   border-collapse: separate;
   border-spacing: 0;
@@ -456,6 +458,7 @@ html[lang="zh-TW"] .nav-command-root-link { font-family: var(--font-zh); }
   border: 1px solid var(--border);
   border-radius: 12px;
   overflow: hidden;
+  overflow-x: auto;
   background: var(--panel);
   box-shadow: var(--shadow);
 }
@@ -487,6 +490,16 @@ html[lang="zh-TW"] .nav-command-root-link { font-family: var(--font-zh); }
 }
 .article table code {
   white-space: nowrap;
+}
+@media (min-width: 721px) {
+  .article table th,
+  .article table td {
+    min-width: 9.5rem;
+  }
+  .article table th:last-child,
+  .article table td:last-child {
+    min-width: 18rem;
+  }
 }
 .article table + p,
 .article table + ul,
@@ -956,7 +969,24 @@ grafana-util --version</code></pre>
 <p>Profile workflows are repo-local. <code>grafana-util config profile</code> works against <code>grafana-util.yaml</code> in the current working directory by default, or against the file pointed to by <code>GRAFANA_UTIL_CONFIG</code>.</p>
 <h3 id="auth-modes-at-a-glance">Auth modes at a glance</h3>
 <p><code>grafana-util</code> can read connection settings from direct flags, prompt-based input, environment variables, or a repo-local profile. Use the auth modes in this order:</p>
-<table><thead><tr><th>Pattern</th><th>Best for</th><th>Example</th></tr></thead><tbody><tr><td>direct Basic auth</td><td>quick local checks, bootstrap, admin-only workflows</td><td><code>grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml</code></td></tr><tr><td><code>config profile</code></td><td>daily operator workflows and CI jobs once the connection is proven</td><td><code>grafana-util status live --profile prod --output-format yaml</code></td></tr><tr><td>direct token</td><td>narrow API automation that stays inside one org or one scoped permission set</td><td><code>grafana-util status overview live --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output-format yaml</code></td></tr></tbody></table>
+<p><strong>Direct Basic auth</strong></p>
+<p>Best for quick local checks, bootstrap, and admin-only workflows.</p>
+<pre><code>grafana-util status live \
+  --url http://localhost:3000 \
+  --basic-user admin \
+  --prompt-password \
+  --output-format yaml</code></pre>
+<p><strong><code>config profile</code></strong></p>
+<p>Best for daily operator workflows and CI jobs once the connection is proven.</p>
+<pre><code>grafana-util status live \
+  --profile prod \
+  --output-format yaml</code></pre>
+<p><strong>Direct token</strong></p>
+<p>Best for narrow API automation that stays inside one org or one scoped permission set.</p>
+<pre><code>grafana-util status overview live \
+  --url http://localhost:3000 \
+  --token &quot;$GRAFANA_API_TOKEN&quot; \
+  --output-format yaml</code></pre>
 <p>Environment variables can supply the same auth without repeating sensitive values on every command:</p>
 <ul><li><code>GRAFANA_USERNAME</code></li><li><code>GRAFANA_PASSWORD</code></li><li><code>GRAFANA_API_TOKEN</code></li></ul>
 <p>For repeatable work, prefer storing those references in a profile such as <code>password_env: GRAFANA_PROD_PASSWORD</code> or <code>token_env: GRAFANA_DEV_TOKEN</code> instead of repeating raw secrets on every command line.</p>

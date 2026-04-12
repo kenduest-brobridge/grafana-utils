@@ -442,7 +442,9 @@ html[lang="zh-TW"] .nav-command-root-link { font-family: var(--font-zh); }
 .article ul li::marker,
 .article ol li::marker { color: var(--heading); }
 .article table {
+  display: block;
   width: 100%;
+  max-width: 100%;
   margin: 1.25rem 0 1.75rem;
   border-collapse: separate;
   border-spacing: 0;
@@ -450,6 +452,7 @@ html[lang="zh-TW"] .nav-command-root-link { font-family: var(--font-zh); }
   border: 1px solid var(--border);
   border-radius: 12px;
   overflow: hidden;
+  overflow-x: auto;
   background: var(--panel);
   box-shadow: var(--shadow);
 }
@@ -481,6 +484,16 @@ html[lang="zh-TW"] .nav-command-root-link { font-family: var(--font-zh); }
 }
 .article table code {
   white-space: nowrap;
+}
+@media (min-width: 721px) {
+  .article table th,
+  .article table td {
+    min-width: 9.5rem;
+  }
+  .article table th:last-child,
+  .article table td:last-child {
+    min-width: 18rem;
+  }
 }
 .article table + p,
 .article table + ul,

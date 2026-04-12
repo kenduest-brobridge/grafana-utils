@@ -90,6 +90,28 @@ def render_version_portal(*, latest_lane: str | None, version_lanes: list[str], 
         outputs_section = copy["sections"]["available_outputs"]
         outputs_tasks = outputs_section["tasks"]
         latest_target = "latest/index.html" if latest_lane else "dev/index.html"
+        release_tasks = [
+            (
+                release_section["tasks"]["latest_release"]["title"],
+                release_section["tasks"]["latest_release"]["summary"],
+                lane_links[:1] if latest_lane else [],
+            )
+        ]
+        if has_dev:
+            release_tasks.append(
+                (
+                    release_section["tasks"]["dev_preview"]["title"],
+                    release_section["tasks"]["dev_preview"]["summary"],
+                    lane_links[1:2] if latest_lane else lane_links[:1],
+                )
+            )
+        release_tasks.append(
+            (
+                release_section["tasks"]["older_release_lines"]["title"],
+                release_section["tasks"]["older_release_lines"]["summary"],
+                [(label, href) for label, href in lane_links if href not in {"latest/index.html", "dev/index.html"}],
+            )
+        )
         portal_data[locale] = {
             "lang": locale,
             "hero_title": copy["hero_title"],
@@ -103,23 +125,7 @@ def render_version_portal(*, latest_lane: str | None, version_lanes: list[str], 
                     _render_section(
                         release_section["title"],
                         release_section["summary"],
-                        [
-                            (
-                                release_section["tasks"]["latest_release"]["title"],
-                                release_section["tasks"]["latest_release"]["summary"],
-                                lane_links[:1] if latest_lane else [],
-                            ),
-                            (
-                                release_section["tasks"]["dev_preview"]["title"],
-                                release_section["tasks"]["dev_preview"]["summary"],
-                                lane_links[1:2] if has_dev and latest_lane else lane_links[:1] if has_dev else [],
-                            ),
-                            (
-                                release_section["tasks"]["older_release_lines"]["title"],
-                                release_section["tasks"]["older_release_lines"]["summary"],
-                                [(label, href) for label, href in lane_links if href not in {"latest/index.html", "dev/index.html"}],
-                            ),
-                        ],
+                        release_tasks,
                     ),
                     _render_section(
                         outputs_section["title"],

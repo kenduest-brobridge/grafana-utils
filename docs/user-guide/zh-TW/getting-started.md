@@ -102,11 +102,38 @@ Profile 這套流程是以「專案本地設定」為中心。`grafana-util conf
 
 `grafana-util` 可以從直接旗標、互動輸入、環境變數或專案本地的 profile 取得連線資訊。建議依序使用：
 
-| 模式 | 適合情境 | 範例 |
-| :--- | :--- | :--- |
-| 直接基本驗證 (Basic Auth) | 本機引導、緊急接手 (break-glass)、管理員作業 | `grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml` |
-| `config profile` | 連線已確認後的日常維運、CI、可重複執行工作流 | `grafana-util status live --profile prod --output-format yaml` |
-| 直接 Token 驗證 | 單一組織或權限受限的 API 自動化 | `grafana-util status overview live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format yaml` |
+**直接基本驗證 (Basic Auth)**
+
+適合本機引導、緊急接手 (break-glass) 與管理員作業。
+
+```bash
+grafana-util status live \
+  --url http://localhost:3000 \
+  --basic-user admin \
+  --prompt-password \
+  --output-format yaml
+```
+
+**`config profile`**
+
+適合連線已確認後的日常維運、CI 與可重複執行工作流。
+
+```bash
+grafana-util status live \
+  --profile prod \
+  --output-format yaml
+```
+
+**直接 Token 驗證**
+
+適合單一組織或權限受限的 API 自動化。
+
+```bash
+grafana-util status overview live \
+  --url http://localhost:3000 \
+  --token "$GRAFANA_API_TOKEN" \
+  --output-format yaml
+```
 
 環境變數也可以直接提供同樣的驗證資訊：
 

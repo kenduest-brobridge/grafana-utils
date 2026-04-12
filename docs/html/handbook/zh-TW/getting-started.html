@@ -448,7 +448,9 @@ html[lang="zh-TW"] .nav-command-root-link { font-family: var(--font-zh); }
 .article ul li::marker,
 .article ol li::marker { color: var(--heading); }
 .article table {
+  display: block;
   width: 100%;
+  max-width: 100%;
   margin: 1.25rem 0 1.75rem;
   border-collapse: separate;
   border-spacing: 0;
@@ -456,6 +458,7 @@ html[lang="zh-TW"] .nav-command-root-link { font-family: var(--font-zh); }
   border: 1px solid var(--border);
   border-radius: 12px;
   overflow: hidden;
+  overflow-x: auto;
   background: var(--panel);
   box-shadow: var(--shadow);
 }
@@ -487,6 +490,16 @@ html[lang="zh-TW"] .nav-command-root-link { font-family: var(--font-zh); }
 }
 .article table code {
   white-space: nowrap;
+}
+@media (min-width: 721px) {
+  .article table th,
+  .article table td {
+    min-width: 9.5rem;
+  }
+  .article table th:last-child,
+  .article table td:last-child {
+    min-width: 18rem;
+  }
 }
 .article table + p,
 .article table + ul,
@@ -956,7 +969,24 @@ grafana-util --version</code></pre>
 <p>Profile 這套流程是以「專案本地設定」為中心。<code>grafana-util config profile</code> 預設會讀寫目前工作目錄中的 <code>grafana-util.yaml</code>，若有設定 <code>GRAFANA_UTIL_CONFIG</code>，則會優先讀取該路徑。</p>
 <h3 id="身分驗證模式概覽">身分驗證模式概覽</h3>
 <p><code>grafana-util</code> 可以從直接旗標、互動輸入、環境變數或專案本地的 profile 取得連線資訊。建議依序使用：</p>
-<table><thead><tr><th>模式</th><th>適合情境</th><th>範例</th></tr></thead><tbody><tr><td>直接基本驗證 (Basic Auth)</td><td>本機引導、緊急接手 (break-glass)、管理員作業</td><td><code>grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml</code></td></tr><tr><td><code>config profile</code></td><td>連線已確認後的日常維運、CI、可重複執行工作流</td><td><code>grafana-util status live --profile prod --output-format yaml</code></td></tr><tr><td>直接 Token 驗證</td><td>單一組織或權限受限的 API 自動化</td><td><code>grafana-util status overview live --url http://localhost:3000 --token &quot;$GRAFANA_API_TOKEN&quot; --output-format yaml</code></td></tr></tbody></table>
+<p><strong>直接基本驗證 (Basic Auth)</strong></p>
+<p>適合本機引導、緊急接手 (break-glass) 與管理員作業。</p>
+<pre><code>grafana-util status live \
+  --url http://localhost:3000 \
+  --basic-user admin \
+  --prompt-password \
+  --output-format yaml</code></pre>
+<p><strong><code>config profile</code></strong></p>
+<p>適合連線已確認後的日常維運、CI 與可重複執行工作流。</p>
+<pre><code>grafana-util status live \
+  --profile prod \
+  --output-format yaml</code></pre>
+<p><strong>直接 Token 驗證</strong></p>
+<p>適合單一組織或權限受限的 API 自動化。</p>
+<pre><code>grafana-util status overview live \
+  --url http://localhost:3000 \
+  --token &quot;$GRAFANA_API_TOKEN&quot; \
+  --output-format yaml</code></pre>
 <p>環境變數也可以直接提供同樣的驗證資訊：</p>
 <ul><li><code>GRAFANA_USERNAME</code></li><li><code>GRAFANA_PASSWORD</code></li><li><code>GRAFANA_API_TOKEN</code></li></ul>
 <p>如果是重複執行的工作，建議把這些 reference 寫進 profile，例如 <code>password_env: GRAFANA_PROD_PASSWORD</code> 或 <code>token_env: GRAFANA_DEV_TOKEN</code>，這樣就不用在每條命令上重打敏感資訊。</p>

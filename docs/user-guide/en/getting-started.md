@@ -102,11 +102,38 @@ Profile workflows are repo-local. `grafana-util config profile` works against `g
 
 `grafana-util` can read connection settings from direct flags, prompt-based input, environment variables, or a repo-local profile. Use the auth modes in this order:
 
-| Pattern | Best for | Example |
-| :--- | :--- | :--- |
-| direct Basic auth | quick local checks, bootstrap, admin-only workflows | `grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml` |
-| `config profile` | daily operator workflows and CI jobs once the connection is proven | `grafana-util status live --profile prod --output-format yaml` |
-| direct token | narrow API automation that stays inside one org or one scoped permission set | `grafana-util status overview live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN" --output-format yaml` |
+**Direct Basic auth**
+
+Best for quick local checks, bootstrap, and admin-only workflows.
+
+```bash
+grafana-util status live \
+  --url http://localhost:3000 \
+  --basic-user admin \
+  --prompt-password \
+  --output-format yaml
+```
+
+**`config profile`**
+
+Best for daily operator workflows and CI jobs once the connection is proven.
+
+```bash
+grafana-util status live \
+  --profile prod \
+  --output-format yaml
+```
+
+**Direct token**
+
+Best for narrow API automation that stays inside one org or one scoped permission set.
+
+```bash
+grafana-util status overview live \
+  --url http://localhost:3000 \
+  --token "$GRAFANA_API_TOKEN" \
+  --output-format yaml
+```
 
 Environment variables can supply the same auth without repeating sensitive values on every command:
 

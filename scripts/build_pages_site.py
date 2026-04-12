@@ -108,12 +108,13 @@ def has_modern_docs_source(source_root: Path) -> bool:
     return all(path.exists() for path in required_paths)
 
 
-def build_version_links(version_lanes: list[str]) -> tuple[VersionLink, ...]:
+def build_version_links(version_lanes: list[str], *, include_dev: bool = False) -> tuple[VersionLink, ...]:
     links = [
         VersionLink("Version portal", "index.html"),
         VersionLink("Latest release", "latest/index.html"),
-        VersionLink("Dev preview", "dev/index.html"),
     ]
+    if include_dev:
+        links.append(VersionLink("Dev preview", "dev/index.html"))
     links.extend(VersionLink(label, f"{label}/index.html") for label in version_lanes)
     return tuple(links)
 
@@ -139,11 +140,11 @@ def lane_config(
     )
 
 
-def assemble_site(output_dir: Path) -> None:
+def assemble_site(output_dir: Path, *, include_dev: bool = False) -> None:
     release_tags = select_latest_tags_per_minor(list_release_tags())
     outputs: dict[str, str] = {".nojekyll": ""}
     supported_release_tags: list[SemverTag] = []
-    dev_ref = resolve_ref(["origin/dev", "dev"])
+    dev_ref = resolve_ref(["origin/dev", "dev"]) if include_dev else None
 
     with tempfile.TemporaryDirectory(prefix="grafana-util-pages-") as tmp_root_text:
         tmp_root = Path(tmp_root_text)
@@ -168,7 +169,7 @@ def assemble_site(output_dir: Path) -> None:
             supported_release_tags.append(tag)
 
         version_lanes = [tag.minor_label for tag in supported_release_tags]
-        version_links = build_version_links(version_lanes)
+        version_links = build_version_links(version_lanes, include_dev=dev_ref is not None)
 
         for tag in supported_release_tags:
             source_root = tmp_root / tag.raw
@@ -228,12 +229,17 @@ def assemble_site(output_dir: Path) -> None:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Assemble a multi-version GitHub Pages docs site.")
     parser.add_argument("--output-dir", required=True, help="Directory to write the assembled Pages site into.")
+    parser.add_argument(
+        "--include-dev",
+        action="store_true",
+        help="Include the dev preview lane in the generated output. Use this for preview validation, not published release docs.",
+    )
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    assemble_site(Path(args.output_dir).resolve())
+    assemble_site(Path(args.output_dir).resolve(), include_dev=args.include_dev)
     print(f"Wrote versioned docs site to {args.output_dir}")
     return 0
 

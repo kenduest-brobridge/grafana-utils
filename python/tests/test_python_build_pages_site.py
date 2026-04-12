@@ -52,13 +52,20 @@ class BuildPagesSiteTests(unittest.TestCase):
 
         self.assertEqual([tag.raw for tag in selected], ["v0.7.4", "v0.6.9"])
 
-    def test_build_version_links_includes_portal_latest_and_dev(self):
+    def test_build_version_links_includes_portal_latest_without_dev_by_default(self):
         module = load_module()
 
         links = module.build_version_links(["v0.7", "v0.6"])
 
         self.assertEqual(links[0].label, "Version portal")
         self.assertEqual(links[1].target_rel, "latest/index.html")
+        self.assertEqual(links[2].target_rel, "v0.7/index.html")
+
+    def test_build_version_links_can_include_dev_for_preview_validation(self):
+        module = load_module()
+
+        links = module.build_version_links(["v0.7"], include_dev=True)
+
         self.assertEqual(links[2].target_rel, "dev/index.html")
         self.assertEqual(links[3].target_rel, "v0.7/index.html")
 
@@ -82,6 +89,21 @@ class BuildPagesSiteTests(unittest.TestCase):
         self.assertIn(zh["jump_prompt"], rendered)
         self.assertIn(en["lane_labels"]["latest_release"].format(latest_lane="v0.7"), rendered)
         self.assertIn(zh["lane_labels"]["dev_preview"], rendered)
+
+    def test_render_version_portal_omits_dev_preview_when_not_included(self):
+        module = load_module()
+
+        rendered = module.render_version_portal(
+            latest_lane="v0.7",
+            version_lanes=["v0.7"],
+            has_dev=False,
+        )
+
+        self.assertIn("latest/index.html", rendered)
+        self.assertIn("v0.7/index.html", rendered)
+        self.assertNotIn("dev/index.html", rendered)
+        self.assertNotIn("Dev preview", rendered)
+        self.assertNotIn("開發預覽", rendered)
 
 
 if __name__ == "__main__":
