@@ -140,6 +140,37 @@ def lane_config(
     )
 
 
+def render_redirect_page(target_href: str) -> str:
+    escaped_target = html.escape(target_href, quote=True)
+    return (
+        "<!DOCTYPE html>\n"
+        '<html lang="en">\n'
+        "<head>\n"
+        '  <meta charset="utf-8">\n'
+        f'  <meta http-equiv="refresh" content="0; url={escaped_target}">\n'
+        f'  <link rel="canonical" href="{escaped_target}">\n'
+        "  <title>Redirecting...</title>\n"
+        "</head>\n"
+        "<body>\n"
+        f'  <p>Redirecting to <a href="{escaped_target}">{escaped_target}</a>.</p>\n'
+        "</body>\n"
+        "</html>\n"
+    )
+
+
+def add_legacy_html_manpage_redirects(outputs: dict[str, str]) -> None:
+    """Keep stale release-lane links such as latest/html/man/name.html working."""
+    for path in sorted(tuple(outputs)):
+        path_obj = Path(path)
+        parts = path_obj.parts
+        if len(parts) < 3 or parts[-2] != "man" or path_obj.suffix != ".html":
+            continue
+        legacy_path = Path(*parts[:-2], "html", "man", parts[-1]).as_posix()
+        if legacy_path == path or legacy_path in outputs:
+            continue
+        outputs[legacy_path] = render_redirect_page(f"../../man/{parts[-1]}")
+
+
 def assemble_site(output_dir: Path, *, include_dev: bool = False) -> None:
     release_tags = select_latest_tags_per_minor(list_release_tags())
     outputs: dict[str, str] = {".nojekyll": ""}
@@ -222,6 +253,7 @@ def assemble_site(output_dir: Path, *, include_dev: bool = False) -> None:
         version_lanes=version_lanes,
         has_dev=dev_ref is not None and "dev/index.html" in outputs,
     )
+    add_legacy_html_manpage_redirects(outputs)
     if output_dir.exists():
         shutil.rmtree(output_dir)
     write_outputs(output_dir, outputs)
