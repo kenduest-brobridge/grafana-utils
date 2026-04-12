@@ -453,6 +453,7 @@ pub(crate) fn apply_profile_add_with_store<S: OsSecretStore>(
 
 // Profile command handlers are grouped by concern:
 // list/read show, current-state diagnostics, live validation, and persistence operations.
+// List handler prints profile inventory directly from resolved config.
 fn run_profile_list() -> Result<()> {
     let (path, config) = load_profile_config_at_resolved_path()?;
     for name in config.profiles.keys() {
@@ -464,6 +465,7 @@ fn run_profile_list() -> Result<()> {
     Ok(())
 }
 
+// Show handler resolves profile and renders selected detail format.
 fn run_profile_show(args: ProfileShowArgs) -> Result<()> {
     let (path, config) = load_profile_config_at_resolved_path()?;
     let selected = select_profile_or_error(&config, args.profile.as_deref(), &path)?;
@@ -531,6 +533,7 @@ fn render_profile_current(
     Ok(())
 }
 
+// Current handler resolves effective profile and writes a diagnostic document.
 fn run_profile_current(args: ProfileCurrentArgs) -> Result<()> {
     let config_path = resolve_profile_config_path();
     let document = if config_path.exists() {
@@ -589,6 +592,7 @@ fn render_profile_validate(
     Ok(())
 }
 
+// Validate handler resolves auth+secrets and optionally performs live health-check against Grafana.
 fn run_profile_validate(args: ProfileValidateArgs) -> Result<()> {
     let (config_path, config) = load_profile_config_at_resolved_path()?;
     let selected = select_profile_or_error(&config, args.profile.as_deref(), &config_path)?;
@@ -688,6 +692,7 @@ fn run_profile_validate(args: ProfileValidateArgs) -> Result<()> {
     render_profile_validate(&document, args.output_format)
 }
 
+// Add handler persists profile updates and prints migration/provenance hints.
 fn run_profile_add(args: ProfileAddArgs) -> Result<()> {
     let config_path = resolve_profile_config_path();
     let outcome = apply_profile_add_with_store(&args, &config_path, &SystemOsSecretStore)?;
@@ -727,11 +732,13 @@ fn run_profile_add(args: ProfileAddArgs) -> Result<()> {
     Ok(())
 }
 
+// Example handler prints supported example payloads for selected modes.
 fn run_profile_example(args: ProfileExampleArgs) -> Result<()> {
     println!("{}", render_profile_example(args.mode));
     Ok(())
 }
 
+// Init handler creates a default profile file in cwd unless overwritten explicitly.
 fn run_profile_init(args: ProfileInitArgs) -> Result<()> {
     let path = std::env::current_dir()
         .map_err(|error| message(format!("Failed to resolve current directory: {error}")))?

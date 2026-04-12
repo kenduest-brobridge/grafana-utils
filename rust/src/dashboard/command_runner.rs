@@ -112,6 +112,7 @@ pub(crate) fn collect_dashboard_list_summaries(args: &ListArgs) -> Result<Vec<Ma
     )
 }
 
+// Build a single dashboard list output document used by reusable execution callers.
 pub fn execute_dashboard_list(args: &ListArgs) -> Result<super::DashboardWebRunOutput> {
     let summaries = collect_dashboard_list_summaries(args)?;
     let rows = list::render_dashboard_summary_json(&summaries, &args.output_columns);
@@ -208,6 +209,8 @@ fn request_json_with_client(
     client.request_json(method, path, params, payload)
 }
 
+// Inspect path dispatcher:
+// validate args, build selected report/summary variants, and return a shared web output.
 fn execute_dashboard_inspect_at_path(
     args: &InspectExportArgs,
     input_dir: &Path,
@@ -273,6 +276,8 @@ fn execute_dashboard_inspect_at_path(
     })
 }
 
+// Export-backed inspect path: materialize input dir, normalize output variant, then reuse the
+// shared `execute_dashboard_inspect_at_path` output path.
 pub fn execute_dashboard_inspect_export(
     args: &InspectExportArgs,
 ) -> Result<super::DashboardWebRunOutput> {
@@ -287,6 +292,7 @@ pub fn execute_dashboard_inspect_export(
     execute_dashboard_inspect_at_path(args, &input_dir.input_dir, input_dir.expected_variant)
 }
 
+// Live inspect path: fetch dashboards into a temp export dir and convert into export-style input.
 pub fn execute_dashboard_inspect_live(
     args: &InspectLiveArgs,
 ) -> Result<super::DashboardWebRunOutput> {
@@ -342,6 +348,7 @@ pub fn execute_dashboard_inspect_live(
     )
 }
 
+// Variable-inspection execution path: render variable diagnostics into shared run output shape.
 pub fn execute_dashboard_inspect_vars(
     args: &InspectVarsArgs,
 ) -> Result<super::DashboardWebRunOutput> {
@@ -396,6 +403,7 @@ pub(crate) fn review_dashboard_file(args: &ReviewArgs) -> Result<()> {
 }
 
 /// Run the dashboard CLI with an already configured client.
+/// This is the narrow execution path for callers that already resolved auth/client setup.
 pub fn run_dashboard_cli_with_client(
     client: &JsonHttpClient,
     args: DashboardCliArgs,
@@ -552,6 +560,7 @@ pub fn run_dashboard_cli_with_client(
 }
 
 /// Run the dashboard CLI after normalizing args and creating clients as needed.
+/// This is the top-level dashboard runtime boundary for the Rust CLI surface.
 pub fn run_dashboard_cli(args: DashboardCliArgs) -> Result<()> {
     set_json_color_choice(args.color);
     let mut args = super::normalize_dashboard_cli_args(args);

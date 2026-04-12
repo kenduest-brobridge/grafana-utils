@@ -241,6 +241,7 @@ pub struct DashboardWebRunOutput {
 }
 
 /// Run the dashboard CLI with an already configured client.
+/// Thin wrapper that keeps the public module surface stable while the runtime lives in `command_runner`.
 pub fn run_dashboard_cli_with_client(
     client: &JsonHttpClient,
     args: DashboardCliArgs,
@@ -249,6 +250,7 @@ pub fn run_dashboard_cli_with_client(
 }
 
 /// Run the dashboard CLI after normalizing args and creating clients as needed.
+/// Thin wrapper that exposes the dashboard runtime boundary from the module root.
 pub fn run_dashboard_cli(args: DashboardCliArgs) -> Result<()> {
     command_runner::run_dashboard_cli(args)
 }

@@ -957,6 +957,7 @@ pub(crate) fn build_snapshot_review_browser_items(document: &Value) -> Result<Ve
 }
 
 #[cfg(feature = "tui")]
+// Build compact snapshot-review summary/sidebar and launch the review browser.
 fn run_snapshot_review_interactive(document: &Value) -> Result<()> {
     let summary_lines = build_snapshot_review_summary_lines(document)?;
     let items = build_snapshot_review_browser_items(document)?;

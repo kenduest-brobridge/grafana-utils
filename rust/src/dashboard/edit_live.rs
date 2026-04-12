@@ -38,6 +38,7 @@ fn write_temp_payload(path: &Path, value: &Value) -> Result<()> {
     Ok(())
 }
 
+// Resolve VISUAL/EDITOR and execute it against a single live-edit payload path.
 fn run_editor_command(path: &Path) -> Result<()> {
     let editor = env::var("VISUAL")
         .ok()
@@ -387,6 +388,8 @@ fn build_publish_args(input: PathBuf, source: &EditLiveArgs, dry_run: bool) -> P
     }
 }
 
+// Launch interactive live dashboard edit flow:
+// fetch live payload, open editable draft, validate/apply review, then optionally publish.
 pub(crate) fn run_dashboard_edit_live(
     client: Option<&JsonHttpClient>,
     args: &EditLiveArgs,

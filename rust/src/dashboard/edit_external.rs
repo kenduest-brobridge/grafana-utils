@@ -230,6 +230,7 @@ fn display_text(value: &str) -> String {
     }
 }
 
+// Resolve VISUAL/EDITOR and execute it against a single dashboard draft path.
 fn run_editor_command(path: &Path) -> Result<()> {
     let editor = env::var("VISUAL")
         .ok()

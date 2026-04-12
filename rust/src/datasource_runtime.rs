@@ -45,6 +45,8 @@ const DATASOURCE_IMPORT_LIST_COLUMNS: &[&str] = &[
     "file",
 ];
 
+// Datasource runtime boundary:
+// normalize shared flags, validate, materialize auth, then dispatch by command kind.
 pub fn run_datasource_cli(command: DatasourceGroupCommand) -> Result<()> {
     // Runtime boundary for datasource commands:
     // normalize legacy flags once, apply command-only exits, then materialize auth and execute.
@@ -82,6 +84,7 @@ fn validate_datasource_command_inputs(command: &DatasourceGroupCommand) -> Resul
     Ok(())
 }
 
+// Execute one normalized datasource command against local artifacts or live Grafana.
 fn execute_datasource_command(command: DatasourceGroupCommand) -> Result<()> {
     match command {
         DatasourceGroupCommand::Types(args) => {

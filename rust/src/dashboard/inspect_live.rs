@@ -320,6 +320,7 @@ pub(crate) fn load_variant_index_entries(
 }
 
 #[cfg(feature = "tui")]
+// Build live inspection artifacts and open the interactive export workbench.
 fn run_interactive_inspect_live_tui_from_dir(input_dir: &Path) -> Result<usize> {
     eprintln!(
         "[summary-live --interactive] building summary: {}",
@@ -345,6 +346,7 @@ fn run_interactive_inspect_live_tui_from_dir(input_dir: &Path) -> Result<usize> 
 }
 
 #[cfg(not(feature = "tui"))]
+// Non-TUI path keeps command behavior explicit for --interactive usage.
 fn run_interactive_inspect_live_tui_from_dir(_import_dir: &Path) -> Result<usize> {
     super::tui_not_built("summary-live --interactive")
 }

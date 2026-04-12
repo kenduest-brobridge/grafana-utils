@@ -370,6 +370,7 @@ fn draw_interactive_loading_step(
 }
 
 #[cfg(feature = "tui")]
+// Interactive selector for dual input variant (raw/source) before opening inspect workbench.
 fn run_interactive_input_type_selector(input_dir: &Path) -> Result<InspectExportInputType> {
     let mut session = TerminalSession::enter()?;
     let options = [
@@ -663,6 +664,8 @@ fn analyze_export_dir_at_path(
 }
 
 #[cfg(feature = "tui")]
+// Render export inspection in an interactive workbench; shared with non-interactive
+// and local-mode call-sites via the same dashboard-count return contract.
 fn run_interactive_export_workbench(
     input_dir: &Path,
     expected_variant: &str,
@@ -685,6 +688,7 @@ fn run_interactive_export_workbench(
 }
 
 #[cfg(not(feature = "tui"))]
+// Non-TUI path preserves signature by returning a feature-missing error.
 fn run_interactive_export_workbench(
     _import_dir: &Path,
     _expected_variant: &str,

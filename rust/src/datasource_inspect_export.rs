@@ -287,6 +287,7 @@ fn datasource_centered_popup_rect(area: Rect, width: u16, height: u16) -> Rect {
 }
 
 #[cfg(feature = "tui")]
+// Interactive selector shown when both provisioning and inventory modes are discoverable.
 fn run_datasource_inspect_input_selector(input_dir: &Path) -> Result<DatasourceImportInputFormat> {
     let mut session = TerminalSession::enter()?;
     let options = [

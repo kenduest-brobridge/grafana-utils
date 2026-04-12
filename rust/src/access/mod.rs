@@ -225,6 +225,8 @@ where
     run_access_cli_with_client(&client, args)
 }
 
+// Route all user-domain access commands through common client construction and
+// consistent local-versus-live branching.
 fn run_user_access_cli(command: &UserCommand, args: &AccessCliArgs) -> Result<()> {
     // User operations require the standard access client, including org-scoped
     // auth behavior where applicable.
@@ -272,6 +274,8 @@ fn run_user_access_cli(command: &UserCommand, args: &AccessCliArgs) -> Result<()
     }
 }
 
+// Route organization access through the global-org auth path because org APIs
+// are scoped above the selected Grafana org context.
 fn run_org_access_cli(command: &OrgCommand, args: &AccessCliArgs) -> Result<()> {
     // Org operations intentionally use the "no org id" client path because org
     // management targets Grafana's global admin surface rather than one org.
@@ -305,6 +309,8 @@ fn run_org_access_cli(command: &OrgCommand, args: &AccessCliArgs) -> Result<()> 
     }
 }
 
+// Route team access through the selected-org client and preserve explicit local-mode
+// short-circuiting for operations that can read from an input directory.
 fn run_team_access_cli(command: &TeamCommand, args: &AccessCliArgs) -> Result<()> {
     // Team workflows reuse the standard access client because team APIs are
     // resolved within the selected Grafana org scope.
@@ -352,6 +358,7 @@ fn run_team_access_cli(command: &TeamCommand, args: &AccessCliArgs) -> Result<()
     }
 }
 
+// Route service-account access commands to the shared live/local branching model.
 fn run_service_account_access_cli(
     command: &ServiceAccountCommand,
     args: &AccessCliArgs,

@@ -625,6 +625,7 @@ fn build_route_preview_matches(current_policy: &Map<String, Value>, args: &Alert
 
 // Alert handlers are split by semantic family (plan/apply, authoring, export/diff/list)
 // and each returns a structured action document via a common printer.
+// Plan-only run paths request from live and render the resulting action plan.
 fn run_alert_plan_cli(args: &AlertCliArgs) -> Result<()> {
     let desired_dir = args
         .desired_dir
@@ -644,6 +645,7 @@ fn run_alert_plan_cli(args: &AlertCliArgs) -> Result<()> {
     )
 }
 
+// Apply path is explicit-gate only; execution requires --approve and emits apply plan results.
 fn run_alert_apply_cli(args: &AlertCliArgs) -> Result<()> {
     let plan_file = args
         .plan_file
@@ -669,6 +671,7 @@ fn run_alert_apply_cli(args: &AlertCliArgs) -> Result<()> {
     )
 }
 
+// Delete handler builds a pure preview for local review and prints it as alert action output.
 fn run_alert_delete_cli(args: &AlertCliArgs) -> Result<()> {
     let preview = build_explicit_delete_preview(args)?;
     print_alert_action_document(
@@ -679,6 +682,7 @@ fn run_alert_delete_cli(args: &AlertCliArgs) -> Result<()> {
     )
 }
 
+// Init path creates the local alert runtime directory layout and emits the bootstrap plan.
 fn run_alert_init_cli(args: &AlertCliArgs) -> Result<()> {
     let desired_dir = args
         .desired_dir
@@ -688,6 +692,7 @@ fn run_alert_init_cli(args: &AlertCliArgs) -> Result<()> {
     print_alert_action_document("Alert init", &document, AlertCommandOutputFormat::Text)
 }
 
+// new-rule builds a scaffold document at the requested export location.
 fn run_alert_new_rule_cli(args: &AlertCliArgs) -> Result<()> {
     let desired_dir = args
         .desired_dir
@@ -706,6 +711,7 @@ fn run_alert_new_rule_cli(args: &AlertCliArgs) -> Result<()> {
     )
 }
 
+// new-contact-point writes a webhook contact-point scaffold into the alert bundle.
 fn run_alert_new_contact_point_cli(args: &AlertCliArgs) -> Result<()> {
     let desired_dir = args
         .desired_dir
@@ -724,6 +730,7 @@ fn run_alert_new_contact_point_cli(args: &AlertCliArgs) -> Result<()> {
     )
 }
 
+// new-template writes a scaffold template document into the alert bundle.
 fn run_alert_new_template_cli(args: &AlertCliArgs) -> Result<()> {
     let desired_dir = args
         .desired_dir
@@ -789,6 +796,8 @@ fn maybe_update_managed_route(
     })))
 }
 
+// add-rule creates a complete rule document, optionally updates managed routing policy,
+// and persists output unless dry-run is requested.
 fn run_alert_add_rule_cli(args: &AlertCliArgs) -> Result<()> {
     let desired_dir = require_desired_dir(args, "Alert add-rule")?;
     let name = require_scaffold_name(args, "Alert add-rule")?;
@@ -821,6 +830,7 @@ fn run_alert_add_rule_cli(args: &AlertCliArgs) -> Result<()> {
     )
 }
 
+// clone-rule duplicates a source rule, rewrites identifiers, and re-bases managed route as needed.
 fn run_alert_clone_rule_cli(args: &AlertCliArgs) -> Result<()> {
     let desired_dir = require_desired_dir(args, "Alert clone-rule")?;
     let source = require_source_name(args, "Alert clone-rule")?;
@@ -901,6 +911,7 @@ fn run_alert_clone_rule_cli(args: &AlertCliArgs) -> Result<()> {
     )
 }
 
+// add-contact-point builds a scaffold or updates it persistently for webhook contacts.
 fn run_alert_add_contact_point_cli(args: &AlertCliArgs) -> Result<()> {
     let desired_dir = require_desired_dir(args, "Alert add-contact-point")?;
     let name = require_scaffold_name(args, "Alert add-contact-point")?;
@@ -929,6 +940,7 @@ fn run_alert_add_contact_point_cli(args: &AlertCliArgs) -> Result<()> {
     )
 }
 
+// set-route updates managed receiver routing for the selected receiver in-policy state.
 fn run_alert_set_route_cli(args: &AlertCliArgs) -> Result<()> {
     let desired_dir = require_desired_dir(args, "Alert set-route")?;
     let receiver = args
@@ -956,6 +968,7 @@ fn run_alert_set_route_cli(args: &AlertCliArgs) -> Result<()> {
     )
 }
 
+// preview-route simulates route matching against current policies and prints matcher results.
 fn run_alert_preview_route_cli(args: &AlertCliArgs) -> Result<()> {
     let desired_dir = require_desired_dir(args, "Alert preview-route")?;
     let (_, current_policy_document) = load_or_init_policy_document(desired_dir, "")?;

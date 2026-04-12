@@ -295,12 +295,14 @@ fn staged_args_to_overview_args(args: &ProjectStatusStagedArgs) -> OverviewArgs 
 }
 
 #[cfg(feature = "tui")]
+// Interactive rendering path for status documents in TUI.
 fn run_project_status_interactive(status: ProjectStatus) -> CommonResult<()> {
     crate::project_status_tui::run_project_status_interactive(status)
 }
 
 #[cfg(not(feature = "tui"))]
 #[allow(dead_code)]
+// Non-TUI fallback keeps all entrypoints compile-time complete.
 fn run_project_status_interactive(_status: ProjectStatus) -> CommonResult<()> {
     Err(crate::common::tui(
         "Project-status interactive mode requires the `tui` feature.",
