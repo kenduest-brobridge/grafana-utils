@@ -120,6 +120,30 @@ access_cli() {
   "${PYTHON_BIN}" -m grafana_utils access "$@"
 }
 
+wait_for_python_team_absent() {
+  local team_name="$1"
+  local attempts=0
+  local team_json=""
+
+  while true; do
+    team_json="$(
+      access_cli team list \
+        --url "${GRAFANA_URL}" \
+        --token "${GRAFANA_API_TOKEN}" \
+        --name "${team_name}" \
+        --json
+    )"
+    if [[ "$(printf '%s' "${team_json}" | jq 'length')" == "0" ]]; then
+      return 0
+    fi
+    attempts=$((attempts + 1))
+    if [[ "${attempts}" -ge 10 ]]; then
+      return 1
+    fi
+    sleep 1
+  done
+}
+
 run_user_smoke() {
   local list_json org_json modify_json
 
@@ -305,14 +329,7 @@ run_team_smoke() {
   [[ "$(printf '%s' "${delete_json}" | jq -r '.name')" == "access-ops" ]] \
     || fail "team delete did not remove the created team"
 
-  team_json="$(
-    access_cli team list \
-      --url "${GRAFANA_URL}" \
-      --token "${GRAFANA_API_TOKEN}" \
-      --name access-ops \
-      --json
-  )"
-  [[ "$(printf '%s' "${team_json}" | jq 'length')" == "0" ]] \
+  wait_for_python_team_absent access-ops \
     || fail "team delete did not remove the target team from list output"
 }
 

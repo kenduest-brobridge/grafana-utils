@@ -849,6 +849,30 @@ access_bin() {
   printf '%s\n' "${RUST_DIR}/target/debug/grafana-util"
 }
 
+wait_for_rust_team_absent() {
+  local team_name="$1"
+  local attempts=0
+  local team_json=""
+
+  while true; do
+    team_json="$(
+      "$(access_bin)" access team list \
+        --url "${GRAFANA_URL}" \
+        --token "${GRAFANA_API_TOKEN}" \
+        --name "${team_name}" \
+        --json
+    )"
+    if [[ "$(printf '%s' "${team_json}" | jq 'length')" == "0" ]]; then
+      return 0
+    fi
+    attempts=$((attempts + 1))
+    if [[ "${attempts}" -ge 10 ]]; then
+      return 1
+    fi
+    sleep 1
+  done
+}
+
 sync_bin() {
   printf '%s\n' "${RUST_DIR}/target/debug/grafana-util"
 }
@@ -1271,14 +1295,7 @@ run_access_smoke() {
   [[ "$(printf '%s' "${delete_json}" | jq -r '.name')" == "rust-access-ops" ]] \
     || fail "rust access team delete did not remove the created team"
 
-  team_json="$(
-    "$(access_bin)" access team list \
-      --url "${GRAFANA_URL}" \
-      --token "${GRAFANA_API_TOKEN}" \
-      --name rust-access-ops \
-      --json
-  )"
-  [[ "$(printf '%s' "${team_json}" | jq 'length')" == "0" ]] \
+  wait_for_rust_team_absent rust-access-ops \
     || fail "rust access team delete did not remove the target team from list output"
 
   "$(access_bin)" access team add \
