@@ -4,6 +4,10 @@
     "en": {
       "command_reference_label": "Command Reference",
       "open_command_reference_label": "Open command reference",
+      "landing_current_version_title": "Current version",
+      "landing_current_version_summary": "This local docs build reflects the current checkout only.",
+      "landing_version_switch_title": "Version",
+      "landing_version_switch_summary": "Version switching is secondary here. Pick a language first, then jump release context if you need it.",
       "command_relationships_title": "Command Relationships",
       "parent_command_label": "Parent command",
       "child_command_label": "Subcommand group",
@@ -21,6 +25,10 @@
     "zh-TW": {
       "command_reference_label": "指令參考",
       "open_command_reference_label": "開啟指令參考",
+      "landing_current_version_title": "目前版本",
+      "landing_current_version_summary": "這份本地文件只反映目前 checkout，這裡不能切換其他版本。",
+      "landing_version_switch_title": "版本",
+      "landing_version_switch_summary": "版本切換是次要操作。先選語言，再視需要跳去特定版本內容。",
       "command_relationships_title": "指令關係",
       "parent_command_label": "上層命令",
       "child_command_label": "子命令群組",

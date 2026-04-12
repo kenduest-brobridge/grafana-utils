@@ -1,6 +1,6 @@
-# Grafana Documentation
+# Start Here
 
-Use this site as a mixed entry point. Start with the handbook when you want the reading path, or open the command reference when you already know the command family. The landing page keeps both cores visible so you can move from task, to chapter, to exact syntax without hunting.
+Start with the handbook for the reading path, or open the command reference for exact syntax.
 
 - [Start with the handbook](../user-guide/en/index.md)
 - [Open command reference](../commands/en/index.md)

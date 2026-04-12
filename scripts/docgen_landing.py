@@ -21,14 +21,6 @@ def get_landing_root(repo_root: Path = REPO_ROOT) -> Path:
 
 LANDING_ROOT = get_landing_root()
 LANDING_LOCALES = ("en", "zh-TW")
-LANDING_UI_LABELS = {
-    "en": {
-        "eyebrow": "Documentation Portal",
-    },
-    "zh-TW": {
-        "eyebrow": "文件入口",
-    },
-}
 
 
 @dataclass(frozen=True)

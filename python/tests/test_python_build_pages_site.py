@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -21,6 +22,12 @@ def load_module():
 
 
 class BuildPagesSiteTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.portal_contract = json.loads(
+            (REPO_ROOT / "scripts" / "contracts" / "versioned-docs-portal.json").read_text(encoding="utf-8")
+        )
+
     def test_parse_semver_tag_accepts_release_tags_only(self):
         module = load_module()
 
@@ -57,6 +64,8 @@ class BuildPagesSiteTests(unittest.TestCase):
 
     def test_render_version_portal_uses_landing_locale_switch_and_dual_language_copy(self):
         module = load_module()
+        en = self.portal_contract["locales"]["en"]
+        zh = self.portal_contract["locales"]["zh-TW"]
 
         rendered = module.render_version_portal(
             latest_lane="v0.7",
@@ -67,10 +76,12 @@ class BuildPagesSiteTests(unittest.TestCase):
         self.assertIn('id="locale-select"', rendered)
         self.assertIn('<option value="auto" selected>Auto</option>', rendered)
         self.assertIn('id="landing-i18n"', rendered)
-        self.assertIn("grafana-util Versioned Docs", rendered)
-        self.assertIn("grafana-util 版本文件入口", rendered)
-        self.assertIn("Jump to a docs lane...", rendered)
-        self.assertIn("快速跳到版本線...", rendered)
+        self.assertIn(en["hero_title"], rendered)
+        self.assertIn(zh["hero_title"], rendered)
+        self.assertIn(en["jump_prompt"], rendered)
+        self.assertIn(zh["jump_prompt"], rendered)
+        self.assertIn(en["lane_labels"]["latest_release"].format(latest_lane="v0.7"), rendered)
+        self.assertIn(zh["lane_labels"]["dev_preview"], rendered)
 
 
 if __name__ == "__main__":

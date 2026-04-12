@@ -5,10 +5,11 @@ import json
 from pathlib import Path
 
 from docgen_common import relative_href
-from docgen_landing import LANDING_LOCALES, LANDING_UI_LABELS, LandingLink, LandingSection, LandingTask, load_landing_page
+from docgen_landing import LANDING_LOCALES, LandingLink, LandingSection, LandingTask, load_landing_page
 from docsite_html_common import prefixed_output_rel, render_template
 from docsite_html_nav import render_jump_select, render_jump_select_options, render_landing_locale_select
 from docsite_html_page_shell import page_shell
+from docsite_ui_text import ui_text
 
 
 def landing_panel_html(title: str, summary: str, links: list[tuple[str, str]]) -> str:
@@ -74,18 +75,22 @@ def build_landing_locale_data(config, rewrite_markdown_link) -> dict[str, dict[s
     version_links.extend((link.label, relative_href(landing_rel, link.target_rel)) for link in config.version_links)
     if config.include_raw_manpages or config.raw_manpage_target_rel:
         version_links.append(("Manpages", relative_href(landing_rel, prefixed_output_rel(config, "man/index.html"))))
+    has_version_switch = bool(config.version_links)
     landing_data: dict[str, dict[str, str]] = {}
     for locale in LANDING_LOCALES:
         page = load_landing_page(locale, landing_root=landing_root)
-        ui_labels = LANDING_UI_LABELS[locale]
         maintainer_links = render_landing_links(page.source_path, landing_rel, page.maintainer.links, config, rewrite_markdown_link)
+        version_title = ui_text(locale, "landing_version_switch_title")
+        version_summary = ui_text(locale, "landing_version_switch_summary")
+        if not has_version_switch:
+            version_title = ui_text(locale, "landing_current_version_title")
+            version_summary = ui_text(locale, "landing_current_version_summary")
         meta_html = "".join((
             landing_panel_html(page.maintainer.title, page.maintainer.summary, maintainer_links),
-            landing_panel_html("Version" if locale == "en" else "版本", "Version switching is secondary here. Pick a language first, then jump release context if you need it." if locale == "en" else "版本切換是次要操作。先選語言，再視需要跳去特定版本內容。", version_links),
+            landing_panel_html(version_title, version_summary, version_links),
         ))
         landing_data[locale] = {
             "lang": locale,
-            "eyebrow": ui_labels["eyebrow"],
             "hero_title": page.title,
             "hero_summary": page.summary,
             "hero_links_html": render_landing_hero_links(page.source_path, landing_rel, page.hero_links, config, rewrite_markdown_link),
@@ -103,7 +108,6 @@ def render_landing_page(config, rewrite_markdown_link):
 <div class="landing-page">
   <section class="landing-hero">
     <div class="landing-hero-inner">
-      <div id="landing-eyebrow" class="landing-eyebrow">{html.escape(copy["eyebrow"])}</div>
       <h1 id="landing-title" class="landing-title">{html.escape(copy["hero_title"])}</h1>
       <p id="landing-summary" class="landing-summary">{html.escape(copy["hero_summary"])}</p>
       <div id="landing-hero-links">{copy["hero_links_html"]}</div>

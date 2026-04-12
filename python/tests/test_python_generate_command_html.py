@@ -124,6 +124,17 @@ class GenerateCommandHtmlTests(unittest.TestCase):
         self.assertIn("繁體中文", rendered)
         self.assertIn("Developer guide", rendered)
         self.assertIn("latest/index.html", rendered)
+        self.assertIn(">Version<", rendered)
+        self.assertIn("Version switching is secondary here.", rendered)
+
+    def test_render_landing_page_labels_local_checkout_when_no_version_switch_exists(self):
+        module = load_module()
+
+        rendered = module.render_landing_page(module.HtmlBuildConfig(version="9.9.0"))
+
+        self.assertIn(">Current version<", rendered)
+        self.assertIn("This local docs build reflects the current checkout only.", rendered)
+        self.assertNotIn("Version switching is secondary here.", rendered)
 
     def test_generate_outputs_includes_developer_page(self):
         module = load_module()
