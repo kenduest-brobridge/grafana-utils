@@ -88,8 +88,8 @@ grafana-util config profile add dev \
 
 接下來：
 
-- 看完整流程：[第一次執行 / 新手路線](./docs/user-guide/zh-TW/role-new-user.md)
-- 查精確語法：[指令參考](./docs/commands/zh-TW/index.md)
+- 看完整流程：<https://kenduest-brobridge.github.io/grafana-util/handbook/zh-TW/role-new-user.html>
+- 查精確語法：<https://kenduest-brobridge.github.io/grafana-util/commands/zh-TW/index.html>
 
 ---
 
@@ -141,27 +141,23 @@ grafana-util config profile --help
 
 handbook 用來看 workflow 脈絡。command reference 用來查精確 CLI 語法。
 
-- **HTML 文件入口**：[docs/html/index.html](./docs/html/index.html)
 - **官方文件站**：<https://kenduest-brobridge.github.io/grafana-util/>
-- **開始使用**：[docs/user-guide/zh-TW/getting-started.md](./docs/user-guide/zh-TW/getting-started.md)
-- **第一次執行 / 新手路線**：[docs/user-guide/zh-TW/role-new-user.md](./docs/user-guide/zh-TW/role-new-user.md)
-- **維運導引手冊**：[docs/user-guide/zh-TW/index.md](./docs/user-guide/zh-TW/index.md)
-- **指令參考**：[docs/commands/zh-TW/index.md](./docs/commands/zh-TW/index.md)
-- **疑難排解**：[docs/user-guide/zh-TW/troubleshooting.md](./docs/user-guide/zh-TW/troubleshooting.md)
-- **Manpage**：[docs/man/grafana-util.1](./docs/man/grafana-util.1)
+- **第一次設定**：<https://kenduest-brobridge.github.io/grafana-util/handbook/zh-TW/getting-started.html> 與 <https://kenduest-brobridge.github.io/grafana-util/handbook/zh-TW/role-new-user.html>
+- **日常維運流程**：<https://kenduest-brobridge.github.io/grafana-util/handbook/zh-TW/index.html> 與 <https://kenduest-brobridge.github.io/grafana-util/handbook/zh-TW/role-sre-ops.html>
+- **查精確指令語法**：<https://kenduest-brobridge.github.io/grafana-util/commands/zh-TW/index.html> 與 `grafana-util --help`
+- **排錯**：<https://kenduest-brobridge.github.io/grafana-util/handbook/zh-TW/troubleshooting.html>
 
-依需求開始：
+若你是在版本庫裡直接維護文件，可使用本地 HTML mirror 與原始 source：
 
-- **第一次設定**：[開始使用](./docs/user-guide/zh-TW/getting-started.md) 與 [第一次執行 / 新手路線](./docs/user-guide/zh-TW/role-new-user.md)
-- **日常維運流程**：[維運導引手冊](./docs/user-guide/zh-TW/index.md) 與 [SRE / 維運人員](./docs/user-guide/zh-TW/role-sre-ops.md)
-- **查精確指令語法**：[指令參考](./docs/commands/zh-TW/index.md) 與 [docs/man/grafana-util.1](./docs/man/grafana-util.1)
-- **排錯**：[疑難排解](./docs/user-guide/zh-TW/troubleshooting.md)
+- **本地 HTML 文件入口**：[docs/html/index.html](./docs/html/index.html)
+- **維護者文件**：[docs/DEVELOPER.md](./docs/DEVELOPER.md)
+- **Manpage source**：[docs/man/grafana-util.1](./docs/man/grafana-util.1)
 
 依角色開始：
 
-- **新使用者**：[docs/user-guide/zh-TW/role-new-user.md](./docs/user-guide/zh-TW/role-new-user.md)
-- **SRE / 維運人員**：[docs/user-guide/zh-TW/role-sre-ops.md](./docs/user-guide/zh-TW/role-sre-ops.md)
-- **自動化 / CI 維護者**：[docs/user-guide/zh-TW/role-automation-ci.md](./docs/user-guide/zh-TW/role-automation-ci.md)
+- **新使用者**：<https://kenduest-brobridge.github.io/grafana-util/handbook/zh-TW/role-new-user.html>
+- **SRE / 維運人員**：<https://kenduest-brobridge.github.io/grafana-util/handbook/zh-TW/role-sre-ops.html>
+- **自動化 / CI 維護者**：<https://kenduest-brobridge.github.io/grafana-util/handbook/zh-TW/role-automation-ci.html>
 - **維護者 / 開發者**：[docs/DEVELOPER.md](./docs/DEVELOPER.md)
 
 ---

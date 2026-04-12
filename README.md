@@ -88,8 +88,8 @@ grafana-util config profile add dev \
 
 After that:
 
-- learn the workflow: [First Run / Beginner Path](./docs/user-guide/en/role-new-user.md)
-- look up exact syntax: [Command Reference](./docs/commands/en/index.md)
+- learn the workflow: <https://kenduest-brobridge.github.io/grafana-util/handbook/en/role-new-user.html>
+- look up exact syntax: <https://kenduest-brobridge.github.io/grafana-util/commands/en/index.html>
 
 ---
 
@@ -141,27 +141,23 @@ grafana-util config profile --help
 
 Use the handbook for workflow context. Use the command reference for exact CLI syntax.
 
-- **HTML docs portal**: [docs/html/index.html](./docs/html/index.html)
 - **Published docs**: <https://kenduest-brobridge.github.io/grafana-util/>
-- **Getting Started**: [docs/user-guide/en/getting-started.md](./docs/user-guide/en/getting-started.md)
-- **First Run / Beginner Path**: [docs/user-guide/en/role-new-user.md](./docs/user-guide/en/role-new-user.md)
-- **Operator Handbook**: [docs/user-guide/en/index.md](./docs/user-guide/en/index.md)
-- **Command Reference**: [docs/commands/en/index.md](./docs/commands/en/index.md)
-- **Troubleshooting**: [docs/user-guide/en/troubleshooting.md](./docs/user-guide/en/troubleshooting.md)
-- **Manpage**: [docs/man/grafana-util.1](./docs/man/grafana-util.1)
+- **First-time setup**: <https://kenduest-brobridge.github.io/grafana-util/handbook/en/getting-started.html> and <https://kenduest-brobridge.github.io/grafana-util/handbook/en/role-new-user.html>
+- **Operator workflow**: <https://kenduest-brobridge.github.io/grafana-util/handbook/en/index.html> and <https://kenduest-brobridge.github.io/grafana-util/handbook/en/role-sre-ops.html>
+- **Exact CLI syntax**: <https://kenduest-brobridge.github.io/grafana-util/commands/en/index.html> and `grafana-util --help`
+- **Troubleshooting**: <https://kenduest-brobridge.github.io/grafana-util/handbook/en/troubleshooting.html>
 
-Start here by need:
+If you are maintaining docs inside the repository, use the local HTML mirror and maintainer sources:
 
-- **First-time setup**: [Getting Started](./docs/user-guide/en/getting-started.md) and [First Run / Beginner Path](./docs/user-guide/en/role-new-user.md)
-- **Daily operator workflow**: [Operator Handbook](./docs/user-guide/en/index.md) and [SRE / Operator](./docs/user-guide/en/role-sre-ops.md)
-- **Exact command syntax**: [Command Reference](./docs/commands/en/index.md) and [docs/man/grafana-util.1](./docs/man/grafana-util.1)
-- **Troubleshooting**: [docs/user-guide/en/troubleshooting.md](./docs/user-guide/en/troubleshooting.md)
+- **Local HTML docs portal**: [docs/html/index.html](./docs/html/index.html)
+- **Maintainer guide**: [docs/DEVELOPER.md](./docs/DEVELOPER.md)
+- **Manpage source**: [docs/man/grafana-util.1](./docs/man/grafana-util.1)
 
 By role:
 
-- **New user**: [docs/user-guide/en/role-new-user.md](./docs/user-guide/en/role-new-user.md)
-- **SRE / operator**: [docs/user-guide/en/role-sre-ops.md](./docs/user-guide/en/role-sre-ops.md)
-- **Automation / CI owner**: [docs/user-guide/en/role-automation-ci.md](./docs/user-guide/en/role-automation-ci.md)
+- **New user**: <https://kenduest-brobridge.github.io/grafana-util/handbook/en/role-new-user.html>
+- **SRE / operator**: <https://kenduest-brobridge.github.io/grafana-util/handbook/en/role-sre-ops.html>
+- **Automation / CI owner**: <https://kenduest-brobridge.github.io/grafana-util/handbook/en/role-automation-ci.html>
 - **Maintainer / developer**: [docs/DEVELOPER.md](./docs/DEVELOPER.md)
 
 ---
