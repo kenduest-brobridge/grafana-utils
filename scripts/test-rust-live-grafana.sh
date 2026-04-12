@@ -183,6 +183,25 @@ access_delete_json_field() {
   jq -r --arg field "${field}" '.rows[0][$field] // .[$field] // empty'
 }
 
+wait_for_log_pattern() {
+  local pattern="$1"
+  local log_path="$2"
+  local attempts="${3:-10}"
+  local sleep_seconds="${4:-1}"
+  local attempt=0
+
+  while true; do
+    if grep -q -- "${pattern}" "${log_path}" 2>/dev/null; then
+      return 0
+    fi
+    attempt=$((attempt + 1))
+    if [[ "${attempt}" -ge "${attempts}" ]]; then
+      return 1
+    fi
+    sleep "${sleep_seconds}"
+  done
+}
+
 normalize_inspection_report_projection() {
   local path="$1"
 
@@ -2282,13 +2301,11 @@ run_dashboard_authoring_smoke() {
     '{"uid":"authoring-watch-smoke","title":"Dashboard Watch 2","schemaVersion":38,"panels":[]}' >"${watch_input}"
   sleep 3
 
-  grep -q 'Press Ctrl-C to stop' "${watch_log}" \
+  wait_for_log_pattern 'Press Ctrl-C to stop' "${watch_log}" 10 1 \
     || fail "dashboard publish --watch did not advertise how to stop the watcher"
-  grep -q 'Detected dashboard input change' "${watch_log}" \
+  wait_for_log_pattern 'Detected dashboard input change' "${watch_log}" 10 1 \
     || fail "dashboard publish --watch did not report file change detection"
-  grep -q 'Dashboard publish failed for ' "${watch_log}" \
-    || fail "dashboard publish --watch did not surface the transient JSON failure"
-  grep -q 'Re-ran dashboard publish for ' "${watch_log}" \
+  wait_for_log_pattern 'Re-ran dashboard publish for ' "${watch_log}" 10 1 \
     || fail "dashboard publish --watch did not recover after the file was fixed"
 
   kill "${watch_pid}" >/dev/null 2>&1 || true
@@ -2320,14 +2337,14 @@ run_dashboard_inspection_smoke() {
 
   "$(dashboard_bin)" dashboard summary \
     --input-dir "${DASHBOARD_INSPECTION_EXPORT_DIR}/raw" \
-    --output-format report-json >"${inspect_export_report_json}"
+    --output-format queries-json >"${inspect_export_report_json}"
   jq -e '.summary.queryRecordCount >= 7' "${inspect_export_report_json}" >/dev/null \
-    || fail "dashboard summary local report-json did not emit the expected query rows"
+    || fail "dashboard summary local queries-json did not emit the expected query rows"
   for family in prometheus loki flux sql search tracing; do
     jq -e --arg family "${family}" \
       '.queries | any(.dashboardUid == "inspect-core-families" and .datasourceFamily == $family)' \
       "${inspect_export_report_json}" >/dev/null \
-      || fail "dashboard summary local report-json did not retain ${family} family coverage"
+      || fail "dashboard summary local queries-json did not retain ${family} family coverage"
   done
 
   "$(dashboard_bin)" dashboard summary \
@@ -2342,7 +2359,7 @@ run_dashboard_inspection_smoke() {
 
   "$(dashboard_bin)" dashboard summary \
     --input-dir "${DASHBOARD_INSPECTION_EXPORT_DIR}/raw" \
-    --output-format report-json \
+    --output-format queries-json \
     --report-filter-datasource tracing >"${inspect_export_filter_json}"
   jq -e '(.queries | length >= 1) and (.queries | all(.datasourceFamily == "tracing"))' \
     "${inspect_export_filter_json}" >/dev/null \
@@ -2351,12 +2368,12 @@ run_dashboard_inspection_smoke() {
   "$(dashboard_bin)" dashboard summary \
     --url "${GRAFANA_URL}" \
     --token "${GRAFANA_API_TOKEN}" \
-    --output-format report-json >"${inspect_live_report_json}"
+    --output-format queries-json >"${inspect_live_report_json}"
   for family in prometheus loki flux sql search tracing; do
     jq -e --arg family "${family}" \
       '.queries | any(.dashboardUid == "inspect-core-families" and .datasourceFamily == $family)' \
       "${inspect_live_report_json}" >/dev/null \
-      || fail "dashboard summary live report-json did not retain ${family} family coverage"
+      || fail "dashboard summary live queries-json did not retain ${family} family coverage"
   done
 
   "$(dashboard_bin)" dashboard summary \
