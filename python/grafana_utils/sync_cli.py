@@ -36,7 +36,6 @@ from .alert_sync_workbench import (
 )
 from .bundle_preflight_workbench import (
     build_bundle_preflight_document,
-    BUNDLE_PREFLIGHT_KIND,
     render_bundle_preflight_text,
 )
 from .gitops_sync import (
@@ -111,6 +110,26 @@ SYNC_ROOT_HELP_EXAMPLES = (
     '  grafana-util sync plan --desired-file ./desired.json --fetch-live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN"\n'
     '  grafana-util sync apply --plan-file ./sync-plan-reviewed.json --approve --execute-live --url http://localhost:3000 --token "$GRAFANA_API_TOKEN"'
 )
+SYNC_LOCK_KIND = "grafana-utils-sync-lock"
+SYNC_LOCK_SCHEMA_VERSION = 1
+SYNC_AUDIT_KIND = "grafana-utils-sync-audit"
+SYNC_AUDIT_SCHEMA_VERSION = 1
+SYNC_PROMOTION_PREFLIGHT_KIND = "grafana-utils-sync-promotion-preflight"
+SYNC_PROMOTION_PREFLIGHT_SCHEMA_VERSION = 1
+CI_COMMAND_HELP = {
+    "summary": "Summarize local desired workspace resources from JSON.",
+    "plan": "Build a staged workspace plan from local desired and live JSON files.",
+    "mark-reviewed": "Mark a staged workspace plan as reviewed.",
+    "input-test": "Build a staged workspace input-test document from local JSON.",
+    "audit": "Audit managed resources against checksum lock and live state.",
+    "alert-readiness": (
+        "Assess alert sync specs for candidate, plan-only, and blocked states."
+    ),
+    "package-test": "Build a staged workspace package-test document from local JSON.",
+    "promote-test": (
+        "Build a staged promotion handoff from a workspace package and target inventory."
+    ),
+}
 
 
 def add_document_input_group(parser, *definitions):
@@ -154,6 +173,27 @@ def build_parser(prog=None):
     )
     subparsers = parser.add_subparsers(dest="command")
     subparsers.required = True
+
+    scan_parser = subparsers.add_parser(
+        "scan",
+        help="Scan staged workspace artifacts and summarize local resource state.",
+        epilog=SUMMARY_HELP_EXAMPLES,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+
+    test_parser = subparsers.add_parser(
+        "test",
+        help="Test whether staged workspace artifacts are structurally safe to continue.",
+        epilog=PREFLIGHT_HELP_EXAMPLES,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+
+    preview_parser = subparsers.add_parser(
+        "preview",
+        help="Preview what would change from staged workspace inputs.",
+        epilog=PLAN_HELP_EXAMPLES,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
 
     summary_parser = subparsers.add_parser(
         "summary",
@@ -404,8 +444,9 @@ def build_parser(prog=None):
     )
 
     bundle_parser = subparsers.add_parser(
-        "bundle",
-        help="Package exported dashboards, alerting resources, datasource inventory, and metadata into one portable source bundle.",
+        "package",
+        aliases=["bundle"],
+        help="Package exported dashboards, alerting resources, datasource inventory, and metadata into one portable source bundle. `bundle` is accepted as a compatibility alias.",
         epilog=BUNDLE_HELP_EXAMPLES,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -532,6 +573,146 @@ def build_parser(prog=None):
         default=None,
         help="Optional JSON file path to write the apply intent document.",
     )
+    ci_parser = subparsers.add_parser(
+        "ci",
+        help="Run CI-oriented sync workflows and lower-level review contracts.",
+        add_help=False,
+    )
+    ci_subparsers = ci_parser.add_subparsers(dest="ci_command")
+    ci_subparsers.required = True
+    for ci_command, ci_help in CI_COMMAND_HELP.items():
+        if ci_command in ("audit", "promote-test"):
+            continue
+        ci_subparsers.add_parser(
+            ci_command,
+            help=ci_help,
+            add_help=False,
+        )
+
+    ci_audit_parser = ci_subparsers.add_parser(
+        "audit",
+        help=CI_COMMAND_HELP["audit"],
+        add_help=False,
+    )
+    ci_audit_parser.add_argument(
+        "--managed-file",
+        default=None,
+        help=(
+            "Optional JSON file containing the managed desired sync resource list "
+            "used to define audit scope and managed fields."
+        ),
+    )
+    ci_audit_parser.add_argument(
+        "--lock-file",
+        default=None,
+        help="Optional JSON file containing a staged sync lock document to compare against.",
+    )
+    ci_audit_parser.add_argument(
+        "--live-file",
+        default=None,
+        help="Optional JSON file containing the current live sync resource list.",
+    )
+    ci_audit_parser.add_argument(
+        "--fetch-live",
+        action="store_true",
+        help="Fetch the current live state directly from Grafana instead of --live-file.",
+    )
+    ci_audit_parser.add_argument(
+        "--write-lock",
+        default=None,
+        help="Optional JSON file path to write the newly generated lock snapshot.",
+    )
+    ci_audit_parser.add_argument(
+        "--fail-on-drift",
+        action="store_true",
+        help="Fail the command when drift is detected.",
+    )
+    ci_audit_parser.add_argument(
+        "--page-size",
+        type=int,
+        default=500,
+        help="Dashboard search page size when --fetch-live is active.",
+    )
+    ci_audit_parser.add_argument(
+        "--org-id",
+        default=None,
+        help="Optional Grafana org id used when --fetch-live is active.",
+    )
+    ci_audit_parser.add_argument(
+        "--output",
+        choices=("text", "json"),
+        default="text",
+        help="Render the audit document as text or json (default: text).",
+    )
+    ci_audit_parser.add_argument(
+        "--output-format",
+        dest="output",
+        choices=("text", "json"),
+        default="text",
+        help="Render the audit document as text or json (default: text).",
+    )
+    ci_audit_parser.add_argument(
+        "--interactive",
+        action="store_true",
+        help="Open an interactive terminal browser over drift rows.",
+    )
+    add_common_cli_args(ci_audit_parser)
+
+    ci_promote_test_parser = ci_subparsers.add_parser(
+        "promote-test",
+        help=CI_COMMAND_HELP["promote-test"],
+        add_help=False,
+    )
+    ci_promote_test_parser.add_argument(
+        "--source-bundle",
+        required=True,
+        help="JSON file containing the staged workspace package document.",
+    )
+    ci_promote_test_parser.add_argument(
+        "--target-inventory",
+        required=True,
+        help="JSON file containing the staged target inventory snapshot.",
+    )
+    ci_promote_test_parser.add_argument(
+        "--mapping-file",
+        default=None,
+        help="Optional JSON object file containing explicit cross-environment promotion mappings.",
+    )
+    ci_promote_test_parser.add_argument(
+        "--availability-file",
+        default=None,
+        help="Optional JSON object file containing staged availability hints.",
+    )
+    ci_promote_test_parser.add_argument(
+        "--fetch-live",
+        action="store_true",
+        help="Fetch availability hints from Grafana instead of relying only on --availability-file.",
+    )
+    ci_promote_test_parser.add_argument(
+        "--org-id",
+        default=None,
+        help="Optional Grafana org id used when --fetch-live is active.",
+    )
+    ci_promote_test_parser.add_argument(
+        "--output",
+        choices=("text", "json"),
+        default="text",
+        help="Render the promotion-preflight document as text or json (default: text).",
+    )
+    ci_promote_test_parser.add_argument(
+        "--output-format",
+        dest="output",
+        choices=("text", "json"),
+        default="text",
+        help="Render the promotion-preflight document as text or json (default: text).",
+    )
+    ci_promote_test_parser.add_argument(
+        "--output-file",
+        default=None,
+        help="Optional JSON file path to write the staged promotion-preflight artifact.",
+    )
+    add_common_cli_args(ci_promote_test_parser)
+
     return parser
 
 
@@ -582,6 +763,831 @@ def _require_resource_list(document, label):
     if not isinstance(document, list):
         raise GrafanaError("%s must be a JSON array." % label)
     return document
+
+
+def _build_ci_ci_arg_parser(prog):
+    """Build one small parser for ci compatibility command arguments."""
+
+    class _NoExitArgumentParser(argparse.ArgumentParser):
+        def error(self, message):
+            raise GrafanaError(message)
+
+    parser = _NoExitArgumentParser(prog=prog, add_help=False)
+    add_common_cli_args(parser)
+    return parser
+
+
+def _canonicalize_json(value):
+    """Canonicalize JSON value for deterministic checksum calculation."""
+    if isinstance(value, dict):
+        return {
+            str(key): _canonicalize_json(value[key]) for key in sorted(value.keys(), key=str)
+        }
+    if isinstance(value, list):
+        return [_canonicalize_json(item) for item in value]
+    return value
+
+
+def _checksum_json_value(value):
+    """Checksum one JSON value using stable FNV-1a digest."""
+    return _fnv1a64_hex(json.dumps(_canonicalize_json(value), separators=(",", "")))
+
+
+def _coerce_string_map(value, label):
+    """Normalize a string-keyed mapping value."""
+    if value is None:
+        return {}
+    if not isinstance(value, dict):
+        raise GrafanaError("%s must be a JSON object." % label)
+    normalized = {}
+    for key, mapped in value.items():
+        source_key = _normalize_optional_text(key)
+        if not source_key:
+            continue
+        mapped_value = _normalize_optional_text(mapped)
+        normalized[source_key] = mapped_value
+    return normalized
+
+
+def _build_sync_lock_snapshot(body, managed_fields):
+    """Build one stable snapshot from a managed subset of a resource body."""
+    source_fields = []
+    if managed_fields:
+        seen = set()
+        for field in managed_fields:
+            text = _normalize_optional_text(field)
+            if not text or text in seen:
+                continue
+            seen.add(text)
+            source_fields.append(text)
+    else:
+        source_fields = sorted(body.keys())
+    return {field: body.get(field) for field in source_fields}
+
+
+def _build_sync_lock_document_from_specs(managed_specs, live_specs):
+    """Build one lock snapshot from managed specs and raw live specs."""
+    live_index = {}
+    for spec in [normalize_resource_spec(item) for item in live_specs]:
+        live_index[(spec.kind, spec.identity)] = spec
+
+    resources = []
+    present_count = 0
+    missing_live_count = 0
+    for spec in [normalize_resource_spec(item) for item in managed_specs]:
+        live = live_index.get((spec.kind, spec.identity))
+        if live is None:
+            missing_live_count += 1
+            resources.append(
+                {
+                    "kind": spec.kind,
+                    "identity": spec.identity,
+                    "title": spec.title,
+                    "status": "missing-live",
+                    "managedFields": list(spec.managed_fields),
+                    "checksum": None,
+                    "snapshot": None,
+                    "sourcePath": spec.source_path,
+                }
+            )
+            continue
+
+        present_count += 1
+        snapshot = _build_sync_lock_snapshot(live.body, spec.managed_fields)
+        resources.append(
+            {
+                "kind": spec.kind,
+                "identity": spec.identity,
+                "title": live.title,
+                "status": "present",
+                "managedFields": list(spec.managed_fields),
+                "checksum": _checksum_json_value(snapshot),
+                "snapshot": snapshot,
+                "sourcePath": spec.source_path,
+            }
+        )
+
+    return {
+        "kind": SYNC_LOCK_KIND,
+        "schemaVersion": SYNC_LOCK_SCHEMA_VERSION,
+        "summary": {
+            "resourceCount": len(resources),
+            "presentCount": present_count,
+            "missingLiveCount": missing_live_count,
+        },
+        "resources": resources,
+    }
+
+
+def _load_lock_resources(document, label):
+    """Load lock resource rows from a lock document."""
+    lock = _require_object(document, label)
+    if _normalize_optional_text(lock.get("kind")) != SYNC_LOCK_KIND:
+        raise GrafanaError("%s kind is not supported." % label)
+    return _require_resource_list(lock.get("resources"), "%s resources" % label)
+
+
+def _load_source_mapping_from_promotion_file(mapping_file):
+    """Load optional mapping input for promote-test."""
+    if not mapping_file:
+        return ({}, {}, {}, {}, {})
+
+    mapping = _require_object(load_json_document(mapping_file), "Sync promotion mapping input")
+    kind = _normalize_optional_text(mapping.get("kind"))
+    if kind and kind != "grafana-utils-sync-promotion-mapping":
+        raise GrafanaError("Sync promotion mapping input kind is not supported.")
+    schema_version = mapping.get("schemaVersion")
+    if schema_version is not None and schema_version != 1:
+        raise GrafanaError("Sync promotion mapping schemaVersion must be 1.")
+
+    folders = _coerce_string_map(mapping.get("folders"), "Sync promotion folder mapping")
+    datasource_uids = _coerce_string_map(
+        (mapping.get("datasources") or {}).get("uids"),
+        "Sync promotion datasource uid mapping",
+    )
+    datasource_names = _coerce_string_map(
+        (mapping.get("datasources") or {}).get("names"),
+        "Sync promotion datasource name mapping",
+    )
+    source_environment = _normalize_optional_text(
+        (mapping.get("metadata") or {}).get("sourceEnvironment")
+    )
+    target_environment = _normalize_optional_text(
+        (mapping.get("metadata") or {}).get("targetEnvironment")
+    )
+    mapping_summary = {
+        "kind": kind,
+        "schemaVersion": schema_version,
+        "sourceEnvironment": source_environment,
+        "targetEnvironment": target_environment,
+        "folderMappingCount": len(folders),
+        "datasourceUidMappingCount": len(datasource_uids),
+        "datasourceNameMappingCount": len(datasource_names),
+    }
+    return folders, datasource_uids, datasource_names, {
+        "folders": folders,
+        "datasource_uids": datasource_uids,
+        "datasource_names": datasource_names,
+    }, mapping_summary
+
+
+def _extract_dashboard_body(resource):
+    """Extract dashboard body consistently for preflight checks."""
+    body = resource.get("body")
+    if isinstance(body, dict):
+        return body
+    return dict(resource)
+
+
+def _extract_promotion_check_values(value):
+    """Build one normalized list of string values from reference field."""
+    if not isinstance(value, list):
+        return []
+    normalized = []
+    for item in value:
+        text = _normalize_optional_text(item)
+        if text:
+            normalized.append(text)
+    return normalized
+
+
+def _classify_sync_promotion_mapping_check(
+    kind,
+    identity,
+    source_value,
+    mapped_value,
+    mapping_source,
+    target_values,
+    missing_detail,
+):
+    """Classify one source/target mapping check."""
+    if not source_value:
+        return None
+    if source_value in target_values:
+        return {
+            "kind": kind,
+            "identity": identity,
+            "sourceValue": source_value,
+            "targetValue": source_value,
+            "resolution": "direct-match",
+            "mappingSource": "inventory",
+            "status": "direct",
+            "detail": "Target inventory already contains the same identifier.",
+            "blocking": False,
+        }
+    if mapped_value and mapped_value in target_values:
+        return {
+            "kind": kind,
+            "identity": identity,
+            "sourceValue": source_value,
+            "targetValue": mapped_value,
+            "resolution": "explicit-map",
+            "mappingSource": mapping_source,
+            "status": "mapped",
+            "detail": "Promotion mapping resolves this source identifier onto the target inventory.",
+            "blocking": False,
+        }
+    return {
+        "kind": kind,
+        "identity": identity,
+        "sourceValue": source_value,
+        "targetValue": mapped_value,
+        "resolution": "missing-map",
+        "mappingSource": mapping_source,
+        "status": "missing-target",
+        "detail": missing_detail,
+        "blocking": True,
+    }
+
+
+def _build_ci_promotion_check_rows(
+    source_bundle,
+    target_inventory,
+    folder_mapping,
+    datasource_uid_mapping,
+    datasource_name_mapping,
+):
+    """Build one list of promotion remap checks."""
+    target_folders = {
+        _normalize_optional_text(item.get("uid"))
+        for item in target_inventory.get("folders") or []
+        if _normalize_optional_text(item.get("uid"))
+    }
+    target_datasource_uids = {
+        _normalize_optional_text(item.get("uid"))
+        for item in target_inventory.get("datasources") or []
+        if _normalize_optional_text(item.get("uid"))
+    }
+    target_datasource_names = {
+        _normalize_optional_text(item.get("name") or item.get("title"))
+        for item in target_inventory.get("datasources") or []
+        if _normalize_optional_text(item.get("name") or item.get("title"))
+    }
+    checks = []
+
+    for dashboard in source_bundle.get("dashboards") or []:
+        if not isinstance(dashboard, dict):
+            continue
+        dashboard_uid = _normalize_optional_text(dashboard.get("uid")) or "dashboard"
+        folder_uid = _normalize_optional_text(dashboard.get("folderUid"))
+        check = _classify_sync_promotion_mapping_check(
+            "folder-remap",
+            dashboard_uid,
+            folder_uid,
+            _normalize_optional_text(folder_mapping.get(folder_uid)),
+            "folders",
+            target_folders,
+            "Dashboard folder UID is missing from the target inventory and has no valid promotion mapping.",
+        )
+        if check is not None:
+            checks.append(check)
+
+        body = _extract_dashboard_body(dashboard)
+        for datasource_uid in _extract_promotion_check_values(
+            body.get("datasourceUids")
+        ):
+            check = _classify_sync_promotion_mapping_check(
+                "datasource-uid-remap",
+                dashboard_uid,
+                datasource_uid,
+                _normalize_optional_text(datasource_uid_mapping.get(datasource_uid)),
+                "datasources.uids",
+                target_datasource_uids,
+                "Datasource UID is missing from the target inventory and has no valid promotion mapping.",
+            )
+            if check is not None:
+                checks.append(check)
+        for datasource_name in _extract_promotion_check_values(
+            body.get("datasourceNames")
+        ):
+            check = _classify_sync_promotion_mapping_check(
+                "datasource-name-remap",
+                dashboard_uid,
+                datasource_name,
+                _normalize_optional_text(datasource_name_mapping.get(datasource_name)),
+                "datasources.names",
+                target_datasource_names,
+                "Datasource name is missing from the target inventory and has no valid promotion mapping.",
+            )
+            if check is not None:
+                checks.append(check)
+
+    for alert in source_bundle.get("alerts") or []:
+        if not isinstance(alert, dict):
+            continue
+        alert_uid = _normalize_optional_text(alert.get("uid")) or "alert"
+        body = _extract_dashboard_body(alert)
+        for datasource_uid in _extract_promotion_check_values(
+            body.get("datasourceUids")
+        ):
+            if datasource_uid in ("__expr__", "__dashboard__"):
+                continue
+            check = _classify_sync_promotion_mapping_check(
+                "alert-datasource-uid-remap",
+                alert_uid,
+                datasource_uid,
+                _normalize_optional_text(datasource_uid_mapping.get(datasource_uid)),
+                "datasources.uids",
+                target_datasource_uids,
+                "Alert datasource UID is missing from the target inventory and has no valid promotion mapping.",
+            )
+            if check is not None:
+                checks.append(check)
+        for datasource_name in _extract_promotion_check_values(
+            body.get("datasourceNames")
+        ):
+            check = _classify_sync_promotion_mapping_check(
+                "alert-datasource-name-remap",
+                alert_uid,
+                datasource_name,
+                _normalize_optional_text(datasource_name_mapping.get(datasource_name)),
+                "datasources.names",
+                target_datasource_names,
+                "Alert datasource name is missing from the target inventory and has no valid promotion mapping.",
+            )
+            if check is not None:
+                checks.append(check)
+    return checks
+
+
+def _summarize_sync_promotion_checks(checks):
+    """Build promotion check summary counts."""
+    return {
+        "folderRemapCount": len([item for item in checks if item.get("kind") == "folder-remap"]),
+        "datasourceUidRemapCount": len(
+            [item for item in checks if item.get("kind") in ("datasource-uid-remap", "alert-datasource-uid-remap")]
+        ),
+        "datasourceNameRemapCount": len(
+            [item for item in checks if item.get("kind") in ("datasource-name-remap", "alert-datasource-name-remap")]
+        ),
+        "resolvedCount": len([item for item in checks if not item.get("blocking")]),
+        "directCount": len([item for item in checks if item.get("status") == "direct"]),
+        "mappedCount": len([item for item in checks if item.get("status") == "mapped"]),
+        "missingTargetCount": len([item for item in checks if item.get("status") == "missing-target"]),
+    }
+
+
+def _bundle_preflight_blocking_count(bundle_preflight_document):
+    """Compute promotion blocking baseline from bundle preflight summary."""
+    summary = _require_object(
+        bundle_preflight_document.get("summary"), "Bundle preflight summary"
+    )
+    return (
+        int(summary.get("syncBlockingCount") or 0)
+        + int(summary.get("providerBlockingCount") or 0)
+        + int(summary.get("secretBlockingCount") or summary.get("secretPlaceholderBlockingCount") or 0)
+        + int(summary.get("alertBlockedCount") or summary.get("alertBlocked") or summary.get("alertArtifactBlockedCount") or 0)
+    )
+
+
+def _resource_count_from_bundle_summary(source_bundle):
+    """Read target resource count from bundle summary if available."""
+    summary = _require_object(source_bundle.get("summary"), "Bundle summary") if isinstance(
+        source_bundle, dict
+    ) else None
+    if summary is not None:
+        total = 0
+        for value in summary.values():
+            if _is_json_int(value):
+                total += int(value)
+        if total > 0:
+            return total
+    return int(len(source_bundle.get("folders") or [])) + int(
+        len(source_bundle.get("datasources") or [])
+    ) + int(len(source_bundle.get("dashboards") or [])) + int(
+        len(source_bundle.get("alerts") or [])
+    )
+
+
+def build_sync_lock_document(managed_specs, live_specs):
+    """Build one compatibility sync lock document."""
+    return _build_sync_lock_document_from_specs(managed_specs, live_specs)
+
+
+def build_sync_lock_document_from_lock(lock_document, live_specs):
+    """Build one compatibility sync lock from a previous lock and live specs."""
+    lock_resources = _load_lock_resources(lock_document, "Sync lock input")
+
+    managed_specs = []
+    for resource in lock_resources:
+        if not isinstance(resource, dict):
+            raise GrafanaError("Sync lock resource must be a JSON object.")
+        kind = _normalize_optional_text(resource.get("kind"))
+        identity = _normalize_optional_text(resource.get("identity"))
+        if not kind or not identity:
+            raise GrafanaError("Sync lock resources require non-empty kind and identity.")
+        managed_specs.append(
+            {
+                "kind": kind,
+                "title": _normalize_optional_text(resource.get("title", identity)),
+                "uid": identity,
+                "name": identity,
+                "identity": identity,
+                "body": _copy_mapping(resource.get("snapshot"), "Sync lock resource snapshot")
+                if resource.get("snapshot") not in (None,)
+                else {},
+                "managedFields": resource.get("managedFields") or (),
+                "sourcePath": _normalize_optional_text(resource.get("sourcePath")),
+            }
+        )
+    return _build_sync_lock_document_from_specs(managed_specs, live_specs)
+
+
+def build_sync_audit_document(current_lock_document, baseline_lock_document=None):
+    """Build one compatibility sync audit document."""
+    baseline_resources = None
+    if baseline_lock_document is not None:
+        baseline_resources = {
+            (
+                _normalize_optional_text(resource.get("kind")),
+                _normalize_optional_text(resource.get("identity")),
+            ): resource
+            for resource in _load_lock_resources(
+                baseline_lock_document, "Sync lock baseline input"
+            )
+        }
+
+    drifts = []
+    current_resources = _load_lock_resources(current_lock_document, "Sync lock input")
+    in_sync_count = 0
+    missing_lock_count = 0
+    missing_live_count = 0
+    current_present_count = 0
+    current_missing_count = 0
+
+    for resource in current_resources:
+        if not isinstance(resource, dict):
+            raise GrafanaError("Sync lock resource must be a JSON object.")
+        kind = _normalize_optional_text(resource.get("kind"))
+        identity = _normalize_optional_text(resource.get("identity"))
+        title = _normalize_optional_text(resource.get("title")) or identity
+        current_status = _normalize_optional_text(resource.get("status"))
+        if current_status == "present":
+            current_present_count += 1
+        else:
+            current_missing_count += 1
+            if current_status == "missing-live":
+                missing_live_count += 1
+
+        current_checksum = resource.get("checksum")
+        current_snapshot = resource.get("snapshot")
+        baseline = None
+        baseline_status = None
+        baseline_checksum = None
+        baseline_snapshot = None
+        if baseline_resources is not None:
+            baseline = baseline_resources.get((kind, identity))
+            if baseline is not None:
+                baseline_status = _normalize_optional_text(baseline.get("status"))
+                baseline_checksum = baseline.get("checksum")
+                baseline_snapshot = baseline.get("snapshot")
+
+        drift_status = None
+        if current_status != "present":
+            drift_status = "missing-live"
+        elif baseline_resources is None:
+            drift_status = None
+        elif baseline is None:
+            drift_status = "missing-lock"
+            missing_lock_count += 1
+        elif baseline_checksum != current_checksum or baseline_status != current_status:
+            drift_status = "drift-detected"
+
+        if drift_status is None:
+            in_sync_count += 1
+            continue
+
+        drift_fields = set()
+        if isinstance(current_snapshot, dict):
+            drift_fields.update(current_snapshot.keys())
+        if isinstance(baseline_snapshot, dict):
+            drift_fields.update(baseline_snapshot.keys())
+        drifted_fields = [
+            field
+            for field in sorted(drift_fields)
+            if (current_snapshot or {}).get(field)
+            != (baseline_snapshot or {}).get(field)
+        ]
+        drifts.append(
+            {
+                "kind": kind,
+                "identity": identity,
+                "title": title,
+                "status": drift_status,
+                "baselineStatus": _normalize_optional_text(baseline_status),
+                "currentStatus": current_status,
+                "baselineChecksum": baseline_checksum,
+                "currentChecksum": current_checksum,
+                "driftedFields": drifted_fields,
+                "sourcePath": _normalize_optional_text(resource.get("sourcePath")),
+            }
+        )
+
+    return {
+        "kind": SYNC_AUDIT_KIND,
+        "schemaVersion": SYNC_AUDIT_SCHEMA_VERSION,
+        "summary": {
+            "managedCount": len(current_resources),
+            "baselineCount": len(baseline_resources or {}),
+            "currentPresentCount": current_present_count,
+            "currentMissingCount": current_missing_count,
+            "inSyncCount": in_sync_count,
+            "driftCount": len(drifts),
+            "missingLockCount": missing_lock_count,
+            "missingLiveCount": missing_live_count,
+        },
+        "currentLock": current_lock_document,
+        "baselineLock": baseline_lock_document,
+        "drifts": drifts,
+    }
+
+
+def render_sync_audit_text(document):
+    """Render one compatibility sync audit document."""
+    if _normalize_optional_text(document.get("kind")) != SYNC_AUDIT_KIND:
+        raise GrafanaError("Sync audit document kind is not supported.")
+    summary = _require_object(document.get("summary"), "Sync audit document summary")
+    lines = [
+        "Sync audit",
+        "Managed: %s baseline=%s current-present=%s current-missing=%s"
+        % (
+            int(summary.get("managedCount") or 0),
+            int(summary.get("baselineCount") or 0),
+            int(summary.get("currentPresentCount") or 0),
+            int(summary.get("currentMissingCount") or 0),
+        ),
+        "Drift: count=%s in-sync=%s missing-lock=%s missing-live=%s"
+        % (
+            int(summary.get("driftCount") or 0),
+            int(summary.get("inSyncCount") or 0),
+            int(summary.get("missingLockCount") or 0),
+            int(summary.get("missingLiveCount") or 0),
+        ),
+    ]
+    for drift in _require_resource_list(document.get("drifts"), "Sync audit drift list"):
+        if not isinstance(drift, dict):
+            raise GrafanaError("Sync audit drift row must be a JSON object.")
+        fields = drift.get("driftedFields") or []
+        if not isinstance(fields, list):
+            fields = []
+        lines.append(
+            "- [%s] %s %s fields=%s"
+            % (
+                _normalize_optional_text(drift.get("status")) or "unknown",
+                _normalize_optional_text(drift.get("kind")) or "unknown",
+                _normalize_optional_text(drift.get("identity")) or "unknown",
+                ",".join(fields) if fields else "-",
+            )
+        )
+    return lines
+
+
+def build_ci_promotion_test_document(
+    source_bundle,
+    target_inventory,
+    availability,
+    mapping_file_path,
+):
+    """Build one compatibility sync promotion preflight document."""
+    source_bundle = _require_object(source_bundle, "Workspace package input")
+    target_inventory = _require_object(target_inventory, "Sync target inventory input")
+    availability = _require_object(availability, "Sync availability input")
+    (
+        mapping_folders,
+        mapping_uid,
+        mapping_name,
+        _mapping,
+        mapping_summary,
+    ) = _load_source_mapping_from_promotion_file(
+        mapping_file_path
+    )
+    bundle_preflight = build_bundle_preflight_document(
+        source_bundle, target_inventory, availability=availability
+    )
+    checks = _build_ci_promotion_check_rows(
+        source_bundle,
+        target_inventory,
+        mapping_folders,
+        mapping_uid,
+        mapping_name,
+    )
+    return _build_ci_promotion_test_document_from_parts(
+        bundle_preflight=bundle_preflight,
+        checks=checks,
+        mapping_summary=mapping_summary,
+        source_summary=source_bundle.get("summary") if isinstance(source_bundle.get("summary"), dict) else {},
+    )
+
+
+def _normalize_mapping_keys(mapping):
+    """Normalize mapping key-value strings for stable lookups."""
+    return _coerce_string_map(mapping, "Sync promotion mapping")
+
+
+def _build_ci_promotion_test_document_from_parts(
+    bundle_preflight,
+    checks,
+    mapping_summary,
+    source_summary=None,
+):
+    """Build one compatibility sync promotion preflight document from built parts."""
+    bundle_preflight = _require_object(bundle_preflight, "Bundle preflight input")
+    checks = list(check for check in checks if isinstance(check, dict))
+    check_summary = _summarize_sync_promotion_checks(checks)
+    resolved_checks = [item for item in checks if not item.get("blocking")]
+    blocking_checks = [item for item in checks if item.get("blocking")]
+    direct_match_count = int(check_summary.get("directCount") or 0)
+    mapped_count = int(check_summary.get("mappedCount") or 0)
+    missing_mapping_count = int(check_summary.get("missingTargetCount") or 0)
+    bundle_blocking_count = _bundle_preflight_blocking_count(bundle_preflight)
+    blocking_count = bundle_blocking_count + missing_mapping_count
+
+    if source_summary is None:
+        source_summary = {}
+    source_summary = _require_object(source_summary, "Bundle summary")
+
+    return {
+        "kind": SYNC_PROMOTION_PREFLIGHT_KIND,
+        "schemaVersion": SYNC_PROMOTION_PREFLIGHT_SCHEMA_VERSION,
+        "summary": {
+            "resourceCount": int(_resource_count_from_bundle_summary({"summary": source_summary})),
+            "directMatchCount": direct_match_count,
+            "mappedCount": mapped_count,
+            "missingMappingCount": missing_mapping_count,
+            "bundleBlockingCount": int(bundle_blocking_count),
+            "blockingCount": blocking_count,
+        },
+        "bundlePreflight": bundle_preflight,
+        "mappingSummary": {
+            "mappingKind": _normalize_optional_text(mapping_summary.get("kind")),
+            "mappingSchemaVersion": mapping_summary.get("schemaVersion"),
+            "sourceEnvironment": _normalize_optional_text(
+                mapping_summary.get("sourceEnvironment")
+            ),
+            "targetEnvironment": _normalize_optional_text(
+                mapping_summary.get("targetEnvironment")
+            ),
+            "folderMappingCount": int(mapping_summary.get("folderMappingCount") or 0),
+            "datasourceUidMappingCount": int(
+                mapping_summary.get("datasourceUidMappingCount") or 0
+            ),
+            "datasourceNameMappingCount": int(
+                mapping_summary.get("datasourceNameMappingCount") or 0
+            ),
+        },
+        "checkSummary": check_summary,
+        "handoffSummary": {
+            "reviewRequired": True,
+            "readyForReview": blocking_count == 0,
+            "nextStage": "review" if blocking_count == 0 else "resolve-blockers",
+            "blockingCount": blocking_count,
+            "reviewInstruction": (
+                "promotion handoff is ready to move into review"
+                if blocking_count == 0
+                else "promotion handoff is blocked until the listed remaps and bundle issues are cleared"
+            ),
+        },
+        "continuationSummary": {
+            "stagedOnly": True,
+            "liveMutationAllowed": False,
+            "readyForContinuation": blocking_count == 0,
+            "nextStage": "staged-apply-continuation" if blocking_count == 0 else "resolve-blockers",
+            "resolvedCount": int(len(resolved_checks)),
+            "blockingCount": blocking_count,
+            "continuationInstruction": (
+                "reviewed remaps can continue into a staged apply continuation without enabling live mutation"
+                if blocking_count == 0
+                else "keep the promotion staged until blockers clear; do not enter the apply continuation"
+            ),
+        },
+        "checks": checks,
+        "resolvedChecks": resolved_checks,
+        "blockingChecks": blocking_checks,
+    }
+
+
+def render_sync_promotion_preflight_text(document):
+    """Render one compatibility sync promotion preflight document."""
+    if _normalize_optional_text(document.get("kind")) != SYNC_PROMOTION_PREFLIGHT_KIND:
+        raise GrafanaError("Sync promotion preflight document kind is not supported.")
+    summary = _require_object(document.get("summary"), "Sync promotion preflight summary")
+    mapping_summary = _require_object(
+        document.get("mappingSummary"), "Sync promotion mapping summary"
+    )
+    check_summary = _require_object(
+        document.get("checkSummary"), "Sync promotion check summary"
+    )
+    handoff_summary = _require_object(
+        document.get("handoffSummary"), "Sync promotion handoff summary"
+    )
+    continuation_summary = _require_object(
+        document.get("continuationSummary"), "Sync promotion continuation summary"
+    )
+    resolved_checks = _require_resource_list(
+        document.get("resolvedChecks"), "Sync promotion resolved checks"
+    )
+    blocking_checks = _require_resource_list(
+        document.get("blockingChecks"), "Sync promotion blocking checks"
+    )
+    bundle_preflight = _require_object(
+        document.get("bundlePreflight"), "Sync promotion bundle preflight"
+    )
+    lines = [
+        "Sync promotion preflight",
+        "Summary: resources=%s direct=%s mapped=%s missing-mappings=%s bundle-blocking=%s blocking=%s"
+        % (
+            int(summary.get("resourceCount") or 0),
+            int(summary.get("directMatchCount") or 0),
+            int(summary.get("mappedCount") or 0),
+            int(summary.get("missingMappingCount") or 0),
+            int(summary.get("bundleBlockingCount") or 0),
+            int(summary.get("blockingCount") or 0),
+        ),
+        "Mappings: kind=%s schema=%s source-env=%s target-env=%s folders=%s datasource-uids=%s datasource-names=%s"
+        % (
+            _normalize_optional_text(mapping_summary.get("mappingKind")),
+            _normalize_optional_text(mapping_summary.get("mappingSchemaVersion")),
+            _normalize_optional_text(mapping_summary.get("sourceEnvironment")),
+            _normalize_optional_text(mapping_summary.get("targetEnvironment")),
+            int(mapping_summary.get("folderMappingCount") or 0),
+            int(mapping_summary.get("datasourceUidMappingCount") or 0),
+            int(mapping_summary.get("datasourceNameMappingCount") or 0),
+        ),
+        "Check buckets: folder-remaps=%s datasource-uid-remaps=%s datasource-name-remaps=%s resolved-remaps=%s blocking-remaps=%s direct=%s mapped=%s"
+        % (
+            int(check_summary.get("folderRemapCount") or 0),
+            int(check_summary.get("datasourceUidRemapCount") or 0),
+            int(check_summary.get("datasourceNameRemapCount") or 0),
+            int(check_summary.get("resolvedCount") or 0),
+            int(check_summary.get("missingTargetCount") or len(blocking_checks)),
+            int(check_summary.get("directCount") or 0),
+            int(check_summary.get("mappedCount") or 0),
+        ),
+        "Reason: promotion stays blocked until blocking checks are cleared; resolved remaps stay in the review handoff for traceability.",
+        "Handoff: review-required=%s ready-for-review=%s next-stage=%s blocking=%s instruction=%s"
+        % (
+            bool(handoff_summary.get("reviewRequired") or False),
+            bool(handoff_summary.get("readyForReview") or False),
+            _normalize_optional_text(handoff_summary.get("nextStage") or ""),
+            int(handoff_summary.get("blockingCount") or 0),
+            _normalize_optional_text(handoff_summary.get("reviewInstruction") or ""),
+        ),
+        "",
+        "# Controlled apply continuation",
+        "staged-only=%s live-mutation-allowed=%s ready-for-continuation=%s next-stage=%s resolved=%s blocking=%s instruction=%s"
+        % (
+            bool(continuation_summary.get("stagedOnly") or False),
+            bool(continuation_summary.get("liveMutationAllowed") or False),
+            bool(continuation_summary.get("readyForContinuation") or False),
+            _normalize_optional_text(continuation_summary.get("nextStage") or ""),
+            int(continuation_summary.get("resolvedCount") or 0),
+            int(continuation_summary.get("blockingCount") or len(blocking_checks)),
+            _normalize_optional_text(continuation_summary.get("continuationInstruction") or ""),
+        ),
+        "",
+        "# Resolved remaps",
+    ]
+    if not resolved_checks:
+        lines.append("- none status=ok detail=No resolved remaps to review.")
+    for item in resolved_checks:
+        lines.append(
+            "- %s identity=%s source=%s target=%s resolution=%s mapping-source=%s status=%s detail=%s"
+            % (
+                _normalize_optional_text(item.get("kind")) or "unknown",
+                _normalize_optional_text(item.get("identity")) or "unknown",
+                _normalize_optional_text(item.get("sourceValue")),
+                _normalize_optional_text(item.get("targetValue")),
+                _normalize_optional_text(item.get("resolution")),
+                _normalize_optional_text(item.get("mappingSource")),
+                _normalize_optional_text(item.get("status")),
+                _normalize_optional_text(item.get("detail")),
+            )
+        )
+
+    lines.extend(
+        [
+            "",
+            "# Blocking remaps",
+        ]
+    )
+    if not blocking_checks:
+        lines.append("- none status=ok detail=No blocking remaps remain.")
+    for item in blocking_checks:
+        lines.append(
+            "- %s identity=%s source=%s target=%s resolution=%s mapping-source=%s status=%s detail=%s"
+            % (
+                _normalize_optional_text(item.get("kind")) or "unknown",
+                _normalize_optional_text(item.get("identity")) or "unknown",
+                _normalize_optional_text(item.get("sourceValue")),
+                _normalize_optional_text(item.get("targetValue")),
+                _normalize_optional_text(item.get("resolution")),
+                _normalize_optional_text(item.get("mappingSource")),
+                _normalize_optional_text(item.get("status")),
+                _normalize_optional_text(item.get("detail")),
+            )
+        )
+    lines.extend(render_bundle_preflight_text(bundle_preflight))
+    return lines
 
 
 def build_sync_summary_document(raw_specs):
@@ -1959,9 +2965,188 @@ def run_apply(args):
     return 0
 
 
+def _dispatch_compat_command(
+    args,
+    command_name,
+    unsupported_description=None,
+):
+    """Compatibility-style dispatch into existing sync commands."""
+    if unsupported_description:
+        raise GrafanaError(unsupported_description)
+    forwarded = list(getattr(args, "forwarded_argv", ()) or ())
+    return main([command_name] + forwarded)
+
+
+def run_scan(args):
+    """Run scan command compatibility implementation."""
+    return _dispatch_compat_command(args, "summary")
+
+
+def run_test(args):
+    """Run test command compatibility implementation."""
+    return _dispatch_compat_command(args, "preflight")
+
+
+def run_preview(args):
+    """Run preview command compatibility implementation."""
+    return _dispatch_compat_command(args, "plan")
+
+
+def run_ci_summary(args):
+    """Run CI summary command compatibility implementation."""
+    return _dispatch_compat_command(args, "summary")
+
+
+def run_ci_plan(args):
+    """Run CI plan command compatibility implementation."""
+    return _dispatch_compat_command(args, "plan")
+
+
+def run_ci_mark_reviewed(args):
+    """Run CI mark-reviewed command compatibility implementation."""
+    return _dispatch_compat_command(args, "review")
+
+
+def run_ci_input_test(args):
+    """Run CI input-test command compatibility implementation."""
+    return _dispatch_compat_command(args, "preflight")
+
+
+def run_ci_alert_readiness(args):
+    """Run CI alert-readiness command compatibility implementation."""
+    return _dispatch_compat_command(args, "assess-alerts")
+
+
+def run_ci_package_test(args):
+    """Run CI package-test command compatibility implementation."""
+    return _dispatch_compat_command(args, "bundle-preflight")
+
+
+def run_ci_audit(args):
+    """Run CI audit command compatibility implementation."""
+    if not bool(getattr(args, "managed_file", None)) and not bool(
+        getattr(args, "lock_file", None)
+    ):
+        raise GrafanaError("Sync audit requires --managed-file, --lock-file, or both.")
+
+    baseline_lock = None
+    if getattr(args, "lock_file", None):
+        baseline_lock = _require_object(load_json_document(args.lock_file), "Sync lock input")
+
+    if bool(getattr(args, "fetch_live", False)):
+        live_specs = fetch_live_resource_specs(
+            build_client(args),
+            page_size=getattr(args, "page_size", 500),
+        )
+    else:
+        if not getattr(args, "live_file", None):
+            raise GrafanaError("Sync audit requires --live-file unless --fetch-live is used.")
+        live_specs = _require_resource_list(
+            load_json_document(args.live_file),
+            "Sync live input",
+        )
+
+    if getattr(args, "managed_file", None):
+        managed_specs = _require_resource_list(
+            load_json_document(args.managed_file),
+            "Sync managed input",
+        )
+        current_lock = build_sync_lock_document(managed_specs, live_specs)
+    else:
+        if baseline_lock is None:
+            raise GrafanaError("Sync audit requires --managed-file or --lock-file.")
+        current_lock = build_sync_lock_document_from_lock(baseline_lock, live_specs)
+
+    audit_document = build_sync_audit_document(
+        current_lock,
+        baseline_lock,
+    )
+    drift_count = int((audit_document.get("summary") or {}).get("driftCount") or 0)
+    write_lock_path = getattr(args, "write_lock", None)
+    if write_lock_path and not (args.fail_on_drift and drift_count > 0):
+        write_json_document(write_lock_path, current_lock)
+
+    if args.fail_on_drift and drift_count > 0:
+        raise GrafanaError("Sync audit detected %s drifted resource(s)." % drift_count)
+
+    emit_document_with_output(
+        audit_document,
+        render_sync_audit_text(audit_document),
+        getattr(args, "output", "text"),
+        output_file=getattr(args, "output_file", None),
+    )
+    return 0
+
+
+def run_ci_promote_test(args):
+    """Run CI promote-test command compatibility implementation."""
+    source_bundle = _require_object(
+        load_json_document(args.source_bundle),
+        "Source bundle input",
+    )
+    target_inventory = _require_object(
+        load_json_document(args.target_inventory),
+        "Sync target inventory input",
+    )
+    availability = _load_optional_object_file(
+        getattr(args, "availability_file", None),
+        "Bundle availability input",
+    )
+    if bool(getattr(args, "fetch_live", False)):
+        availability = _merge_availability(
+            availability,
+            fetch_live_availability(build_client(args)),
+        )
+    document = build_ci_promotion_test_document(
+        source_bundle=source_bundle,
+        target_inventory=target_inventory,
+        availability=availability,
+        mapping_file_path=getattr(args, "mapping_file", None),
+    )
+    emit_document_with_output(
+        document,
+        render_sync_promotion_preflight_text(document),
+        getattr(args, "output", "text"),
+        output_file=getattr(args, "output_file", None),
+    )
+    return 0
+
+
+def run_ci(args):
+    """Run CI namespace dispatch."""
+    if args.ci_command == "summary":
+        return run_ci_summary(args)
+    if args.ci_command == "plan":
+        return run_ci_plan(args)
+    if args.ci_command == "mark-reviewed":
+        return run_ci_mark_reviewed(args)
+    if args.ci_command == "input-test":
+        return run_ci_input_test(args)
+    if args.ci_command == "audit":
+        return run_ci_audit(args)
+    if args.ci_command == "alert-readiness":
+        return run_ci_alert_readiness(args)
+    if args.ci_command == "package-test":
+        return run_ci_package_test(args)
+    if args.ci_command == "promote-test":
+        return run_ci_promote_test(args)
+    raise GrafanaError("Unsupported workspace ci command: %s" % args.ci_command)
+
+
 def parse_args(argv=None):
     """Parse args implementation."""
-    return build_parser().parse_args(argv)
+    parser = build_parser()
+    argv = list(sys.argv[1:] if argv is None else argv)
+    parsed, unknown = parser.parse_known_args(argv)
+    if parsed.command in ("scan", "test", "preview"):
+        parsed.forwarded_argv = unknown
+        return parsed
+    if parsed.command == "ci":
+        parsed.forwarded_argv = unknown
+        return parsed
+    if unknown:
+        parser.parse_args(argv)
+    return parsed
 
 
 def main(argv=None):
@@ -1972,6 +3157,12 @@ def main(argv=None):
 
     args = parse_args(argv)
     try:
+        if args.command == "scan":
+            return run_scan(args)
+        if args.command == "test":
+            return run_test(args)
+        if args.command == "preview":
+            return run_preview(args)
         if args.command == "summary":
             return run_summary(args)
         if args.command == "plan":
@@ -1984,8 +3175,10 @@ def main(argv=None):
             return run_assess_alerts(args)
         if args.command == "bundle-preflight":
             return run_bundle_preflight(args)
-        if args.command == "bundle":
+        if args.command in ("bundle", "package"):
             return run_bundle(args)
+        if args.command == "ci":
+            return run_ci(args)
         return run_apply(args)
     except GrafanaError as exc:
         print("Error: %s" % exc, file=sys.stderr)
@@ -2000,6 +3193,19 @@ __all__ = [
     "load_plan_document",
     "main",
     "parse_args",
+    "run_ci",
+    "run_ci_alert_readiness",
+    "run_ci_audit",
+    "run_ci_input_test",
+    "run_ci_mark_reviewed",
+    "run_ci_promote_test",
+    "run_ci_package_test",
+    "run_ci_plan",
+    "run_ci_summary",
+    "run_preview",
+    "run_scan",
+    "run_test",
+    "run_summary",
     "run_assess_alerts",
     "run_apply",
     "run_bundle",
@@ -2007,7 +3213,6 @@ __all__ = [
     "run_plan",
     "run_preflight",
     "run_review",
-    "run_summary",
     "render_sync_summary_text",
     "write_json_document",
 ]

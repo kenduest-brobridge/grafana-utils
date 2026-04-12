@@ -27,8 +27,12 @@ from .dashboard_cli import (
 )
 from .datasource.parser import (
     DATASOURCE_EXPORT_FILENAME,
+    DATASOURCE_PROVISIONING_FILENAME,
+    DATASOURCE_PROVISIONING_SUBDIR,
     DEFAULT_EXPORT_DIR,
     EXPORT_METADATA_FILENAME,
+    DIFF_OUTPUT_FORMAT_CHOICES,
+    DATASOURCE_IMPORT_FORMAT_CHOICES,
     LIVE_MUTATION_DRY_RUN_OUTPUT_FORMAT_CHOICES,
     ROOT_INDEX_KIND,
     TOOL_SCHEMA_VERSION,
@@ -71,8 +75,13 @@ from .datasource_diff import (
     load_datasource_diff_bundle,
 )
 
+_DEFAULT_BUILD_CLIENT = build_client
+_LAST_SYNCED_BUILD_CLIENT = build_client
+
 __all__ = [
     "DATASOURCE_EXPORT_FILENAME",
+    "DATASOURCE_PROVISIONING_FILENAME",
+    "DATASOURCE_PROVISIONING_SUBDIR",
     "DEFAULT_EXPORT_DIR",
     "EXPORT_METADATA_FILENAME",
     "GrafanaError",
@@ -86,6 +95,7 @@ __all__ = [
     "build_export_metadata",
     "build_export_records",
     "build_import_payload",
+    "browse_datasources",
     "compare_datasource_bundle_to_live",
     "determine_datasource_action",
     "determine_import_mode",
@@ -119,24 +129,43 @@ def _normalize_output_format_args(args, parser):
     if output_format is None:
         return
     if getattr(args, "command", None) == "types":
-        if bool(getattr(args, "json", False)):
-            parser.error(
-                "--output-format cannot be combined with --json for datasource types."
-            )
-        args.json = output_format == "json"
-        return
-    if getattr(args, "command", None) == "list":
         if (
             bool(getattr(args, "table", False))
             or bool(getattr(args, "csv", False))
             or bool(getattr(args, "json", False))
+            or bool(getattr(args, "yaml", False))
         ):
             parser.error(
-                "--output-format cannot be combined with --table, --csv, or --json for datasource list."
+                "--output-format cannot be combined with --table, --csv, --json, or --yaml for datasource types."
             )
         args.table = output_format == "table"
         args.csv = output_format == "csv"
         args.json = output_format == "json"
+        args.yaml = output_format == "yaml"
+        return
+    if getattr(args, "command", None) == "list":
+        if (
+            bool(getattr(args, "text", False))
+            or bool(getattr(args, "table", False))
+            or bool(getattr(args, "csv", False))
+            or bool(getattr(args, "json", False))
+            or bool(getattr(args, "yaml", False))
+        ):
+            parser.error(
+                "--output-format cannot be combined with --text, --table, --csv, --json, or --yaml for datasource list."
+            )
+        args.text = output_format == "text"
+        args.table = output_format == "table"
+        args.csv = output_format == "csv"
+        args.json = output_format == "json"
+        args.yaml = output_format == "yaml"
+        return
+    if getattr(args, "command", None) == "diff":
+        if bool(getattr(args, "json", False)):
+            parser.error(
+                "--output-format cannot be combined with --json for datasource diff."
+            )
+        args.output_format = output_format
         return
     if getattr(args, "command", None) == "import":
         # Import mode intentionally only supports table/json output mode.
@@ -174,13 +203,25 @@ def _parse_import_output_columns(args, parser):
         parser.error(str(exc))
 
 
+def _normalize_datasource_aliases(args):
+    """Normalize command aliases to the Python facade's canonical attribute names."""
+    if getattr(args, "command", None) == "export" and hasattr(args, "output_dir"):
+        args.export_dir = args.output_dir
+    if getattr(args, "command", None) in ("import", "diff") and hasattr(
+        args, "input_dir"
+    ):
+        args.import_dir = getattr(args, "input_dir", getattr(args, "import_dir", None))
+        args.diff_dir = getattr(args, "input_dir", getattr(args, "diff_dir", None))
+
+
 def _validate_datasource_org_routing_args(args, parser):
     """Validate datasource org-routing flags after argparse normalization."""
     command = getattr(args, "command", None)
-    if command == "list":
+    if command in ("list", "browse"):
         if bool(getattr(args, "all_orgs", False)) and getattr(args, "org_id", None):
             parser.error(
-                "--all-orgs cannot be combined with --org-id for datasource list."
+                "--all-orgs cannot be combined with --org-id for datasource %s."
+                % command
             )
         return
     if command == "export":
@@ -222,6 +263,7 @@ def parse_args(argv=None):
 
     parser = build_parser()
     args = parser.parse_args(argv)
+    _normalize_datasource_aliases(args)
     _normalize_output_format_args(args, parser)
     _parse_import_output_columns(args, parser)
     _validate_datasource_org_routing_args(args, parser)
@@ -230,7 +272,16 @@ def parse_args(argv=None):
 
 def _sync_facade_overrides():
     """Rebind workflow-layer dependencies that might be overridden in tests."""
-    datasource_workflows.build_client = build_client
+    global _LAST_SYNCED_BUILD_CLIENT
+
+    if build_client is not _DEFAULT_BUILD_CLIENT:
+        datasource_workflows.build_client = build_client
+        _LAST_SYNCED_BUILD_CLIENT = build_client
+        return
+
+    if datasource_workflows.build_client is _LAST_SYNCED_BUILD_CLIENT:
+        datasource_workflows.build_client = _DEFAULT_BUILD_CLIENT
+        _LAST_SYNCED_BUILD_CLIENT = _DEFAULT_BUILD_CLIENT
 
 
 def list_datasources(args):
@@ -241,6 +292,12 @@ def list_datasources(args):
 
     _sync_facade_overrides()
     return datasource_workflows.list_datasources(args)
+
+
+def browse_datasources(args):
+    """Browse datasources implementation."""
+    _sync_facade_overrides()
+    return datasource_workflows.browse_datasources(args)
 
 
 def export_datasources(args):
@@ -350,6 +407,7 @@ __all__ = [
     "build_export_metadata",
     "build_export_records",
     "build_import_payload",
+    "browse_datasources",
     "build_live_datasource_diff_records",
     "build_parser",
     "compare_datasource_bundle_to_live",

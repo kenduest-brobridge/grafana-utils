@@ -131,8 +131,33 @@ class SyncCliTests(unittest.TestCase):
         help_text = sync_cli.build_parser().format_help()
 
         self.assertIn("Examples:", help_text)
+        self.assertIn("scan", help_text)
+        self.assertIn("test", help_text)
+        self.assertIn("preview", help_text)
         self.assertIn("grafana-util sync plan", help_text)
         self.assertIn("grafana-util sync apply", help_text)
+        self.assertIn("ci", help_text)
+        self.assertIn("package", help_text)
+
+    def test_sync_build_parser_has_ci_and_scan_commands(self):
+        parser = sync_cli.build_parser()
+        root_subparsers = parser._subparsers._group_actions[0]
+        self.assertIn("scan", root_subparsers.choices)
+        self.assertIn("test", root_subparsers.choices)
+        self.assertIn("preview", root_subparsers.choices)
+        self.assertIn("ci", root_subparsers.choices)
+        self.assertIn("package", root_subparsers.choices)
+        self.assertIn("bundle", root_subparsers.choices)
+        ci_parser = root_subparsers.choices["ci"]
+        ci_subparsers = ci_parser._subparsers._group_actions[0]
+        self.assertIn("summary", ci_subparsers.choices)
+        self.assertIn("plan", ci_subparsers.choices)
+        self.assertIn("mark-reviewed", ci_subparsers.choices)
+        self.assertIn("input-test", ci_subparsers.choices)
+        self.assertIn("alert-readiness", ci_subparsers.choices)
+        self.assertIn("package-test", ci_subparsers.choices)
+        self.assertIn("audit", ci_subparsers.choices)
+        self.assertIn("promote-test", ci_subparsers.choices)
 
     def test_sync_apply_help_groups_controls_and_examples(self):
         help_text = (
@@ -247,6 +272,516 @@ class SyncCliTests(unittest.TestCase):
             self.assertEqual(document["summary"]["resourceCount"], 1)
             self.assertEqual(document["summary"]["folderCount"], 1)
             self.assertEqual(document["resources"][0]["identity"], "ops")
+
+    def test_sync_scan_aliases_to_summary(self):
+        desired = [
+            {
+                "kind": "folder",
+                "uid": "ops",
+                "title": "Operations",
+                "body": {"title": "Operations"},
+                "sourcePath": "folders/ops.json",
+            }
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            desired_path = Path(tmpdir) / "desired.json"
+            desired_path.write_text(json.dumps(desired), encoding="utf-8")
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                result = sync_cli.main(["scan", "--desired-file", str(desired_path)])
+
+            self.assertEqual(result, 0)
+            self.assertIn("Sync summary", stdout.getvalue())
+
+    def test_sync_test_aliases_to_preflight(self):
+        desired = [
+            {
+                "kind": "folder",
+                "uid": "ops",
+                "title": "Operations",
+                "body": {"title": "Operations"},
+                "sourcePath": "folders/ops.json",
+            }
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            desired_path = Path(tmpdir) / "desired.json"
+            desired_path.write_text(json.dumps(desired), encoding="utf-8")
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                result = sync_cli.main(["test", "--desired-file", str(desired_path)])
+
+            self.assertEqual(result, 0)
+            self.assertIn("Sync preflight", stdout.getvalue())
+
+    def test_sync_preview_aliases_to_plan(self):
+        desired = [
+            {
+                "kind": "folder",
+                "uid": "ops",
+                "title": "Operations",
+                "body": {"title": "Operations"},
+                "sourcePath": "folders/ops.json",
+            }
+        ]
+        live = [
+            {
+                "kind": "folder",
+                "uid": "ops",
+                "title": "Operations",
+                "body": {"title": "Operations"},
+                "sourcePath": "folders/ops.json",
+            }
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            desired_path = Path(tmpdir) / "desired.json"
+            desired_path.write_text(json.dumps(desired), encoding="utf-8")
+            live_path = Path(tmpdir) / "live.json"
+            live_path.write_text(json.dumps(live), encoding="utf-8")
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                result = sync_cli.main(
+                    [
+                        "preview",
+                        "--desired-file",
+                        str(desired_path),
+                        "--live-file",
+                        str(live_path),
+                    ]
+                )
+
+            self.assertEqual(result, 0)
+            self.assertIn("Sync plan", stdout.getvalue())
+
+    def test_sync_ci_summary_aliases_to_summary(self):
+        desired = [
+            {
+                "kind": "folder",
+                "uid": "ops",
+                "title": "Operations",
+                "body": {"title": "Operations"},
+                "sourcePath": "folders/ops.json",
+            }
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            desired_path = Path(tmpdir) / "desired.json"
+            desired_path.write_text(json.dumps(desired), encoding="utf-8")
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                result = sync_cli.main(
+                    ["ci", "summary", "--desired-file", str(desired_path)]
+                )
+
+            self.assertEqual(result, 0)
+            self.assertIn("Sync summary", stdout.getvalue())
+
+    def test_sync_ci_mark_reviewed_aliases_to_review(self):
+        desired = [
+            {
+                "kind": "folder",
+                "uid": "ops",
+                "title": "Operations",
+                "body": {"title": "Operations"},
+                "sourcePath": "folders/ops.json",
+            }
+        ]
+        live = [
+            {
+                "kind": "folder",
+                "uid": "ops",
+                "title": "Operations",
+                "body": {"title": "Operations"},
+                "sourcePath": "folders/ops.json",
+            }
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            desired_path = Path(tmpdir) / "desired.json"
+            desired_path.write_text(json.dumps(desired), encoding="utf-8")
+            live_path = Path(tmpdir) / "live.json"
+            live_path.write_text(json.dumps(live), encoding="utf-8")
+            plan_path = Path(tmpdir) / "plan.json"
+            with redirect_stdout(io.StringIO()):
+                sync_cli.main(
+                    [
+                        "plan",
+                        "--desired-file",
+                        str(desired_path),
+                        "--live-file",
+                        str(live_path),
+                        "--plan-file",
+                        str(plan_path),
+                    ]
+                )
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                result = sync_cli.main(["ci", "mark-reviewed", "--plan-file", str(plan_path)])
+
+            self.assertEqual(result, 0)
+            self.assertIn("Sync plan", stdout.getvalue())
+
+    def test_sync_ci_audit_reports_json_with_baseline_and_lock(self):
+        managed = [
+            {
+                "kind": "folder",
+                "uid": "ops",
+                "title": "Operations",
+                "body": {"title": "Operations"},
+                "managedFields": ["title"],
+                "sourcePath": "managed/ops.json",
+            }
+        ]
+        baseline_live = [
+            {
+                "kind": "folder",
+                "uid": "ops",
+                "title": "Operations",
+                "body": {"title": "Operations"},
+                "sourcePath": "baseline/ops.json",
+            }
+        ]
+        live = [
+            {
+                "kind": "folder",
+                "uid": "ops",
+                "title": "Operations Drifted",
+                "body": {"title": "Operations Drifted"},
+                "sourcePath": "live/ops.json",
+            }
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            managed_path = Path(tmpdir) / "managed.json"
+            managed_path.write_text(json.dumps(managed), encoding="utf-8")
+            live_path = Path(tmpdir) / "live.json"
+            live_path.write_text(json.dumps(live), encoding="utf-8")
+            baseline_lock = sync_cli.build_sync_lock_document(managed, baseline_live)
+            lock_path = Path(tmpdir) / "baseline-lock.json"
+            lock_path.write_text(
+                json.dumps(baseline_lock, sort_keys=True), encoding="utf-8"
+            )
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                result = sync_cli.main(
+                    [
+                        "ci",
+                        "audit",
+                        "--managed-file",
+                        str(managed_path),
+                        "--lock-file",
+                        str(lock_path),
+                        "--live-file",
+                        str(live_path),
+                        "--output",
+                        "json",
+                    ]
+                )
+            self.assertEqual(result, 0)
+            document = json.loads(stdout.getvalue())
+            self.assertEqual(document["kind"], "grafana-utils-sync-audit")
+            self.assertEqual(document["summary"]["managedCount"], 1)
+            self.assertEqual(document["summary"]["driftCount"], 1)
+            self.assertEqual(document["summary"]["baselineCount"], 1)
+
+    def test_sync_ci_audit_fail_on_drift_blocks_write_lock(self):
+        managed = [
+            {
+                "kind": "folder",
+                "uid": "ops",
+                "title": "Operations",
+                "body": {"title": "Operations"},
+                "managedFields": ["title"],
+            }
+        ]
+        baseline_live = [
+            {
+                "kind": "folder",
+                "uid": "ops",
+                "title": "Operations",
+                "body": {"title": "Operations"},
+            }
+        ]
+        live = [
+            {
+                "kind": "folder",
+                "uid": "ops",
+                "title": "Operations Drifted",
+                "body": {"title": "Operations Drifted"},
+            }
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            managed_path = Path(tmpdir) / "managed.json"
+            managed_path.write_text(json.dumps(managed), encoding="utf-8")
+            live_path = Path(tmpdir) / "live.json"
+            live_path.write_text(json.dumps(live), encoding="utf-8")
+            baseline_lock = sync_cli.build_sync_lock_document(managed, baseline_live)
+            lock_path = Path(tmpdir) / "baseline-lock.json"
+            lock_path.write_text(json.dumps(baseline_lock), encoding="utf-8")
+            write_lock_path = Path(tmpdir) / "current-lock.json"
+            stderr = io.StringIO()
+            with redirect_stderr(stderr):
+                result = sync_cli.main(
+                    [
+                        "ci",
+                        "audit",
+                        "--managed-file",
+                        str(managed_path),
+                        "--lock-file",
+                        str(lock_path),
+                        "--live-file",
+                        str(live_path),
+                        "--fail-on-drift",
+                        "--write-lock",
+                        str(write_lock_path),
+                    ]
+                )
+            self.assertEqual(result, 1)
+            self.assertIn(
+                "Sync audit detected 1 drifted resource(s).",
+                stderr.getvalue(),
+            )
+            self.assertFalse(write_lock_path.exists())
+
+            write_lock_ok_path = Path(tmpdir) / "current-lock-ok.json"
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                result = sync_cli.main(
+                    [
+                        "ci",
+                        "audit",
+                        "--managed-file",
+                        str(managed_path),
+                        "--lock-file",
+                        str(lock_path),
+                        "--live-file",
+                        str(live_path),
+                        "--write-lock",
+                        str(write_lock_ok_path),
+                    ]
+                )
+            self.assertEqual(result, 0)
+            self.assertEqual(
+                json.loads(write_lock_ok_path.read_text(encoding="utf-8"))["kind"],
+                "grafana-utils-sync-lock",
+            )
+
+    def test_sync_ci_audit_requires_scope_inputs(self):
+        managed = [
+            {
+                "kind": "folder",
+                "uid": "ops",
+                "title": "Operations",
+                "body": {"title": "Operations"},
+                "managedFields": ["title"],
+            }
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            managed_path = Path(tmpdir) / "managed.json"
+            managed_path.write_text(json.dumps(managed), encoding="utf-8")
+
+            stdout = io.StringIO()
+            stderr = io.StringIO()
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                result = sync_cli.main(
+                    [
+                        "ci",
+                        "audit",
+                        "--managed-file",
+                        str(managed_path),
+                    ]
+                )
+            self.assertEqual(result, 1)
+            self.assertIn(
+                "Sync audit requires --live-file unless --fetch-live is used.",
+                stderr.getvalue(),
+            )
+            self.assertEqual(stdout.getvalue(), "")
+
+    def test_sync_ci_audit_requires_live_or_fetch_live(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            lock = {"kind": "grafana-utils-sync-lock", "schemaVersion": 1, "summary": {}, "resources": []}
+            lock_path = Path(tmpdir) / "lock.json"
+            lock_path.write_text(json.dumps(lock), encoding="utf-8")
+
+            stdout = io.StringIO()
+            stderr = io.StringIO()
+            with redirect_stdout(stdout), redirect_stderr(stderr):
+                result = sync_cli.main(
+                    [
+                        "ci",
+                        "audit",
+                        "--lock-file",
+                        str(lock_path),
+                    ]
+                )
+            self.assertEqual(result, 1)
+            self.assertIn(
+                "Sync audit requires --live-file unless --fetch-live is used.",
+                stderr.getvalue(),
+            )
+            self.assertEqual(stdout.getvalue(), "")
+
+    def test_sync_ci_promote_test_reports_resolved_and_blocking_checks(self):
+        source_bundle = {
+            "dashboards": [
+                {
+                    "uid": "db-main",
+                    "title": "DB Main",
+                    "folderUid": "ops-target",
+                    "datasourceUids": ["prom-target"],
+                },
+                {
+                    "uid": "cache-main",
+                    "title": "Cache Main",
+                    "folderUid": "ops-missing",
+                    "datasourceUids": ["prom-missing"],
+                },
+            ],
+            "datasources": [],
+            "folders": [],
+            "summary": {
+                "dashboardCount": 2,
+                "datasourceCount": 0,
+                "folderCount": 0,
+                "alertRuleCount": 0,
+                "contactPointCount": 0,
+            },
+        }
+        target_inventory = {
+            "dashboards": [],
+            "datasources": [
+                {
+                    "uid": "prom-target",
+                    "name": "Prometheus",
+                    "type": "prometheus",
+                }
+            ],
+            "folders": [
+                {
+                    "uid": "ops-target",
+                    "title": "Operations",
+                }
+            ],
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+            source_path = Path(tmpdir) / "source.json"
+            source_path.write_text(json.dumps(source_bundle), encoding="utf-8")
+            target_path = Path(tmpdir) / "target.json"
+            target_path.write_text(json.dumps(target_inventory), encoding="utf-8")
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                result = sync_cli.main(
+                    [
+                        "ci",
+                        "promote-test",
+                        "--source-bundle",
+                        str(source_path),
+                        "--target-inventory",
+                        str(target_path),
+                        "--output",
+                        "json",
+                    ]
+                )
+            self.assertEqual(result, 0)
+            document = json.loads(stdout.getvalue())
+            self.assertEqual(document["kind"], "grafana-utils-sync-promotion-preflight")
+            self.assertEqual(
+                int(document["checkSummary"]["resolvedCount"]),
+                2,
+            )
+            self.assertEqual(
+                int(document["summary"]["missingMappingCount"]),
+                2,
+            )
+            expected_blocking_count = int(
+                document["summary"]["blockingCount"]
+            )
+            bundle_summary = document["bundlePreflight"]["summary"]
+            expected_by_source = int(len(document["blockingChecks"])) + int(
+                bundle_summary.get("syncBlockingCount", 0)
+            ) + int(bundle_summary.get("providerBlockingCount", 0)) + int(
+                bundle_summary.get("secretBlockingCount", 0)
+            ) + int(
+                bundle_summary.get("secretPlaceholderBlockingCount", 0)
+            ) + int(bundle_summary.get("alertBlockedCount", 0))
+            self.assertEqual(expected_blocking_count, expected_by_source)
+            self.assertEqual(int(document["summary"]["resourceCount"]), 2)
+            self.assertEqual(len(document["resolvedChecks"]), 2)
+            self.assertEqual(len(document["blockingChecks"]), 2)
+            self.assertIn("folder-remap", document["blockingChecks"][0]["kind"])
+
+    def test_sync_ci_promote_test_reports_without_mapping_and_availability_inputs(self):
+        source_bundle = {
+            "dashboards": [],
+            "datasources": [],
+            "folders": [],
+            "alerts": [],
+            "summary": {
+                "dashboardCount": 0,
+                "datasourceCount": 0,
+                "folderCount": 0,
+                "alertRuleCount": 0,
+                "contactPointCount": 0,
+            },
+        }
+        target_inventory = {
+            "dashboards": [],
+            "datasources": [],
+            "folders": [],
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+            source_path = Path(tmpdir) / "source.json"
+            source_path.write_text(json.dumps(source_bundle), encoding="utf-8")
+            target_path = Path(tmpdir) / "target.json"
+            target_path.write_text(json.dumps(target_inventory), encoding="utf-8")
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                result = sync_cli.main(
+                    [
+                        "ci",
+                        "promote-test",
+                        "--source-bundle",
+                        str(source_path),
+                        "--target-inventory",
+                        str(target_path),
+                        "--output",
+                        "json",
+                    ]
+                )
+            self.assertEqual(result, 0)
+            document = json.loads(stdout.getvalue())
+            self.assertEqual(document["kind"], "grafana-utils-sync-promotion-preflight")
+            self.assertIn("bundlePreflight", document)
+            self.assertEqual(int(document["summary"]["blockingCount"]), 0)
+
+    def test_sync_package_aliases_to_bundle(self):
+        desired = [
+            {
+                "kind": "folder",
+                "uid": "ops",
+                "title": "Operations",
+                "body": {"title": "Operations"},
+                "sourcePath": "folders/ops.json",
+            }
+        ]
+        with tempfile.TemporaryDirectory() as tmpdir:
+            dashboard = Path(tmpdir) / "dashboards"
+            src = dashboard / "raw"
+            src.mkdir(parents=True)
+            (dashboard / "folders.json").write_text("[]", encoding="utf-8")
+            (dashboard / "datasources.json").write_text("[]", encoding="utf-8")
+            (src / "ops.json").write_text(
+                json.dumps(desired[0], ensure_ascii=False),
+                encoding="utf-8",
+            )
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                result = sync_cli.main(
+                    [
+                        "package",
+                        "--dashboard-export-dir",
+                        str(dashboard),
+                    ]
+                )
+            self.assertEqual(result, 0)
+            self.assertIn("Sync source bundle", stdout.getvalue())
 
     @staticmethod
     def _ensure_review_stage(document, trace_id="sync-trace-test"):

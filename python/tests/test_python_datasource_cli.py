@@ -30,6 +30,7 @@ SECURE_JSON_MERGE_FIXTURE_PATH = (
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(PYTHON_ROOT))
 datasource_cli = importlib.import_module("grafana_utils.datasource_cli")
+yaml_compat = importlib.import_module("grafana_utils.yaml_compat")
 
 
 class FakeDatasourceClient(object):
@@ -211,12 +212,32 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertFalse(args.csv)
         self.assertFalse(args.table)
         self.assertFalse(args.no_header)
+        self.assertIsNone(args.input_dir)
 
     def test_datasource_parse_args_supports_types_output_format(self):
         args = datasource_cli.parse_args(["types", "--output-format", "json"])
 
         self.assertEqual(args.command, "types")
         self.assertTrue(args.json)
+
+    def test_datasource_parse_args_supports_types_table_csv_yaml_formats(self):
+        table_args = datasource_cli.parse_args(["types", "--output-format", "table"])
+        csv_args = datasource_cli.parse_args(["types", "--csv"])
+        yaml_args = datasource_cli.parse_args(["types", "--yaml"])
+
+        self.assertTrue(table_args.table)
+        self.assertTrue(csv_args.csv)
+        self.assertTrue(yaml_args.yaml)
+
+    def test_datasource_types_command_renders_catalog_yaml(self):
+        args = datasource_cli.parse_args(["types", "--output-format", "yaml"])
+
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            result = datasource_cli.dispatch_datasource_command(args)
+
+        self.assertEqual(result, 0)
+        self.assertIn("grafana-utils-datasource-supported-types", stdout.getvalue())
 
     def test_datasource_types_command_renders_catalog_json(self):
         args = datasource_cli.parse_args(["types", "--json"])
@@ -240,6 +261,13 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertFalse(args.table)
         self.assertFalse(args.json)
 
+    def test_datasource_parse_args_supports_list_text_and_yaml(self):
+        text_args = datasource_cli.parse_args(["list", "--output-format", "text"])
+        yaml_args = datasource_cli.parse_args(["list", "--yaml"])
+
+        self.assertTrue(text_args.text)
+        self.assertTrue(yaml_args.yaml)
+
     def test_datasource_parse_args_supports_list_org_scoping(self):
         org_args = datasource_cli.parse_args(["list", "--org-id", "7"])
         all_args = datasource_cli.parse_args(["list", "--all-orgs"])
@@ -249,9 +277,19 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertIsNone(all_args.org_id)
         self.assertTrue(all_args.all_orgs)
 
+    def test_datasource_parse_args_supports_browse_org_scoping(self):
+        org_args = datasource_cli.parse_args(["browse", "--org-id", "7"])
+        all_args = datasource_cli.parse_args(["browse", "--all-orgs"])
+
+        self.assertEqual(org_args.command, "browse")
+        self.assertEqual(org_args.org_id, "7")
+        self.assertFalse(org_args.all_orgs)
+        self.assertIsNone(all_args.org_id)
+        self.assertTrue(all_args.all_orgs)
+
     def test_datasource_parse_args_supports_export_mode(self):
         args = datasource_cli.parse_args(
-            ["export", "--export-dir", "./datasources", "--overwrite"]
+            ["export", "--output-dir", "./datasources", "--overwrite"]
         )
 
         self.assertEqual(args.command, "export")
@@ -272,8 +310,10 @@ class DatasourceCliTests(unittest.TestCase):
         args = datasource_cli.parse_args(
             [
                 "import",
-                "--import-dir",
+                "--input-dir",
                 "./datasources",
+                "--input-format",
+                "inventory",
                 "--replace-existing",
                 "--dry-run",
                 "--table",
@@ -282,6 +322,7 @@ class DatasourceCliTests(unittest.TestCase):
 
         self.assertEqual(args.command, "import")
         self.assertEqual(args.import_dir, "./datasources")
+        self.assertEqual(args.input_format, "inventory")
         self.assertTrue(args.replace_existing)
         self.assertTrue(args.dry_run)
         self.assertTrue(args.table)
@@ -364,7 +405,9 @@ class DatasourceCliTests(unittest.TestCase):
         )
         client = FakeDatasourceClient(datasources=[])
 
-        with mock.patch.object(datasource_cli, "build_client", return_value=client):
+        with mock.patch.object(
+            datasource_cli.datasource_workflows, "build_client", return_value=client
+        ):
             stdout = io.StringIO()
             with redirect_stdout(stdout):
                 result = datasource_cli.add_datasource(args)
@@ -393,7 +436,9 @@ class DatasourceCliTests(unittest.TestCase):
         )
         client = FakeDatasourceClient(datasources=[])
 
-        with mock.patch.object(datasource_cli, "build_client", return_value=client):
+        with mock.patch.object(
+            datasource_cli.datasource_workflows, "build_client", return_value=client
+        ):
             stdout = io.StringIO()
             with redirect_stdout(stdout):
                 result = datasource_cli.add_datasource(args)
@@ -422,7 +467,9 @@ class DatasourceCliTests(unittest.TestCase):
         )
         client = FakeDatasourceClient(datasources=[])
 
-        with mock.patch.object(datasource_cli, "build_client", return_value=client):
+        with mock.patch.object(
+            datasource_cli.datasource_workflows, "build_client", return_value=client
+        ):
             stdout = io.StringIO()
             with redirect_stdout(stdout):
                 result = datasource_cli.add_datasource(args)
@@ -448,7 +495,9 @@ class DatasourceCliTests(unittest.TestCase):
         )
         client = FakeDatasourceClient(datasources=[])
 
-        with mock.patch.object(datasource_cli, "build_client", return_value=client):
+        with mock.patch.object(
+            datasource_cli.datasource_workflows, "build_client", return_value=client
+        ):
             stdout = io.StringIO()
             with redirect_stdout(stdout):
                 result = datasource_cli.add_datasource(args)
@@ -481,7 +530,9 @@ class DatasourceCliTests(unittest.TestCase):
         )
         client = FakeDatasourceClient(datasources=[])
 
-        with mock.patch.object(datasource_cli, "build_client", return_value=client):
+        with mock.patch.object(
+            datasource_cli.datasource_workflows, "build_client", return_value=client
+        ):
             stdout = io.StringIO()
             with redirect_stdout(stdout):
                 result = datasource_cli.add_datasource(args)
@@ -507,7 +558,9 @@ class DatasourceCliTests(unittest.TestCase):
         )
         client = FakeDatasourceClient(datasources=[])
 
-        with mock.patch.object(datasource_cli, "build_client", return_value=client):
+        with mock.patch.object(
+            datasource_cli.datasource_workflows, "build_client", return_value=client
+        ):
             stdout = io.StringIO()
             with redirect_stdout(stdout):
                 result = datasource_cli.add_datasource(args)
@@ -921,6 +974,7 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertEqual(args.uid, "prom-main")
         self.assertTrue(args.dry_run)
         self.assertTrue(args.json)
+        self.assertFalse(args.yes)
 
     def test_datasource_parse_args_supports_modify_mode(self):
         args = datasource_cli.parse_args(
@@ -1016,11 +1070,23 @@ class DatasourceCliTests(unittest.TestCase):
 
     def test_datasource_parse_args_supports_diff_mode(self):
         args = datasource_cli.parse_args(
-            ["diff", "--diff-dir", "./datasources", "--url", "http://127.0.0.1:3000"]
+            [
+                "diff",
+                "--diff-dir",
+                "./datasources",
+                "--input-format",
+                "inventory",
+                "--output-format",
+                "json",
+                "--url",
+                "http://127.0.0.1:3000",
+            ]
         )
 
         self.assertEqual(args.command, "diff")
         self.assertEqual(args.diff_dir, "./datasources")
+        self.assertEqual(args.input_format, "inventory")
+        self.assertEqual(args.output_format, "json")
 
     def test_datasource_parse_args_rejects_multiple_list_output_modes(self):
         with self.assertRaises(SystemExit):
@@ -1409,6 +1475,421 @@ class DatasourceCliTests(unittest.TestCase):
             lines[-1], "Listed 2 data source(s) from http://127.0.0.1:3000"
         )
 
+    def test_datasource_browse_requires_tty(self):
+        args = datasource_cli.parse_args(["browse"])
+
+        with self.assertRaisesRegex(
+            datasource_cli.GrafanaError, "requires an interactive terminal"
+        ):
+            datasource_cli.browse_datasources(args)
+
+    def test_datasource_browse_lists_and_prints_selected_json(self):
+        args = datasource_cli.parse_args(["browse"])
+        client = FakeDatasourceClient(
+            datasources=[
+                {
+                    "uid": "prom_uid",
+                    "name": "Prometheus Main",
+                    "type": "prometheus",
+                    "url": "http://prometheus:9090",
+                }
+            ]
+        )
+
+        with mock.patch.object(
+            datasource_cli.datasource_workflows, "build_client", return_value=client
+        ):
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                result = datasource_cli.datasource_workflows.browse_datasources(
+                    args,
+                    input_reader=mock.Mock(side_effect=["1", "q"]),
+                    is_tty=lambda: True,
+                )
+
+        self.assertEqual(result, 0)
+        output = stdout.getvalue()
+        self.assertIn("prom_uid | Prometheus Main | prometheus", output)
+        self.assertIn('"uid": "prom_uid"', output)
+
+    def test_datasource_browse_all_orgs_uses_scoped_clients(self):
+        org_one_client = FakeDatasourceClient(
+            datasources=[
+                {
+                    "uid": "prom_org1",
+                    "name": "Prometheus Main",
+                    "type": "prometheus",
+                }
+            ],
+            org={"id": 1, "name": "Main Org."},
+            headers={"Authorization": "Basic org1"},
+        )
+        org_two_client = FakeDatasourceClient(
+            datasources=[
+                {
+                    "uid": "loki_org2",
+                    "name": "Loki Org Two",
+                    "type": "loki",
+                }
+            ],
+            org={"id": 2, "name": "Org Two"},
+            headers={"Authorization": "Basic org2"},
+        )
+        client = FakeDatasourceClient(
+            datasources=[],
+            headers={"Authorization": "Basic root"},
+            orgs=[{"id": 1, "name": "Main Org."}, {"id": 2, "name": "Org Two"}],
+            org_clients={"1": org_one_client, "2": org_two_client},
+        )
+        args = datasource_cli.parse_args(["browse", "--all-orgs"])
+
+        with mock.patch.object(
+            datasource_cli.datasource_workflows, "build_client", return_value=client
+        ):
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                result = datasource_cli.datasource_workflows.browse_datasources(
+                    args,
+                    input_reader=mock.Mock(return_value="q"),
+                    is_tty=lambda: True,
+                )
+
+        self.assertEqual(result, 0)
+        output = stdout.getvalue()
+        self.assertIn("prom_org1 | Prometheus Main | prometheus | org=Main Org.", output)
+        self.assertIn("loki_org2 | Loki Org Two | loki | org=Org Two", output)
+
+    def test_datasource_browse_edit_updates_selected_datasource(self):
+        args = datasource_cli.parse_args(["browse"])
+        client = FakeDatasourceClient(
+            datasources=[
+                {
+                    "id": 7,
+                    "uid": "prom_uid",
+                    "name": "Prometheus Main",
+                    "type": "prometheus",
+                    "access": "proxy",
+                    "url": "http://prometheus:9090",
+                    "isDefault": False,
+                }
+            ]
+        )
+
+        with mock.patch.object(
+            datasource_cli.datasource_workflows, "build_client", return_value=client
+        ):
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                result = datasource_cli.datasource_workflows.browse_datasources(
+                    args,
+                    input_reader=mock.Mock(
+                        side_effect=[
+                            "e 1",
+                            "Prometheus Updated",
+                            "http://prometheus:9091",
+                            "",
+                            "yes",
+                            "q",
+                        ]
+                    ),
+                    is_tty=lambda: True,
+                )
+
+        self.assertEqual(result, 0)
+        self.assertEqual(client.imported_payloads[0]["method"], "PUT")
+        self.assertEqual(client.imported_payloads[0]["path"], "/api/datasources/7")
+        payload = client.imported_payloads[0]["payload"]
+        self.assertEqual(payload["name"], "Prometheus Updated")
+        self.assertEqual(payload["url"], "http://prometheus:9091")
+        self.assertTrue(payload["isDefault"])
+        self.assertIn("Updated datasource prom_uid.", stdout.getvalue())
+
+    def test_datasource_browse_delete_requires_yes_confirmation(self):
+        args = datasource_cli.parse_args(["browse"])
+        client = FakeDatasourceClient(
+            datasources=[
+                {
+                    "id": 7,
+                    "uid": "prom_uid",
+                    "name": "Prometheus Main",
+                    "type": "prometheus",
+                }
+            ]
+        )
+
+        with mock.patch.object(
+            datasource_cli.datasource_workflows, "build_client", return_value=client
+        ):
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                result = datasource_cli.datasource_workflows.browse_datasources(
+                    args,
+                    input_reader=mock.Mock(side_effect=["d 1", "no", "q"]),
+                    is_tty=lambda: True,
+                )
+
+        self.assertEqual(result, 0)
+        self.assertEqual(client.deleted_paths, [])
+        self.assertIn("Cancelled datasource delete.", stdout.getvalue())
+
+    def test_datasource_browse_delete_removes_selected_datasource(self):
+        args = datasource_cli.parse_args(["browse"])
+        client = FakeDatasourceClient(
+            datasources=[
+                {
+                    "id": 7,
+                    "uid": "prom_uid",
+                    "name": "Prometheus Main",
+                    "type": "prometheus",
+                }
+            ]
+        )
+
+        with mock.patch.object(
+            datasource_cli.datasource_workflows, "build_client", return_value=client
+        ):
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                result = datasource_cli.datasource_workflows.browse_datasources(
+                    args,
+                    input_reader=mock.Mock(side_effect=["d 1", "yes", "q"]),
+                    is_tty=lambda: True,
+                )
+
+        self.assertEqual(result, 0)
+        self.assertEqual(client.deleted_paths, ["/api/datasources/7"])
+        self.assertIn("Deleted datasource prom_uid.", stdout.getvalue())
+
+    def test_datasource_list_datasources_from_local_input_dir_renders_table(self):
+        args = datasource_cli.parse_args(
+            ["list", "--input-dir", "./datasources", "--table", "--output-columns", "uid,name"]
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            self._write_datasource_bundle(
+                Path(tmpdir),
+                [
+                    {
+                        "uid": "prom_uid",
+                        "name": "Prometheus Main",
+                        "type": "prometheus",
+                        "access": "proxy",
+                        "url": "http://prometheus:9090",
+                        "isDefault": "true",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                    }
+                ],
+            )
+            args.input_dir = tmpdir
+            with redirect_stdout(io.StringIO()) as stdout:
+                result = datasource_cli.list_datasources(args)
+
+        self.assertEqual(result, 0)
+        output = stdout.getvalue()
+        self.assertIn("UID", output)
+        self.assertIn("NAME", output)
+        self.assertIn("prom_uid", output)
+        self.assertIn("Prometheus Main", output)
+
+    def test_datasource_list_datasources_renders_live_yaml_with_columns(self):
+        args = datasource_cli.parse_args(
+            [
+                "list",
+                "--url",
+                "http://127.0.0.1:3000",
+                "--yaml",
+                "--output-columns",
+                "uid,name",
+            ]
+        )
+        client = FakeDatasourceClient(
+            datasources=[
+                {
+                    "uid": "prom_uid",
+                    "name": "Prometheus Main",
+                    "type": "prometheus",
+                }
+            ]
+        )
+
+        with mock.patch.object(datasource_cli, "build_client", return_value=client):
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                result = datasource_cli.list_datasources(args)
+
+        self.assertEqual(result, 0)
+        output = stdout.getvalue()
+        self.assertIn("uid: prom_uid", output)
+        self.assertIn("name: Prometheus Main", output)
+        self.assertNotIn("type:", output)
+
+    def test_datasource_list_datasources_accepts_provisioning_input_format(self):
+        args = datasource_cli.parse_args(
+            ["list", "--input-dir", "./provisioning", "--input-format", "provisioning", "--json"]
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            provisioning_dir = Path(tmpdir) / "provisioning"
+            provisioning_dir.mkdir()
+            (provisioning_dir / "datasources.yaml").write_text(
+                json.dumps(
+                    {
+                        "apiVersion": 1,
+                        "datasources": [
+                            {
+                                "uid": "prom_uid",
+                                "name": "Prometheus Main",
+                                "type": "prometheus",
+                                "access": "proxy",
+                                "url": "http://prometheus:9090",
+                                "isDefault": True,
+                                "orgId": 1,
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            args.input_dir = str(provisioning_dir)
+
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                result = datasource_cli.list_datasources(args)
+
+        self.assertEqual(result, 0)
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual(payload[0]["uid"], "prom_uid")
+        self.assertEqual(payload[0]["orgId"], "1")
+
+    def test_datasource_delete_requires_yes_for_live_delete(self):
+        args = datasource_cli.parse_args(["delete", "--uid", "prom-main"])
+
+        with mock.patch.object(
+            datasource_cli, "build_client", return_value=FakeDatasourceClient(datasources=[])
+        ):
+            with self.assertRaisesRegex(
+                datasource_cli.GrafanaError, "requires --yes"
+            ):
+                datasource_cli.delete_datasource(args)
+
+    def test_datasource_add_supports_secure_json_data_placeholders_and_secret_values(
+        self,
+    ):
+        args = datasource_cli.parse_args(
+            [
+                "add",
+                "--name",
+                "Prometheus Main",
+                "--type",
+                "prometheus",
+                "--secure-json-data-placeholders",
+                '{"basicAuthPassword":"${secret:prom-pass}"}',
+                "--secret-values",
+                '{"prom-pass":"resolved-pass"}',
+            ]
+        )
+        client = FakeDatasourceClient(datasources=[])
+
+        with mock.patch.object(datasource_cli, "build_client", return_value=client):
+            datasource_cli.add_datasource(args)
+
+        self.assertEqual(
+            client.imported_payloads[0]["payload"]["secureJsonData"],
+            {"basicAuthPassword": "resolved-pass"},
+        )
+
+    def test_datasource_import_supports_secret_values_file(self):
+        args = datasource_cli.parse_args(
+            [
+                "import",
+                "--input-dir",
+                "./datasources",
+                "--secret-values-file",
+                "./secret-values.json",
+            ]
+        )
+        client = FakeDatasourceClient(datasources=[])
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            self._write_datasource_bundle(
+                Path(tmpdir),
+                [
+                    {
+                        "uid": "prom_uid",
+                        "name": "Prometheus Main",
+                        "type": "prometheus",
+                        "access": "proxy",
+                        "url": "http://prometheus:9090",
+                        "isDefault": "true",
+                        "org": "Main Org.",
+                        "orgId": "1",
+                        "secureJsonDataPlaceholders": {
+                            "basicAuthPassword": "${secret:prom-pass}"
+                        },
+                    }
+                ],
+            )
+            args.import_dir = tmpdir
+            secret_values_path = Path(tmpdir) / "secret-values.json"
+            secret_values_path.write_text(
+                json.dumps({"prom-pass": "resolved-pass"}),
+                encoding="utf-8",
+            )
+            args.secret_values_file = str(secret_values_path)
+            with mock.patch.object(datasource_cli, "build_client", return_value=client):
+                datasource_cli.import_datasources(args)
+
+        self.assertEqual(
+            client.imported_payloads[0]["payload"]["secureJsonData"],
+            {"basicAuthPassword": "resolved-pass"},
+        )
+
+    def test_datasource_import_accepts_provisioning_input_format(self):
+        args = datasource_cli.parse_args(
+            [
+                "import",
+                "--input-dir",
+                "./provisioning",
+                "--input-format",
+                "provisioning",
+                "--dry-run",
+                "--json",
+            ]
+        )
+        client = FakeDatasourceClient(datasources=[])
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            provisioning_dir = Path(tmpdir) / "provisioning"
+            provisioning_dir.mkdir()
+            (provisioning_dir / "datasources.yaml").write_text(
+                json.dumps(
+                    {
+                        "apiVersion": 1,
+                        "datasources": [
+                            {
+                                "uid": "prom_uid",
+                                "name": "Prometheus Main",
+                                "type": "prometheus",
+                                "access": "proxy",
+                                "url": "http://prometheus:9090",
+                                "isDefault": True,
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+            args.import_dir = str(provisioning_dir)
+
+            with mock.patch.object(datasource_cli, "build_client", return_value=client):
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    result = datasource_cli.import_datasources(args)
+
+        self.assertEqual(result, 0)
+        payload = json.loads(stdout.getvalue())
+        self.assertEqual(payload["summary"]["datasourceCount"], 1)
+        self.assertEqual(payload["datasources"][0]["uid"], "prom_uid")
+
     def test_datasource_add_datasource_dry_run_renders_table(self):
         args = datasource_cli.parse_args(
             [
@@ -1619,7 +2100,7 @@ class DatasourceCliTests(unittest.TestCase):
         self.assertEqual(client.deleted_paths, [])
 
     def test_datasource_delete_datasource_live_calls_delete_endpoint(self):
-        args = datasource_cli.parse_args(["delete", "--uid", "prom-main"])
+        args = datasource_cli.parse_args(["delete", "--uid", "prom-main", "--yes"])
         client = FakeDatasourceClient(
             datasources=[
                 {
@@ -2224,6 +2705,65 @@ class DatasourceCliTests(unittest.TestCase):
             self.assertEqual(
                 metadata_document["datasourcesFile"],
                 datasource_cli.DATASOURCE_EXPORT_FILENAME,
+            )
+            self.assertEqual(
+                metadata_document["provisioningFile"],
+                "provisioning/datasources.yaml",
+            )
+            provisioning_document = yaml_compat.safe_load(
+                (
+                    Path(tmpdir)
+                    / datasource_cli.DATASOURCE_PROVISIONING_SUBDIR
+                    / datasource_cli.DATASOURCE_PROVISIONING_FILENAME
+                ).read_text(encoding="utf-8")
+            )
+            self.assertEqual(provisioning_document["apiVersion"], 1)
+            self.assertEqual(
+                provisioning_document["datasources"][0]["uid"], "prom_uid"
+            )
+            self.assertEqual(
+                provisioning_document["datasources"][0]["orgId"], 2
+            )
+            self.assertFalse(provisioning_document["datasources"][0]["editable"])
+
+    def test_datasource_export_datasources_can_skip_provisioning_file(self):
+        client = FakeDatasourceClient(
+            datasources=[
+                {
+                    "uid": "prom_uid",
+                    "name": "Prometheus Main",
+                    "type": "prometheus",
+                    "access": "proxy",
+                    "url": "http://prometheus:9090",
+                    "isDefault": True,
+                }
+            ],
+            org={"id": 1, "name": "Main Org."},
+        )
+        args = datasource_cli.parse_args(
+            [
+                "export",
+                "--export-dir",
+                "ignored",
+                "--without-datasource-provisioning",
+            ]
+        )
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            args.export_dir = tmpdir
+            with mock.patch.object(datasource_cli, "build_client", return_value=client):
+                stdout = io.StringIO()
+                with redirect_stdout(stdout):
+                    result = datasource_cli.export_datasources(args)
+
+            self.assertEqual(result, 0)
+            self.assertIn("Provisioning: skipped", stdout.getvalue())
+            self.assertFalse(
+                (
+                    Path(tmpdir)
+                    / datasource_cli.DATASOURCE_PROVISIONING_SUBDIR
+                    / datasource_cli.DATASOURCE_PROVISIONING_FILENAME
+                ).exists()
             )
 
     def test_datasource_export_datasources_uses_org_scoped_client(self):

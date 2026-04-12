@@ -11,6 +11,7 @@ from io import StringIO
 from pathlib import Path
 from urllib import parse
 
+from .. import yaml_compat as yaml
 from ..dashboard_cli import (
     GrafanaError,
     build_client as build_dashboard_client,
@@ -46,12 +47,19 @@ from ..datasource_secret_provider_workbench import (
 from ..datasource_secret_workbench import (
     collect_secret_placeholders,
     iter_secret_placeholder_names,
+    resolve_secret_placeholders,
 )
 from .parser import (
     DATASOURCE_EXPORT_FILENAME,
+    DATASOURCE_IMPORT_FORMAT_CHOICES,
+    DATASOURCE_PROVISIONING_FILENAME,
+    DATASOURCE_PROVISIONING_SUBDIR,
+    DIFF_OUTPUT_FORMAT_CHOICES,
     EXPORT_METADATA_FILENAME,
     IMPORT_DRY_RUN_COLUMN_ALIASES,
     IMPORT_DRY_RUN_COLUMN_HEADERS,
+    LIST_OUTPUT_COLUMN_ALIASES,
+    LIST_OUTPUT_COLUMN_HEADERS,
     ROOT_INDEX_KIND,
     TOOL_SCHEMA_VERSION,
 )
@@ -70,7 +78,7 @@ def build_client(args):
 
 def build_export_index(datasource_records, datasources_file):
     """Build export index implementation."""
-    return {
+    document = {
         "kind": ROOT_INDEX_KIND,
         "schemaVersion": TOOL_SCHEMA_VERSION,
         "datasourcesFile": datasources_file,
@@ -86,6 +94,11 @@ def build_export_index(datasource_records, datasources_file):
             for record in datasource_records
         ],
     }
+    document["provisioningFile"] = "%s/%s" % (
+        DATASOURCE_PROVISIONING_SUBDIR,
+        DATASOURCE_PROVISIONING_FILENAME,
+    )
+    return document
 
 
 def build_export_metadata(datasource_count, datasources_file):
@@ -97,6 +110,8 @@ def build_export_metadata(datasource_count, datasources_file):
         "resource": "datasource",
         "datasourceCount": datasource_count,
         "datasourcesFile": datasources_file,
+        "provisioningFile": "%s/%s"
+        % (DATASOURCE_PROVISIONING_SUBDIR, DATASOURCE_PROVISIONING_FILENAME),
         "indexFile": "index.json",
         "format": "grafana-datasource-inventory-v1",
     }
@@ -191,6 +206,22 @@ def load_json_object_argument(value, label):
     return data
 
 
+def load_json_object_file(path_value, label):
+    """Load a JSON object from one file path."""
+    if path_value is None:
+        return None
+    path = Path(path_value)
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise GrafanaError("Failed to read %s: %s" % (path, exc))
+    except ValueError as exc:
+        raise GrafanaError("Invalid JSON for %s: %s" % (label, exc))
+    if not isinstance(data, dict):
+        raise GrafanaError("%s must decode to a JSON object." % label)
+    return data
+
+
 def merge_json_object_fields(base, extra, label):
     """Merge json object fields implementation."""
     if extra is None:
@@ -240,6 +271,356 @@ def parse_http_header_arguments(values):
     return json_data, secure_json_data
 
 
+def coerce_datasource_bool(value):
+    """Coerce datasource bool-like values for provisioning output."""
+    if isinstance(value, bool):
+        return value
+    normalized = str(value or "").strip().lower()
+    return normalized in ("1", "true", "yes", "on")
+
+
+def build_datasource_provisioning_document(records):
+    """Build a Grafana datasource provisioning document from export records."""
+    datasources = []
+    for record in records:
+        org_id_text = str(record.get("orgId") or "1").strip() or "1"
+        try:
+            org_id = int(org_id_text)
+        except ValueError:
+            org_id = 1
+        item = {
+            "name": str(record.get("name") or ""),
+            "type": str(record.get("type") or ""),
+            "access": str(record.get("access") or ""),
+            "orgId": org_id,
+            "uid": str(record.get("uid") or ""),
+            "url": str(record.get("url") or ""),
+            "isDefault": coerce_datasource_bool(record.get("isDefault")),
+            "editable": False,
+        }
+        for source_key, target_key in (
+            ("basicAuth", "basicAuth"),
+            ("basicAuthUser", "basicAuthUser"),
+            ("user", "user"),
+            ("withCredentials", "withCredentials"),
+            ("database", "database"),
+            ("jsonData", "jsonData"),
+            ("secureJsonDataPlaceholders", "secureJsonData"),
+        ):
+            if source_key not in record:
+                continue
+            value = record.get(source_key)
+            if value in (None, ""):
+                continue
+            if source_key in ("basicAuth", "withCredentials"):
+                value = coerce_datasource_bool(value)
+            item[target_key] = deepcopy(value)
+        datasources.append(item)
+    return {"apiVersion": 1, "datasources": datasources}
+
+
+def load_secret_value_map(args):
+    """Load secret values from CLI arguments."""
+    inline = load_json_object_argument(getattr(args, "secret_values", None), "--secret-values")
+    file_map = load_json_object_file(
+        getattr(args, "secret_values_file", None), "--secret-values-file"
+    )
+    if inline is not None and file_map is not None:
+        raise GrafanaError("Choose either --secret-values or --secret-values-file, not both.")
+    return inline if inline is not None else file_map
+
+
+def resolve_secure_json_placeholders(secure_json_placeholders, secret_values):
+    """Resolve secureJsonData placeholder declarations into concrete secrets."""
+    placeholders = collect_secret_placeholders(secure_json_placeholders)
+    if not placeholders:
+        return {}
+    if secret_values is None:
+        raise GrafanaError("--secure-json-data-placeholders requires --secret-values.")
+    resolved = {}
+    for placeholder in placeholders:
+        if placeholder.placeholder_name not in secret_values:
+            raise GrafanaError(
+                "Missing datasource secret placeholder '%s'."
+                % placeholder.placeholder_name
+            )
+        resolved[placeholder.field_name] = secret_values[placeholder.placeholder_name]
+    return resolved
+
+
+def merge_secret_injection(spec, placeholders_value, secret_values, label):
+    """Merge placeholder-driven secret injections into a datasource spec."""
+    if placeholders_value is None:
+        return spec
+    resolved = resolve_secure_json_placeholders(placeholders_value, secret_values)
+    secure = dict(spec.get("secureJsonData") or {})
+    secure.update(resolved)
+    spec = dict(spec)
+    if secure:
+        spec["secureJsonData"] = secure
+    return spec
+
+
+def load_local_datasource_bundle(input_dir, input_format):
+    """Load local datasource inventory bundle for list/diff workflows."""
+    if input_format is None:
+        input_format = "inventory"
+    if input_format not in DATASOURCE_IMPORT_FORMAT_CHOICES:
+        raise GrafanaError("Unsupported datasource input format: %s" % input_format)
+    if input_format == "provisioning":
+        return load_provisioning_datasource_bundle(Path(input_dir))
+    return load_import_bundle(Path(input_dir))
+
+
+def resolve_datasource_provisioning_file(input_path):
+    """Resolve a datasource provisioning input path to datasources.yaml/yml."""
+    path = Path(input_path)
+    if path.is_file():
+        return path
+    candidates = [
+        path / "datasources.yaml",
+        path / "datasources.yml",
+        path / "provisioning" / "datasources.yaml",
+        path / "provisioning" / "datasources.yml",
+        path / "provisioning" / "datasources" / "datasources.yaml",
+        path / "provisioning" / "datasources" / "datasources.yml",
+    ]
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    raise GrafanaError(
+        "Datasource provisioning import did not find datasources.yaml under %s."
+        % path
+    )
+
+
+def load_provisioning_datasource_bundle(input_path):
+    """Load Grafana datasource provisioning YAML as normalized records."""
+    provisioning_path = resolve_datasource_provisioning_file(input_path)
+    try:
+        document = yaml.safe_load(provisioning_path.read_text(encoding="utf-8")) or {}
+    except Exception as exc:
+        raise GrafanaError(
+            "Failed to parse datasource provisioning YAML %s: %s"
+            % (provisioning_path, exc)
+        ) from exc
+    raw_records = document.get("datasources") if isinstance(document, dict) else None
+    if not isinstance(raw_records, list):
+        raise GrafanaError(
+            "Datasource provisioning file must contain a datasources list: %s"
+            % provisioning_path
+        )
+    records = []
+    for index, item in enumerate(raw_records):
+        if not isinstance(item, dict):
+            raise GrafanaError(
+                "Datasource provisioning entry must be a YAML object: %s#%s"
+                % (provisioning_path, index)
+            )
+        record = normalize_datasource_record(
+            {
+                "uid": item.get("uid"),
+                "name": item.get("name"),
+                "type": item.get("type"),
+                "access": item.get("access"),
+                "url": item.get("url"),
+                "isDefault": item.get("isDefault"),
+                "org": "",
+                "orgId": item.get("orgId"),
+            }
+        )
+        for optional_key in (
+            "database",
+            "basicAuth",
+            "basicAuthUser",
+            "user",
+            "withCredentials",
+            "jsonData",
+            "secureJsonData",
+            "secureJsonFields",
+            "secureJsonDataPlaceholders",
+        ):
+            if optional_key in item:
+                record[optional_key] = deepcopy(item.get(optional_key))
+        records.append(record)
+    return {
+        "records": records,
+        "metadata": {
+            "kind": ROOT_INDEX_KIND,
+            "schemaVersion": TOOL_SCHEMA_VERSION,
+            "resource": "datasource",
+            "variant": "provisioning",
+            "datasourceCount": len(records),
+            "datasourcesFile": str(provisioning_path),
+        },
+        "datasources_path": provisioning_path,
+    }
+
+
+def parse_output_columns(value, aliases, headers):
+    """Parse comma-separated output columns."""
+    if value is None:
+        return None
+    columns = []
+    for item in str(value).split(","):
+        column = item.strip()
+        if column:
+            columns.append(aliases.get(column, column))
+    if not columns:
+        raise GrafanaError("Output columns requires one or more comma-separated values.")
+    if columns == ["all"]:
+        return list(headers.keys())
+    unsupported = [column for column in columns if column not in headers]
+    if unsupported:
+        raise GrafanaError(
+            "Unsupported output column(s): %s. Supported values: %s."
+            % (", ".join(unsupported), ", ".join(sorted(aliases.keys())))
+        )
+    return columns
+
+
+def render_datasource_list_table(records, include_header=True, selected_columns=None):
+    """Render datasource list table with optional column selection."""
+    columns = list(selected_columns or ["uid", "name", "type", "access", "url", "isDefault"])
+    headers = [LIST_OUTPUT_COLUMN_HEADERS[column] for column in columns]
+    rows = [[str(item.get(column) or "") for column in columns] for item in records]
+    widths = [len(value) for value in headers]
+    for row in rows:
+        for index, value in enumerate(row):
+            widths[index] = max(widths[index], len(value))
+
+    def render_row(values):
+        return "  ".join(values[index].ljust(widths[index]) for index in range(len(values)))
+
+    lines = []
+    if include_header:
+        lines.append(render_row(headers))
+        lines.append(render_row(["-" * width for width in widths]))
+    lines.extend(render_row(row) for row in rows)
+    return lines
+
+
+def render_datasource_list_json(records):
+    """Render datasource list JSON."""
+    return json.dumps(records, indent=2, sort_keys=False)
+
+
+def project_datasource_records(records, selected_columns=None):
+    """Project datasource records to selected output columns."""
+    if not selected_columns:
+        return list(records)
+    return [
+        {column: record.get(column) for column in selected_columns}
+        for record in records
+    ]
+
+
+def render_datasource_list_csv(records, selected_columns=None):
+    """Render datasource summaries as CSV with optional selected columns."""
+    columns = list(selected_columns or ["uid", "name", "type", "access", "url", "isDefault"])
+    output = StringIO()
+    writer = csv.DictWriter(output, fieldnames=columns)
+    writer.writeheader()
+    for record in records:
+        writer.writerow({column: record.get(column) for column in columns})
+    return output.getvalue()
+
+
+def render_datasource_list_text(records, selected_columns=None):
+    """Render datasource summaries as key=value text lines."""
+    columns = list(selected_columns or ["uid", "name", "type", "access", "url"])
+    return [
+        " ".join("%s=%s" % (column, str(record.get(column) or "")) for column in columns)
+        for record in records
+    ]
+
+
+def render_datasource_list_yaml(records, selected_columns=None):
+    """Render datasource summaries as YAML."""
+    if selected_columns:
+        records = project_datasource_records(records, selected_columns)
+    return yaml.safe_dump(records)
+
+
+def _iter_supported_datasource_type_rows():
+    """Flatten the datasource catalog for table/csv output."""
+    document = build_supported_datasource_catalog_document()
+    for category in document["categories"]:
+        for item in category["types"]:
+            yield {
+                "category": category["category"],
+                "type": item["type"],
+                "displayName": item["displayName"],
+                "profile": item["profile"],
+                "queryLanguage": item["queryLanguage"],
+                "aliases": ",".join(item.get("aliases") or []),
+                "presetProfiles": ",".join(item.get("presetProfiles") or []),
+            }
+
+
+def render_supported_datasource_catalog_table():
+    """Render supported datasource catalog rows as a table."""
+    rows = list(_iter_supported_datasource_type_rows())
+    columns = [
+        ("category", "CATEGORY"),
+        ("type", "TYPE"),
+        ("displayName", "NAME"),
+        ("profile", "PROFILE"),
+        ("queryLanguage", "QUERY"),
+        ("aliases", "ALIASES"),
+        ("presetProfiles", "PRESETS"),
+    ]
+    widths = [len(header) for _, header in columns]
+    values = []
+    for row in rows:
+        value_row = [str(row.get(key) or "") for key, _ in columns]
+        values.append(value_row)
+        for index, value in enumerate(value_row):
+            widths[index] = max(widths[index], len(value))
+
+    def render_row(row):
+        return "  ".join(row[index].ljust(widths[index]) for index in range(len(row)))
+
+    lines = [render_row([header for _, header in columns])]
+    lines.append(render_row(["-" * width for width in widths]))
+    lines.extend(render_row(row) for row in values)
+    return lines
+
+
+def render_supported_datasource_catalog_csv():
+    """Render supported datasource catalog rows as CSV."""
+    output = StringIO()
+    fieldnames = [
+        "category",
+        "type",
+        "displayName",
+        "profile",
+        "queryLanguage",
+        "aliases",
+        "presetProfiles",
+    ]
+    writer = csv.DictWriter(output, fieldnames=fieldnames)
+    writer.writeheader()
+    for row in _iter_supported_datasource_type_rows():
+        writer.writerow(row)
+    return output.getvalue()
+
+
+def apply_secret_placeholders_to_record(record, secret_values):
+    """Apply secureJsonData placeholder declarations to one datasource record."""
+    if secret_values is None:
+        return dict(record)
+    placeholders = collect_secret_placeholders(record.get("secureJsonDataPlaceholders"))
+    if not placeholders:
+        return dict(record)
+    resolved = resolve_secret_placeholders(placeholders, secret_values)
+    merged = dict(record)
+    secure_json_data = dict(merged.get("secureJsonData") or {})
+    secure_json_data.update(resolved)
+    merged["secureJsonData"] = secure_json_data
+    return merged
+
+
 def load_import_bundle(import_dir):
     """Load import bundle implementation."""
     if not import_dir.exists():
@@ -281,19 +662,47 @@ def load_import_bundle(import_dir):
             "Datasource import file must contain a JSON array: %s" % datasources_path
         )
     records = []
+    allowed_secret_fields = {
+        "secureJsonDataPlaceholders",
+        "secureJsonDataProviders",
+    }
     for item in raw_records:
         if not isinstance(item, dict):
             raise GrafanaError(
                 "Datasource import entry must be a JSON object: %s" % datasources_path
             )
+        extra_fields = sorted(
+            key
+            for key in item.keys()
+            if key not in set(DATASOURCE_CONTRACT_FIELDS) | allowed_secret_fields
+        )
+        if extra_fields:
+            raise GrafanaError(
+                "Datasource import entry in %s contains unsupported datasource field(s): %s. Supported fields: %s."
+                % (
+                    datasources_path,
+                    ", ".join(extra_fields),
+                    ", ".join(list(DATASOURCE_CONTRACT_FIELDS) + sorted(allowed_secret_fields)),
+                )
+            )
+        contract_item = {
+            key: value for key, value in item.items() if key in DATASOURCE_CONTRACT_FIELDS
+        }
         try:
             validate_datasource_contract_record(
-                item,
+                contract_item,
                 "Datasource import entry in %s" % datasources_path,
             )
         except ValueError as exc:
             raise GrafanaError(str(exc))
-        records.append(normalize_datasource_record(item))
+        normalized = normalize_datasource_record(item)
+        if item.get("secureJsonDataPlaceholders") is not None:
+            normalized["secureJsonDataPlaceholders"] = item.get(
+                "secureJsonDataPlaceholders"
+            )
+        if item.get("secureJsonDataProviders") is not None:
+            normalized["secureJsonDataProviders"] = item.get("secureJsonDataProviders")
+        records.append(normalized)
     index_document = load_json_document(index_path)
     if not isinstance(index_document, dict):
         raise GrafanaError(
@@ -684,6 +1093,8 @@ def build_import_payload(record, existing=None):
     uid = record.get("uid") or ""
     if uid:
         payload["uid"] = uid
+    if record.get("secureJsonData"):
+        payload["secureJsonData"] = dict(record.get("secureJsonData") or {})
     if existing is not None:
         datasource_id = existing.get("id")
         if datasource_id is not None:
@@ -885,6 +1296,11 @@ def build_add_datasource_spec(args):
         getattr(args, "secure_json_data", None),
         "--secure-json-data",
     )
+    secure_json_data_placeholders = load_json_object_argument(
+        getattr(args, "secure_json_data_placeholders", None),
+        "--secure-json-data-placeholders",
+    )
+    secret_values = load_secret_value_map(args)
 
     derived_json_data = {}
     if bool(getattr(args, "tls_skip_verify", False)):
@@ -912,6 +1328,13 @@ def build_add_datasource_spec(args):
     )
     if secure_json_data:
         spec["secureJsonData"] = secure_json_data
+
+    spec = merge_secret_injection(
+        spec,
+        secure_json_data_placeholders,
+        secret_values,
+        "--secure-json-data-placeholders",
+    )
 
     if getattr(args, "basic_auth_password", None) and not getattr(
         args, "basic_auth_user", None
@@ -954,6 +1377,11 @@ def build_modify_datasource_updates(args):
         getattr(args, "secure_json_data", None),
         "--secure-json-data",
     )
+    secure_json_data_placeholders = load_json_object_argument(
+        getattr(args, "secure_json_data_placeholders", None),
+        "--secure-json-data-placeholders",
+    )
+    secret_values = load_secret_value_map(args)
 
     derived_json_data = {}
     if bool(getattr(args, "tls_skip_verify", False)):
@@ -981,6 +1409,13 @@ def build_modify_datasource_updates(args):
     )
     if secure_json_data:
         spec["secureJsonData"] = secure_json_data
+
+    spec = merge_secret_injection(
+        spec,
+        secure_json_data_placeholders,
+        secret_values,
+        "--secure-json-data-placeholders",
+    )
 
     if not spec:
         raise GrafanaError("Datasource modify requires at least one change flag.")
@@ -1024,6 +1459,7 @@ def build_modify_datasource_payload(existing, updates):
     payload["jsonData"] = deepcopy(existing_json_data or {})
 
     for key in (
+        "name",
         "url",
         "access",
         "isDefault",
@@ -1247,6 +1683,8 @@ def modify_datasource(args):
 def delete_datasource(args):
     """Delete datasource implementation."""
     _validate_live_mutation_dry_run_args(args, "delete")
+    if not bool(getattr(args, "dry_run", False)) and not bool(getattr(args, "yes", False)):
+        raise GrafanaError("Datasource delete requires --yes unless --dry-run is set.")
     client = build_client(args)
     result = delete_live_datasource(
         client,
@@ -1300,6 +1738,52 @@ def list_datasources(args):
     #   Upstream callers: 116, 1697, 448
     #   Downstream callees: 334, 52, 635, 647
 
+    input_dir = getattr(args, "input_dir", None)
+    if input_dir:
+        if getattr(args, "org_id", None) or bool(getattr(args, "all_orgs", False)):
+            raise GrafanaError("Datasource list with --input-dir does not support --org-id or --all-orgs.")
+        if bool(getattr(args, "interactive", False)):
+            raise GrafanaError("Datasource list interactive mode is not implemented in Python yet.")
+        bundle = load_local_datasource_bundle(input_dir, getattr(args, "input_format", "inventory"))
+        records = bundle["records"]
+        if getattr(args, "list_columns", False):
+            for column in LIST_OUTPUT_COLUMN_HEADERS:
+                print(column)
+            return 0
+        selected_columns = parse_output_columns(
+            getattr(args, "output_columns", None),
+            LIST_OUTPUT_COLUMN_ALIASES,
+            LIST_OUTPUT_COLUMN_HEADERS,
+        )
+        if args.json:
+            print(
+                json.dumps(
+                    project_datasource_records(records, selected_columns),
+                    indent=2,
+                    sort_keys=False,
+                )
+            )
+            return 0
+        if args.csv:
+            print(render_datasource_list_csv(records, selected_columns), end="")
+            return 0
+        if getattr(args, "yaml", False):
+            print(render_datasource_list_yaml(records, selected_columns), end="")
+            return 0
+        if getattr(args, "text", False):
+            for line in render_datasource_list_text(records, selected_columns):
+                print(line)
+            return 0
+        for line in render_datasource_list_table(
+            records,
+            include_header=not bool(getattr(args, "no_header", False)),
+            selected_columns=selected_columns,
+        ):
+            print(line)
+        print("")
+        print("Listed %s local datasource(s) from %s" % (len(records), input_dir))
+        return 0
+
     client = build_client(args)
     all_orgs = bool(getattr(args, "all_orgs", False))
     org_id = getattr(args, "org_id", None)
@@ -1340,20 +1824,236 @@ def list_datasources(args):
             datasources.append(item)
     else:
         datasources = client.list_datasources()
+    selected_columns = parse_output_columns(
+        getattr(args, "output_columns", None),
+        LIST_OUTPUT_COLUMN_ALIASES,
+        LIST_OUTPUT_COLUMN_HEADERS,
+    )
     if args.csv:
-        render_data_source_csv(datasources)
+        print(render_datasource_list_csv(datasources, selected_columns), end="")
         return 0
     if args.json:
-        print(render_data_source_json(datasources))
+        print(
+            json.dumps(
+                project_datasource_records(datasources, selected_columns),
+                indent=2,
+                sort_keys=False,
+            )
+        )
         return 0
-    for line in render_data_source_table(
+    if getattr(args, "yaml", False):
+        print(render_datasource_list_yaml(datasources, selected_columns), end="")
+        return 0
+    if getattr(args, "text", False):
+        for line in render_datasource_list_text(datasources, selected_columns):
+            print(line)
+        return 0
+    table_renderer = render_datasource_list_table if selected_columns else render_data_source_table
+    table_kwargs = {"selected_columns": selected_columns} if selected_columns else {}
+    for line in table_renderer(
         datasources,
         include_header=not bool(getattr(args, "no_header", False)),
+        **table_kwargs,
     ):
         print(line)
     print("")
     print("Listed %s data source(s) from %s" % (len(datasources), args.url))
     return 0
+
+
+def _collect_live_datasource_records(args, client=None):
+    """Collect live datasource records with optional org scope."""
+    client = client or build_client(args)
+    all_orgs = bool(getattr(args, "all_orgs", False))
+    org_id = getattr(args, "org_id", None)
+    auth_header = client.headers.get("Authorization", "")
+    if (all_orgs or org_id) and not auth_header.startswith("Basic "):
+        raise GrafanaError(
+            "Datasource org switching does not support API token auth. Use Grafana "
+            "username/password login with --basic-user and --basic-password."
+        )
+    records = []
+    if all_orgs:
+        for org in client.list_orgs():
+            scoped_org_id = _normalize_org_id(org)
+            if not scoped_org_id:
+                continue
+            scoped_client = client.with_org_id(scoped_org_id)
+            scoped_org = scoped_client.fetch_current_org()
+            for datasource in scoped_client.list_datasources():
+                item = dict(datasource)
+                item["org"] = str(scoped_org.get("name") or "")
+                item["orgId"] = str(scoped_org.get("id") or "")
+                records.append(item)
+        records.sort(
+            key=lambda item: (
+                str(item.get("orgId") or ""),
+                str(item.get("name") or ""),
+                str(item.get("uid") or ""),
+            )
+        )
+        return records
+    if org_id:
+        scoped_client = client.with_org_id(str(org_id))
+        scoped_org = scoped_client.fetch_current_org()
+        for datasource in scoped_client.list_datasources():
+            item = dict(datasource)
+            item["org"] = str(scoped_org.get("name") or "")
+            item["orgId"] = str(scoped_org.get("id") or "")
+            records.append(item)
+        return records
+    return client.list_datasources()
+
+
+def _browse_record_client(base_client, record):
+    org_id = record.get("orgId") or record.get("org_id")
+    if org_id:
+        return base_client.with_org_id(str(org_id))
+    return base_client
+
+
+def _browse_selected_record(rows, value):
+    try:
+        selected_index = int(value) - 1
+    except ValueError:
+        return None, "Unknown command. Use a number, e N, d N, /filter, r, or q."
+    if selected_index < 0 or selected_index >= len(rows):
+        return None, "Selection out of range."
+    return rows[selected_index], None
+
+
+def _browse_confirm_delete(base_client, record, input_reader, output_writer):
+    uid = str(record.get("uid") or "")
+    name = str(record.get("name") or "")
+    if not uid:
+        output_writer("Datasource delete requires a datasource UID.")
+        return False
+    answer = input_reader("Delete datasource %s (%s)? type yes: " % (uid, name)).strip()
+    if answer != "yes":
+        output_writer("Cancelled datasource delete.")
+        return False
+    scoped_client = _browse_record_client(base_client, record)
+    target = fetch_datasource_by_uid_if_exists(scoped_client, uid) or record
+    target_id = target.get("id") or record.get("id")
+    if not target_id:
+        raise GrafanaError("Datasource browse delete requires a live datasource id.")
+    scoped_client.request_json("/api/datasources/%s" % target_id, method="DELETE")
+    output_writer("Deleted datasource %s." % uid)
+    return True
+
+
+def _browse_edit_selected(base_client, record, input_reader, output_writer):
+    uid = str(record.get("uid") or "")
+    if not uid:
+        output_writer("Datasource edit requires a datasource UID.")
+        return False
+    scoped_client = _browse_record_client(base_client, record)
+    existing = fetch_datasource_by_uid_if_exists(scoped_client, uid)
+    if existing is None:
+        raise GrafanaError("Datasource browse edit could not find UID %s." % uid)
+    prompts = (
+        ("name", "Name", existing.get("name") or ""),
+        ("url", "URL", existing.get("url") or ""),
+        ("access", "Access", existing.get("access") or ""),
+    )
+    updates = {}
+    for key, label, current in prompts:
+        value = input_reader("%s [%s]: " % (label, current)).strip()
+        if value and value != str(current):
+            updates[key] = value
+    current_default = bool(existing.get("isDefault"))
+    default_value = input_reader(
+        "Default datasource? [%s]: " % ("yes" if current_default else "no")
+    ).strip().lower()
+    if default_value in {"yes", "y", "true", "1"} and not current_default:
+        updates["isDefault"] = True
+    elif default_value in {"no", "n", "false", "0"} and current_default:
+        updates["isDefault"] = False
+    if not updates:
+        output_writer("No datasource changes detected for %s." % uid)
+        return False
+    payload = build_modify_datasource_payload(existing, updates)
+    target_id = payload.get("id")
+    if not target_id:
+        raise GrafanaError("Datasource browse edit requires a live datasource id.")
+    scoped_client.request_json(
+        "/api/datasources/%s" % target_id,
+        method="PUT",
+        payload=payload,
+    )
+    output_writer("Updated datasource %s." % uid)
+    return True
+
+
+def browse_datasources(args, input_reader=input, output_writer=print, is_tty=None):
+    """Browse live datasource inventory in a compact interactive terminal loop."""
+    is_tty = is_tty or (lambda: sys.stdin.isatty() and sys.stdout.isatty())
+    if not is_tty():
+        raise GrafanaError("Datasource browse requires an interactive terminal (TTY).")
+    client = build_client(args)
+    records = _collect_live_datasource_records(args, client=client)
+    if not records:
+        output_writer("No datasources matched.")
+        return 0
+    filtered = list(records)
+
+    def render_rows(rows):
+        output_writer("Datasource browse: number=view JSON, e N=edit, d N=delete, /text=filter, r=reset, q=quit.")
+        for index, record in enumerate(rows, 1):
+            output_writer(
+                "%d. %s | %s | %s | org=%s"
+                % (
+                    index,
+                    str(record.get("uid") or "-"),
+                    str(record.get("name") or "-"),
+                    str(record.get("type") or "-"),
+                    str(record.get("org") or record.get("orgId") or "-"),
+                )
+            )
+
+    render_rows(filtered)
+    while True:
+        choice = input_reader("datasource> ").strip()
+        if choice.lower() in {"q", "quit", "exit"}:
+            return 0
+        if choice.lower() in {"r", "reset"}:
+            filtered = list(records)
+            render_rows(filtered)
+            continue
+        if choice.startswith("/"):
+            needle = choice[1:].strip().lower()
+            filtered = [
+                record
+                for record in records
+                if needle in json.dumps(record, sort_keys=True).lower()
+            ]
+            render_rows(filtered)
+            continue
+        if choice.lower().startswith("e "):
+            selected, error = _browse_selected_record(filtered, choice.split(None, 1)[1])
+            if error:
+                output_writer(error)
+                continue
+            if _browse_edit_selected(client, selected, input_reader, output_writer):
+                records = _collect_live_datasource_records(args, client=client)
+                filtered = list(records)
+                render_rows(filtered)
+            continue
+        if choice.lower().startswith("d "):
+            selected, error = _browse_selected_record(filtered, choice.split(None, 1)[1])
+            if error:
+                output_writer(error)
+                continue
+            if _browse_confirm_delete(client, selected, input_reader, output_writer):
+                records = _collect_live_datasource_records(args, client=client)
+                filtered = list(records)
+                render_rows(filtered)
+            continue
+        selected, error = _browse_selected_record(filtered, choice)
+        if error:
+            output_writer(error)
+            continue
+        output_writer(json.dumps(selected, indent=2, sort_keys=False))
 
 
 def export_datasources(args):
@@ -1394,11 +2094,16 @@ def export_datasources(args):
             scoped_output_dir = build_all_orgs_output_dir(output_dir, org)
         records = build_export_records(scoped_client)
         datasources_path = scoped_output_dir / DATASOURCE_EXPORT_FILENAME
+        provisioning_path = (
+            scoped_output_dir
+            / DATASOURCE_PROVISIONING_SUBDIR
+            / DATASOURCE_PROVISIONING_FILENAME
+        )
         index_path = scoped_output_dir / "index.json"
         metadata_path = scoped_output_dir / EXPORT_METADATA_FILENAME
         existing_paths = [
             path
-            for path in [datasources_path, index_path, metadata_path]
+            for path in [datasources_path, provisioning_path, index_path, metadata_path]
             if path.exists()
         ]
         if existing_paths and not args.overwrite:
@@ -1412,6 +2117,7 @@ def export_datasources(args):
                 "org": dict(org),
                 "records": records,
                 "datasources_path": datasources_path,
+                "provisioning_path": provisioning_path,
                 "index_path": index_path,
                 "metadata_path": metadata_path,
             }
@@ -1438,6 +2144,14 @@ def export_datasources(args):
     if not args.dry_run:
         for item in export_targets:
             write_json_document(item["records"], item["datasources_path"])
+            if not bool(getattr(args, "without_datasource_provisioning", False)):
+                item["provisioning_path"].parent.mkdir(parents=True, exist_ok=True)
+                item["provisioning_path"].write_text(
+                    yaml.safe_dump(
+                        build_datasource_provisioning_document(item["records"])
+                    ),
+                    encoding="utf-8",
+                )
             write_json_document(
                 build_export_index(item["records"], DATASOURCE_EXPORT_FILENAME),
                 item["index_path"],
@@ -1476,11 +2190,16 @@ def export_datasources(args):
         return 0
     target = export_targets[0]
     print(
-        "%s %s datasource(s). Datasources: %s Index: %s Manifest: %s"
+        "%s %s datasource(s). Datasources: %s Provisioning: %s Index: %s Manifest: %s"
         % (
             summary_verb,
             len(target["records"]),
             target["datasources_path"],
+            (
+                "skipped"
+                if bool(getattr(args, "without_datasource_provisioning", False))
+                else target["provisioning_path"]
+            ),
             target["index_path"],
             target["metadata_path"],
         )
@@ -1515,10 +2234,25 @@ def _print_datasource_unified_diff(
 def diff_datasources(args):
     """Diff datasources implementation."""
     client = build_client(args)
-    bundle = load_datasource_diff_bundle(Path(args.diff_dir))
+    bundle = load_local_datasource_bundle(Path(args.diff_dir), getattr(args, "input_format", "inventory"))
     live_records = build_live_datasource_diff_records(client)
     report = compare_datasource_bundle_to_live(bundle, live_records)
     diff_dir = Path(args.diff_dir)
+
+    if getattr(args, "output_format", "text") == "json":
+        print(
+            json.dumps(
+                {
+                    "diffCount": report["summary"]["diffCount"],
+                    "bundleCount": report["summary"]["bundleCount"],
+                    "items": report["items"],
+                    "summary": report["summary"],
+                },
+                indent=2,
+                sort_keys=False,
+            )
+        )
+        return 1 if report["summary"]["diffCount"] else 0
 
     for item in report["items"]:
         identity = item["identity"]
@@ -1857,8 +2591,19 @@ def _run_import_datasources_for_single_org(args):
             "--no-header is only supported with --dry-run --table for datasource import."
         )
     client = build_effective_import_client(args, build_client(args))
-    bundle_loader = load_import_bundle_preview if args.dry_run else load_import_bundle
-    bundle = bundle_loader(Path(args.import_dir))
+    if getattr(args, "input_format", "inventory") == "provisioning":
+        if getattr(args, "use_export_org", False):
+            raise GrafanaError("--use-export-org is only supported with inventory datasource import.")
+        bundle = load_provisioning_datasource_bundle(Path(args.import_dir))
+    else:
+        bundle_loader = load_import_bundle_preview if args.dry_run else load_import_bundle
+        bundle = bundle_loader(Path(args.import_dir))
+    secret_values = load_secret_value_map(args)
+    if secret_values is not None:
+        bundle["records"] = [
+            apply_secret_placeholders_to_record(record, secret_values)
+            for record in bundle["records"]
+        ]
     target_org_id = validate_export_org_match(args, client, bundle)
     lookups = build_existing_datasource_lookups(client)
     mode = determine_import_mode(args)
@@ -2000,16 +2745,27 @@ def dispatch_datasource_command(args):
     #   Downstream callees: 1044, 1102, 1250, 1690, 880, 934, 994
 
     if args.command == "types":
-        if getattr(args, "output_format", None) == "json" or bool(
-            getattr(args, "json", False)
-        ):
-            print(json.dumps(build_supported_datasource_catalog_document(), indent=2))
+        document = build_supported_datasource_catalog_document()
+        if getattr(args, "json", False):
+            print(json.dumps(document, indent=2))
+            return 0
+        if getattr(args, "yaml", False):
+            print(yaml.safe_dump(document), end="")
+            return 0
+        if getattr(args, "csv", False):
+            print(render_supported_datasource_catalog_csv(), end="")
+            return 0
+        if getattr(args, "table", False):
+            for line in render_supported_datasource_catalog_table():
+                print(line)
             return 0
         for line in render_supported_datasource_catalog_text():
             print(line)
         return 0
     if args.command == "list":
         return list_datasources(args)
+    if args.command == "browse":
+        return browse_datasources(args)
     if args.command == "export":
         return export_datasources(args)
     if args.command == "import":

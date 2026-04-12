@@ -88,6 +88,7 @@ from .dashboards.export_inventory import (
     discover_dashboard_files as discover_dashboard_files_from_export,
 )
 from .dashboards.import_support import (
+    IMPORT_DRY_RUN_COLUMN_HEADERS,
     build_import_payload,
     build_compare_diff_lines,
     build_local_compare_document,
@@ -122,9 +123,12 @@ from .dashboards.listing import (
     format_dashboard_summary_line,
     format_data_source_line,
     list_dashboards as run_list_dashboards,
+    parse_dashboard_list_output_columns,
     render_dashboard_summary_csv,
     render_dashboard_summary_json,
     render_dashboard_summary_table,
+    render_dashboard_summary_text,
+    render_dashboard_summary_yaml,
     render_data_source_csv,
     render_data_source_json,
     render_data_source_table,
@@ -164,6 +168,7 @@ from .dashboard_authoring import (
     build_history_inventory_document,
     clone_live_dashboard,
     fetch_live_dashboard,
+    load_dashboard_serve_items,
     load_dashboard_document,
     load_history_artifacts,
     load_history_export_document,
@@ -284,6 +289,8 @@ __all__ = [
     "render_dashboard_summary_csv",
     "render_dashboard_summary_json",
     "render_dashboard_summary_table",
+    "render_dashboard_summary_text",
+    "render_dashboard_summary_yaml",
     "render_data_source_csv",
     "render_data_source_json",
     "render_data_source_table",
@@ -308,8 +315,9 @@ DATASOURCE_INVENTORY_FILENAME = "datasources.json"
 DASHBOARD_PERMISSION_BUNDLE_FILENAME = "permissions.json"
 TOOL_SCHEMA_VERSION = 1
 ROOT_INDEX_KIND = "grafana-utils-dashboard-export-index"
-LIST_OUTPUT_FORMAT_CHOICES = ("table", "csv", "json")
+LIST_OUTPUT_FORMAT_CHOICES = ("text", "table", "csv", "json", "yaml")
 IMPORT_DRY_RUN_OUTPUT_FORMAT_CHOICES = ("text", "table", "json")
+DIFF_OUTPUT_FORMAT_CHOICES = ("text", "json")
 INSPECT_OUTPUT_FORMAT_CHOICES = (
     "text",
     "table",
@@ -634,6 +642,8 @@ def add_export_cli_args(parser: argparse.ArgumentParser) -> None:
     """Add export cli args implementation."""
     parser.add_argument(
         "--export-dir",
+        "--output-dir",
+        dest="export_dir",
         default=DEFAULT_EXPORT_DIR,
         help=(
             "Directory to write exported dashboards into. Export writes two "
@@ -672,13 +682,67 @@ def add_export_cli_args(parser: argparse.ArgumentParser) -> None:
     )
     parser.add_argument(
         "--without-dashboard-raw",
+        "--without-raw",
+        dest="without_dashboard_raw",
         action="store_true",
         help=f"Skip the API-safe {RAW_EXPORT_SUBDIR}/ export variant. Use this only when you do not need later API import or diff workflows.",
     )
     parser.add_argument(
         "--without-dashboard-prompt",
+        "--without-prompt",
+        dest="without_dashboard_prompt",
         action="store_true",
         help=f"Skip the web-import {PROMPT_EXPORT_SUBDIR}/ export variant. Use this only when you do not need Grafana UI import with datasource prompts.",
+    )
+    parser.add_argument(
+        "--without-dashboard-provisioning",
+        "--without-provisioning",
+        dest="without_dashboard_provisioning",
+        action="store_true",
+        help="Skip the provisioning/ export variant when supported by the active backend.",
+    )
+    parser.add_argument(
+        "--provider-name",
+        "--provisioning-provider-name",
+        dest="provisioning_provider_name",
+        default="grafana-utils-dashboards",
+        help="Set the generated provisioning provider name.",
+    )
+    parser.add_argument(
+        "--provider-org-id",
+        "--provisioning-provider-org-id",
+        dest="provisioning_provider_org_id",
+        default=None,
+        help="Override the org ID written into the provisioning config.",
+    )
+    parser.add_argument(
+        "--provider-path",
+        "--provisioning-provider-path",
+        dest="provisioning_provider_path",
+        default=None,
+        help="Override the dashboard path written into the provisioning config.",
+    )
+    parser.add_argument(
+        "--provider-disable-deletion",
+        "--provisioning-provider-disable-deletion",
+        dest="provisioning_provider_disable_deletion",
+        action="store_true",
+        help="Set disableDeletion in the provisioning provider config.",
+    )
+    parser.add_argument(
+        "--provider-allow-ui-updates",
+        "--provisioning-provider-allow-ui-updates",
+        dest="provisioning_provider_allow_ui_updates",
+        action="store_true",
+        help="Set allowUiUpdates in the provisioning provider config.",
+    )
+    parser.add_argument(
+        "--provider-update-interval-seconds",
+        "--provisioning-provider-update-interval-seconds",
+        dest="provisioning_provider_update_interval_seconds",
+        type=int,
+        default=30,
+        help="Set updateIntervalSeconds in the provisioning provider config.",
     )
     parser.add_argument(
         "--dry-run",
@@ -724,6 +788,8 @@ def add_list_cli_args(parser: argparse.ArgumentParser) -> None:
     )
     output_group.add_argument(
         "--with-sources",
+        "--show-sources",
+        dest="with_sources",
         action="store_true",
         help=(
             "For table or CSV output, fetch each dashboard payload and include resolved datasource "
@@ -732,6 +798,11 @@ def add_list_cli_args(parser: argparse.ArgumentParser) -> None:
         ),
     )
     render_group = output_group.add_mutually_exclusive_group()
+    render_group.add_argument(
+        "--text",
+        action="store_true",
+        help="Render dashboard summaries as plain text.",
+    )
     render_group.add_argument(
         "--table",
         action="store_true",
@@ -747,6 +818,25 @@ def add_list_cli_args(parser: argparse.ArgumentParser) -> None:
         action="store_true",
         help="Render dashboard summaries as JSON.",
     )
+    render_group.add_argument(
+        "--yaml",
+        action="store_true",
+        help="Render dashboard summaries as YAML.",
+    )
+    output_group.add_argument(
+        "--output-columns",
+        default=None,
+        help=(
+            "Render only these comma-separated list columns. Supported values: uid, "
+            "name, folder, folder_uid, path, org, org_id, sources, source_uids. "
+            "JSON-style aliases like folderUid, orgId, and sourceUids are also accepted."
+        ),
+    )
+    output_group.add_argument(
+        "--list-columns",
+        action="store_true",
+        help="Print the supported --output-columns values and exit.",
+    )
     output_group.add_argument(
         "--no-header",
         action="store_true",
@@ -758,8 +848,8 @@ def add_list_cli_args(parser: argparse.ArgumentParser) -> None:
         default=None,
         help=(
             "Alternative single-flag output selector for dashboard list output. "
-            "Use table, csv, or json. This cannot be combined with --table, "
-            "--csv, or --json."
+            "Use text, table, csv, json, or yaml. This cannot be combined with "
+            "--text, --table, --csv, --json, or --yaml."
         ),
     )
 
@@ -773,12 +863,20 @@ def add_import_cli_args(parser: argparse.ArgumentParser) -> None:
     output_group = parser.add_argument_group("Output Options")
     input_group.add_argument(
         "--import-dir",
+        "--input-dir",
+        dest="import_dir",
         required=True,
         help=(
             "Import dashboards from this directory. "
             f"Point this to the {RAW_EXPORT_SUBDIR}/ export directory explicitly for normal imports. "
             "When --use-export-org is enabled, point this to the combined multi-org export root instead."
         ),
+    )
+    input_group.add_argument(
+        "--input-format",
+        choices=("raw", "provisioning"),
+        default="raw",
+        help="Interpret --input-dir as raw export files or Grafana file-provisioning artifacts.",
     )
     target_group.add_argument(
         "--org-id",
@@ -869,6 +967,11 @@ def add_import_cli_args(parser: argparse.ArgumentParser) -> None:
         help="Preview what import would do without changing Grafana. This reports whether each dashboard would create, update, or be skipped/blocked.",
     )
     output_group.add_argument(
+        "--interactive",
+        action="store_true",
+        help="Open an interactive review picker before importing dashboards.",
+    )
+    output_group.add_argument(
         "--table",
         action="store_true",
         help="For --dry-run only, render output in table form instead of per-dashboard log lines. With --ensure-folders, the folder check is also shown in table form.",
@@ -901,6 +1004,11 @@ def add_import_cli_args(parser: argparse.ArgumentParser) -> None:
             "Supported values: uid, destination, action, folder_path, "
             "source_folder_path, destination_folder_path, reason, file."
         ),
+    )
+    output_group.add_argument(
+        "--list-columns",
+        action="store_true",
+        help="Print the supported --output-columns values and exit.",
     )
     output_group.add_argument(
         "--progress",
@@ -995,12 +1103,20 @@ def add_diff_cli_args(parser: argparse.ArgumentParser) -> None:
     output_group = parser.add_argument_group("Output Options")
     input_group.add_argument(
         "--import-dir",
+        "--input-dir",
+        dest="import_dir",
         required=True,
         help=(
             "Compare dashboards from this raw export directory against Grafana. "
             f"Point this to the {RAW_EXPORT_SUBDIR}/ export directory explicitly; "
             "use inspect-export --input-format provisioning for Grafana file-provisioning trees."
         ),
+    )
+    input_group.add_argument(
+        "--input-format",
+        choices=("raw", "provisioning"),
+        default="raw",
+        help="Interpret --input-dir as raw export files or Grafana file-provisioning artifacts.",
     )
     target_group.add_argument(
         "--import-folder-uid",
@@ -1012,6 +1128,12 @@ def add_diff_cli_args(parser: argparse.ArgumentParser) -> None:
         type=int,
         default=3,
         help="Number of surrounding lines to include in unified diff output (default: 3).",
+    )
+    output_group.add_argument(
+        "--output-format",
+        choices=DIFF_OUTPUT_FORMAT_CHOICES,
+        default="text",
+        help="Render diff output as text or json.",
     )
 
 
@@ -1513,7 +1635,55 @@ def add_clone_live_cli_args(parser: argparse.ArgumentParser) -> None:
 
 def add_browse_cli_args(parser: argparse.ArgumentParser) -> None:
     """Add browse cli args implementation."""
-    add_serve_cli_args(parser)
+    add_common_cli_args(parser)
+    input_group = parser.add_argument_group("Input Options")
+    input_group.add_argument(
+        "--workspace",
+        default=None,
+        help=(
+            "Browse dashboards from this repo/workspace root instead of pointing directly at one local export tree."
+        ),
+    )
+    input_group.add_argument(
+        "--input-dir",
+        default=None,
+        help=(
+            "Browse dashboards from this local export tree instead of live Grafana. "
+            "Point this at a raw export root or a provisioning root."
+        ),
+    )
+    input_group.add_argument(
+        "--input-format",
+        choices=("raw", "provisioning"),
+        default="raw",
+        help=(
+            "Interpret --workspace or --input-dir as raw export files or Grafana file-provisioning artifacts."
+        ),
+    )
+    selection_group = parser.add_argument_group("Selection Options")
+    selection_group.add_argument(
+        "--page-size",
+        type=int,
+        default=DEFAULT_PAGE_SIZE,
+        help=f"Dashboard search page size (default: {DEFAULT_PAGE_SIZE}).",
+    )
+    selection_group.add_argument(
+        "--org-id",
+        default=None,
+        help="Browse dashboards from this Grafana organization ID instead of the current org.",
+    )
+    selection_group.add_argument(
+        "--all-orgs",
+        action="store_true",
+        help=(
+            "Browse dashboards from every visible Grafana organization and browse the dashboard tree across them."
+        ),
+    )
+    selection_group.add_argument(
+        "--path",
+        default=None,
+        help="Optional folder path root to open instead of the full dashboard tree, for example 'Platform / Infra'.",
+    )
 
 
 def add_edit_live_cli_args(parser: argparse.ArgumentParser) -> None:
@@ -2030,9 +2200,162 @@ def clone_live_dashboard_command(args: argparse.Namespace) -> int:
     return 0
 
 
+def _dashboard_browse_matches_path(record: dict[str, str], path: Optional[str]) -> bool:
+    if not path:
+        return True
+    normalized = str(path).strip()
+    record_path = str(record.get("path") or "").strip()
+    return record_path == normalized or record_path.startswith(normalized + " /")
+
+
+def _dashboard_browse_local_items(args: argparse.Namespace) -> list[dict[str, Any]]:
+    serve_args = argparse.Namespace(
+        **{
+            **vars(args),
+            "input": getattr(args, "input_dir", None) or getattr(args, "workspace", None),
+            "script": None,
+            "script_format": "json",
+            "open_browser": False,
+        }
+    )
+    items = []
+    for item in load_dashboard_serve_items(serve_args):
+        document = item.get("dashboard") if isinstance(item, dict) else None
+        dashboard = extract_dashboard_object(document or {}, "Dashboard browse item must contain a dashboard object.")
+        folder = (
+            str((document.get("meta") or {}).get("folderTitle") or "").strip()
+            if isinstance(document, dict)
+            else ""
+        )
+        folder_uid = (
+            str((document.get("meta") or {}).get("folderUid") or dashboard.get("folderUid") or DEFAULT_FOLDER_UID)
+            if isinstance(document, dict)
+            else DEFAULT_FOLDER_UID
+        )
+        path = str((document.get("meta") or {}).get("folderPath") or folder or DEFAULT_FOLDER_TITLE) if isinstance(document, dict) else DEFAULT_FOLDER_TITLE
+        summary = {
+            "uid": dashboard.get("uid") or item.get("uid"),
+            "title": dashboard.get("title") or item.get("title"),
+            "folderTitle": folder or DEFAULT_FOLDER_TITLE,
+            "folderUid": folder_uid,
+            "folderPath": path,
+            "orgName": "local",
+            "orgId": "local",
+            "_document": document,
+            "_source": item.get("source"),
+        }
+        record = build_dashboard_summary_record(summary)
+        if _dashboard_browse_matches_path(record, getattr(args, "path", None)):
+            summary["_record"] = record
+            items.append(summary)
+    return items
+
+
+def _dashboard_browse_live_items(args: argparse.Namespace) -> list[dict[str, Any]]:
+    client = build_client(args)
+    auth_header = client.headers.get("Authorization", "")
+    if (getattr(args, "all_orgs", False) or getattr(args, "org_id", None)) and not auth_header.startswith("Basic "):
+        raise GrafanaError(
+            "Dashboard org switching does not support API token auth. Use Grafana username/password login with --basic-user and --basic-password."
+        )
+    if getattr(args, "all_orgs", False):
+        clients = [
+            client.with_org_id(str(org.get("id")))
+            for org in client.list_orgs()
+            if str(org.get("id") or "").strip()
+        ]
+    elif getattr(args, "org_id", None):
+        clients = [client.with_org_id(str(args.org_id))]
+    else:
+        clients = [client]
+
+    items = []
+    for scoped_client in clients:
+        summaries = attach_dashboard_folder_paths(
+            scoped_client,
+            scoped_client.iter_dashboard_summaries(args.page_size),
+        )
+        summaries = attach_dashboard_org(scoped_client, summaries)
+        for summary in summaries:
+            record = build_dashboard_summary_record(summary)
+            if _dashboard_browse_matches_path(record, getattr(args, "path", None)):
+                item = dict(summary)
+                item["_record"] = record
+                item["_client"] = scoped_client
+                items.append(item)
+    return items
+
+
+def _run_dashboard_browse_loop(
+    args: argparse.Namespace,
+    items: list[dict[str, Any]],
+    *,
+    input_reader=input,
+    output_writer=print,
+) -> int:
+    """Run a compact interactive dashboard browser."""
+    if not items:
+        output_writer("No dashboards matched.")
+        return 0
+    filtered = list(items)
+
+    def render_rows(rows: list[dict[str, Any]]) -> None:
+        output_writer("Dashboard browse: enter a number to view JSON, /text to filter, r to reset, q to quit.")
+        for index, item in enumerate(rows, 1):
+            record = item["_record"]
+            output_writer(
+                "%d. %s | %s | %s | org=%s"
+                % (index, record["uid"], record["name"], record["path"], record["org"])
+            )
+
+    render_rows(filtered)
+    while True:
+        choice = input_reader("browse> ").strip()
+        if choice.lower() in {"q", "quit", "exit"}:
+            return 0
+        if choice.lower() in {"r", "reset"}:
+            filtered = list(items)
+            render_rows(filtered)
+            continue
+        if choice.startswith("/"):
+            needle = choice[1:].strip().lower()
+            filtered = [
+                item
+                for item in items
+                if needle in " ".join(item["_record"].values()).lower()
+            ]
+            render_rows(filtered)
+            continue
+        try:
+            selected_index = int(choice) - 1
+        except ValueError:
+            output_writer("Unknown command. Use a number, /filter, r, or q.")
+            continue
+        if selected_index < 0 or selected_index >= len(filtered):
+            output_writer("Selection out of range.")
+            continue
+        item = filtered[selected_index]
+        if "_document" in item:
+            document = item["_document"]
+        else:
+            document = item["_client"].fetch_dashboard(item["_record"]["uid"])
+        output_writer(json.dumps(document, indent=2, sort_keys=False))
+
+
 def browse_command(args: argparse.Namespace) -> int:
-    """Browse one local dashboard tree in a local preview server."""
-    return run_dashboard_serve(args)
+    """Browse dashboards in an interactive terminal."""
+    if getattr(args, "workspace", None) and getattr(args, "input_dir", None):
+        raise GrafanaError("Choose either --workspace or --input-dir, not both.")
+    if getattr(args, "org_id", None) or bool(getattr(args, "all_orgs", False)):
+        if getattr(args, "workspace", None) or getattr(args, "input_dir", None):
+            raise GrafanaError("Dashboard browse local mode does not support --org-id or --all-orgs.")
+    if not sys.stdin.isatty() or not sys.stdout.isatty():
+        raise GrafanaError("Dashboard browse requires an interactive terminal (TTY).")
+    if getattr(args, "workspace", None) or getattr(args, "input_dir", None):
+        items = _dashboard_browse_local_items(args)
+    else:
+        items = _dashboard_browse_live_items(args)
+    return _run_dashboard_browse_loop(args, items, input_reader=input, output_writer=print)
 
 
 def edit_live_dashboard_command(args: argparse.Namespace) -> int:
@@ -2525,6 +2848,7 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
         args.command = "list-vars"
     _normalize_output_format_args(args, parser)
     _validate_import_routing_args(args, parser)
+    _parse_dashboard_list_output_columns(args, parser)
     _parse_dashboard_import_output_columns(args, parser)
     return args
 
@@ -2636,16 +2960,20 @@ def _normalize_output_format_args(
         return
     if command in ("list-dashboard",):
         if (
-            bool(getattr(args, "table", False))
+            bool(getattr(args, "text", False))
+            or bool(getattr(args, "table", False))
             or bool(getattr(args, "csv", False))
             or bool(getattr(args, "json", False))
+            or bool(getattr(args, "yaml", False))
         ):
             parser.error(
-                "--output-format cannot be combined with --table, --csv, or --json for dashboard list commands."
+                "--output-format cannot be combined with --text, --table, --csv, --json, or --yaml for dashboard list commands."
             )
+        args.text = output_format == "text"
         args.table = output_format == "table"
         args.csv = output_format == "csv"
         args.json = output_format == "json"
+        args.yaml = output_format == "yaml"
         return
     if command == "import-dashboard":
         if bool(getattr(args, "table", False)) or bool(getattr(args, "json", False)):
@@ -2674,12 +3002,28 @@ def _parse_dashboard_import_output_columns(
     value = getattr(args, "output_columns", None)
     if value is None:
         return
+    if getattr(args, "list_columns", False):
+        return
     if not bool(getattr(args, "table", False)):
         parser.error(
             "--output-columns is only supported with --dry-run --table or table-like --output-format for import-dashboard."
         )
     try:
         args.output_columns = parse_dashboard_import_dry_run_columns(value)
+    except GrafanaError as exc:
+        parser.error(str(exc))
+
+
+def _parse_dashboard_list_output_columns(
+    args: argparse.Namespace,
+    parser: argparse.ArgumentParser,
+) -> None:
+    """Parse dashboard list output columns."""
+    if getattr(args, "command", None) != "list-dashboard":
+        return
+    value = getattr(args, "output_columns", None)
+    try:
+        args.output_columns = parse_dashboard_list_output_columns(value)
     except GrafanaError as exc:
         parser.error(str(exc))
 
@@ -2783,6 +3127,9 @@ def _build_inspection_workflow_deps() -> dict[str, Any]:
             "ROOT_INDEX_KIND": ROOT_INDEX_KIND,
             "TOOL_SCHEMA_VERSION": TOOL_SCHEMA_VERSION,
             "build_client": build_client,
+            "input_reader": input,
+            "is_tty": lambda: sys.stdin.isatty() and sys.stdout.isatty(),
+            "output_writer": print,
         }
     )
 
@@ -3206,11 +3553,15 @@ def _build_import_workflow_deps() -> dict[str, Any]:
             "EXPORT_METADATA_FILENAME": EXPORT_METADATA_FILENAME,
             "FOLDER_INVENTORY_FILENAME": FOLDER_INVENTORY_FILENAME,
             "GrafanaError": GrafanaError,
+            "IMPORT_DRY_RUN_COLUMN_HEADERS": IMPORT_DRY_RUN_COLUMN_HEADERS,
             "PROMPT_EXPORT_SUBDIR": PROMPT_EXPORT_SUBDIR,
             "RAW_EXPORT_SUBDIR": RAW_EXPORT_SUBDIR,
             "ROOT_INDEX_KIND": ROOT_INDEX_KIND,
             "TOOL_SCHEMA_VERSION": TOOL_SCHEMA_VERSION,
             "build_client": build_client,
+            "input_reader": input,
+            "is_tty": lambda: sys.stdin.isatty() and sys.stdout.isatty(),
+            "output_writer": print,
         }
     )
 
@@ -3247,6 +3598,7 @@ def delete_dashboards(args: argparse.Namespace) -> int:
 def _build_diff_workflow_deps() -> dict[str, Any]:
     """Internal helper for build diff workflow deps."""
     return {
+        "GrafanaError": GrafanaError,
         "RAW_EXPORT_SUBDIR": RAW_EXPORT_SUBDIR,
         "build_client": build_client,
         "build_compare_diff_lines": build_compare_diff_lines,

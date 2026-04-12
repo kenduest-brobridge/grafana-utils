@@ -49,6 +49,7 @@ class UnifiedCliTests(unittest.TestCase):
         self.assertIn("status", help_text)
         self.assertIn("snapshot", help_text)
         self.assertIn("sync", help_text)
+        self.assertIn("workspace", help_text)
         self.assertNotIn("Compatibility direct form", help_text)
         self.assertNotIn("export-alert", help_text)
 
@@ -61,10 +62,42 @@ class UnifiedCliTests(unittest.TestCase):
         self.assertEqual(exc.exception.code, 0)
         help_text = stdout.getvalue()
         self.assertIn("grafana-util sync", help_text)
-        self.assertIn(
-            "{summary,plan,review,preflight,assess-alerts,bundle-preflight,bundle,apply}",
-            help_text,
-        )
+        self.assertIn("scan", help_text)
+        self.assertIn("test", help_text)
+        self.assertIn("preview", help_text)
+        self.assertIn("summary", help_text)
+        self.assertIn("plan", help_text)
+        self.assertIn("review", help_text)
+        self.assertIn("preflight", help_text)
+        self.assertIn("assess-alerts", help_text)
+        self.assertIn("bundle-preflight", help_text)
+        self.assertIn("bundle", help_text)
+        self.assertIn("package", help_text)
+        self.assertIn("ci", help_text)
+        self.assertIn("apply", help_text)
+
+    def test_unified_parse_args_workspace_without_subcommand_prints_workspace_help(self):
+        stdout = io.StringIO()
+        with redirect_stdout(stdout):
+            with self.assertRaises(SystemExit) as exc:
+                unified_cli.parse_args(["workspace"])
+
+        self.assertEqual(exc.exception.code, 0)
+        help_text = stdout.getvalue()
+        self.assertIn("grafana-util workspace", help_text)
+        self.assertIn("scan", help_text)
+        self.assertIn("test", help_text)
+        self.assertIn("preview", help_text)
+        self.assertIn("summary", help_text)
+        self.assertIn("plan", help_text)
+        self.assertIn("review", help_text)
+        self.assertIn("preflight", help_text)
+        self.assertIn("assess-alerts", help_text)
+        self.assertIn("bundle-preflight", help_text)
+        self.assertIn("bundle", help_text)
+        self.assertIn("package", help_text)
+        self.assertIn("ci", help_text)
+        self.assertIn("apply", help_text)
 
     def test_unified_parse_args_dashboard_without_subcommand_prints_dashboard_help(
         self,
@@ -412,6 +445,57 @@ class UnifiedCliTests(unittest.TestCase):
             ["plan", "--desired-file", "./desired.json", "--live-file", "./live.json"],
         )
 
+    def test_unified_parse_args_supports_workspace_namespace(self):
+        args = unified_cli.parse_args(
+            [
+                "workspace",
+                "plan",
+                "--desired-file",
+                "./desired.json",
+                "--live-file",
+                "./live.json",
+            ]
+        )
+
+        self.assertEqual(args.entrypoint, "sync")
+        self.assertEqual(
+            args.forwarded_argv,
+            ["plan", "--desired-file", "./desired.json", "--live-file", "./live.json"],
+        )
+
+    def test_unified_parse_args_supports_workspace_ci_summary_namespace(self):
+        args = unified_cli.parse_args(
+            [
+                "workspace",
+                "ci",
+                "summary",
+                "--desired-file",
+                "./desired.json",
+            ]
+        )
+
+        self.assertEqual(args.entrypoint, "sync")
+        self.assertEqual(
+            args.forwarded_argv,
+            ["ci", "summary", "--desired-file", "./desired.json"],
+        )
+
+    def test_unified_parse_args_supports_workspace_package_namespace(self):
+        args = unified_cli.parse_args(
+            [
+                "workspace",
+                "package",
+                "--dashboard-export-dir",
+                "./dashboards",
+            ]
+        )
+
+        self.assertEqual(args.entrypoint, "sync")
+        self.assertEqual(
+            args.forwarded_argv,
+            ["package", "--dashboard-export-dir", "./dashboards"],
+        )
+
     def test_unified_parse_args_supports_change_namespace(self):
         args = unified_cli.parse_args(
             ["change", "preview", "--workspace", "."]
@@ -617,6 +701,33 @@ class UnifiedCliTests(unittest.TestCase):
         self.assertEqual(result, 4)
         mocked.assert_called_once_with(
             ["plan", "--desired-file", "./desired.json", "--live-file", "./live.json"]
+        )
+
+    def test_unified_main_dispatches_workspace_ci_passthrough(self):
+        with mock.patch.object(unified_cli.sync_cli, "main", return_value=2) as mocked:
+            result = unified_cli.main(
+                ["workspace", "ci", "summary", "--desired-file", "./desired.json"]
+            )
+
+        self.assertEqual(result, 2)
+        mocked.assert_called_once_with(
+            ["ci", "summary", "--desired-file", "./desired.json"]
+        )
+
+    def test_unified_main_dispatches_workspace_package_passthrough(self):
+        with mock.patch.object(unified_cli.sync_cli, "main", return_value=4) as mocked:
+            result = unified_cli.main(
+                [
+                    "workspace",
+                    "package",
+                    "--dashboard-export-dir",
+                    "./dashboards",
+                ]
+            )
+
+        self.assertEqual(result, 4)
+        mocked.assert_called_once_with(
+            ["package", "--dashboard-export-dir", "./dashboards"]
         )
 
     def test_unified_main_dispatches_change_passthrough(self):

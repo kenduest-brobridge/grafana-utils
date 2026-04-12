@@ -108,6 +108,9 @@ DATASOURCE_COMMAND_HELP = {
     "diff": "Compare exported datasource inventory with the current Grafana state.",
 }
 SYNC_COMMAND_HELP = {
+    "scan": "Scan staged workspace artifacts and summarize local resource state.",
+    "test": "Test whether staged workspace artifacts are structurally safe to continue.",
+    "preview": "Preview what would change from staged workspace inputs.",
     "summary": "Summarize local desired sync resources from JSON.",
     "plan": "Build one reviewable sync plan from desired/live JSON files.",
     "review": "Mark one sync plan document as reviewed.",
@@ -115,7 +118,11 @@ SYNC_COMMAND_HELP = {
     "assess-alerts": "Assess alert sync specs for candidate, plan-only, and blocked states.",
     "bundle-preflight": "Build one staged bundle-level preflight document from local JSON inputs.",
     "apply": "Build a gated non-live apply intent from a reviewed plan.",
+    "package": "Package exported dashboards, alerting resources, datasource inventory, and metadata into one source bundle.",
+    "ci": "Run CI-oriented workspace workflows and lower-level review contracts.",
+    "bundle": "Package exported dashboards, alerting resources, datasource inventory, and metadata into one source bundle. `bundle` is accepted as compatibility alias for `package`.",
 }
+WORKSPACE_COMMAND_HELP = SYNC_COMMAND_HELP
 
 
 def _print_dashboard_group_help() -> None:
@@ -176,7 +183,7 @@ def build_parser() -> argparse.ArgumentParser:
             "  grafana-util snapshot review --input-dir ./snapshot\n"
             "  grafana-util resource kinds\n"
             "  grafana-util dashboard list-vars --dashboard-uid cpu-main --token \"$GRAFANA_API_TOKEN\"\n"
-            "  grafana-util sync plan --desired-file ./desired.json --live-file ./live.json"
+            "  grafana-util workspace plan --desired-file ./desired.json --live-file ./live.json"
         ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -214,9 +221,19 @@ def build_parser() -> argparse.ArgumentParser:
     datasource_subparsers.required = False
     for command, help_text in DATASOURCE_COMMAND_HELP.items():
         datasource_subparsers.add_parser(command, help=help_text, add_help=False)
+    workspace_parser = subparsers.add_parser(
+        "workspace",
+        help="Run the declarative workspace workflow under grafana-util workspace ...",
+        add_help=False,
+    )
+    workspace_subparsers = workspace_parser.add_subparsers(dest="sync_command")
+    workspace_subparsers.required = False
+    for command, help_text in WORKSPACE_COMMAND_HELP.items():
+        workspace_subparsers.add_parser(command, help=help_text, add_help=False)
+
     sync_parser = subparsers.add_parser(
         "sync",
-        help="Run the declarative sync planner under grafana-util sync ...",
+        help="Backward-compatible alias for grafana-util workspace.",
         aliases=["sy"],
         add_help=False,
     )
@@ -332,9 +349,12 @@ def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
             forwarded_argv=argv[1:],
         )
 
-    if command in ("sync", "sy"):
+    if command in ("workspace", "sync", "sy"):
         if len(argv) == 1 or argv[1] in ("-h", "--help"):
-            sync_cli.build_parser(prog="grafana-util sync").print_help()
+            if command == "workspace":
+                sync_cli.build_parser(prog="grafana-util workspace").print_help()
+            else:
+                sync_cli.build_parser(prog="grafana-util sync").print_help()
             raise SystemExit(0)
         return argparse.Namespace(
             entrypoint="sync",

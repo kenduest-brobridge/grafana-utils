@@ -48,6 +48,7 @@ def build_import_workflow_deps(config):
         "DEFAULT_UNKNOWN_UID": config["DEFAULT_UNKNOWN_UID"],
         "FOLDER_INVENTORY_FILENAME": config["FOLDER_INVENTORY_FILENAME"],
         "GrafanaError": config["GrafanaError"],
+        "IMPORT_DRY_RUN_COLUMN_HEADERS": config["IMPORT_DRY_RUN_COLUMN_HEADERS"],
         "RAW_EXPORT_SUBDIR": config["RAW_EXPORT_SUBDIR"],
         "apply_folder_path_guard_to_action": apply_folder_path_guard_to_action,
         "build_client": config["build_client"],
@@ -84,6 +85,8 @@ def build_import_workflow_deps(config):
         "ensure_folder_inventory": ensure_folder_inventory,
         "extract_dashboard_object": extract_dashboard_object,
         "inspect_folder_inventory": inspect_folder_inventory,
+        "input_reader": config["input_reader"],
+        "is_tty": config["is_tty"],
         "load_export_metadata": (
             lambda import_dir, expected_variant=None: load_export_metadata(
                 import_dir,
@@ -98,6 +101,7 @@ def build_import_workflow_deps(config):
         ),
         "load_json_file": load_json_file,
         "print_dashboard_import_progress": print_dashboard_import_progress,
+        "output_writer": config["output_writer"],
         "render_dashboard_import_dry_run_json": render_dashboard_import_dry_run_json,
         "render_dashboard_import_dry_run_table": render_dashboard_import_dry_run_table,
         "render_folder_inventory_dry_run_table": render_folder_inventory_dry_run_table,

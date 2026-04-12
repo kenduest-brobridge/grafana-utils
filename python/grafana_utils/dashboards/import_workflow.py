@@ -7,6 +7,76 @@ from io import StringIO
 from pathlib import Path
 
 
+def _discover_provisioning_dashboard_files(input_dir):
+    """Discover dashboard JSON files in a Grafana file-provisioning tree."""
+    root = Path(input_dir)
+    if root.name == "provisioning" and (root / "dashboards").is_dir():
+        root = root / "dashboards"
+    return sorted(
+        path
+        for path in root.rglob("*.json")
+        if path.name
+        not in {
+            "export-metadata.json",
+            "index.json",
+            "folders.json",
+            "datasources.json",
+            "permissions.json",
+        }
+    )
+
+
+def _select_interactive_dashboard_documents(args, deps, dashboard_documents):
+    """Select dashboard import files through a compact prompt."""
+    if not getattr(args, "interactive", False):
+        return dashboard_documents
+    if not deps["is_tty"]():
+        raise deps["GrafanaError"]("Dashboard import --interactive requires an interactive terminal (TTY).")
+    if not dashboard_documents:
+        return dashboard_documents
+    deps["output_writer"](
+        "Dashboard import review: enter numbers/ranges to select, 'all' for all, or 'q' to cancel."
+    )
+    for index, (dashboard_file, document) in enumerate(dashboard_documents, 1):
+        dashboard = deps["extract_dashboard_object"](
+            document, "Dashboard payload must be a JSON object."
+        )
+        deps["output_writer"](
+            "%d. %s | %s | %s"
+            % (
+                index,
+                str(dashboard.get("uid") or deps["DEFAULT_UNKNOWN_UID"]),
+                str(dashboard.get("title") or "dashboard"),
+                dashboard_file,
+            )
+        )
+    raw_choice = deps["input_reader"]("import> ").strip()
+    if raw_choice.lower() in {"q", "quit", "cancel"}:
+        return []
+    if raw_choice.lower() in {"", "all", "*"}:
+        return dashboard_documents
+    selected_indexes = set()
+    for raw_part in raw_choice.split(","):
+        part = raw_part.strip()
+        if not part:
+            continue
+        if "-" in part:
+            start_text, end_text = part.split("-", 1)
+            start = int(start_text)
+            end = int(end_text)
+            selected_indexes.update(range(start, end + 1))
+        else:
+            selected_indexes.add(int(part))
+    selected = [
+        item
+        for index, item in enumerate(dashboard_documents, 1)
+        if index in selected_indexes
+    ]
+    if not selected:
+        raise deps["GrafanaError"]("Dashboard import --interactive selected no dashboards.")
+    return selected
+
+
 class _CachedDashboardImportClient:
     """Per-import cache for repeated dashboard/folder GET lookups."""
 
@@ -474,6 +544,10 @@ def _run_import_dashboards_for_single_org(args, deps):
         raise grafana_error(
             "--require-matching-folder-path cannot be combined with --import-folder-uid."
         )
+    if getattr(args, "list_columns", False):
+        for column in deps["IMPORT_DRY_RUN_COLUMN_HEADERS"]:
+            deps["output_writer"](column)
+        return 0
     client = deps["build_client"](args)
     org_id = getattr(args, "org_id", None)
     auth_header = client.headers.get("Authorization", "")
@@ -486,15 +560,28 @@ def _run_import_dashboards_for_single_org(args, deps):
         client = client.with_org_id(str(org_id))
     client = _CachedDashboardImportClient(client)
     import_dir = Path(args.import_dir)
-    metadata = deps["load_export_metadata"](
-        import_dir, expected_variant=deps["RAW_EXPORT_SUBDIR"]
-    )
+    input_format = getattr(args, "input_format", "raw")
+    metadata = {}
+    if input_format == "provisioning":
+        if getattr(args, "use_export_org", False):
+            raise grafana_error("--use-export-org is only supported with raw dashboard import.")
+        if getattr(args, "ensure_folders", False):
+            raise grafana_error("--ensure-folders is only supported with raw dashboard import.")
+        dashboard_files = _discover_provisioning_dashboard_files(import_dir)
+    else:
+        metadata = deps["load_export_metadata"](
+            import_dir, expected_variant=deps["RAW_EXPORT_SUBDIR"]
+        )
+        dashboard_files = deps["discover_dashboard_files"](import_dir)
     _validate_export_org_match(args, deps, client, import_dir, metadata)
-    dashboard_files = deps["discover_dashboard_files"](import_dir)
     dashboard_documents = [
         (dashboard_file, deps["load_json_file"](dashboard_file))
         for dashboard_file in dashboard_files
     ]
+    dashboard_documents = _select_interactive_dashboard_documents(
+        args, deps, dashboard_documents
+    )
+    dashboard_files = [dashboard_file for dashboard_file, _ in dashboard_documents]
     dependency_records = deps["collect_dashboard_import_dependency_records"](
         dashboard_documents
     )

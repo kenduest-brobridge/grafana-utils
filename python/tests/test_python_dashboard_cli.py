@@ -1264,6 +1264,94 @@ class ExporterTests(unittest.TestCase):
         self.assertIsNone(args.org_id)
         self.assertFalse(args.all_orgs)
 
+    def test_dashboard_parse_args_supports_browse_mode(self):
+        args = exporter.parse_args(
+            [
+                "browse",
+                "--workspace",
+                "./dashboards",
+                "--input-format",
+                "provisioning",
+                "--all-orgs",
+                "--path",
+                "Platform / Infra",
+                "--page-size",
+                "20",
+            ]
+        )
+
+        self.assertEqual(args.command, "browse")
+        self.assertEqual(args.workspace, "./dashboards")
+        self.assertEqual(args.input_format, "provisioning")
+        self.assertTrue(args.all_orgs)
+        self.assertEqual(args.path, "Platform / Infra")
+        self.assertEqual(args.page_size, 20)
+
+    def test_dashboard_browse_command_requires_tty(self):
+        args = exporter.parse_args(["browse", "--input-dir", "./dashboards/raw"])
+
+        with (
+            mock.patch.object(exporter.sys.stdin, "isatty", return_value=False),
+            mock.patch.object(exporter.sys.stdout, "isatty", return_value=False),
+        ):
+            with self.assertRaisesRegex(exporter.GrafanaError, "requires an interactive terminal"):
+                exporter.browse_command(args)
+
+    def test_dashboard_browse_command_lists_local_input(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            input_dir = Path(tmpdir)
+            exporter.write_json_document(
+                {"uid": "abc", "title": "CPU", "panels": []},
+                input_dir / "cpu.json",
+            )
+            args = exporter.parse_args(["browse", "--input-dir", str(input_dir)])
+            stdout = io.StringIO()
+            stdout.isatty = lambda: True
+
+            with (
+                mock.patch.object(exporter.sys.stdin, "isatty", return_value=True),
+                mock.patch("builtins.input", return_value="q"),
+                redirect_stdout(stdout),
+            ):
+                result = exporter.browse_command(args)
+
+        self.assertEqual(result, 0)
+        self.assertIn("abc | CPU", stdout.getvalue())
+
+    def test_dashboard_browse_command_fetches_live_selection(self):
+        args = exporter.parse_args(["browse", "--path", "Platform / Infra"])
+        client = FakeDashboardWorkflowClient(
+            summaries=[
+                {
+                    "uid": "abc",
+                    "folderTitle": "Infra",
+                    "folderUid": "infra",
+                    "title": "CPU",
+                },
+            ],
+            dashboards={
+                "abc": {
+                    "dashboard": {"uid": "abc", "title": "CPU", "panels": []},
+                    "meta": {"folderUid": "infra"},
+                }
+            },
+            folders={"infra": {"title": "Infra", "parents": [{"title": "Platform"}]}},
+        )
+        stdout = io.StringIO()
+        stdout.isatty = lambda: True
+
+        with (
+            mock.patch.object(exporter, "build_client", return_value=client),
+            mock.patch.object(exporter.sys.stdin, "isatty", return_value=True),
+            mock.patch("builtins.input", side_effect=["1", "q"]),
+            redirect_stdout(stdout),
+        ):
+            result = exporter.browse_command(args)
+
+        self.assertEqual(result, 0)
+        self.assertIn("abc | CPU | Platform / Infra", stdout.getvalue())
+        self.assertIn('"dashboard"', stdout.getvalue())
+
     def test_dashboard_parse_args_supports_list_org_selection(self):
         org_args = exporter.parse_args(["list-dashboard", "--org-id", "2"])
         all_args = exporter.parse_args(["list-dashboard", "--all-orgs"])
@@ -1286,6 +1374,27 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(list_args.output_format, "csv")
         self.assertTrue(list_args.csv)
         self.assertFalse(list_args.table)
+
+    def test_dashboard_parse_args_supports_list_output_columns_and_yaml(self):
+        args = exporter.parse_args(
+            [
+                "list-dashboard",
+                "--show-sources",
+                "--output-format",
+                "yaml",
+                "--output-columns",
+                "uid,folder_uid,sourceUids",
+            ]
+        )
+
+        self.assertTrue(args.with_sources)
+        self.assertTrue(args.yaml)
+        self.assertEqual(args.output_columns, ["uid", "folderUid", "sourceUids"])
+
+    def test_dashboard_parse_args_supports_list_columns(self):
+        args = exporter.parse_args(["list-dashboard", "--list-columns"])
+
+        self.assertTrue(args.list_columns)
 
     def test_dashboard_parse_args_supports_list_csv_and_json_modes(self):
         csv_args = exporter.parse_args(["list-dashboard", "--csv"])
@@ -1334,9 +1443,21 @@ class ExporterTests(unittest.TestCase):
             )
 
     def test_dashboard_parse_args_supports_diff_mode(self):
-        args = exporter.parse_args(["diff", "--import-dir", "dashboards/raw"])
+        args = exporter.parse_args(
+            [
+                "diff",
+                "--input-dir",
+                "dashboards/raw",
+                "--input-format",
+                "raw",
+                "--output-format",
+                "json",
+            ]
+        )
 
         self.assertEqual(args.import_dir, "dashboards/raw")
+        self.assertEqual(args.input_format, "raw")
+        self.assertEqual(args.output_format, "json")
         self.assertEqual(args.command, "diff")
         self.assertEqual(args.context_lines, 3)
 
@@ -1363,6 +1484,39 @@ class ExporterTests(unittest.TestCase):
         self.assertEqual(args.command, "export-dashboard")
         self.assertIsNone(args.org_id)
         self.assertFalse(args.all_orgs)
+
+    def test_dashboard_parse_args_supports_export_rust_aliases(self):
+        args = exporter.parse_args(
+            [
+                "export-dashboard",
+                "--output-dir",
+                "out",
+                "--without-raw",
+                "--without-prompt",
+                "--without-provisioning",
+                "--provider-name",
+                "dashboards",
+                "--provider-org-id",
+                "2",
+                "--provider-path",
+                "/var/lib/grafana/dashboards",
+                "--provider-disable-deletion",
+                "--provider-allow-ui-updates",
+                "--provider-update-interval-seconds",
+                "60",
+            ]
+        )
+
+        self.assertEqual(args.export_dir, "out")
+        self.assertTrue(args.without_dashboard_raw)
+        self.assertTrue(args.without_dashboard_prompt)
+        self.assertTrue(args.without_dashboard_provisioning)
+        self.assertEqual(args.provisioning_provider_name, "dashboards")
+        self.assertEqual(args.provisioning_provider_org_id, "2")
+        self.assertEqual(args.provisioning_provider_path, "/var/lib/grafana/dashboards")
+        self.assertTrue(args.provisioning_provider_disable_deletion)
+        self.assertTrue(args.provisioning_provider_allow_ui_updates)
+        self.assertEqual(args.provisioning_provider_update_interval_seconds, 60)
 
     def test_dashboard_parse_args_supports_export_org_selection(self):
         org_args = exporter.parse_args(["export-dashboard", "--org-id", "2"])
@@ -1401,6 +1555,24 @@ class ExporterTests(unittest.TestCase):
         )
 
         self.assertTrue(args.dry_run)
+
+    def test_dashboard_parse_args_supports_import_rust_aliases(self):
+        args = exporter.parse_args(
+            [
+                "import-dashboard",
+                "--input-dir",
+                "dashboards/provisioning",
+                "--input-format",
+                "provisioning",
+                "--interactive",
+                "--list-columns",
+            ]
+        )
+
+        self.assertEqual(args.import_dir, "dashboards/provisioning")
+        self.assertEqual(args.input_format, "provisioning")
+        self.assertTrue(args.interactive)
+        self.assertTrue(args.list_columns)
 
     def test_dashboard_parse_args_supports_import_dry_run_table_flags(self):
         args = exporter.parse_args(
@@ -3212,6 +3384,24 @@ class ExporterTests(unittest.TestCase):
             ],
         )
 
+    def test_dashboard_render_dashboard_summary_json_limits_output_columns(self):
+        document = exporter.render_dashboard_summary_json(
+            [
+                {
+                    "uid": "abc",
+                    "folderTitle": "Infra",
+                    "folderUid": "infra",
+                    "folderPath": "Platform / Infra",
+                    "title": "CPU",
+                    "orgName": "Main Org.",
+                    "orgId": "1",
+                }
+            ],
+            selected_columns=["uid", "folderUid"],
+        )
+
+        self.assertEqual(json.loads(document), [{"uid": "abc", "folderUid": "infra"}])
+
     def test_dashboard_render_dashboard_summary_csv_includes_sources_column(self):
         stdout = io.StringIO()
         with redirect_stdout(stdout):
@@ -3238,6 +3428,24 @@ class ExporterTests(unittest.TestCase):
                 'abc,CPU,Infra,infra,Platform / Infra,Main Org.,1,"Loki Logs,Prometheus Main","loki_uid,prom_uid"',
             ],
         )
+
+    def test_dashboard_render_dashboard_summary_text_limits_output_columns(self):
+        lines = exporter.render_dashboard_summary_text(
+            [
+                {
+                    "uid": "abc",
+                    "folderTitle": "Infra",
+                    "folderUid": "infra",
+                    "folderPath": "Platform / Infra",
+                    "title": "CPU",
+                    "orgName": "Main Org.",
+                    "orgId": "1",
+                }
+            ],
+            selected_columns=["uid", "name"],
+        )
+
+        self.assertEqual(lines, ["uid=abc name=CPU"])
 
     def test_dashboard_attach_dashboard_sources_resolves_datasource_names(self):
         client = FakeDashboardWorkflowClient(
@@ -5372,6 +5580,105 @@ class ExporterTests(unittest.TestCase):
                 "abc",
             )
 
+    def test_dashboard_import_dashboards_lists_dry_run_columns(self):
+        client = FakeDashboardWorkflowClient()
+        args = exporter.parse_args(
+            [
+                "import-dashboard",
+                "--input-dir",
+                "dashboards/raw",
+                "--list-columns",
+            ]
+        )
+        stdout = io.StringIO()
+
+        with mock.patch.object(exporter, "build_client", return_value=client):
+            with redirect_stdout(stdout):
+                result = exporter.import_dashboards(args)
+
+        self.assertEqual(result, 0)
+        self.assertIn("uid", stdout.getvalue().splitlines())
+        self.assertIn("destinationFolderPath", stdout.getvalue().splitlines())
+
+    def test_dashboard_import_dashboards_accepts_provisioning_input_format(self):
+        client = FakeDashboardWorkflowClient()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir) / "provisioning" / "dashboards"
+            import_dir.mkdir(parents=True)
+            exporter.write_json_document(
+                {"dashboard": {"id": None, "uid": "abc", "title": "CPU", "panels": []}},
+                import_dir / "cpu.json",
+            )
+            args = exporter.parse_args(
+                [
+                    "import-dashboard",
+                    "--input-dir",
+                    str(import_dir.parent),
+                    "--input-format",
+                    "provisioning",
+                    "--dry-run",
+                    "--output-format",
+                    "json",
+                ]
+            )
+            stdout = io.StringIO()
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                with redirect_stdout(stdout):
+                    result = exporter.import_dashboards(args)
+
+            self.assertEqual(result, 0)
+            document = json.loads(stdout.getvalue())
+            self.assertEqual(document["summary"]["dashboardCount"], 1)
+            self.assertEqual(document["dashboards"][0]["uid"], "abc")
+
+    def test_dashboard_import_dashboards_interactive_selects_subset(self):
+        client = FakeDashboardWorkflowClient()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            exporter.write_json_document(
+                build_export_metadata(
+                    variant=exporter.RAW_EXPORT_SUBDIR,
+                    dashboard_count=2,
+                    format_name="grafana-web-import-preserve-uid",
+                ),
+                import_dir / exporter.EXPORT_METADATA_FILENAME,
+            )
+            exporter.write_json_document(
+                {"dashboard": {"id": None, "uid": "abc", "title": "CPU", "panels": []}},
+                import_dir / "cpu__abc.json",
+            )
+            exporter.write_json_document(
+                {"dashboard": {"id": None, "uid": "xyz", "title": "Memory", "panels": []}},
+                import_dir / "memory__xyz.json",
+            )
+            args = exporter.parse_args(
+                [
+                    "import-dashboard",
+                    "--input-dir",
+                    str(import_dir),
+                    "--interactive",
+                    "--dry-run",
+                    "--output-format",
+                    "json",
+                ]
+            )
+            stdout = io.StringIO()
+            stdout.isatty = lambda: True
+
+            with (
+                mock.patch.object(exporter, "build_client", return_value=client),
+                mock.patch.object(exporter.sys.stdin, "isatty", return_value=True),
+                mock.patch("builtins.input", return_value="1"),
+                redirect_stdout(stdout),
+            ):
+                result = exporter.import_dashboards(args)
+
+            self.assertEqual(result, 0)
+            output = stdout.getvalue()
+            document = json.loads(output[output.find("{"):])
+            self.assertEqual(document["summary"]["dashboardCount"], 1)
+
     def test_dashboard_import_dashboards_live_preflights_dependencies_before_import(
         self,
     ):
@@ -7308,6 +7615,77 @@ class ExporterTests(unittest.TestCase):
                 result = exporter.diff_dashboards(args)
 
             self.assertEqual(result, 0)
+
+    def test_dashboard_diff_dashboards_prints_json_when_requested(self):
+        remote_payload = {
+            "dashboard": {"id": 7, "uid": "abc", "title": "CPU", "panels": []},
+            "meta": {"folderUid": "infra"},
+        }
+        client = FakeDashboardWorkflowClient(dashboards={"abc": remote_payload})
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir)
+            exporter.write_json_document(
+                build_export_metadata(
+                    variant=exporter.RAW_EXPORT_SUBDIR,
+                    dashboard_count=1,
+                ),
+                import_dir / exporter.EXPORT_METADATA_FILENAME,
+            )
+            exporter.write_json_document(
+                {"dashboard": {"id": None, "uid": "abc", "title": "CPU", "panels": []}},
+                import_dir / "cpu__abc.json",
+            )
+            args = exporter.parse_args(
+                ["diff", "--input-dir", str(import_dir), "--output-format", "json"]
+            )
+            stdout = io.StringIO()
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                with redirect_stdout(stdout):
+                    result = exporter.diff_dashboards(args)
+
+            self.assertEqual(result, 0)
+            document = json.loads(stdout.getvalue())
+            self.assertEqual(document["kind"], "grafana-utils-dashboard-diff")
+            self.assertEqual(document["differenceCount"], 0)
+            self.assertEqual(document["records"][0]["status"], "same")
+
+    def test_dashboard_diff_dashboards_accepts_provisioning_input_format(self):
+        remote_payload = {
+            "dashboard": {"id": 7, "uid": "abc", "title": "CPU", "panels": []},
+            "meta": {"folderUid": "infra"},
+        }
+        client = FakeDashboardWorkflowClient(dashboards={"abc": remote_payload})
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            import_dir = Path(tmpdir) / "provisioning" / "dashboards"
+            import_dir.mkdir(parents=True)
+            exporter.write_json_document(
+                {"dashboard": {"id": None, "uid": "abc", "title": "CPU", "panels": []}},
+                import_dir / "cpu.json",
+            )
+            args = exporter.parse_args(
+                [
+                    "diff",
+                    "--input-dir",
+                    str(import_dir.parent),
+                    "--input-format",
+                    "provisioning",
+                    "--output-format",
+                    "json",
+                ]
+            )
+            stdout = io.StringIO()
+
+            with mock.patch.object(exporter, "build_client", return_value=client):
+                with redirect_stdout(stdout):
+                    result = exporter.diff_dashboards(args)
+
+            self.assertEqual(result, 0)
+            document = json.loads(stdout.getvalue())
+            self.assertEqual(document["fileCount"], 1)
+            self.assertEqual(document["records"][0]["status"], "same")
 
     def test_dashboard_diff_dashboards_prints_unified_diff_when_dashboard_changes(self):
         remote_payload = {

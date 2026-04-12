@@ -24,6 +24,35 @@ from .transformer import (
     resolve_datasource_ref,
     resolve_datasource_type_alias,
 )
+from .. import yaml_compat as yaml
+
+
+DASHBOARD_LIST_COLUMN_HEADERS = {
+    "uid": "UID",
+    "name": "NAME",
+    "folder": "FOLDER",
+    "folderUid": "FOLDER_UID",
+    "path": "FOLDER_PATH",
+    "org": "ORG",
+    "orgId": "ORG_ID",
+    "sources": "SOURCES",
+    "sourceUids": "SOURCE_UIDS",
+}
+DASHBOARD_LIST_COLUMN_ALIASES = {
+    "uid": "uid",
+    "name": "name",
+    "folder": "folder",
+    "folder_uid": "folderUid",
+    "folderUid": "folderUid",
+    "path": "path",
+    "org": "org",
+    "org_id": "orgId",
+    "orgId": "orgId",
+    "sources": "sources",
+    "source_uids": "sourceUids",
+    "sourceUids": "sourceUids",
+}
+DEFAULT_DASHBOARD_LIST_COLUMNS = ["uid", "name", "folder", "folderUid", "path", "org", "orgId"]
 
 
 def format_dashboard_summary_line(summary: dict[str, Any]) -> str:
@@ -314,25 +343,16 @@ def attach_dashboard_org(
 def render_dashboard_summary_table(
     summaries: list[dict[str, Any]],
     include_header: bool = True,
+    selected_columns: Optional[list[str]] = None,
 ) -> list[str]:
     """Render dashboard summaries as a fixed-width table."""
-    headers = ["UID", "NAME", "FOLDER", "FOLDER_UID", "FOLDER_PATH", "ORG", "ORG_ID"]
-    if summaries and "sources" in summaries[0]:
-        headers.append("SOURCES")
+    columns = list(selected_columns or DEFAULT_DASHBOARD_LIST_COLUMNS)
+    if selected_columns is None and summaries and "sources" in summaries[0]:
+        columns.append("sources")
+    headers = [DASHBOARD_LIST_COLUMN_HEADERS[column] for column in columns]
     rows = []
     for record in [build_dashboard_summary_record(summary) for summary in summaries]:
-        row = [
-            record["uid"],
-            record["name"],
-            record["folder"],
-            record["folderUid"],
-            record["path"],
-            record["org"],
-            record["orgId"],
-        ]
-        if "sources" in record:
-            row.append(record["sources"])
-        rows.append(row)
+        rows.append([record.get(column, "") for column in columns])
     widths = [len(header) for header in headers]
     for row in rows:
         for index, value in enumerate(row):
@@ -354,12 +374,15 @@ def render_dashboard_summary_table(
     return lines
 
 
-def render_dashboard_summary_csv(summaries: list[dict[str, Any]]) -> None:
+def render_dashboard_summary_csv(
+    summaries: list[dict[str, Any]],
+    selected_columns: Optional[list[str]] = None,
+) -> None:
     """Render dashboard summaries as CSV records."""
-    fieldnames = ["uid", "name", "folder", "folderUid", "path", "org", "orgId"]
-    if summaries and "sources" in summaries[0]:
+    fieldnames = list(selected_columns or DEFAULT_DASHBOARD_LIST_COLUMNS)
+    if selected_columns is None and summaries and "sources" in summaries[0]:
         fieldnames.append("sources")
-    if summaries and "sourceUids" in summaries[0]:
+    if selected_columns is None and summaries and "sourceUids" in summaries[0]:
         fieldnames.append("sourceUids")
     writer = csv.DictWriter(sys.stdout, fieldnames=fieldnames, lineterminator="\n")
     writer.writeheader()
@@ -367,7 +390,10 @@ def render_dashboard_summary_csv(summaries: list[dict[str, Any]]) -> None:
         writer.writerow(build_dashboard_summary_record(summary))
 
 
-def render_dashboard_summary_json(summaries: list[dict[str, Any]]) -> str:
+def render_dashboard_summary_json(
+    summaries: list[dict[str, Any]],
+    selected_columns: Optional[list[str]] = None,
+) -> str:
     """Render dashboard summaries as JSON."""
     records: list[dict[str, Any]] = []
     for summary in summaries:
@@ -376,8 +402,53 @@ def render_dashboard_summary_json(summaries: list[dict[str, Any]]) -> str:
             record["sources"] = list(summary.get("sources") or [])
         if "sourceUids" in summary:
             record["sourceUids"] = list(summary.get("sourceUids") or [])
+        if selected_columns is not None:
+            record = {column: record.get(column, "") for column in selected_columns}
         records.append(record)
     return json.dumps(records, indent=2, sort_keys=False)
+
+
+def render_dashboard_summary_yaml(
+    summaries: list[dict[str, Any]],
+    selected_columns: Optional[list[str]] = None,
+) -> str:
+    """Render dashboard summaries as YAML."""
+    return yaml.safe_dump(json.loads(render_dashboard_summary_json(summaries, selected_columns)))
+
+
+def render_dashboard_summary_text(
+    summaries: list[dict[str, Any]],
+    selected_columns: Optional[list[str]] = None,
+) -> list[str]:
+    """Render dashboard summaries as compact key/value lines."""
+    columns = list(selected_columns or DEFAULT_DASHBOARD_LIST_COLUMNS)
+    lines = []
+    for summary in summaries:
+        record = build_dashboard_summary_record(summary)
+        lines.append(" ".join("%s=%s" % (column, record.get(column, "")) for column in columns))
+    return lines
+
+
+def parse_dashboard_list_output_columns(value: Optional[str]) -> Optional[list[str]]:
+    """Parse dashboard list output columns."""
+    if value is None:
+        return None
+    columns = []
+    for raw_item in str(value).split(","):
+        item = raw_item.strip()
+        if not item:
+            continue
+        column = DASHBOARD_LIST_COLUMN_ALIASES.get(item)
+        if column is None:
+            raise GrafanaError(
+                "Unsupported dashboard list output column '%s'. Supported values: %s."
+                % (item, ", ".join(DASHBOARD_LIST_COLUMN_ALIASES))
+            )
+        if column not in columns:
+            columns.append(column)
+    if not columns:
+        raise GrafanaError("--output-columns must name at least one dashboard list column.")
+    return columns
 
 
 def list_dashboards(
@@ -421,7 +492,17 @@ def list_dashboards(
             scoped_client.iter_dashboard_summaries(args.page_size),
         )
         scoped_summaries = attach_dashboard_org(scoped_client, scoped_summaries)
-        if args.json or getattr(args, "with_sources", False):
+        selected_columns = getattr(args, "output_columns", None)
+        needs_sources = (
+            bool(getattr(args, "json", False))
+            or bool(getattr(args, "yaml", False))
+            or bool(getattr(args, "with_sources", False))
+            or bool(
+                selected_columns
+                and any(column in ("sources", "sourceUids") for column in selected_columns)
+            )
+        )
+        if needs_sources:
             scoped_summaries = attach_dashboard_sources(
                 scoped_client,
                 scoped_summaries,
@@ -429,15 +510,28 @@ def list_dashboards(
                 datasource_error=datasource_error,
             )
         summaries.extend(scoped_summaries)
+    selected_columns = getattr(args, "output_columns", None)
+    if getattr(args, "list_columns", False):
+        for column in DEFAULT_DASHBOARD_LIST_COLUMNS + ["sources", "sourceUids"]:
+            print(column)
+        return 0
+    if getattr(args, "text", False):
+        for line in render_dashboard_summary_text(summaries, selected_columns):
+            print(line)
+        return 0
     if args.csv:
-        render_dashboard_summary_csv(summaries)
+        render_dashboard_summary_csv(summaries, selected_columns)
         return 0
     if args.json:
-        print(render_dashboard_summary_json(summaries))
+        print(render_dashboard_summary_json(summaries, selected_columns))
+        return 0
+    if getattr(args, "yaml", False):
+        print(render_dashboard_summary_yaml(summaries, selected_columns), end="")
         return 0
     for line in render_dashboard_summary_table(
         summaries,
         include_header=not bool(getattr(args, "no_header", False)),
+        selected_columns=selected_columns,
     ):
         print(line)
     print("")
