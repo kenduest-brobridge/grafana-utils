@@ -8,6 +8,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import ai_trace
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -131,7 +133,11 @@ def detect_changed_files() -> list[str]:
     return [line.strip() for line in result.stdout.splitlines() if line.strip()]
 
 
-def validate_paths(paths: list[str]) -> list[str]:
+def validate_paths(
+    paths: list[str],
+    root: Path = REPO_ROOT,
+    check_trace_size: bool = True,
+) -> list[str]:
     normalized = [relpath(path) for path in paths]
     path_set = set(normalized)
     errors: list[str] = []
@@ -177,10 +183,19 @@ def validate_paths(paths: list[str]) -> list[str]:
         )
 
     for path in touched_onboarding_sources:
-        text = (REPO_ROOT / path).read_text(encoding="utf-8")
+        text = (root / path).read_text(encoding="utf-8")
         for snippet, guidance in ONBOARDING_FORBIDDEN_SNIPPETS.items():
             if snippet in text:
                 errors.append(f"{path} contains '{snippet}'; {guidance}")
+
+    if check_trace_size:
+        errors.extend(
+            ai_trace.check_size(
+                root,
+                ai_trace.DEFAULT_KEEP_STATUS,
+                ai_trace.DEFAULT_KEEP_CHANGES,
+            )
+        )
 
     return errors
 

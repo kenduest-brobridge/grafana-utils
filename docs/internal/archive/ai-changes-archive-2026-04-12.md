@@ -10,6 +10,7 @@ Archived AI change log snapshot.
 - Keep this file limited to the latest active architecture and maintenance changes.
 - Detailed 2026-03-29 through 2026-03-31 entries moved to [`archive/ai-changes-archive-2026-03-31.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-changes-archive-2026-03-31.md).
 
+
 ## 2026-04-12 - Split CLI dispatch and domain runtime spines
 - Summary: moved the parsed unified CLI routing out of `cli.rs` into a dedicated `cli_dispatch` module with a `DomainInvocation` decision layer and injected handler seam. The binary now routes all pre-parse help through `maybe_render_unified_help_from_os_args`, including dashboard leaf and `--help-full` renderers, so dashboard no longer has a second binary-level help path. Dashboard and datasource command execution were extracted from their large facade modules into `dashboard/command_runner.rs` and `datasource_runtime.rs`, while alert/datasource/sync long help text moved into dedicated source-layer help text modules.
 - Tests: kept CLI behavior covered through injected dispatch handlers and unified dashboard help preflight regressions; preserved existing dashboard/datasource public re-exports for callers.
@@ -593,3 +594,22 @@ Archived AI change log snapshot.
 - Impact: `rust/src/cli_help.rs`, `rust/src/cli_help/{grouped.rs,grouped_specs.rs,routing.rs,schema.rs,legacy.rs}`, `rust/src/cli_help_examples.rs`, `rust/src/help_styles.rs`, `rust/src/cli_rust_tests.rs`, `AGENTS.md`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`
 - Rollback/Risk: moderate. Runtime help behavior is covered by the existing CLI help suite, but the module split changes where maintainers make future CLI help edits; routing changes should stay in `routing.rs`, grouped command UX in `grouped_specs.rs`, and schema text routing in `schema.rs`.
 - Follow-up: if `routing.rs` grows again, split contextual clap option grouping into a separate options/help-heading module rather than moving logic back into the facade.
+
+## 2026-04-12 - Tighten AI workflow task brief and trace rules
+- Summary: expanded the task brief template with owned-layer, source-of-truth, contract impact, test strategy, and generated-doc impact fields, and added an architecture consistency pass to the AI workflow note.
+- Follow-up: architecture or large-file work should check the current guardrails and owning docs before editing, so future refactors stay rule-driven instead of ad hoc.
+## 2026-04-12 - Split CLI dispatch and domain runtime spines
+- Summary: moved parsed unified CLI routing into `cli_dispatch.rs`, kept parser topology in `cli.rs`, and removed the binary-level dashboard help bypass by routing dashboard leaf and `--help-full` output through the unified help preflight.
+- Runtime Shape: dashboard and datasource command execution now live in `dashboard/command_runner.rs` and `datasource_runtime.rs`; alert, datasource, and workspace long help text moved into dedicated help text modules.
+- Test Run: `cargo fmt --manifest-path rust/Cargo.toml --all`; `cargo test --manifest-path rust/Cargo.toml --quiet cli_rust_tests -- --test-threads=1`; `cargo test --manifest-path rust/Cargo.toml --quiet -- --test-threads=1`; `make quality-ai-workflow`; `git diff --check`.
+- Follow-up: new command work should extend parser topology, dispatch decisions, help routing, and domain execution in their owning modules rather than adding one-off binary or facade branches.
+
+## 2026-04-12 - Split CLI help into focused modules
+- Summary: kept `cli_help.rs` as a small facade and moved grouped short-help specs/rendering, contextual routing, schema-help routing, and legacy command hints into focused modules under `rust/src/cli_help/`.
+- Test Run: covered by the CLI help suite plus full Rust tests before the later dispatch/runtime split.
+- Follow-up: if contextual routing grows again, split option-heading inference into its own module instead of moving logic back into the facade.
+
+## 2026-04-12 - Support unique-prefix CLI subcommands
+- Summary: enabled Clap inferred-subcommand behavior and canonicalized custom help preflight paths through the Clap command tree, avoiding manual abbreviation tables.
+- Test Run: focused CLI regressions for inferred root help, nested dashboard help, ambiguous prefixes, colored grouped help, and parser dispatch.
+- Follow-up: keep public docs on canonical full command names; add explicit aliases only when they are deliberate product decisions.

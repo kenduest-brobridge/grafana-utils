@@ -9,6 +9,14 @@ Current AI change log only.
 - Detailed 2026-04-01 through 2026-04-12 entries moved to [`archive/ai-changes-archive-2026-04-12.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-changes-archive-2026-04-12.md).
 - Keep this file limited to the latest active architecture and maintenance changes.
 
+## 2026-04-12 - Add AI trace maintenance tool
+- Summary: added `scripts/ai_trace.py` with structured `add`, `compact`, and `check-size` commands for maintaining AI trace files, and wired trace size enforcement into `scripts/check_ai_workflow.py`.
+- Tests: added Python unittest coverage for trace insertion, compact/archive append behavior, size-limit checks, and workflow-gate integration.
+- Test Run: `python3 -m unittest -v python.tests.test_python_ai_trace python.tests.test_python_check_ai_workflow`; `python3 scripts/ai_trace.py check-size`; `make quality-ai-workflow`; `git diff --check`.
+- Impact: `scripts/ai_trace.py`, `scripts/check_ai_workflow.py`, `python/tests/test_python_ai_trace.py`, `python/tests/test_python_check_ai_workflow.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`, and current AI trace archives after compaction.
+- Rollback/Risk: internal maintainer tooling only; rollback removes the helper and the size check, but manual trace maintenance would again be required.
+- Follow-up: none.
+
 ## 2026-04-12 - Add flat CLI help inventory
 - Summary: added root `grafana-util --help-flat` output that expands the visible public Clap command tree into a grep-friendly table with command path, group/command kind, and operator-facing purpose text.
 - Tests: added CLI help coverage for root pre-parse routing, colorized output, public command inclusion, hidden command exclusion, and rejection of leaked internal `Struct definition` / `Arguments for` wording.
@@ -66,23 +74,3 @@ Current AI change log only.
 ## 2026-04-12 - Add docs architecture guardrails for manual stability
 - Summary: introduced a docs-layer boundary doc that keeps handbook/manual content focused on stable intent and workflows, command docs focused on flags and syntax, generated docs derived, and trace docs concise.
 - Follow-up: task briefs now carry a docs-impact matrix so agents can update the right docs layer without dragging manuals into command-reference detail.
-
-## 2026-04-12 - Tighten AI workflow task brief and trace rules
-- Summary: expanded the task brief template with owned-layer, source-of-truth, contract impact, test strategy, and generated-doc impact fields, and added an architecture consistency pass to the AI workflow note.
-- Follow-up: architecture or large-file work should check the current guardrails and owning docs before editing, so future refactors stay rule-driven instead of ad hoc.
-
-## 2026-04-12 - Split CLI dispatch and domain runtime spines
-- Summary: moved parsed unified CLI routing into `cli_dispatch.rs`, kept parser topology in `cli.rs`, and removed the binary-level dashboard help bypass by routing dashboard leaf and `--help-full` output through the unified help preflight.
-- Runtime Shape: dashboard and datasource command execution now live in `dashboard/command_runner.rs` and `datasource_runtime.rs`; alert, datasource, and workspace long help text moved into dedicated help text modules.
-- Test Run: `cargo fmt --manifest-path rust/Cargo.toml --all`; `cargo test --manifest-path rust/Cargo.toml --quiet cli_rust_tests -- --test-threads=1`; `cargo test --manifest-path rust/Cargo.toml --quiet -- --test-threads=1`; `make quality-ai-workflow`; `git diff --check`.
-- Follow-up: new command work should extend parser topology, dispatch decisions, help routing, and domain execution in their owning modules rather than adding one-off binary or facade branches.
-
-## 2026-04-12 - Split CLI help into focused modules
-- Summary: kept `cli_help.rs` as a small facade and moved grouped short-help specs/rendering, contextual routing, schema-help routing, and legacy command hints into focused modules under `rust/src/cli_help/`.
-- Test Run: covered by the CLI help suite plus full Rust tests before the later dispatch/runtime split.
-- Follow-up: if contextual routing grows again, split option-heading inference into its own module instead of moving logic back into the facade.
-
-## 2026-04-12 - Support unique-prefix CLI subcommands
-- Summary: enabled Clap inferred-subcommand behavior and canonicalized custom help preflight paths through the Clap command tree, avoiding manual abbreviation tables.
-- Test Run: focused CLI regressions for inferred root help, nested dashboard help, ambiguous prefixes, colored grouped help, and parser dispatch.
-- Follow-up: keep public docs on canonical full command names; add explicit aliases only when they are deliberate product decisions.
