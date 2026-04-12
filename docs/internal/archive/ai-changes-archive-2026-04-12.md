@@ -613,3 +613,17 @@ Archived AI change log snapshot.
 - Summary: enabled Clap inferred-subcommand behavior and canonicalized custom help preflight paths through the Clap command tree, avoiding manual abbreviation tables.
 - Test Run: focused CLI regressions for inferred root help, nested dashboard help, ambiguous prefixes, colored grouped help, and parser dispatch.
 - Follow-up: keep public docs on canonical full command names; add explicit aliases only when they are deliberate product decisions.
+
+## 2026-04-12 - Add docs architecture guardrails for manual stability
+- Summary: introduced a docs-layer boundary doc that keeps handbook/manual content focused on stable intent and workflows, command docs focused on flags and syntax, generated docs derived, and trace docs concise.
+- Follow-up: task briefs now carry a docs-impact matrix so agents can update the right docs layer without dragging manuals into command-reference detail.
+
+## 2026-04-12 - Add docs surface contract and verifier
+- Summary: introduced `scripts/contracts/command-surface.json` plus `scripts/check_docs_surface.py`, added `make quality-docs-surface`, routed AGENTS/maintainer docs to that contract, and corrected stale public docs that still taught removed roots or old alert command shapes.
+- Test Run: `python3 scripts/check_docs_surface.py`; `make man`; `make html`; `make man-check`; `make html-check`; `make quality-docs-surface`; `git diff --check`.
+- Follow-up: when public command paths, legacy replacements, command-doc routing, or `--help-full` support change, update the command surface contract first and keep shell fenced examples as the only verifier-owned executable doc examples.
+
+## 2026-04-12 - Split production Rust modules and clean root artifacts
+- Summary: split the sync, alert CLI, alert support, dashboard history, dashboard browse, and datasource import/export Rust surfaces into smaller owning modules, then removed the stale tracked root artifacts left in `rust/`.
+- Test Run: `cargo fmt --manifest-path rust/Cargo.toml --all --check`; `cargo check --manifest-path rust/Cargo.toml --lib --quiet`; `cargo clippy --manifest-path rust/Cargo.toml --all-targets -- -D warnings`; `cargo test --manifest-path rust/Cargo.toml --quiet -- --test-threads=1`; `make man-check`; `make html-check`; `make quality-ai-workflow`; `make quality-architecture`; `make quality-workspace-noise`; `git diff --check`.
+- Follow-up: the Rust architecture lint now treats `sync/mod.rs` as handled instead of a known-debt warning, and the current hotspot list is narrowed to the remaining large ownership candidates.

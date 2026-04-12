@@ -60,13 +60,6 @@ fn render_access_subcommand_help(path: &[&str]) -> String {
     String::from_utf8(output).unwrap()
 }
 
-fn render_access_root_help() -> String {
-    let mut command = AccessCliRoot::command();
-    let mut output = Vec::new();
-    command.write_long_help(&mut output).unwrap();
-    String::from_utf8(output).unwrap()
-}
-
 #[test]
 fn access_delete_help_mentions_prompt() {
     assert!(render_access_subcommand_help(&["user", "delete"]).contains("--prompt"));

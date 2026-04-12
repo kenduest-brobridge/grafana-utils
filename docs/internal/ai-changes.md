@@ -9,6 +9,30 @@ Current AI change log only.
 - Detailed 2026-04-01 through 2026-04-12 entries moved to [`archive/ai-changes-archive-2026-04-12.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-changes-archive-2026-04-12.md).
 - Keep this file limited to the latest active architecture and maintenance changes.
 
+## 2026-04-12 - Split Rust architecture hotspots and test modules
+- Summary: split unified help routing, snapshot review, access rendering, alert CLI runtime/output, and the largest Rust test suites into focused helper modules with thin aggregators.
+- Tests: no behavior changes; preserved existing coverage and re-ran focused Rust targets for CLI, dashboard help, access CLI, overview, alert, and snapshot review.
+- Test Run: `cargo test --manifest-path rust/Cargo.toml --quiet cli_rust_tests -- --test-threads=1`; `cargo test --manifest-path rust/Cargo.toml --quiet dashboard_cli_parser_help_rust_tests -- --test-threads=1`; `cargo test --manifest-path rust/Cargo.toml --quiet access_cli_rust_tests -- --test-threads=1`; `cargo test --manifest-path rust/Cargo.toml --quiet overview_rust_tests -- --test-threads=1`; `cargo test --manifest-path rust/Cargo.toml --quiet alert_rust_tests -- --test-threads=1`; `cargo test --manifest-path rust/Cargo.toml --quiet snapshot_rust_tests -- --test-threads=1`; `make quality-architecture`; `make quality-ai-workflow`; `git diff --check`.
+- Impact: `rust/src/cli_help.rs`, `rust/src/cli_help/routing.rs`, `rust/src/cli_help/contextual.rs`, `rust/src/cli_help/flat.rs`, `rust/src/snapshot_review*.rs`, `rust/src/access/render*.rs`, `rust/src/alert*.rs`, `rust/src/*_rust_tests.rs`, `rust/src/access/*_rust_tests.rs`, and dashboard/overview test children.
+- Rollback/Risk: behavior-preserving module-boundary refactor; rollback would collapse the helper modules back into the original large files. Remaining architecture warnings are pre-existing hotspots outside this pass.
+- Follow-up: consider a later pass for remaining warnings in access live status/tests, dashboard import/browse/inspect surfaces, datasource status/import-export, `snapshot.rs`, and the remaining brittle help tests in dashboard inspect and sync.
+
+## 2026-04-12 - Split snapshot review shaping and browser behavior
+- Summary: split snapshot review into shared validation, text rendering, tabular/output shaping, and browser-specific helper modules, keeping the public snapshot review entrypoints unchanged while making `snapshot_review.rs` a thin module hub.
+- Tests: relied on the existing snapshot review Rust coverage for behavior; reran the focused snapshot review Rust target after the split.
+- Test Run: `cargo fmt --manifest-path rust/Cargo.toml --all`; `cargo test --manifest-path rust/Cargo.toml --quiet snapshot_rust_tests -- --test-threads=1`.
+- Impact: `rust/src/snapshot_review.rs`, `rust/src/snapshot_review_common.rs`, `rust/src/snapshot_review_render.rs`, `rust/src/snapshot_review_browser.rs`, `rust/src/snapshot_review_output.rs`.
+- Rollback/Risk: low. The refactor is behavior-preserving and only changes module boundaries, but the full crate still has unrelated `access` / `alert` compile failures in the current worktree, so broader verification remains blocked until those existing edits are resolved.
+- Follow-up: none.
+
+## 2026-04-12 - Split unified CLI help routing helpers
+- Summary: split unified CLI help routing into a thinner orchestration layer plus focused `contextual` and `flat` helper modules, keeping the existing public help entrypoints and inferred-subcommand behavior unchanged.
+- Tests: re-ran focused unified help, dashboard help parser, and dashboard inspect/help-full Rust suites after the module split.
+- Test Run: `cargo test --manifest-path rust/Cargo.toml --quiet cli_rust_tests`; `cargo test --manifest-path rust/Cargo.toml --quiet dashboard_cli_parser_help_rust_tests`; `cargo test --manifest-path rust/Cargo.toml --quiet dashboard_cli_inspect_help_rust_tests`.
+- Impact: `rust/src/cli_help.rs`, `rust/src/cli_help/routing.rs`, `rust/src/cli_help/contextual.rs`, `rust/src/cli_help/flat.rs`, and AI trace docs.
+- Rollback/Risk: low to moderate. The refactor is behavior-preserving and covered by focused help tests, but future help work should extend the focused helper modules instead of re-growing `routing.rs` into another mixed-responsibility file.
+- Follow-up: none.
+
 ## 2026-04-12 - Add AI trace maintenance tool
 - Summary: added `scripts/ai_trace.py` with structured `add`, `compact`, and `check-size` commands for maintaining AI trace files, and wired trace size enforcement into `scripts/check_ai_workflow.py`.
 - Tests: added Python unittest coverage for trace insertion, compact/archive append behavior, size-limit checks, and workflow-gate integration.
@@ -60,17 +84,3 @@ Current AI change log only.
 - Summary: added `scripts/contracts/docs-entrypoints.json` as the shared definition file for landing quick commands, jump-select command entries, and handbook command-relationship maps; replaced the hard-coded Python metadata with a validating loader in `scripts/docgen_entrypoints.py`.
 - User impact: the generated docs homepage now exposes a stable first-run path panel, jump navigation includes `version` and `config profile`, and handbook pages such as dashboard show grouped subcommand relationships in both the left nav and an in-page command map.
 - Validation: `make html`; `make html-check`; `make quality-docs-surface`; `python3 -m unittest -v python.tests.test_python_docgen_entrypoints python.tests.test_python_docgen_command_docs python.tests.test_python_check_docs_surface`
-
-## 2026-04-12 - Add docs surface contract and verifier
-- Summary: introduced `scripts/contracts/command-surface.json` plus `scripts/check_docs_surface.py`, added `make quality-docs-surface`, routed AGENTS/maintainer docs to that contract, and corrected stale public docs that still taught removed roots or old alert command shapes.
-- Test Run: `python3 scripts/check_docs_surface.py`; `make man`; `make html`; `make man-check`; `make html-check`; `make quality-docs-surface`; `git diff --check`.
-- Follow-up: when public command paths, legacy replacements, command-doc routing, or `--help-full` support change, update the command surface contract first and keep shell fenced examples as the only verifier-owned executable doc examples.
-
-## 2026-04-12 - Split production Rust modules and clean root artifacts
-- Summary: split the sync, alert CLI, alert support, dashboard history, dashboard browse, and datasource import/export Rust surfaces into smaller owning modules, then removed the stale tracked root artifacts left in `rust/`.
-- Test Run: `cargo fmt --manifest-path rust/Cargo.toml --all --check`; `cargo check --manifest-path rust/Cargo.toml --lib --quiet`; `cargo clippy --manifest-path rust/Cargo.toml --all-targets -- -D warnings`; `cargo test --manifest-path rust/Cargo.toml --quiet -- --test-threads=1`; `make man-check`; `make html-check`; `make quality-ai-workflow`; `make quality-architecture`; `make quality-workspace-noise`; `git diff --check`.
-- Follow-up: the Rust architecture lint now treats `sync/mod.rs` as handled instead of a known-debt warning, and the current hotspot list is narrowed to the remaining large ownership candidates.
-
-## 2026-04-12 - Add docs architecture guardrails for manual stability
-- Summary: introduced a docs-layer boundary doc that keeps handbook/manual content focused on stable intent and workflows, command docs focused on flags and syntax, generated docs derived, and trace docs concise.
-- Follow-up: task briefs now carry a docs-impact matrix so agents can update the right docs layer without dragging manuals into command-reference detail.

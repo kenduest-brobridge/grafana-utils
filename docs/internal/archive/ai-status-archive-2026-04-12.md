@@ -634,3 +634,23 @@ Archived AI-maintained status snapshot.
 - Scope: Rust parser/help canonicalization and CLI tests.
 - Current Update: enabled Clap subcommand inference and wired the custom help preflight through clap-tree canonicalization.
 - Result: unique prefixes such as `dashb` and `dashboard li` resolve to canonical commands; ambiguous prefixes such as `da` stay on Clap's error path.
+
+## 2026-04-12 - Re-scope Developer Guide as a maintainer landing page
+- State: Done
+- Scope: `docs/DEVELOPER.md`, `docs/internal/maintainer-quickstart.md`, `docs/internal/ai-workflow-note.md`, `docs/internal/ai-change-closure-rules.md`, `docs/internal/task-brief-template.md`, `docs/internal/README.md`, plus the repo-maintained AI trace files required by the maintainer-doc workflow gate.
+- Current Update: rewrote `docs/DEVELOPER.md` from an oversized mixed router/policy page into a shorter maintainer landing page; tightened `maintainer-quickstart` into the first-entry reading-order and source-of-truth map; moved stable closure rules into a dedicated `ai-change-closure-rules.md`; and routed both the maintainer docs and the AI workflow note to that stable closure file.
+- Result: the maintainer entrypoint is now closer to its intended role, the quickstart no longer competes with it as a second guide, and future maintainer-routing changes have both a reusable closure contract and visible router links that reduce dropped updates across maintainer docs.
+
+## 2026-04-12 - Show org users in list table output
+- State: Done
+- Scope: `rust/src/access/org.rs`, `rust/src/access/org_workflows.rs`, access Rust tests, and AI trace docs.
+- Baseline: `grafana-util access org list --with-users --table` fetched `/api/orgs/{id}/users` and updated `userCount`, but table and CSV output still rendered only `ID`, `NAME`, and `USER_COUNT`, so operator-visible user names were hidden unless JSON/YAML was used.
+- Current Update: added shared org list headers/row helpers so `--with-users` adds user summaries to text, table, and CSV output while default org list output stays unchanged.
+- Result: `grafana-util access org list --with-users --table` now includes a `USERS` column with labels such as `alice(Admin); bob(Viewer)`.
+
+## 2026-04-12 - Remove legacy CLI compatibility
+- State: Done
+- Scope: `rust/src/bin/grafana-util.rs`, `rust/src/cli.rs`, `rust/src/cli_help.rs`, `rust/src/cli_help_examples.rs`, `rust/src/cli_help/grouped_specs.rs`, `rust/src/cli_rust_tests.rs`, `scripts/check_docs_surface.py`, `scripts/contracts/command-surface.json`, command-reference docs, and generated-doc source contracts.
+- Baseline: the binary carried a legacy pre-check that intercepted removed roots and emitted replacement hints; `cli.rs` still defined unused old alert grouping schema; the docs surface contract and checker still allowed legacy replacement mappings.
+- Current Update: removed the legacy pre-check, deleted the legacy hint module, removed unused old alert grouping schema, removed legacy replacement support from the docs-surface contract/checker, kept alert short help on real flat commands only, and made colored contextual help highlight option entries, inline `--flag` references, and example captions.
+- Result: removed command paths now follow the normal Clap rejection path, public command docs/contracts no longer preserve a compatibility mapping for old roots, and CLI help keeps arguments plus example captions visibly highlighted in colored output.
