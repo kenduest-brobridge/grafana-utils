@@ -225,7 +225,7 @@ pub fn resolve_connection_settings(
             "Grafana base URL is required. Pass --url, set GRAFANA_URL, or configure a profile with url.",
         ));
     };
-    reject_url_credentials(&url)?;
+    let url = strip_url_credentials_with_warning(&url);
     let api_token = resolve_credential_value(
         input.api_token,
         profile.and_then(|item| item.token.as_deref()),
@@ -278,16 +278,19 @@ pub fn resolve_connection_settings(
     })
 }
 
-fn reject_url_credentials(url: &str) -> Result<()> {
-    let Ok(parsed) = Url::parse(url) else {
-        return Ok(());
+fn strip_url_credentials_with_warning(url: &str) -> String {
+    let Ok(mut parsed) = Url::parse(url) else {
+        return url.to_string();
     };
     if !parsed.username().is_empty() || parsed.password().is_some() {
-        return Err(validation(
-            "Grafana base URL must not include username or password. Use --basic-user with --basic-password or --prompt-password, set GRAFANA_USERNAME and GRAFANA_PASSWORD, or store credentials in a profile instead.",
-        ));
+        eprintln!(
+            "Warning: Grafana base URL includes username or password; URL credentials are ignored. Use --basic-user with --basic-password or --prompt-password, set GRAFANA_USERNAME and GRAFANA_PASSWORD, or store credentials in a profile instead."
+        );
+        let _ = parsed.set_username("");
+        let _ = parsed.set_password(None);
+        return parsed.to_string();
     }
-    Ok(())
+    url.to_string()
 }
 
 fn resolve_verify_ssl(
@@ -587,9 +590,9 @@ mod tests {
     }
 
     #[test]
-    fn resolve_connection_settings_rejects_credentials_in_grafana_url_env() {
+    fn resolve_connection_settings_ignores_credentials_in_grafana_url_env() {
         env::set_var("GRAFANA_URL", "https://admin:secret@grafana.example.com");
-        let error = resolve_connection_settings(
+        let resolved = resolve_connection_settings(
             ConnectionMergeInput {
                 url: "",
                 url_default: "",
@@ -605,18 +608,16 @@ mod tests {
             },
             None,
         )
-        .unwrap_err();
+        .unwrap();
         env::remove_var("GRAFANA_URL");
 
-        let message = error.to_string();
-        assert!(message.contains("Grafana base URL must not include username or password."));
-        assert!(message.contains("--basic-user"));
-        assert!(message.contains("GRAFANA_USERNAME"));
-        assert!(!message.contains("secret"));
+        assert_eq!(resolved.url, "https://grafana.example.com/");
+        assert_eq!(resolved.username, None);
+        assert_eq!(resolved.password, None);
     }
 
     #[test]
-    fn resolve_connection_settings_rejects_credentials_in_profile_url() {
+    fn resolve_connection_settings_ignores_credentials_in_profile_url() {
         env::remove_var("GRAFANA_URL");
         let selected_profile = super::SelectedProfile {
             name: "prod".to_string(),
@@ -626,7 +627,7 @@ mod tests {
                 ..ConnectionProfile::default()
             },
         };
-        let error = resolve_connection_settings(
+        let resolved = resolve_connection_settings(
             ConnectionMergeInput {
                 url: "",
                 url_default: "",
@@ -642,11 +643,11 @@ mod tests {
             },
             Some(&selected_profile),
         )
-        .unwrap_err();
+        .unwrap();
 
-        assert!(error
-            .to_string()
-            .contains("Grafana base URL must not include username or password."));
+        assert_eq!(resolved.url, "https://grafana.example.com/");
+        assert_eq!(resolved.username, None);
+        assert_eq!(resolved.password, None);
     }
 
     #[test]

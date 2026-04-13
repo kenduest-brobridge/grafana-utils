@@ -10,6 +10,14 @@ Current AI change log only.
 - Keep this file limited to the latest active architecture and maintenance changes.
 - Older entries moved to [`ai-changes-archive-2026-04-13.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-changes-archive-2026-04-13.md).
 
+## 2026-04-13 - Add shell completion command
+- Summary: added `grafana-util completion bash|zsh`, implemented completion rendering through `clap_complete` from the unified Clap command tree, and routed the command through the existing CLI dispatch spine without entering Grafana runtime/auth paths.
+- Tests: added parser coverage for Bash/Zsh and unsupported shell rejection, plus render coverage that completion scripts include common root commands from the unified CLI tree.
+- Test Run: `cargo fmt --manifest-path rust/Cargo.toml --all`; `cargo test --manifest-path rust/Cargo.toml --quiet completion -- --test-threads=1`; `make man`; `make html`.
+- Impact: `rust/src/cli.rs`, `rust/src/cli_dispatch.rs`, new `rust/src/cli_completion.rs`, Rust CLI tests, `rust/Cargo.toml`, `rust/Cargo.lock`, README files, command docs/contracts, generated `docs/man/`, generated `docs/html/`, and AI trace docs.
+- Rollback/Risk: low. Completion generation is read-only and Clap-backed; rollback removes the root `completion` command, dependency, docs, and generated completion man/html pages.
+- Follow-up: none.
+
 ## 2026-04-13 - Type Rust machine-output contract builders
 - Summary: replaced selected ad hoc JSON document assembly with module-local typed serde DTOs for snapshot review warnings, sync source bundle documents, sync bundle preflight documents, and sync promotion preflight documents/check lists.
 - Tests: no public behavior changes; existing contract tests continue to cover serialized field names and consumer expectations.
@@ -26,13 +34,13 @@ Current AI change log only.
 - Rollback/Risk: behavior-preserving module-boundary refactor; rollback would collapse helper modules back into their former large files. The snapshot review document is now constrained by internal serde structs plus existing tests, but there is still no external JSON Schema file.
 - Follow-up: keep using the maintainability report to target remaining non-test hotspots, especially datasource project status/live status, `snapshot_support.rs`, dashboard browse/export/import-apply/project-status/topology, and sync preflight modules.
 
-## 2026-04-13 - Reject credentials in Grafana base URLs
-- Summary: added a Rust connection-resolution guard that rejects username/password userinfo in Grafana base URLs supplied through `--url`, `GRAFANA_URL`, or profile `url`, and points operators to explicit Basic auth flags, Basic auth environment variables, or profile credentials instead.
-- Tests: added focused profile-config regressions for `GRAFANA_URL` and profile URLs containing credentials, including a check that the secret value is not echoed in the error.
-- Test Run: `rustfmt --check rust/src/profile_config.rs` passed; `git diff --check -- rust/src/profile_config.rs docs/internal/ai-status.md docs/internal/ai-changes.md` passed; `cargo test --manifest-path rust/Cargo.toml --quiet profile_config::tests::resolve_connection_settings_rejects_credentials -- --test-threads=1` did not compile because the current worktree has unrelated pre-existing Rust errors in `snapshot_review_common.rs`, `snapshot_support.rs`, `access/live_project_status.rs`, and `dashboard/import_lookup*.rs`.
+## 2026-04-13 - Ignore credentials in Grafana base URLs
+- Summary: added a Rust connection-resolution sanitizer that strips username/password userinfo from Grafana base URLs supplied through `--url`, `GRAFANA_URL`, or profile `url`, emits a warning, and keeps authentication on the existing explicit flag/env/profile credential path.
+- Tests: added focused profile-config regressions for `GRAFANA_URL` and profile URLs containing credentials, asserting the resolved URL is sanitized and URL credentials are not copied into resolved Basic auth fields.
+- Test Run: `rustfmt --check rust/src/profile_config.rs`; `git diff --check -- rust/src/profile_config.rs docs/internal/ai-status.md docs/internal/ai-changes.md`; `cargo test --manifest-path rust/Cargo.toml --quiet profile_config::tests::resolve_connection_settings_ignores_credentials -- --test-threads=1`.
 - Impact: `rust/src/profile_config.rs`, `docs/internal/ai-status.md`, and `docs/internal/ai-changes.md`.
-- Rollback/Risk: low CLI behavior change; users who relied on `http://user:pass@host` must move credentials to `--basic-user` plus `--basic-password` / `--prompt-password`, `GRAFANA_USERNAME` / `GRAFANA_PASSWORD`, or a profile secret.
-- Follow-up: consider documenting the rejected URL-userinfo form in troubleshooting if operators hit it often.
+- Rollback/Risk: low CLI behavior change; URL userinfo no longer reaches request URLs and no longer acts as authentication, so users must move credentials to `--basic-user` plus `--basic-password` / `--prompt-password`, `GRAFANA_USERNAME` / `GRAFANA_PASSWORD`, or a profile secret.
+- Follow-up: consider documenting the ignored URL-userinfo form in troubleshooting if operators hit it often.
 
 ## 2026-04-13 - Split Rust facade and CLI-args hotspots
 - Summary: split several Rust maintainability hotspots into focused modules while keeping command paths, flags, output contracts, and public runner behavior unchanged; added a read-only maintainability reporter for oversized Rust files and re-export-heavy module roots.
@@ -80,12 +88,4 @@ Current AI change log only.
 - Test Run: `cargo test --manifest-path rust/Cargo.toml --quiet cli_rust_tests`; `cargo test --manifest-path rust/Cargo.toml --quiet dashboard_cli_parser_help_rust_tests`; `cargo test --manifest-path rust/Cargo.toml --quiet dashboard_cli_inspect_help_rust_tests`.
 - Impact: `rust/src/cli_help.rs`, `rust/src/cli_help/routing.rs`, `rust/src/cli_help/contextual.rs`, `rust/src/cli_help/flat.rs`, and AI trace docs.
 - Rollback/Risk: low to moderate. The refactor is behavior-preserving and covered by focused help tests, but future help work should extend the focused helper modules instead of re-growing `routing.rs` into another mixed-responsibility file.
-- Follow-up: none.
-
-## 2026-04-12 - Add AI trace maintenance tool
-- Summary: added `scripts/ai_trace.py` with structured `add`, `compact`, and `check-size` commands for maintaining AI trace files, and wired trace size enforcement into `scripts/check_ai_workflow.py`.
-- Tests: added Python unittest coverage for trace insertion, compact/archive append behavior, size-limit checks, and workflow-gate integration.
-- Test Run: `python3 -m unittest -v python.tests.test_python_ai_trace python.tests.test_python_check_ai_workflow`; `python3 scripts/ai_trace.py check-size`; `make quality-ai-workflow`; `git diff --check`.
-- Impact: `scripts/ai_trace.py`, `scripts/check_ai_workflow.py`, `python/tests/test_python_ai_trace.py`, `python/tests/test_python_check_ai_workflow.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`, and current AI trace archives after compaction.
-- Rollback/Risk: internal maintainer tooling only; rollback removes the helper and the size check, but manual trace maintenance would again be required.
 - Follow-up: none.

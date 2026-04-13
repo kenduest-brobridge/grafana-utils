@@ -18,9 +18,10 @@ fn unified_help_mentions_common_surfaces_without_legacy_dashboard_paths() {
     assert!(help.contains("Review & Apply:"));
     assert!(help.contains("First 3 commands:"));
     assert!(help.contains("grafana-util --version"));
+    assert!(help.contains("grafana-util completion zsh"));
     assert!(help.contains("grafana-util status live --url http://localhost:3000"));
-    assert!(help.contains("config profile add"));
     assert!(help.contains("status"));
+    assert!(help.contains("completion"));
     assert!(help.contains("export"));
     assert!(help.contains("dashboard"));
     assert!(help.contains("workspace"));

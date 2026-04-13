@@ -69,6 +69,22 @@ sh ./scripts/install.sh --help
 - **執行檔**：標準版提供 `linux-amd64` 與 `macos-arm64`；需要截圖功能請選 `*-browser-*`
 - **預設路徑**：優先 `/usr/local/bin`，否則改用 `$HOME/.local/bin`
 
+Shell completion：
+
+```bash
+# Bash
+mkdir -p ~/.local/share/bash-completion/completions
+grafana-util completion bash > ~/.local/share/bash-completion/completions/grafana-util
+```
+
+```zsh
+# Zsh
+mkdir -p ~/.zfunc
+grafana-util completion zsh > ~/.zfunc/_grafana-util
+```
+
+Zsh 請確認 `~/.zfunc` 已經在 `compinit` 之前放進 `fpath`。
+
 ---
 
 ## 第一次執行

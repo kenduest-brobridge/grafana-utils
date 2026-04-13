@@ -5,6 +5,10 @@
     "zh-TW"
   ],
   "help_flat_supported": true,
+  "completion_supported": [
+    "bash",
+    "zsh"
+  ],
   "help_full_supported": [
     "",
     "dashboard",
@@ -16,6 +20,7 @@
   ],
   "doc_pages": {
     "alert": "alert.md",
+    "completion": "completion.md",
     "config": "config.md",
     "config profile": "profile.md",
     "resource": "resource.md",

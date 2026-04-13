@@ -40,3 +40,9 @@
 - Scope: `rust/src/alert.rs`, `rust/src/access/render.rs`, `rust/src/cli_help/routing.rs`, `rust/src/snapshot_review.rs`, and split Rust test modules for CLI, access, alert, dashboard help, and overview coverage.
 - Current Update: Split large orchestration/render/test surfaces into focused helper modules and thin aggregators while preserving public command behavior and test contracts.
 - Result: Focused Rust tests pass; `make quality-architecture` now reports 17 warnings, down from the pre-refactor 23, with remaining warnings limited to untouched hotspots and two existing brittle help-test files.
+
+## 2026-04-13 - Improve public docs voice and hygiene
+- State: Done
+- Scope: README zh-TW, command reference docs, handbook source, generated HTML/man output, zh-TW style guide, and generated-docs playbook.
+- Current Update: removed generated-looking example-comment labels, removed handbook emoji headings, tightened zh-TW product terminology, expanded reader-oriented handbook framing, added handbook workflow maps and task-first sections for alert, dashboard, datasource, access, and status/workspace, kept command maps out of handbook bodies, renamed the sidebar command map to command shortcuts, removed handbook chapter-count chrome, and pointed English handbook links at specific command pages.
+- Result: public docs read less like generated summaries while keeping command reference pages lookup-oriented; core handbook pages now explain subcommand relationships, output interpretation, and next-step decisions before sending readers to exact flag references; generated HTML/man outputs are refreshed and docs surface checks pass.

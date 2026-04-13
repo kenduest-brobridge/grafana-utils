@@ -43,3 +43,11 @@
 - Impact: `rust/src/cli.rs`, `rust/src/cli_help.rs`, `rust/src/cli_help/routing.rs`, access CLI command definitions, CLI help tests, command-surface contract/checker, command-reference index docs, and maintainer workflow docs that reference root help inventory support.
 - Rollback/Risk: root pre-parse now reserves `--help-flat`; command purposes depend on command-level Clap `about` metadata, so new commands should provide product-facing `about` text instead of relying on Args struct comments.
 - Follow-up: none.
+
+## 2026-04-12 - Add AI trace maintenance tool
+- Summary: added `scripts/ai_trace.py` with structured `add`, `compact`, and `check-size` commands for maintaining AI trace files, and wired trace size enforcement into `scripts/check_ai_workflow.py`.
+- Tests: added Python unittest coverage for trace insertion, compact/archive append behavior, size-limit checks, and workflow-gate integration.
+- Test Run: `python3 -m unittest -v python.tests.test_python_ai_trace python.tests.test_python_check_ai_workflow`; `python3 scripts/ai_trace.py check-size`; `make quality-ai-workflow`; `git diff --check`.
+- Impact: `scripts/ai_trace.py`, `scripts/check_ai_workflow.py`, `python/tests/test_python_ai_trace.py`, `python/tests/test_python_check_ai_workflow.py`, `docs/internal/ai-status.md`, `docs/internal/ai-changes.md`, and current AI trace archives after compaction.
+- Rollback/Risk: internal maintainer tooling only; rollback removes the helper and the size check, but manual trace maintenance would again be required.
+- Follow-up: none.

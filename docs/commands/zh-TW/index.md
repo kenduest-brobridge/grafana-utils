@@ -37,8 +37,9 @@ grafana-util --help-flat
 如果你只是第一次進來，先走這三步：
 
 1. [version](./version.md)：確認 binary 與版本
-2. [status](./status.md)：確認 CLI 跟 Grafana 能不能溝通
-3. [config](./config.md)：把 profile 與 secret 存起來，後面少打一堆參數
+2. [completion](./completion.md)：產生 Bash 或 Zsh shell completion script
+3. [status](./status.md)：確認 CLI 跟 Grafana 能不能溝通
+4. [config](./config.md)：把 profile 與 secret 存起來，後面少打一堆參數
 
 ## 先選一條操作路徑
 
@@ -57,7 +58,7 @@ grafana-util --help-flat
 
 | 類型 | 入口頁 | 這組命令主要是做什麼 |
 | :--- | :--- | :--- |
-| 起步與連線 | [version](./version.md)、[status](./status.md)、[config](./config.md) | 驗證 binary、檢查 live 狀態、保存 profile |
+| 起步與連線 | [version](./version.md)、[completion](./completion.md)、[status](./status.md)、[config](./config.md) | 驗證 binary、安裝 shell completion、檢查 live 狀態、保存 profile |
 | 匯出與離線成品 | [export](./export.md)、[snapshot bundles](./snapshot.md)、[resource queries](./resource.md) | 抓本地 inventory、做 snapshot、查單一資源 |
 | 本地審查工作區 | [workspace](./workspace.md) | scan、test、preview、package、apply |
 | Dashboard | [dashboard](./dashboard.md) | 瀏覽、分析、草稿、匯出匯入、發佈 |
@@ -70,6 +71,7 @@ grafana-util --help-flat
 | 需求 | 先從這裡開始 |
 | :--- | :--- |
 | 確認目前安裝的 binary 或 scriptable version | `grafana-util version` |
+| 安裝 shell completion | `grafana-util completion bash` 或 `grafana-util completion zsh` |
 | 確認 Grafana 連得到 | `grafana-util status live` |
 | 用人的角度看 live 總覽 | `grafana-util status overview live` |
 | 儲存連線預設值 | `grafana-util config profile` |

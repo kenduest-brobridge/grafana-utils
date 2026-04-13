@@ -3,6 +3,7 @@ use crate::cli::{
     parse_cli_from, CliArgs, ConfigCommand, DashboardConvertCommand, DashboardRootCommand,
     ExportAccessCommand, ExportCommand, StatusCommand, UnifiedCommand,
 };
+use crate::cli_completion::CompletionShell;
 use crate::dashboard::{
     parse_cli_from as parse_dashboard_cli_from, DashboardCliArgs, DashboardCommand,
     SimpleOutputFormat,
@@ -69,6 +70,29 @@ fn ambiguous_long_option_prefix_stays_on_clap_error_path() {
             || rendered.contains("--output-columns")
             || rendered.contains("possible values")
     );
+}
+
+#[test]
+fn parse_cli_supports_completion_surface() {
+    let bash_args: CliArgs = parse_cli_from(["grafana-util", "completion", "bash"]);
+    let zsh_args: CliArgs = parse_cli_from(["grafana-util", "completion", "zsh"]);
+
+    match bash_args.command {
+        UnifiedCommand::Completion(args) => assert_eq!(args.shell, CompletionShell::Bash),
+        other => panic!("expected completion bash command, got {other:?}"),
+    }
+    match zsh_args.command {
+        UnifiedCommand::Completion(args) => assert_eq!(args.shell, CompletionShell::Zsh),
+        other => panic!("expected completion zsh command, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_cli_rejects_unsupported_completion_shells() {
+    let error = CliArgs::try_parse_from(["grafana-util", "completion", "fish"])
+        .expect_err("fish completion should not be supported");
+
+    assert!(error.to_string().contains("invalid value"));
 }
 
 #[test]

@@ -33,6 +33,8 @@ pub(crate) mod alert_sync;
 pub(crate) mod bundle_preflight;
 /// Unified top-level CLI parsing and dispatch for the Rust binary.
 pub mod cli;
+/// Shell completion generation for the unified CLI command tree.
+pub(crate) mod cli_completion;
 /// Crate-private CLI dispatch spine that routes unified commands to domain runners.
 pub(crate) mod cli_dispatch;
 /// Unified CLI help rendering and example blocks.

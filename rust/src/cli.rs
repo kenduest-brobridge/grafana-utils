@@ -11,6 +11,7 @@ use crate::access::{
     AccessCliArgs, OrgExportArgs, ServiceAccountExportArgs, TeamExportArgs, UserExportArgs,
 };
 use crate::alert::{AlertExportArgs, AlertGroupCommand};
+use crate::cli_completion::CompletionShell;
 pub use crate::cli_help::{
     maybe_render_unified_help_from_os_args, render_unified_help_flat_text,
     render_unified_help_full_text, render_unified_help_text, render_unified_version_text,
@@ -268,6 +269,11 @@ pub enum UnifiedCommand {
     )]
     Version(VersionArgs),
     #[command(
+        name = "completion",
+        about = "Generate Bash or Zsh shell completion scripts."
+    )]
+    Completion(CompletionArgs),
+    #[command(
         name = "status",
         about = "Read live and staged Grafana state through a shared status surface."
     )]
@@ -340,6 +346,15 @@ pub enum UnifiedCommand {
         #[command(subcommand)]
         command: ConfigCommand,
     },
+}
+
+#[derive(Debug, Clone, Args)]
+#[command(
+    after_help = "Examples:\n\n  grafana-util completion bash > ~/.local/share/bash-completion/completions/grafana-util\n  grafana-util completion zsh > ~/.zfunc/_grafana-util"
+)]
+pub struct CompletionArgs {
+    #[arg(value_enum, help = "Shell to generate completion for.")]
+    pub shell: CompletionShell,
 }
 
 #[derive(Debug, Clone, Args)]

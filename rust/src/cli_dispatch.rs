@@ -8,8 +8,8 @@ use crate::access::{
 };
 use crate::alert::{normalize_alert_group_command, AlertCliArgs, AlertGroupCommand};
 use crate::cli::{
-    CliArgs, ConfigCommand, DashboardConvertCommand, DashboardRootCommand, ExportAccessCommand,
-    ExportCommand, StatusCommand, UnifiedCommand,
+    CliArgs, CompletionArgs, ConfigCommand, DashboardConvertCommand, DashboardRootCommand,
+    ExportAccessCommand, ExportCommand, StatusCommand, UnifiedCommand,
 };
 use crate::common::{set_json_color_choice, CliColorChoice, Result};
 use crate::dashboard::{run_raw_to_prompt, DashboardCliArgs, DashboardCommand, RawToPromptArgs};
@@ -28,6 +28,7 @@ pub(crate) enum DomainInvocation {
         json: bool,
         color: CliColorChoice,
     },
+    Completion(CompletionArgs),
     Dashboard(DashboardCliArgs),
     Datasource {
         default_color: CliColorChoice,
@@ -121,6 +122,7 @@ fn route_cli_args(args: CliArgs) -> DomainInvocation {
     // `expect` below will catch it in tests and CI rather than silently dropping routes.
     let CliArgs { color, command } = args;
     match command {
+        UnifiedCommand::Completion(args) => DomainInvocation::Completion(args),
         UnifiedCommand::Version(args) => DomainInvocation::Version {
             json: args.json,
             color,
@@ -240,6 +242,13 @@ where
             } else {
                 print!("{}", crate::cli_help::render_unified_version_text());
             }
+            Ok(())
+        }
+        DomainInvocation::Completion(args) => {
+            print!(
+                "{}",
+                crate::cli_completion::render_completion_script(args.shell)
+            );
             Ok(())
         }
         DomainInvocation::Dashboard(args) => run_dashboard(args),

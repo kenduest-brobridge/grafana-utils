@@ -28,6 +28,7 @@ grafana-util --help-flat
 The public first-run CLI is organized around a small task-first surface:
 
 - [version](./version.md): confirm the installed binary and machine-readable version details
+- [completion](./completion.md): generate Bash or Zsh shell completion scripts
 - [status](./status.md): read-only status, overview, snapshot, and resource queries
 - [config](./config.md): repo-local configuration workflows and profile management
 - [export](./export.md): common backup and local-inventory capture
@@ -42,6 +43,7 @@ The public first-run CLI is organized around a small task-first surface:
 | Need | Start with |
 | :--- | :--- |
 | Confirm the installed binary or scriptable version | `grafana-util version` |
+| Install shell completion | `grafana-util completion bash` or `grafana-util completion zsh` |
 | Check that Grafana is reachable | `grafana-util status live` |
 | See the live estate as a human | `grafana-util status overview live` |
 | Save connection defaults | `grafana-util config profile` |

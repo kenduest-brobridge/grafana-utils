@@ -69,6 +69,22 @@ sh ./scripts/install.sh --help
 - **Binaries**: standard `linux-amd64` and `macos-arm64`; screenshot-enabled builds use `*-browser-*`
 - **Default path**: `/usr/local/bin` if writable, otherwise `$HOME/.local/bin`
 
+Shell completion:
+
+```bash
+# Bash
+mkdir -p ~/.local/share/bash-completion/completions
+grafana-util completion bash > ~/.local/share/bash-completion/completions/grafana-util
+```
+
+```zsh
+# Zsh
+mkdir -p ~/.zfunc
+grafana-util completion zsh > ~/.zfunc/_grafana-util
+```
+
+For Zsh, make sure `~/.zfunc` is in `fpath` before `compinit`.
+
 ---
 
 ## First Run
