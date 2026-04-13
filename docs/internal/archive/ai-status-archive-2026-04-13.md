@@ -59,3 +59,24 @@
 - Scope: dashboard reusable runners, access dispatch/auth materialization, datasource local-list/diff/import-export support helpers, sync CLI args modules, Rust maintainability reporter, and Rust maintainer architecture notes.
 - Current Update: moved dashboard list/inspect reusable execution out of `command_runner`, split access routing and auth materialization out of `access/mod.rs`, split datasource local list/diff rendering and import/export IO/org routing out of root facades, split sync CLI argument definitions by command family, and added a read-only oversized-file/re-export reporter.
 - Result: public CLI behavior and output contracts are unchanged; `cargo test --quiet --lib` passes with 1461 passed / 1 ignored, and the new Python maintainability reporter tests pass.
+
+## 2026-04-13 - Ignore credentials in Grafana base URLs
+- State: Done
+- Scope: Rust profile/env/CLI connection URL resolution and focused connection-setting tests.
+- Baseline: `GRAFANA_URL`, `--url`, or profile `url` values containing URL userinfo were treated as plain base URLs instead of producing an explicit operator-facing error.
+- Current Update: added a shared URL userinfo sanitizer after connection URL precedence is resolved, with a stderr warning that explicit Basic auth flags, Basic auth environment variables, or profile credentials should be used instead.
+- Result: Grafana base URLs that include username or password continue through the original auth flow with URL credentials stripped and ignored; focused Rust tests and narrow formatting checks pass.
+
+## 2026-04-13 - Split Rust snapshot/import/live-status hotspots
+- State: Done
+- Scope: Rust snapshot CLI/review document assembly, dashboard import lookup helpers, access live project-status helpers, and dashboard inspect CLI definition modules.
+- Current Update: split `snapshot.rs` into CLI definitions, review count/warning rules, lane loading, and typed review-document serialization; split dashboard import lookup into cache, org lookup, and folder/inventory helpers; kept worker-produced access live-status and dashboard inspect CLI splits integrated with the current dev branch.
+- Result: behavior and public command contracts are unchanged; full `cd rust && cargo test --quiet` passes with 1463 passed / 1 ignored in the main lib suite plus integration targets, and `cargo fmt --manifest-path rust/Cargo.toml --all --check` passes.
+- Follow-up: `scripts/rust_maintainability_report.py --root rust/src` still flags larger untouched files, led by datasource project-status/live-status, `project_status_live_runtime.rs`, `snapshot_support.rs`, `profile_config.rs`, dashboard browse/export/import/project-status/topology surfaces, sync preflight modules, and large Rust test files.
+
+## 2026-04-13 - Type Rust machine-output contract builders
+- State: Done
+- Scope: snapshot review warnings, sync source bundle, sync bundle preflight, and sync promotion preflight output assembly.
+- Baseline: several machine-readable Rust outputs still assembled stable document structures with inline `serde_json::json!` or manual `Map` construction, leaving field names and summary shapes mostly constrained by tests and reviewer discipline.
+- Current Update: replaced selected top-level document and warning builders with module-local `Serialize` DTOs/helpers while leaving nested resource `Value` payloads intact where they represent external Grafana or staged resource documents.
+- Result: public JSON fields and behavior are unchanged; focused no-run targets for snapshot, sync source bundle, bundle preflight, and promotion preflight pass locally.

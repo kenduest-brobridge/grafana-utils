@@ -3,7 +3,7 @@
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 use ratatui::{
-    layout::Rect,
+    layout::{Margin, Rect},
     widgets::{Block, Borders, Clear, Paragraph, Wrap},
 };
 
@@ -186,9 +186,15 @@ pub(crate) fn build_header(title: &str, lines: Vec<Line<'static>>) -> Paragraph<
 
 pub(crate) fn build_footer_controls(lines: Vec<Line<'static>>) -> Paragraph<'static> {
     Paragraph::new(lines)
-        .wrap(Wrap { trim: false })
         .block(footer_block())
         .style(Style::default().bg(Color::Rgb(16, 22, 30)).fg(Color::White))
+}
+
+pub(crate) fn footer_height(control_line_count: usize) -> u16 {
+    control_line_count
+        .saturating_add(3)
+        .max(4)
+        .min(u16::MAX as usize) as u16
 }
 
 pub(crate) fn build_footer(
@@ -215,6 +221,52 @@ pub(crate) fn centered_rect(area: Rect, width_percent: u16, height_percent: u16)
     }
 }
 
+pub(crate) fn centered_fixed_rect(area: Rect, width_percent: u16, height: u16) -> Rect {
+    let width = area
+        .width
+        .saturating_mul(width_percent)
+        .saturating_div(100)
+        .max(32)
+        .min(area.width);
+    let height = height.max(5).min(area.height);
+    Rect {
+        x: area.x + area.width.saturating_sub(width).saturating_div(2),
+        y: area.y + area.height.saturating_sub(height).saturating_div(2),
+        width,
+        height,
+    }
+}
+
+pub(crate) fn dialog_block(title: impl Into<String>, accent: Color) -> Block<'static> {
+    Block::default()
+        .borders(Borders::ALL)
+        .title(title.into())
+        .style(Style::default().bg(Color::Rgb(16, 22, 30)))
+        .border_style(Style::default().fg(accent))
+        .title_style(
+            Style::default()
+                .fg(Color::White)
+                .bg(Color::Rgb(24, 78, 140))
+                .add_modifier(Modifier::BOLD),
+        )
+}
+
+pub(crate) fn render_dialog_shell(
+    frame: &mut ratatui::Frame,
+    title: impl Into<String>,
+    width_percent: u16,
+    height: u16,
+    accent: Color,
+) -> Rect {
+    let area = centered_fixed_rect(frame.area(), width_percent, height);
+    frame.render_widget(Clear, area);
+    frame.render_widget(dialog_block(title, accent), area);
+    area.inner(Margin {
+        horizontal: 1,
+        vertical: 1,
+    })
+}
+
 pub(crate) fn render_overlay(
     frame: &mut ratatui::Frame,
     title: &str,
@@ -238,4 +290,25 @@ pub(crate) fn render_overlay(
         ),
         area,
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{centered_fixed_rect, footer_height};
+    use ratatui::layout::Rect;
+
+    #[test]
+    fn footer_height_accounts_for_status_line_and_borders() {
+        assert_eq!(footer_height(0), 4);
+        assert_eq!(footer_height(1), 4);
+        assert_eq!(footer_height(3), 6);
+    }
+
+    #[test]
+    fn centered_fixed_rect_places_dialog_in_middle() {
+        let area = Rect::new(0, 0, 120, 40);
+        let dialog = centered_fixed_rect(area, 50, 10);
+
+        assert_eq!(dialog, Rect::new(30, 15, 60, 10));
+    }
 }

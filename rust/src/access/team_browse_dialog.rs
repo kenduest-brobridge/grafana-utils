@@ -4,11 +4,12 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::layout::{Constraint, Direction, Layout, Position, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, Clear, Paragraph};
+use ratatui::widgets::{Block, Borders, Paragraph};
 use serde_json::{Map, Value};
 
 use super::team_browse_state::{SearchDirection, SearchPromptState};
 use crate::access::render::map_get_text;
+use crate::tui_shell;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(super) struct EditDialogState {
@@ -80,15 +81,8 @@ impl EditDialogState {
     }
 
     pub(super) fn render(&self, frame: &mut ratatui::Frame) {
-        let area = centered_rect(frame.area(), 74, 19);
-        frame.render_widget(Clear, area);
-        frame.render_widget(
-            Block::default()
-                .borders(Borders::ALL)
-                .style(Style::default().bg(Color::Rgb(18, 24, 33)))
-                .border_style(Style::default().fg(Color::LightCyan)),
-            area,
-        );
+        let area =
+            tui_shell::render_dialog_shell(frame, "Team membership", 74, 19, Color::LightCyan);
         let rows = Layout::default()
             .direction(Direction::Vertical)
             .constraints([
@@ -183,20 +177,20 @@ pub(super) fn delete_lines(row: Option<&Map<String, Value>>) -> Vec<Line<'static
 }
 
 pub(super) fn render_search_prompt(frame: &mut ratatui::Frame, search: &SearchPromptState) {
-    let area = centered_rect(frame.area(), 60, 5);
-    frame.render_widget(Clear, area);
-    frame.render_widget(
-        Paragraph::new(search.query.clone()).block(Block::default().borders(Borders::ALL).title(
-            match search.direction {
-                SearchDirection::Forward => "Search /",
-                SearchDirection::Backward => "Search ?",
-            },
-        )),
-        area,
+    let area = tui_shell::render_dialog_shell(
+        frame,
+        match search.direction {
+            SearchDirection::Forward => "Search /",
+            SearchDirection::Backward => "Search ?",
+        },
+        60,
+        5,
+        Color::Yellow,
     );
+    frame.render_widget(Paragraph::new(search.query.clone()), area);
     let max_offset = area.width.saturating_sub(3) as usize;
     let offset = search.query.chars().count().min(max_offset) as u16;
-    frame.set_cursor_position(Position::new(area.x + 1 + offset, area.y + 1));
+    frame.set_cursor_position(Position::new(area.x + offset, area.y));
 }
 
 fn render_field(frame: &mut ratatui::Frame, area: Rect, label: &str, value: &str, active: bool) {
@@ -236,26 +230,6 @@ fn edit_cursor(edit: &EditDialogState, a: Rect, b: Rect, c: Rect, d: Rect) -> Po
         area.x.saturating_add(value.chars().count() as u16 + 1),
         area.y + 1,
     )
-}
-
-fn centered_rect(area: Rect, width_percent: u16, height: u16) -> Rect {
-    let vertical = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Min(1),
-            Constraint::Length(height.min(area.height.saturating_sub(2))),
-            Constraint::Min(1),
-        ])
-        .split(area);
-    let horizontal = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage((100 - width_percent) / 2),
-            Constraint::Percentage(width_percent),
-            Constraint::Percentage((100 - width_percent) / 2),
-        ])
-        .split(vertical[1]);
-    horizontal[1]
 }
 
 fn blank_dash(value: &str) -> &str {

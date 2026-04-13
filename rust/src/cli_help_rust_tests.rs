@@ -16,10 +16,10 @@ fn unified_help_mentions_common_surfaces_without_legacy_dashboard_paths() {
     assert!(help.contains("Start Here:"));
     assert!(help.contains("Read & Export:"));
     assert!(help.contains("Review & Apply:"));
-    assert!(help.contains("First 3 commands:"));
+    assert!(help.contains("Suggested flow:"));
     assert!(help.contains("grafana-util --version"));
-    assert!(help.contains("grafana-util completion zsh"));
     assert!(help.contains("grafana-util status live --url http://localhost:3000"));
+    assert!(help.contains("grafana-util config profile add dev"));
     assert!(help.contains("status"));
     assert!(help.contains("completion"));
     assert!(help.contains("export"));
@@ -130,7 +130,7 @@ fn top_level_version_flags_stay_on_clap_version_path() {
 }
 
 #[test]
-fn grouped_help_color_uses_muted_blue_cyan_palette() {
+fn grouped_help_colorizes_sections_and_commands_with_shared_palette() {
     for (args, heading, command) in [
         (
             ["grafana-util", "--color", "always", "dashboard", "--help"],
@@ -158,7 +158,10 @@ fn grouped_help_color_uses_muted_blue_cyan_palette() {
             "{}{command}{}",
             HELP_PALETTE.command, HELP_PALETTE.reset
         )));
-        assert!(!help.contains(&format!("\x1b[1;97m{heading}\x1b[0m")));
+        assert!(!help.contains(&format!(
+            "{}{heading}{}",
+            HELP_PALETTE.command, HELP_PALETTE.reset
+        )));
         assert!(!help.contains("\nCommands:"));
     }
 }
@@ -589,6 +592,13 @@ fn export_dashboard_help_colorizes_default_context_bright_green() {
 fn cli_help_styles_use_bright_green_bold_context() {
     let rendered = format!("{}", CLI_HELP_STYLES.get_context());
     let expected = format!("{}", AnsiColor::BrightGreen.on_default().bold());
+    assert_eq!(rendered, expected);
+}
+
+#[test]
+fn cli_help_styles_render_command_literals_as_bright_white() {
+    let rendered = format!("{}", CLI_HELP_STYLES.get_literal());
+    let expected = format!("{}", AnsiColor::BrightWhite.on_default().bold());
     assert_eq!(rendered, expected);
 }
 

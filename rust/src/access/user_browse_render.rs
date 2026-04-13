@@ -26,12 +26,13 @@ pub(super) fn render_frame(
     state: &mut BrowserState,
     args: &UserBrowseArgs,
 ) {
+    let footer_controls = control_lines(args);
     let outer = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
             Constraint::Length(3),
             Constraint::Min(1),
-            Constraint::Length(4),
+            Constraint::Length(tui_shell::footer_height(footer_controls.len())),
         ])
         .split(frame.area());
     let panes = Layout::default()
@@ -121,70 +122,7 @@ pub(super) fn render_frame(
     }
 
     frame.render_widget(
-        tui_shell::build_footer(
-            vec![
-                control_line(&[
-                    ("Up/Down", Color::Blue, "move"),
-                    ("Tab", Color::Blue, "next pane"),
-                    (
-                        "g",
-                        Color::Magenta,
-                        if args.input_dir.is_some() {
-                            "live-only jump"
-                        } else {
-                            "jump teams"
-                        },
-                    ),
-                    (
-                        "v",
-                        Color::Magenta,
-                        if args.input_dir.is_some() {
-                            "live-only view"
-                        } else {
-                            "view"
-                        },
-                    ),
-                    ("c", Color::Magenta, "toggle all"),
-                    (
-                        "e",
-                        Color::Green,
-                        if args.input_dir.is_some() {
-                            "read-only"
-                        } else {
-                            "edit"
-                        },
-                    ),
-                    (
-                        "d",
-                        Color::Red,
-                        if args.input_dir.is_some() {
-                            "read-only"
-                        } else {
-                            "delete"
-                        },
-                    ),
-                ]),
-                control_line(&[
-                    ("Shift+Tab", Color::Blue, "previous pane"),
-                    ("/ ?", Color::Yellow, "search"),
-                    ("n", Color::Yellow, "next match"),
-                    ("Home/End", Color::Blue, "jump"),
-                    ("PgUp/PgDn", Color::Blue, "scroll detail"),
-                    (
-                        "l",
-                        Color::Cyan,
-                        if args.input_dir.is_some() {
-                            "reload bundle"
-                        } else {
-                            "refresh"
-                        },
-                    ),
-                    ("i", Color::Magenta, "numbers"),
-                ]),
-                control_line(&[("q", Color::Gray, "exit"), ("Esc", Color::Gray, "exit")]),
-            ],
-            state.status.clone(),
-        ),
+        tui_shell::build_footer(footer_controls, state.status.clone()),
         outer[2],
     );
 
@@ -726,8 +664,68 @@ fn key_chip(label: &'static str, bg: Color) -> Span<'static> {
     tui_shell::key_chip(label, bg)
 }
 
-fn control_line(segments: &[(&'static str, Color, &'static str)]) -> Line<'static> {
-    tui_shell::control_line(segments)
+fn control_lines(args: &UserBrowseArgs) -> Vec<Line<'static>> {
+    tui_shell::control_grid(&[
+        vec![
+            ("Up/Down", Color::Blue, "move"),
+            ("Tab", Color::Blue, "next pane"),
+            (
+                "g",
+                Color::Magenta,
+                if args.input_dir.is_some() {
+                    "live-only jump"
+                } else {
+                    "jump teams"
+                },
+            ),
+            (
+                "v",
+                Color::Magenta,
+                if args.input_dir.is_some() {
+                    "live-only view"
+                } else {
+                    "view"
+                },
+            ),
+            ("c", Color::Magenta, "toggle all"),
+            (
+                "e",
+                Color::Green,
+                if args.input_dir.is_some() {
+                    "read-only"
+                } else {
+                    "edit"
+                },
+            ),
+            (
+                "d",
+                Color::Red,
+                if args.input_dir.is_some() {
+                    "read-only"
+                } else {
+                    "delete"
+                },
+            ),
+        ],
+        vec![
+            ("Shift+Tab", Color::Blue, "previous pane"),
+            ("/ ?", Color::Yellow, "search"),
+            ("n", Color::Yellow, "next match"),
+            ("Home/End", Color::Blue, "jump"),
+            ("PgUp/PgDn", Color::Blue, "scroll detail"),
+            (
+                "l",
+                Color::Cyan,
+                if args.input_dir.is_some() {
+                    "reload bundle"
+                } else {
+                    "refresh"
+                },
+            ),
+            ("i", Color::Magenta, "numbers"),
+        ],
+        vec![("q", Color::Gray, "exit"), ("Esc", Color::Gray, "exit")],
+    ])
 }
 
 fn plain(text: impl Into<std::borrow::Cow<'static, str>>) -> Span<'static> {

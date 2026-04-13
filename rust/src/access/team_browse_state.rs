@@ -75,7 +75,7 @@ impl BrowserState {
     }
 
     pub(super) fn replace_rows(&mut self, rows: Vec<Map<String, Value>>) {
-        let selected_id = self.selected_row().map(|row| map_get_text(row, "id"));
+        let selected_id = self.selected_team_id();
         self.team_rows = rows;
         self.pending_delete = false;
         self.pending_edit = None;
@@ -160,6 +160,20 @@ impl BrowserState {
             "member" => Some(map_get_text(row, "parentTeamId")),
             _ => Some(map_get_text(row, "id")),
         }
+    }
+
+    pub(super) fn selected_member_row(&self) -> Option<&Map<String, Value>> {
+        self.selected_row().filter(|row| row_kind(row) == "member")
+    }
+
+    pub(super) fn selected_member_identity(&self) -> Option<String> {
+        self.selected_member_row()
+            .map(|row| map_get_text(row, "memberIdentity"))
+    }
+
+    pub(super) fn selected_member_role(&self) -> Option<String> {
+        self.selected_member_row()
+            .map(|row| map_get_text(row, "memberRole"))
     }
 
     pub(super) fn expand_selected(&mut self) {
@@ -386,5 +400,57 @@ mod tests {
         assert_eq!(row_kind(&state.rows[0]), "team");
         assert_eq!(row_kind(&state.rows[1]), "member");
         assert_eq!(row_kind(&state.rows[2]), "member");
+    }
+
+    #[test]
+    fn team_browse_state_refresh_preserves_parent_team_selection_for_member_rows() {
+        let rows = vec![Map::from_iter(vec![
+            ("id".to_string(), Value::String("7".to_string())),
+            (
+                "name".to_string(),
+                Value::String("platform-ops".to_string()),
+            ),
+            (
+                "memberRows".to_string(),
+                Value::Array(vec![Value::Object(Map::from_iter(vec![
+                    (
+                        "memberIdentity".to_string(),
+                        Value::String("alice".to_string()),
+                    ),
+                    (
+                        "memberRole".to_string(),
+                        Value::String("Member".to_string()),
+                    ),
+                ]))]),
+            ),
+        ])];
+        let mut state = BrowserState::new(rows.clone());
+        state.expand_selected();
+        state.select_index(1);
+        assert_eq!(state.selected_member_identity().as_deref(), Some("alice"));
+
+        let refreshed_rows = vec![Map::from_iter(vec![
+            ("id".to_string(), Value::String("7".to_string())),
+            (
+                "name".to_string(),
+                Value::String("platform-ops".to_string()),
+            ),
+            (
+                "memberRows".to_string(),
+                Value::Array(vec![Value::Object(Map::from_iter(vec![
+                    (
+                        "memberIdentity".to_string(),
+                        Value::String("alice".to_string()),
+                    ),
+                    ("memberRole".to_string(), Value::String("Admin".to_string())),
+                ]))]),
+            ),
+        ])];
+
+        state.replace_rows(refreshed_rows);
+
+        assert_eq!(state.selected_team_id().as_deref(), Some("7"));
+        assert_eq!(state.selected_member_role().as_deref(), None);
+        assert_eq!(row_kind(&state.rows[0]), "team");
     }
 }

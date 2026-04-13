@@ -581,7 +581,7 @@ fn current_detail_line_count(state: &BrowserState) -> usize {
     match row_kind(row) {
         "org" => 4,
         "team" => 4,
-        _ => 10,
+        _ => 13,
     }
 }
 
@@ -782,5 +782,22 @@ mod tests {
         assert_eq!(rows.len(), 1);
         assert_eq!(map_get_text(&rows[0], "login"), "alice");
         assert_eq!(map_get_text(&rows[0], "teams"), "ops,sre");
+    }
+
+    #[test]
+    fn user_detail_navigation_reaches_all_fact_rows() {
+        let mut state = BrowserState::new(
+            vec![Map::from_iter(vec![
+                ("id".to_string(), Value::String("1".to_string())),
+                ("login".to_string(), Value::String("alice".to_string())),
+            ])],
+            DisplayMode::GlobalAccounts,
+        );
+
+        let line_count = current_detail_line_count(&state);
+        state.set_detail_cursor(line_count.saturating_sub(1), line_count);
+
+        assert_eq!(line_count, 13);
+        assert_eq!(state.detail_cursor, 12);
     }
 }

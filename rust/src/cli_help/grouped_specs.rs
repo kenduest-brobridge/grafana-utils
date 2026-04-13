@@ -75,10 +75,10 @@ pub(crate) const UNIFIED_ROOT_HELP_SPEC: GroupedHelpSpec = GroupedHelpSpec {
         ),
     ],
     footer: &[
-        "First 3 commands:",
+        "Suggested flow:",
         "  grafana-util --version",
-        "  grafana-util completion zsh > ~/.zfunc/_grafana-util",
         "  grafana-util status live --url http://localhost:3000 --basic-user admin --prompt-password --output-format yaml",
+        "  grafana-util config profile add dev --url http://localhost:3000 --basic-user admin --prompt-password",
         "",
         "More help:",
         "  grafana-util <COMMAND> --help",

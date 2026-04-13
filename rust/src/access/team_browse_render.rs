@@ -22,7 +22,7 @@ pub(super) fn render_frame(
         .constraints([
             Constraint::Length(3),
             Constraint::Min(1),
-            Constraint::Length(4),
+            Constraint::Length(tui_shell::footer_height(3)),
         ])
         .split(frame.area());
     let panes = Layout::default()
@@ -111,63 +111,7 @@ pub(super) fn render_frame(
     }
 
     frame.render_widget(
-        tui_shell::build_footer(
-            vec![
-                control_line(&[
-                    ("Up/Down", Color::Blue, "move"),
-                    ("Tab", Color::Blue, "next pane"),
-                    ("Enter", Color::Blue, "expand"),
-                    ("Left", Color::Blue, "collapse"),
-                    (
-                        "g",
-                        Color::Magenta,
-                        if args.input_dir.is_some() {
-                            "live-only jump"
-                        } else {
-                            "jump users"
-                        },
-                    ),
-                    ("c", Color::Magenta, "toggle all"),
-                    (
-                        "e",
-                        Color::Green,
-                        if args.input_dir.is_some() {
-                            "read-only"
-                        } else {
-                            "edit"
-                        },
-                    ),
-                    (
-                        "d",
-                        Color::Red,
-                        if args.input_dir.is_some() {
-                            "read-only"
-                        } else {
-                            "delete"
-                        },
-                    ),
-                ]),
-                control_line(&[
-                    ("Shift+Tab", Color::Blue, "previous pane"),
-                    ("/ ?", Color::Yellow, "search"),
-                    ("n", Color::Yellow, "next match"),
-                    ("Home/End", Color::Blue, "jump"),
-                    ("PgUp/PgDn", Color::Blue, "scroll detail"),
-                    (
-                        "l",
-                        Color::Cyan,
-                        if args.input_dir.is_some() {
-                            "reload bundle"
-                        } else {
-                            "refresh"
-                        },
-                    ),
-                    ("i", Color::Magenta, "numbers"),
-                ]),
-                control_line(&[("q", Color::Gray, "exit"), ("Esc", Color::Gray, "exit")]),
-            ],
-            state.status.clone(),
-        ),
+        tui_shell::build_footer(control_lines(args), state.status.clone()),
         outer[2],
     );
 
@@ -421,19 +365,7 @@ fn render_member_detail_panel(
     render_focusable_lines(
         frame,
         sections[2],
-        vec![
-            Line::from(vec![
-                key_chip("Left", Color::Blue),
-                plain(" collapse parent"),
-            ]),
-            Line::from(vec![
-                key_chip("e", Color::DarkGray),
-                plain(" team row only"),
-                plain("   "),
-                key_chip("d", Color::DarkGray),
-                plain(" team row only"),
-            ]),
-        ],
+        member_action_lines(row),
         pane_block("Actions", false, Color::LightMagenta),
         false,
         state.detail_cursor,
@@ -494,12 +426,109 @@ fn detail_line(label: &str, value: &str) -> Line<'static> {
     ])
 }
 
+fn member_action_lines(row: &Map<String, Value>) -> Vec<Line<'static>> {
+    let is_admin = map_get_text(row, "memberRole").eq_ignore_ascii_case("admin");
+    vec![
+        Line::from(vec![
+            key_chip("Left", Color::Blue),
+            plain(" collapse parent"),
+        ]),
+        Line::from(vec![
+            key_chip("e", Color::DarkGray),
+            plain(" use access user browse"),
+        ]),
+        Line::from(vec![key_chip("r", Color::Red), plain(" remove membership")]),
+        Line::from(vec![
+            key_chip("a", Color::Magenta),
+            plain(if is_admin {
+                " revoke team admin"
+            } else {
+                " grant team admin"
+            }),
+        ]),
+    ]
+}
+
 fn key_chip(label: &'static str, bg: Color) -> Span<'static> {
     tui_shell::key_chip(label, bg)
 }
 
-fn control_line(segments: &[(&'static str, Color, &'static str)]) -> Line<'static> {
-    tui_shell::control_line(segments)
+fn control_lines(args: &TeamBrowseArgs) -> Vec<Line<'static>> {
+    tui_shell::control_grid(&[
+        vec![
+            ("Up/Down", Color::Blue, "move"),
+            ("Tab", Color::Blue, "next pane"),
+            ("Enter", Color::Blue, "expand"),
+            ("Left", Color::Blue, "collapse"),
+            (
+                "r",
+                Color::Red,
+                if args.input_dir.is_some() {
+                    "read-only"
+                } else {
+                    "remove member"
+                },
+            ),
+            (
+                "g",
+                Color::Magenta,
+                if args.input_dir.is_some() {
+                    "live-only jump"
+                } else {
+                    "jump users"
+                },
+            ),
+        ],
+        vec![
+            ("c", Color::Magenta, "toggle all"),
+            (
+                "a",
+                Color::Magenta,
+                if args.input_dir.is_some() {
+                    "read-only"
+                } else {
+                    "admin toggle"
+                },
+            ),
+            (
+                "e",
+                Color::Green,
+                if args.input_dir.is_some() {
+                    "read-only"
+                } else {
+                    "edit"
+                },
+            ),
+            (
+                "d",
+                Color::Red,
+                if args.input_dir.is_some() {
+                    "read-only"
+                } else {
+                    "delete"
+                },
+            ),
+            ("Shift+Tab", Color::Blue, "previous pane"),
+        ],
+        vec![
+            ("/ ?", Color::Yellow, "search"),
+            ("n", Color::Yellow, "next match"),
+            ("Home/End", Color::Blue, "jump"),
+            ("PgUp/PgDn", Color::Blue, "scroll detail"),
+            (
+                "l",
+                Color::Cyan,
+                if args.input_dir.is_some() {
+                    "reload bundle"
+                } else {
+                    "refresh"
+                },
+            ),
+            ("i", Color::Magenta, "numbers"),
+            ("q", Color::Gray, "exit"),
+            ("Esc", Color::Gray, "exit"),
+        ],
+    ])
 }
 
 fn plain(text: impl Into<std::borrow::Cow<'static, str>>) -> Span<'static> {

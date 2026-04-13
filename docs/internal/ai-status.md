@@ -10,6 +10,27 @@ Current AI-maintained status only.
 - Keep this file short and current. Additive historical detail belongs in `docs/internal/archive/`.
 - Older entries moved to [`ai-status-archive-2026-04-13.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-status-archive-2026-04-13.md).
 
+## 2026-04-13 - Add team browse membership actions
+- State: Done
+- Scope: access team browser member-row actions, shared team browse footer/dialog presentation, focused Rust regressions, and worker-assisted implementation review.
+- Baseline: selecting a team member row in `access team browse` could show membership detail, but `e` only told users to select a team row and there was no direct way from the member row to remove that relationship or change team-admin state. Team browse also still owned local footer/control and dialog presentation code while user browse had moved to shared TUI shell helpers.
+- Current Update: member rows now keep user-owned fields read-only and direct account edits to `access user browse`; `r` removes the selected team membership through the existing team modify flow; `a` grants or revokes team-admin state through the existing membership update path; `d` stays reserved for deleting whole teams and warns on member rows instead of deleting a user or membership. Team browse footer controls now use the shared control grid/height helpers, and team edit/search overlays use the shared dialog shell.
+- Result: team browse can manage team/member relationships without pretending to edit user profile fields, and the browser presentation is closer to the shared TUI treatment already used by user browse.
+
+## 2026-04-13 - Fix access user browse TUI layout
+- State: Done
+- Scope: access user browser detail navigation, shared TUI footer/dialog sizing/rendering, user browser footer control layout, and focused Rust regressions.
+- Baseline: `access user browse` facts navigation counted fewer user fact rows than the right pane rendered, so Down/End could not reach the final rows. The user browser footer also allocated four terminal rows while rendering three control rows plus a status line inside a bordered block, causing clipping and visual misalignment. The edit/search overlays each owned their own centering and frame style instead of using a common TUI dialog surface.
+- Current Update: corrected the user facts line count, added shared `tui_shell::footer_height`, `centered_fixed_rect`, `dialog_block`, and `render_dialog_shell` helpers, made footer controls clip instead of wrapping across rows, switched user browse footer controls to the shared grid alignment helper, and moved user edit/search overlays onto the shared dialog shell.
+- Result: the facts pane can select the final user fact row, the footer has enough height for its controls/status without rows overwriting each other, and user browse overlays now share the same centered dialog frame and background treatment.
+
+## 2026-04-13 - Improve CLI help command emphasis
+- State: Done
+- Scope: Rust unified CLI grouped help footer, shared help color palette, CLI help colorization helpers, and focused help regressions.
+- Baseline: root `grafana-util --help` ended with the vague label `First 3 commands:` and included completion setup as one of the first commands. Colored help also split terminal styling between Clap's `CLI_HELP_STYLES` and the custom help-example palette, so Clap-rendered `Commands:` entries such as `browse` stayed blue while custom `grafana-util ...` examples could be bright white.
+- Current Update: changed the root quick-start footer and full-help section to `Suggested flow:`, aligned the suggested commands to version, read-only status, and profile setup, moved terminal help color ownership into `help_styles`, set Clap literal styling and custom command rendering to the same bright-white command treatment, and routed full command lines plus grouped `Usage:` command syntax through a shared CLI-command detector.
+- Result: CLI help now presents a workflow-oriented footer, and command syntax/entries are highlighted consistently across Clap-generated help and custom Rust help renderers.
+
 ## 2026-04-13 - Reduce sync maintainability hotspots
 - State: Done
 - Scope: sync bundle preflight, promotion preflight, workspace discovery rules, source-bundle input loading, Rust maintainability reporting, and architecture guardrail notes.
@@ -30,24 +51,3 @@ Current AI-maintained status only.
 - Baseline: the CLI had no shell completion generator, and any future completion support would need a clear source of truth to avoid drifting from Clap command definitions.
 - Current Update: added `grafana-util completion bash|zsh`, backed by `clap_complete` and generated from `CliArgs::command()` only; documented install snippets for Bash and Zsh.
 - Result: Bash and Zsh completion scripts can be generated from the current binary without connecting to Grafana or reading profile/auth state.
-
-## 2026-04-13 - Type Rust machine-output contract builders
-- State: Done
-- Scope: snapshot review warnings, sync source bundle, sync bundle preflight, and sync promotion preflight output assembly.
-- Baseline: several machine-readable Rust outputs still assembled stable document structures with inline `serde_json::json!` or manual `Map` construction, leaving field names and summary shapes mostly constrained by tests and reviewer discipline.
-- Current Update: replaced selected top-level document and warning builders with module-local `Serialize` DTOs/helpers while leaving nested resource `Value` payloads intact where they represent external Grafana or staged resource documents.
-- Result: public JSON fields and behavior are unchanged; focused no-run targets for snapshot, sync source bundle, bundle preflight, and promotion preflight pass locally.
-
-## 2026-04-13 - Split Rust snapshot/import/live-status hotspots
-- State: Done
-- Scope: Rust snapshot CLI/review document assembly, dashboard import lookup helpers, access live project-status helpers, and dashboard inspect CLI definition modules.
-- Current Update: split `snapshot.rs` into CLI definitions, review count/warning rules, lane loading, and typed review-document serialization; split dashboard import lookup into cache, org lookup, and folder/inventory helpers; kept worker-produced access live-status and dashboard inspect CLI splits integrated with the current dev branch.
-- Result: behavior and public command contracts are unchanged; full `cd rust && cargo test --quiet` passes with 1463 passed / 1 ignored in the main lib suite plus integration targets, and `cargo fmt --manifest-path rust/Cargo.toml --all --check` passes.
-- Follow-up: `scripts/rust_maintainability_report.py --root rust/src` still flags larger untouched files, led by datasource project-status/live-status, `project_status_live_runtime.rs`, `snapshot_support.rs`, `profile_config.rs`, dashboard browse/export/import/project-status/topology surfaces, sync preflight modules, and large Rust test files.
-
-## 2026-04-13 - Ignore credentials in Grafana base URLs
-- State: Done
-- Scope: Rust profile/env/CLI connection URL resolution and focused connection-setting tests.
-- Baseline: `GRAFANA_URL`, `--url`, or profile `url` values containing URL userinfo were treated as plain base URLs instead of producing an explicit operator-facing error.
-- Current Update: added a shared URL userinfo sanitizer after connection URL precedence is resolved, with a stderr warning that explicit Basic auth flags, Basic auth environment variables, or profile credentials should be used instead.
-- Result: Grafana base URLs that include username or password continue through the original auth flow with URL credentials stripped and ignored; focused Rust tests and narrow formatting checks pass.

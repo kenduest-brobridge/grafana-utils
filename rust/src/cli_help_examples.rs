@@ -1,5 +1,8 @@
 //! Structured help/example text for the unified Rust CLI.
 
+use crate::help_styles::{paint_argument, paint_command, paint_support};
+pub(crate) use crate::help_styles::{paint_section, HELP_PALETTE};
+
 macro_rules! help_item {
     (($label:literal, $summary:literal, $command:literal)) => {
         concat!("  ", $label, " ", $summary, "\n    ", $command)
@@ -23,44 +26,23 @@ macro_rules! help_block {
     };
 }
 
-pub(crate) struct HelpPalette {
-    pub section: &'static str,
-    pub command: &'static str,
-    pub argument: &'static str,
-    pub support: &'static str,
-    pub reset: &'static str,
+fn is_cli_command_text(trimmed: &str) -> bool {
+    trimmed == "grafana-util"
+        || trimmed
+            .strip_prefix("grafana-util")
+            .is_some_and(|rest| rest.chars().next().is_some_and(char::is_whitespace))
 }
 
-pub(crate) const HELP_PALETTE: HelpPalette = HelpPalette {
-    section: "\x1b[1;36m",
-    command: "\x1b[1;34m",
-    argument: "\x1b[1;97m",
-    support: "\x1b[90m",
-    reset: "\x1b[0m",
-};
-
-fn paint_with(color: &str, text: &str) -> String {
-    format!("{color}{text}{}", HELP_PALETTE.reset)
-}
-
-pub(crate) fn paint_section(text: &str) -> String {
-    paint_with(HELP_PALETTE.section, text)
-}
-
-pub(crate) fn paint_command(text: &str) -> String {
-    paint_with(HELP_PALETTE.command, text)
-}
-
-fn paint_argument(text: &str) -> String {
-    paint_with(HELP_PALETTE.argument, text)
+fn paint_cli_command_line(indent: &str, trimmed: &str) -> Option<String> {
+    if is_cli_command_text(trimmed) {
+        Some(format!("{indent}{}", paint_command(trimmed)))
+    } else {
+        None
+    }
 }
 
 fn paint_example_caption(text: &str) -> String {
     paint_argument(text)
-}
-
-pub(crate) fn paint_support(text: &str) -> String {
-    paint_with(HELP_PALETTE.support, text)
 }
 
 fn is_option_entry_line(trimmed: &str) -> bool {
@@ -135,7 +117,7 @@ fn paint_support_with_args(text: &str) -> String {
 
 pub(crate) const UNIFIED_HELP_TEXT: &str = concat!(
     help_block!(
-        "First 3 commands:",
+        "Suggested flow:",
         (
             "[Version]",
             "Confirm the binary is installed and on PATH:",
@@ -479,7 +461,7 @@ pub(crate) fn colorize_help_examples(text: &str) -> String {
         let trimmed = line.trim_start();
         let indent = &line[..line.len() - trimmed.len()];
         let colored = match trimmed {
-            "First 3 commands:"
+            "Suggested flow:"
             | "Next common commands:"
             | "Examples:"
             | "Extended Examples:"
@@ -488,8 +470,12 @@ pub(crate) fn colorize_help_examples(text: &str) -> String {
             _ if !trimmed.is_empty() && indent.is_empty() && trimmed.ends_with(':') => {
                 paint_section(trimmed)
             }
-            _ if trimmed.starts_with("grafana-util ") => {
-                format!("{indent}{}", paint_command(trimmed))
+            _ if line.starts_with("Usage: ") => {
+                let rest = line.trim_start_matches("Usage: ");
+                format!("{} {}", paint_section("Usage:"), paint_command(rest))
+            }
+            _ if is_cli_command_text(trimmed) => {
+                paint_cli_command_line(indent, trimmed).expect("matched CLI command text")
             }
             _ if is_option_entry_line(trimmed) => {
                 format!("{indent}{}", paint_option_entry(trimmed))
@@ -507,7 +493,7 @@ pub(crate) fn colorize_help_examples(text: &str) -> String {
                 && indent.len() >= 6
                 && !trimmed.starts_with("--")
                 && !trimmed.starts_with('[')
-                && !trimmed.starts_with("grafana-util ") =>
+                && !is_cli_command_text(trimmed) =>
             {
                 format!("{indent}{}", paint_support_with_args(trimmed))
             }
@@ -533,11 +519,11 @@ pub(crate) fn colorize_grouped_short_help(text: &str) -> String {
         let trimmed = line.trim_start();
         let indent = &line[..line.len() - trimmed.len()];
         let colored = if let Some(rest) = line.strip_prefix("Usage: ") {
-            format!("{} {rest}", paint_section("Usage:"))
+            format!("{} {}", paint_section("Usage:"), paint_command(rest))
         } else if !trimmed.is_empty() && indent.is_empty() && trimmed.ends_with(':') {
             paint_section(trimmed)
-        } else if trimmed.starts_with("grafana-util ") {
-            format!("{indent}{}", paint_command(trimmed))
+        } else if is_cli_command_text(trimmed) {
+            paint_cli_command_line(indent, trimmed).expect("matched CLI command text")
         } else if is_option_entry_line(trimmed) {
             format!("{indent}{}", paint_option_entry(trimmed))
         } else if indent == "  " && !trimmed.starts_with('-') {
@@ -571,6 +557,9 @@ pub(crate) fn colorize_dashboard_subcommand_help(text: &str) -> String {
                 let rest = line.trim_start_matches("Usage: ");
                 format!("{} {}", paint_section("Usage:"), paint_command(rest))
             }
+            _ if is_cli_command_text(trimmed) => {
+                paint_cli_command_line(indent, trimmed).expect("matched CLI command text")
+            }
             _ if is_option_entry_line(trimmed) => {
                 format!("{indent}{}", paint_option_entry(trimmed))
             }
@@ -587,13 +576,10 @@ pub(crate) fn colorize_dashboard_subcommand_help(text: &str) -> String {
                 && indent.len() >= 6
                 && !trimmed.starts_with("--")
                 && !trimmed.starts_with('[')
-                && !trimmed.starts_with("grafana-util ")
+                && !is_cli_command_text(trimmed)
                 && !trimmed.starts_with("- dashboard ") =>
             {
                 format!("{indent}{}", paint_support_with_args(trimmed))
-            }
-            _ if trimmed.starts_with("grafana-util ") => {
-                format!("{indent}{}", paint_command(trimmed))
             }
             _ if trimmed.starts_with("- dashboard ") => {
                 format!("{indent}{}", paint_command(trimmed))

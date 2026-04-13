@@ -1,9 +1,10 @@
 //! Interactive browse workflows and terminal-driven state flow for Access entities.
 
+use crate::tui_shell;
 use ratatui::layout::{Constraint, Direction, Layout, Position, Rect};
 use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, Borders, Clear, Paragraph};
+use ratatui::widgets::{Block, Borders, Paragraph};
 use serde_json::{Map, Value};
 
 use crate::access::render::map_get_text;
@@ -52,14 +53,12 @@ impl EditDialogState {
     }
 
     pub(super) fn render(&self, frame: &mut ratatui::Frame) {
-        let area = centered_rect(frame.area(), 72, 21);
-        frame.render_widget(Clear, area);
-        frame.render_widget(
-            Block::default()
-                .borders(Borders::ALL)
-                .style(Style::default().bg(Color::Rgb(18, 24, 33)))
-                .border_style(Style::default().fg(Color::LightCyan)),
-            area,
+        let area = tui_shell::render_dialog_shell(
+            frame,
+            format!("Edit User {}", self.id),
+            72,
+            21,
+            Color::LightCyan,
         );
         let rows = Layout::default()
             .direction(Direction::Vertical)
@@ -76,7 +75,7 @@ impl EditDialogState {
             .split(area);
         let header = Paragraph::new(vec![
             Line::from(Span::styled(
-                format!("Edit User {}", self.id),
+                "Edit selected user".to_string(),
                 Style::default()
                     .fg(Color::White)
                     .bg(Color::Rgb(24, 78, 140))
@@ -145,15 +144,14 @@ pub(super) fn delete_lines(row: Option<&Map<String, Value>>) -> Vec<Line<'static
 }
 
 pub(super) fn render_search_prompt(frame: &mut ratatui::Frame, search: &SearchPromptState) {
-    let area = centered_rect(frame.area(), 60, 5);
-    frame.render_widget(Clear, area);
     let title = match search.direction {
         SearchDirection::Forward => "Search /",
         SearchDirection::Backward => "Search ?",
     };
+    let area = tui_shell::render_dialog_shell(frame, title, 60, 5, Color::Yellow);
     frame.render_widget(
         Paragraph::new(search.query.clone())
-            .block(Block::default().borders(Borders::ALL).title(title)),
+            .style(Style::default().fg(Color::White).bg(Color::Rgb(16, 22, 30))),
         area,
     );
     let max_offset = area.width.saturating_sub(3) as usize;
@@ -204,26 +202,6 @@ fn edit_cursor(edit: &EditDialogState, a: Rect, b: Rect, c: Rect, d: Rect, e: Re
                 .min(area.width.saturating_sub(3) as usize) as u16,
         area.y + 1,
     )
-}
-
-fn centered_rect(area: Rect, width_percent: u16, height: u16) -> Rect {
-    let rows = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints([
-            Constraint::Percentage(50),
-            Constraint::Length(height.min(area.height)),
-            Constraint::Percentage(50),
-        ])
-        .split(area);
-    let cols = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints([
-            Constraint::Percentage(100u16.saturating_sub(width_percent) / 2),
-            Constraint::Percentage(width_percent),
-            Constraint::Percentage(100u16.saturating_sub(width_percent) / 2),
-        ])
-        .split(rows[1]);
-    cols[1]
 }
 
 fn blank_dash(value: &str) -> &str {
