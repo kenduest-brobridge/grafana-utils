@@ -176,6 +176,55 @@ pub(super) fn delete_lines(row: Option<&Map<String, Value>>) -> Vec<Line<'static
     ]
 }
 
+pub(super) fn render_delete_prompt(frame: &mut ratatui::Frame, row: Option<&Map<String, Value>>) {
+    let area = tui_shell::render_dialog_shell(frame, "Delete team", 60, 10, Color::Red);
+    frame.render_widget(
+        Paragraph::new(delete_lines(row))
+            .style(Style::default().fg(Color::White).bg(Color::Rgb(16, 22, 30))),
+        area,
+    );
+}
+
+pub(super) fn member_remove_lines(row: Option<&Map<String, Value>>) -> Vec<Line<'static>> {
+    let Some(row) = row else {
+        return vec![Line::from("No team member selected.")];
+    };
+    vec![
+        Line::from(format!(
+            "Remove member {} from team {}",
+            blank_dash(&map_get_text(row, "memberIdentity")),
+            blank_dash(&map_get_text(row, "parentTeamName"))
+        )),
+        Line::from(format!(
+            "Team ID: {}",
+            blank_dash(&map_get_text(row, "parentTeamId"))
+        )),
+        Line::from(format!(
+            "Login: {}",
+            blank_dash(&map_get_text(row, "memberLogin"))
+        )),
+        Line::from(format!(
+            "Email: {}",
+            blank_dash(&map_get_text(row, "memberEmail"))
+        )),
+        Line::from(""),
+        Line::from("Press y to confirm removal."),
+        Line::from("Press n, Esc, or q to cancel."),
+    ]
+}
+
+pub(super) fn render_member_remove_prompt(
+    frame: &mut ratatui::Frame,
+    row: Option<&Map<String, Value>>,
+) {
+    let area = tui_shell::render_dialog_shell(frame, "Remove membership", 64, 11, Color::Red);
+    frame.render_widget(
+        Paragraph::new(member_remove_lines(row))
+            .style(Style::default().fg(Color::White).bg(Color::Rgb(16, 22, 30))),
+        area,
+    );
+}
+
 pub(super) fn render_search_prompt(frame: &mut ratatui::Frame, search: &SearchPromptState) {
     let area = tui_shell::render_dialog_shell(
         frame,

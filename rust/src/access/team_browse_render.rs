@@ -7,7 +7,9 @@ use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, Borders, List, ListItem, ListState, Paragraph};
 use serde_json::{Map, Value};
 
-use super::team_browse_dialog::{delete_lines, render_search_prompt};
+use super::team_browse_dialog::{
+    render_delete_prompt, render_member_remove_prompt, render_search_prompt,
+};
 use super::team_browse_state::{row_kind, BrowserState, PaneFocus};
 use super::TeamBrowseArgs;
 use crate::access::render::map_get_text;
@@ -93,22 +95,7 @@ pub(super) fn render_frame(
         &mut state.list_state,
     );
 
-    if state.pending_delete {
-        render_focusable_lines(
-            frame,
-            panes[1],
-            delete_lines(state.selected_row()),
-            pane_block(
-                "Delete Preview",
-                state.focus == PaneFocus::Facts,
-                Color::Red,
-            ),
-            state.focus == PaneFocus::Facts,
-            state.detail_cursor,
-        );
-    } else {
-        render_detail_panel(frame, panes[1], state);
-    }
+    render_detail_panel(frame, panes[1], state);
 
     frame.render_widget(
         tui_shell::build_footer(control_lines(args), state.status.clone()),
@@ -117,6 +104,12 @@ pub(super) fn render_frame(
 
     if let Some(edit) = state.pending_edit.as_ref() {
         edit.render(frame);
+    }
+    if state.pending_delete {
+        render_delete_prompt(frame, state.selected_row());
+    }
+    if state.pending_member_remove {
+        render_member_remove_prompt(frame, state.selected_member_row());
     }
     if let Some(search) = state.pending_search.as_ref() {
         render_search_prompt(frame, search);
@@ -541,5 +534,122 @@ fn blank_dash(value: &str) -> &str {
         "-"
     } else {
         trimmed
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::access::CommonCliArgs;
+    use ratatui::backend::TestBackend;
+    use ratatui::Terminal;
+    use serde_json::{Map, Value};
+
+    fn args() -> TeamBrowseArgs {
+        TeamBrowseArgs {
+            common: CommonCliArgs {
+                profile: None,
+                url: "http://127.0.0.1:3000".to_string(),
+                api_token: Some("token".to_string()),
+                username: None,
+                password: None,
+                prompt_password: false,
+                prompt_token: false,
+                org_id: None,
+                timeout: 30,
+                verify_ssl: false,
+                insecure: false,
+                ca_cert: None,
+            },
+            input_dir: None,
+            query: None,
+            name: None,
+            with_members: true,
+            page: 1,
+            per_page: 100,
+        }
+    }
+
+    fn state() -> BrowserState {
+        BrowserState::new(vec![Map::from_iter(vec![
+            ("id".to_string(), Value::String("7".to_string())),
+            (
+                "name".to_string(),
+                Value::String("platform-ops".to_string()),
+            ),
+            (
+                "email".to_string(),
+                Value::String("platform@example.com".to_string()),
+            ),
+            ("memberCount".to_string(), Value::String("2".to_string())),
+        ])])
+    }
+
+    fn state_with_selected_member() -> BrowserState {
+        let mut state = BrowserState::new(vec![Map::from_iter(vec![
+            ("id".to_string(), Value::String("7".to_string())),
+            (
+                "name".to_string(),
+                Value::String("platform-ops".to_string()),
+            ),
+            (
+                "memberRows".to_string(),
+                Value::Array(vec![Value::Object(Map::from_iter(vec![
+                    (
+                        "memberIdentity".to_string(),
+                        Value::String("alice".to_string()),
+                    ),
+                    (
+                        "memberLogin".to_string(),
+                        Value::String("alice".to_string()),
+                    ),
+                    (
+                        "memberEmail".to_string(),
+                        Value::String("alice@example.com".to_string()),
+                    ),
+                    (
+                        "memberRole".to_string(),
+                        Value::String("Member".to_string()),
+                    ),
+                ]))]),
+            ),
+        ])]);
+        state.expand_selected();
+        state.select_index(1);
+        state
+    }
+
+    #[test]
+    fn team_delete_confirmation_renders_as_dialog_overlay() {
+        let mut state = state();
+        state.pending_delete = true;
+        let args = args();
+        let mut terminal = Terminal::new(TestBackend::new(140, 40)).unwrap();
+
+        terminal
+            .draw(|frame| render_frame(frame, &mut state, &args))
+            .unwrap();
+
+        let screen = format!("{}", terminal.backend());
+        assert!(screen.contains("Delete team"));
+        assert!(screen.contains("Press y to confirm delete."));
+        assert!(!screen.contains("Delete Preview"));
+    }
+
+    #[test]
+    fn member_remove_confirmation_renders_as_dialog_overlay() {
+        let mut state = state_with_selected_member();
+        state.pending_member_remove = true;
+        let args = args();
+        let mut terminal = Terminal::new(TestBackend::new(140, 40)).unwrap();
+
+        terminal
+            .draw(|frame| render_frame(frame, &mut state, &args))
+            .unwrap();
+
+        let screen = format!("{}", terminal.backend());
+        assert!(screen.contains("Remove membership"));
+        assert!(screen.contains("Remove member alice from team platform-ops"));
+        assert!(screen.contains("Press y to confirm removal."));
     }
 }

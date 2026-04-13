@@ -7,7 +7,6 @@ use serde_json::{Map, Value};
 use crate::access::render::{
     map_get_text, normalize_org_role, normalize_user_row, paginate_rows, scalar_text,
 };
-use crate::access::request_array;
 use crate::access::user::{
     annotate_user_account_scope, delete_user_with_request, iter_global_users_with_request,
     list_org_users_with_request, list_user_teams_with_request, modify_user_with_request,
@@ -16,6 +15,7 @@ use crate::access::user::{
 use crate::access::{
     build_auth_context, Scope, UserDeleteArgs, UserModifyArgs, ACCESS_EXPORT_KIND_USERS,
 };
+use crate::access::{request_array, request_object};
 use crate::common::{message, Result};
 
 use super::user_browse_dialog::{EditDialogAction, EditDialogState};
@@ -69,6 +69,17 @@ where
             KeyCode::Char('n') | KeyCode::Esc | KeyCode::Char('q') => {
                 state.pending_delete = false;
                 state.status = "Cancelled user delete.".to_string();
+            }
+            _ => {}
+        }
+        return Ok(BrowseAction::Continue);
+    }
+    if state.pending_member_remove {
+        match key.code {
+            KeyCode::Char('y') => confirm_member_remove(request_json, state)?,
+            KeyCode::Char('n') | KeyCode::Esc | KeyCode::Char('q') => {
+                state.pending_member_remove = false;
+                state.status = "Cancelled team membership removal.".to_string();
             }
             _ => {}
         }
@@ -226,11 +237,7 @@ where
                         .to_string();
                 return Ok(BrowseAction::Continue);
             }
-            if state
-                .selected_row()
-                .map(row_kind)
-                .is_some_and(|kind| kind == "team")
-            {
+            if state.selected_team_membership_row().is_some() {
                 state.status = "Select a user row to edit the user.".to_string();
                 return Ok(BrowseAction::Continue);
             }
@@ -243,7 +250,16 @@ where
             state.status = format!("Editing user {}.", login);
         }
         KeyCode::Char('d') => {
-            if args.input_dir.is_some() {
+            if state.selected_team_membership_row().is_some() {
+                if args.input_dir.is_some() {
+                    state.status =
+                        "Local user browse is read-only. Use access user browse against live Grafana to remove team memberships."
+                            .to_string();
+                } else {
+                    state.pending_member_remove = true;
+                    state.status = "Previewing team membership removal.".to_string();
+                }
+            } else if args.input_dir.is_some() {
                 state.status =
                     "Local user browse is read-only. Use access user delete against live Grafana instead."
                         .to_string();
@@ -251,15 +267,23 @@ where
                 state.status =
                     "Org-grouped membership view is browse-only for now. Press v for global accounts."
                         .to_string();
-            } else if state
-                .selected_row()
-                .map(row_kind)
-                .is_some_and(|kind| kind == "team")
-            {
-                state.status = "Select a user row to delete the user.".to_string();
             } else if state.selected_row().is_some() {
                 state.pending_delete = true;
                 state.status = "Previewing user delete.".to_string();
+            }
+        }
+        KeyCode::Char('r') => {
+            if state.selected_team_membership_row().is_some() {
+                if args.input_dir.is_some() {
+                    state.status =
+                        "Local user browse is read-only. Use access user browse against live Grafana to remove team memberships."
+                            .to_string();
+                } else {
+                    state.pending_member_remove = true;
+                    state.status = "Previewing team membership removal.".to_string();
+                }
+            } else {
+                state.status = "Select a team membership row to remove the membership.".to_string();
             }
         }
         KeyCode::Esc | KeyCode::Char('q') => return Ok(BrowseAction::Exit),
@@ -299,13 +323,35 @@ where
     if display_mode != DisplayMode::OrgMemberships {
         for row in &mut rows {
             let user_id = map_get_text(row, "id");
-            let teams = list_user_teams_with_request(&mut request_json, &user_id)?
-                .into_iter()
-                .map(|team| crate::common::string_field(&team, "name", ""))
+            let team_records = list_user_teams_with_request(&mut request_json, &user_id)?;
+            let teams = team_records
+                .iter()
+                .map(|team| crate::common::string_field(team, "name", ""))
                 .filter(|name| !name.is_empty())
                 .map(Value::String)
                 .collect::<Vec<_>>();
+            let team_rows = team_records
+                .into_iter()
+                .map(|team| {
+                    let team_id = {
+                        let value = scalar_text(team.get("teamId"));
+                        if value.is_empty() {
+                            scalar_text(team.get("id"))
+                        } else {
+                            value
+                        }
+                    };
+                    Value::Object(Map::from_iter(vec![
+                        ("teamId".to_string(), Value::String(team_id)),
+                        (
+                            "teamName".to_string(),
+                            Value::String(crate::common::string_field(&team, "name", "")),
+                        ),
+                    ]))
+                })
+                .collect::<Vec<_>>();
             row.insert("teams".to_string(), Value::Array(teams));
+            row.insert("teamRows".to_string(), Value::Array(team_rows));
             row.insert("rowKind".to_string(), Value::String("user".to_string()));
         }
         if args.scope == Scope::Global {
@@ -519,6 +565,87 @@ where
     Ok(())
 }
 
+fn confirm_member_remove<F>(request_json: &mut F, state: &mut BrowserState) -> Result<()>
+where
+    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    let row = state
+        .selected_row()
+        .ok_or_else(|| message("User browse has no selected team membership to remove."))?
+        .clone();
+    if row_kind(&row) != "team" {
+        return Err(message(
+            "Select a team membership row before removing a membership.",
+        ));
+    }
+    let team_id = map_get_text(&row, "parentTeamId");
+    let user_id = map_get_text(&row, "parentUserId");
+    let team_name = map_get_text(&row, "teamName");
+    let login = map_get_text(&row, "parentLogin");
+    if team_id.is_empty() || user_id.is_empty() {
+        return Err(message(
+            "Team membership row is missing the team id or user id.",
+        ));
+    }
+    let _ = request_object(
+        &mut *request_json,
+        Method::DELETE,
+        &format!("/api/teams/{team_id}/members/{user_id}"),
+        &[],
+        None,
+        &format!("Unexpected remove-member response for Grafana team {team_id}."),
+    )?;
+    let selected_parent_id = user_id.clone();
+    let removed =
+        remove_team_membership_from_rows(&mut state.base_rows, &user_id, &team_id, &team_name);
+    if !removed {
+        return Err(message(format!(
+            "Removed team membership {team_id} for user {user_id}, but the user row was not found in memory."
+        )));
+    }
+    state.pending_member_remove = false;
+    state.replace_rows(state.base_rows.clone());
+    if let Some(index) = state
+        .rows
+        .iter()
+        .position(|candidate| map_get_text(candidate, "id") == selected_parent_id)
+    {
+        state.select_index(index);
+    }
+    state.status = if login.is_empty() {
+        format!("Removed membership from team {}.", team_name)
+    } else {
+        format!("Removed membership from {}.", login)
+    };
+    Ok(())
+}
+
+fn remove_team_membership_from_rows(
+    rows: &mut [Map<String, Value>],
+    user_id: &str,
+    team_id: &str,
+    team_name: &str,
+) -> bool {
+    for row in rows {
+        if map_get_text(row, "id") != user_id {
+            continue;
+        }
+        if let Some(Value::Array(team_rows)) = row.get_mut("teamRows") {
+            team_rows.retain(|team| {
+                let Some(team) = team.as_object() else {
+                    return true;
+                };
+                map_get_text(team, "teamId") != team_id
+            });
+        }
+        if let Some(Value::Array(teams)) = row.get_mut("teams") {
+            teams.retain(|team| team.as_str().map(|name| name != team_name).unwrap_or(true));
+        }
+        return true;
+    }
+    false
+}
+
 fn handle_search_key(state: &mut BrowserState, key: &KeyEvent) {
     let Some(mut search) = state.pending_search.take() else {
         return;
@@ -572,7 +699,7 @@ fn repeat_search(state: &mut BrowserState) {
 }
 
 fn current_detail_line_count(state: &BrowserState) -> usize {
-    if state.pending_delete {
+    if state.pending_delete || state.pending_member_remove {
         return 6;
     }
     let Some(row) = state.selected_row() else {
@@ -746,8 +873,8 @@ mod tests {
                 profile: None,
                 url: "http://127.0.0.1:3000".to_string(),
                 api_token: None,
-                username: None,
-                password: None,
+                username: Some("admin".to_string()),
+                password: Some("admin".to_string()),
                 prompt_password: false,
                 prompt_token: false,
                 org_id: None,
@@ -799,5 +926,182 @@ mod tests {
 
         assert_eq!(line_count, 13);
         assert_eq!(state.detail_cursor, 12);
+    }
+
+    #[test]
+    fn team_row_d_opens_membership_remove_confirmation_without_api() {
+        let mut state = BrowserState::new(
+            vec![Map::from_iter(vec![
+                ("id".to_string(), Value::String("7".to_string())),
+                ("login".to_string(), Value::String("alice".to_string())),
+                (
+                    "teamRows".to_string(),
+                    Value::Array(vec![Value::Object(Map::from_iter(vec![
+                        ("teamId".to_string(), Value::String("55".to_string())),
+                        (
+                            "teamName".to_string(),
+                            Value::String("platform-ops".to_string()),
+                        ),
+                    ]))]),
+                ),
+            ])],
+            DisplayMode::GlobalAccounts,
+        );
+        state.expand_selected();
+        state.select_index(1);
+        let args = UserBrowseArgs {
+            common: CommonCliArgs {
+                profile: None,
+                url: "http://127.0.0.1:3000".to_string(),
+                api_token: None,
+                username: Some("admin".to_string()),
+                password: Some("admin".to_string()),
+                prompt_password: false,
+                prompt_token: false,
+                org_id: None,
+                timeout: 30,
+                verify_ssl: false,
+                insecure: false,
+                ca_cert: None,
+            },
+            input_dir: None,
+            scope: Scope::Org,
+            all_orgs: false,
+            current_org: false,
+            query: None,
+            login: None,
+            email: None,
+            org_role: None,
+            grafana_admin: None,
+            with_teams: false,
+            page: 1,
+            per_page: 100,
+        };
+
+        let mut request_json = |_method: Method,
+                                _path: &str,
+                                _params: &[(String, String)],
+                                _payload: Option<&Value>| {
+            panic!("membership removal preview should not call Grafana before confirmation")
+        };
+
+        handle_key(
+            &mut request_json,
+            &args,
+            &mut state,
+            &KeyEvent::new(KeyCode::Char('d'), KeyModifiers::NONE),
+        )
+        .unwrap();
+
+        assert!(state.pending_member_remove);
+        assert_eq!(state.status, "Previewing team membership removal.");
+    }
+
+    #[test]
+    fn team_membership_remove_confirms_with_delete_and_refreshes_user_selection() {
+        let mut state = BrowserState::new(
+            vec![Map::from_iter(vec![
+                ("id".to_string(), Value::String("7".to_string())),
+                ("login".to_string(), Value::String("alice".to_string())),
+                (
+                    "teamRows".to_string(),
+                    Value::Array(vec![Value::Object(Map::from_iter(vec![
+                        ("teamId".to_string(), Value::String("55".to_string())),
+                        (
+                            "teamName".to_string(),
+                            Value::String("platform-ops".to_string()),
+                        ),
+                    ]))]),
+                ),
+            ])],
+            DisplayMode::GlobalAccounts,
+        );
+        state.expand_selected();
+        state.select_index(1);
+        state.pending_member_remove = true;
+
+        let args = UserBrowseArgs {
+            common: CommonCliArgs {
+                profile: None,
+                url: "http://127.0.0.1:3000".to_string(),
+                api_token: None,
+                username: Some("admin".to_string()),
+                password: Some("admin".to_string()),
+                prompt_password: false,
+                prompt_token: false,
+                org_id: None,
+                timeout: 30,
+                verify_ssl: false,
+                insecure: false,
+                ca_cert: None,
+            },
+            input_dir: None,
+            scope: Scope::Org,
+            all_orgs: false,
+            current_org: false,
+            query: None,
+            login: None,
+            email: None,
+            org_role: None,
+            grafana_admin: None,
+            with_teams: false,
+            page: 1,
+            per_page: 100,
+        };
+
+        let mut delete_seen = false;
+        let mut request_json =
+            |method: Method, path: &str, _params: &[(String, String)], payload: Option<&Value>| {
+                match (method.clone(), path) {
+                    (Method::DELETE, "/api/teams/55/members/7") => {
+                        delete_seen = true;
+                        assert!(payload.is_none());
+                        Ok(Some(Value::Object(Map::new())))
+                    }
+                    (Method::GET, "/api/org/users") => {
+                        let user = Value::Object(Map::from_iter(vec![
+                            ("id".to_string(), Value::String("7".to_string())),
+                            ("login".to_string(), Value::String("alice".to_string())),
+                            (
+                                "email".to_string(),
+                                Value::String("alice@example.com".to_string()),
+                            ),
+                            ("name".to_string(), Value::String("Alice".to_string())),
+                            ("orgRole".to_string(), Value::String("Editor".to_string())),
+                            ("scope".to_string(), Value::String("org".to_string())),
+                        ]));
+                        Ok(Some(Value::Array(vec![user])))
+                    }
+                    (Method::GET, "/api/users/7/teams") => {
+                        if delete_seen {
+                            Ok(Some(Value::Array(vec![])))
+                        } else {
+                            let team = Value::Object(Map::from_iter(vec![
+                                ("id".to_string(), Value::String("55".to_string())),
+                                (
+                                    "name".to_string(),
+                                    Value::String("platform-ops".to_string()),
+                                ),
+                            ]));
+                            Ok(Some(Value::Array(vec![team])))
+                        }
+                    }
+                    _ => panic!("unexpected request: {method:?} {path}"),
+                }
+            };
+
+        handle_key(
+            &mut request_json,
+            &args,
+            &mut state,
+            &KeyEvent::new(KeyCode::Char('y'), KeyModifiers::NONE),
+        )
+        .unwrap();
+
+        assert!(delete_seen);
+        assert!(!state.pending_member_remove);
+        assert_eq!(state.status, "Removed membership from alice.");
+        assert_eq!(state.selected_row().map(|row| row_kind(row)), Some("user"));
+        assert_eq!(state.selected_user_id().as_deref(), Some("7"));
     }
 }

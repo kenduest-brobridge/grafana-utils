@@ -41,6 +41,7 @@ pub(super) struct BrowserState {
     pub(super) show_numbers: bool,
     pub(super) status: String,
     pub(super) pending_delete: bool,
+    pub(super) pending_member_remove: bool,
     pub(super) pending_edit: Option<super::team_browse_dialog::EditDialogState>,
     pub(super) pending_search: Option<SearchPromptState>,
     pub(super) last_search: Option<SearchState>,
@@ -62,6 +63,7 @@ impl BrowserState {
             status: "Loaded team browser. Use Enter/Right expand, Left collapse, c toggle all."
                 .to_string(),
             pending_delete: false,
+            pending_member_remove: false,
             pending_edit: None,
             pending_search: None,
             last_search: None,
@@ -78,6 +80,7 @@ impl BrowserState {
         let selected_id = self.selected_team_id();
         self.team_rows = rows;
         self.pending_delete = false;
+        self.pending_member_remove = false;
         self.pending_edit = None;
         self.pending_search = None;
         self.detail_cursor = 0;

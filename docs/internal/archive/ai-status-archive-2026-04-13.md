@@ -80,3 +80,10 @@
 - Baseline: several machine-readable Rust outputs still assembled stable document structures with inline `serde_json::json!` or manual `Map` construction, leaving field names and summary shapes mostly constrained by tests and reviewer discipline.
 - Current Update: replaced selected top-level document and warning builders with module-local `Serialize` DTOs/helpers while leaving nested resource `Value` payloads intact where they represent external Grafana or staged resource documents.
 - Result: public JSON fields and behavior are unchanged; focused no-run targets for snapshot, sync source bundle, bundle preflight, and promotion preflight pass locally.
+
+## 2026-04-13 - Add shell completion command
+- State: Done
+- Scope: Rust unified CLI command surface, completion rendering, parser/render tests, command-reference docs, README snippets, generated man/html output, and command-surface contracts.
+- Baseline: the CLI had no shell completion generator, and any future completion support would need a clear source of truth to avoid drifting from Clap command definitions.
+- Current Update: added `grafana-util completion bash|zsh`, backed by `clap_complete` and generated from `CliArgs::command()` only; documented install snippets for Bash and Zsh.
+- Result: Bash and Zsh completion scripts can be generated from the current binary without connecting to Grafana or reading profile/auth state.

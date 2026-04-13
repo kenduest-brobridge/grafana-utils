@@ -62,6 +62,17 @@ where
         }
         return Ok(BrowseAction::Continue);
     }
+    if state.pending_member_remove {
+        match key.code {
+            KeyCode::Char('y') => remove_member(request_json, args, state)?,
+            KeyCode::Char('n') | KeyCode::Esc | KeyCode::Char('q') => {
+                state.pending_member_remove = false;
+                state.status = "Cancelled team membership removal.".to_string();
+            }
+            _ => {}
+        }
+        return Ok(BrowseAction::Continue);
+    }
 
     match key.code {
         KeyCode::BackTab | KeyCode::Tab => {
@@ -201,16 +212,22 @@ where
                             .to_string();
                     return Ok(BrowseAction::Continue);
                 }
-                remove_member(request_json, args, state)?;
+                state.pending_member_remove = true;
+                state.status = "Previewing team membership removal.".to_string();
                 return Ok(BrowseAction::Continue);
             }
             state.status = "Select a member row to remove a team membership.".to_string();
         }
         KeyCode::Char('d') => {
             if state.selected_member_row().is_some() {
-                state.status =
-                    "Member rows cannot delete users. Press r to remove this team membership."
-                        .to_string();
+                if args.input_dir.is_some() {
+                    state.status =
+                        "Local team browse is read-only. Use access team import or live browse to apply member changes."
+                            .to_string();
+                    return Ok(BrowseAction::Continue);
+                }
+                state.pending_member_remove = true;
+                state.status = "Previewing team membership removal.".to_string();
                 return Ok(BrowseAction::Continue);
             }
             if args.input_dir.is_some() {
@@ -565,7 +582,7 @@ fn split_csv(value: &str) -> Vec<String> {
 }
 
 fn current_detail_line_count(state: &BrowserState) -> usize {
-    if state.pending_delete {
+    if state.pending_delete || state.pending_member_remove {
         6
     } else if state.selected_member_row().is_some() {
         7
@@ -801,12 +818,50 @@ mod tests {
         .unwrap();
 
         assert!(matches!(action, BrowseAction::Continue));
+        assert!(state.pending_member_remove);
+        assert_eq!(state.status, "Previewing team membership removal.");
+
+        let action = handle_key(
+            &mut request_json,
+            &args,
+            &mut state,
+            &KeyEvent::new(
+                crossterm::event::KeyCode::Char('y'),
+                crossterm::event::KeyModifiers::NONE,
+            ),
+        )
+        .unwrap();
+
+        assert!(matches!(action, BrowseAction::Continue));
         assert!(state
             .status
             .contains("Removed alice from team platform-ops."));
         assert_eq!(state.selected_team_id().as_deref(), Some("7"));
         assert_eq!(state.rows.len(), 2);
         assert_eq!(map_get_text(&state.rows[1], "memberIdentity"), "bob");
+    }
+
+    #[test]
+    fn member_row_d_opens_membership_remove_confirmation() {
+        let mut state = selected_member_state(vec![member_row("alice", "Member")]);
+        let args = live_browse_args();
+
+        let action = handle_key(
+            &mut |_method, _path, _params, _payload| {
+                panic!("member-row delete preview should not call Grafana before confirmation")
+            },
+            &args,
+            &mut state,
+            &KeyEvent::new(
+                crossterm::event::KeyCode::Char('d'),
+                crossterm::event::KeyModifiers::NONE,
+            ),
+        )
+        .unwrap();
+
+        assert!(matches!(action, BrowseAction::Continue));
+        assert!(state.pending_member_remove);
+        assert_eq!(state.status, "Previewing team membership removal.");
     }
 
     #[test]

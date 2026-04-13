@@ -9,7 +9,7 @@ use serde_json::{Map, Value};
 
 use crate::access::render::{map_get_text, user_scope_text};
 
-use super::user_browse_dialog::{delete_lines, render_search_prompt};
+use super::user_browse_dialog::{render_delete_prompt, render_remove_prompt, render_search_prompt};
 use super::user_browse_state::{row_kind, BrowserState, DisplayMode, PaneFocus};
 use super::UserBrowseArgs;
 
@@ -26,7 +26,7 @@ pub(super) fn render_frame(
     state: &mut BrowserState,
     args: &UserBrowseArgs,
 ) {
-    let footer_controls = control_lines(args);
+    let footer_controls = control_lines(state, args);
     let outer = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -104,22 +104,7 @@ pub(super) fn render_frame(
         );
     frame.render_stateful_widget(list, panes[0], &mut state.list_state);
 
-    if state.pending_delete {
-        render_focusable_lines(
-            frame,
-            panes[1],
-            delete_lines(state.selected_row()),
-            pane_block(
-                "Delete Preview",
-                state.focus == PaneFocus::Facts,
-                Color::Red,
-            ),
-            state.focus == PaneFocus::Facts,
-            state.detail_cursor,
-        );
-    } else {
-        render_detail_panel(frame, panes[1], state);
-    }
+    render_detail_panel(frame, panes[1], state);
 
     frame.render_widget(
         tui_shell::build_footer(footer_controls, state.status.clone()),
@@ -128,6 +113,12 @@ pub(super) fn render_frame(
 
     if let Some(edit) = state.pending_edit.as_ref() {
         edit.render(frame);
+    }
+    if state.pending_delete {
+        render_delete_prompt(frame, state.selected_row());
+    }
+    if state.pending_member_remove {
+        render_remove_prompt(frame, state.selected_row());
     }
     if let Some(search) = state.pending_search.as_ref() {
         render_search_prompt(frame, search);
@@ -593,10 +584,14 @@ fn render_team_detail_panel(
                 plain(" collapse parent"),
             ]),
             Line::from(vec![
-                key_chip("e", Color::DarkGray),
-                plain(" user row only"),
+                key_chip("r", Color::Red),
+                plain(" remove membership"),
                 plain("   "),
-                key_chip("d", Color::DarkGray),
+                key_chip("d", Color::Red),
+                plain(" remove membership"),
+            ]),
+            Line::from(vec![
+                key_chip("e", Color::DarkGray),
                 plain(" user row only"),
             ]),
         ],
@@ -664,7 +659,15 @@ fn key_chip(label: &'static str, bg: Color) -> Span<'static> {
     tui_shell::key_chip(label, bg)
 }
 
-fn control_lines(args: &UserBrowseArgs) -> Vec<Line<'static>> {
+fn control_lines(state: &BrowserState, args: &UserBrowseArgs) -> Vec<Line<'static>> {
+    let selected_kind = state.selected_row().map(row_kind);
+    let delete_label = if args.input_dir.is_some() {
+        "read-only"
+    } else if matches!(selected_kind, Some("team")) {
+        "remove membership"
+    } else {
+        "delete user"
+    };
     tui_shell::control_grid(&[
         vec![
             ("Up/Down", Color::Blue, "move"),
@@ -697,13 +700,14 @@ fn control_lines(args: &UserBrowseArgs) -> Vec<Line<'static>> {
                     "edit"
                 },
             ),
+            ("d", Color::Red, delete_label),
             (
-                "d",
+                "r",
                 Color::Red,
                 if args.input_dir.is_some() {
                     "read-only"
                 } else {
-                    "delete"
+                    "remove membership"
                 },
             ),
         ],

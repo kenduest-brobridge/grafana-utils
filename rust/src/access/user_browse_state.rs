@@ -50,6 +50,7 @@ pub(super) struct BrowserState {
     pub(super) show_numbers: bool,
     pub(super) status: String,
     pub(super) pending_delete: bool,
+    pub(super) pending_member_remove: bool,
     pub(super) pending_edit: Option<super::user_browse_dialog::EditDialogState>,
     pub(super) pending_search: Option<SearchPromptState>,
     pub(super) last_search: Option<SearchState>,
@@ -73,6 +74,7 @@ impl BrowserState {
                 "Loaded user browser. Use Enter/Right expand teams, Left collapse, c view mode."
                     .to_string(),
             pending_delete: false,
+            pending_member_remove: false,
             pending_edit: None,
             pending_search: None,
             last_search: None,
@@ -86,9 +88,10 @@ impl BrowserState {
     }
 
     pub(super) fn replace_rows(&mut self, rows: Vec<Map<String, Value>>) {
-        let selected_id = self.selected_row().map(|row| map_get_text(row, "id"));
+        let selected_id = self.selected_user_id();
         self.base_rows = rows;
         self.pending_delete = false;
+        self.pending_member_remove = false;
         self.pending_edit = None;
         self.pending_search = None;
         self.detail_cursor = 0;
@@ -178,6 +181,10 @@ impl BrowserState {
             "team" => Some(map_get_text(row, "parentUserId")),
             _ => Some(map_get_text(row, "id")),
         }
+    }
+
+    pub(super) fn selected_team_membership_row(&self) -> Option<&Map<String, Value>> {
+        self.selected_row().filter(|row| row_kind(row) == "team")
     }
 
     pub(super) fn expand_selected(&mut self) {
@@ -336,7 +343,39 @@ fn flatten_user_rows(
         );
         rows.push(parent);
         if expanded_user_ids.contains(&user_id) {
-            if let Some(Value::Array(teams)) = row.get("teams") {
+            if let Some(Value::Array(team_rows)) = row.get("teamRows") {
+                for (index, team) in team_rows.iter().enumerate() {
+                    let Value::Object(team) = team else {
+                        continue;
+                    };
+                    let team_name = map_get_text(team, "teamName");
+                    if team_name.is_empty() {
+                        continue;
+                    }
+                    rows.push(Map::from_iter(vec![
+                        (
+                            "id".to_string(),
+                            Value::String(format!("{user_id}::team::{index}")),
+                        ),
+                        ("rowKind".to_string(), Value::String("team".to_string())),
+                        ("parentUserId".to_string(), Value::String(user_id.clone())),
+                        (
+                            "parentLogin".to_string(),
+                            Value::String(map_get_text(row, "login")),
+                        ),
+                        (
+                            "parentTeamId".to_string(),
+                            Value::String(map_get_text(team, "teamId")),
+                        ),
+                        (
+                            "parentTeamName".to_string(),
+                            Value::String(team_name.clone()),
+                        ),
+                        ("teamName".to_string(), Value::String(team_name.clone())),
+                        ("name".to_string(), Value::String(team_name)),
+                    ]));
+                }
+            } else if let Some(Value::Array(teams)) = row.get("teams") {
                 for (index, team) in teams.iter().enumerate() {
                     let Some(team_name) = team.as_str() else {
                         continue;

@@ -143,6 +143,47 @@ pub(super) fn delete_lines(row: Option<&Map<String, Value>>) -> Vec<Line<'static
     ]
 }
 
+pub(super) fn render_delete_prompt(frame: &mut ratatui::Frame, row: Option<&Map<String, Value>>) {
+    let area = tui_shell::render_dialog_shell(frame, "Delete user", 60, 10, Color::Red);
+    frame.render_widget(
+        Paragraph::new(delete_lines(row))
+            .style(Style::default().fg(Color::White).bg(Color::Rgb(16, 22, 30))),
+        area,
+    );
+}
+
+pub(super) fn remove_lines(row: Option<&Map<String, Value>>) -> Vec<Line<'static>> {
+    let Some(row) = row else {
+        return vec![Line::from("No team membership selected.")];
+    };
+    vec![
+        Line::from(format!(
+            "Remove membership from {}",
+            blank_dash(&map_get_text(row, "parentLogin"))
+        )),
+        Line::from(format!(
+            "Team: {}",
+            blank_dash(&map_get_text(row, "teamName"))
+        )),
+        Line::from(format!(
+            "User ID: {}",
+            blank_dash(&map_get_text(row, "parentUserId"))
+        )),
+        Line::from(""),
+        Line::from("Press y to confirm removal."),
+        Line::from("Press n, Esc, or q to cancel."),
+    ]
+}
+
+pub(super) fn render_remove_prompt(frame: &mut ratatui::Frame, row: Option<&Map<String, Value>>) {
+    let area = tui_shell::render_dialog_shell(frame, "Remove membership", 64, 10, Color::Red);
+    frame.render_widget(
+        Paragraph::new(remove_lines(row))
+            .style(Style::default().fg(Color::White).bg(Color::Rgb(16, 22, 30))),
+        area,
+    );
+}
+
 pub(super) fn render_search_prompt(frame: &mut ratatui::Frame, search: &SearchPromptState) {
     let title = match search.direction {
         SearchDirection::Forward => "Search /",
@@ -209,5 +250,35 @@ fn blank_dash(value: &str) -> &str {
         "-"
     } else {
         value
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn remove_lines_describe_membership_target() {
+        let row = Map::from_iter(vec![
+            (
+                "parentLogin".to_string(),
+                Value::String("alice".to_string()),
+            ),
+            (
+                "teamName".to_string(),
+                Value::String("platform-ops".to_string()),
+            ),
+            ("parentUserId".to_string(), Value::String("7".to_string())),
+        ]);
+
+        let lines = remove_lines(Some(&row));
+
+        assert!(lines.iter().any(|line| line.to_string().contains("alice")));
+        assert!(lines
+            .iter()
+            .any(|line| line.to_string().contains("platform-ops")));
+        assert!(lines
+            .iter()
+            .any(|line| line.to_string().contains("Press y")));
     }
 }
