@@ -8,7 +8,7 @@ pub(crate) use super::output::render_and_emit_sync_command_output;
 use super::output::{emit_text_or_json, sync_command_output};
 use super::*;
 use crate::sync::live::load_apply_intent_operations;
-use serde_json::{Map, Value};
+use serde_json::Value;
 use std::fs;
 use std::path::PathBuf;
 
@@ -426,119 +426,42 @@ pub(crate) fn execute_sync_bundle(args: &SyncBundleArgs) -> Result<SyncCommandOu
         }
     });
 
-    if dashboard_export_dir.is_none()
-        && dashboard_provisioning_dir.is_none()
-        && alert_export_dir.is_none()
-        && datasource_export_file.is_none()
-        && datasource_provisioning_file.is_none()
-        && args.metadata_file.is_none()
-    {
+    let bundle_input_selection = SyncBundleInputSelection {
+        workspace_root: args.workspace.as_ref().map(|workspace| {
+            discovered
+                .as_ref()
+                .and_then(|found| found.workspace_root.clone())
+                .unwrap_or_else(|| workspace.clone())
+        }),
+        dashboard_export_dir,
+        dashboard_provisioning_dir,
+        alert_export_dir,
+        datasource_export_file,
+        datasource_provisioning_file,
+        metadata_file: args.metadata_file.clone(),
+    };
+
+    if !bundle_input_selection.has_inputs() {
         return Err(message(
             "Workspace package requires at least one export input such as the positional workspace root, --dashboard-export-dir, --dashboard-provisioning-dir, --alert-export-dir, --datasource-export-file, --datasource-provisioning-file, or --metadata-file.",
         ));
     }
-    let mut dashboards = Vec::new();
-    let mut datasources = Vec::new();
-    let mut folders = Vec::new();
-    let mut metadata = Map::new();
-    if let Some(workspace) = args.workspace.as_ref() {
-        if let Some(resolved_workspace_root) = discovered
-            .as_ref()
-            .and_then(|found| found.workspace_root.as_ref())
-        {
-            metadata.insert(
-                "workspaceRoot".to_string(),
-                Value::String(resolved_workspace_root.display().to_string()),
-            );
-        } else {
-            metadata.insert(
-                "workspaceRoot".to_string(),
-                Value::String(workspace.display().to_string()),
-            );
-        }
-    }
-    if let Some(output_dir) = dashboard_export_dir.as_ref() {
-        let (dashboard_items, dashboard_datasources, folder_items, dashboard_metadata) =
-            load_dashboard_bundle_sections(
-                output_dir,
-                output_dir,
-                datasource_provisioning_file.as_deref(),
-            )?;
-        dashboards = dashboard_items;
-        datasources.extend(dashboard_datasources);
-        folders = folder_items;
-        metadata.extend(dashboard_metadata);
-        metadata.insert(
-            "dashboardExportDir".to_string(),
-            Value::String(output_dir.display().to_string()),
-        );
-    } else if let Some(provisioning_dir) = dashboard_provisioning_dir.as_ref() {
-        let (dashboard_items, dashboard_datasources, folder_items, dashboard_metadata) =
-            load_dashboard_provisioning_bundle_sections(
-                provisioning_dir,
-                datasource_provisioning_file.as_deref(),
-            )?;
-        dashboards = dashboard_items;
-        datasources.extend(dashboard_datasources);
-        folders = folder_items;
-        metadata.extend(dashboard_metadata);
-        metadata.insert(
-            "dashboardProvisioningDir".to_string(),
-            Value::String(provisioning_dir.display().to_string()),
-        );
-    }
-    if let Some(datasource_provisioning_file) = datasource_provisioning_file.as_ref() {
-        datasources = load_datasource_provisioning_records(datasource_provisioning_file)?
-            .into_iter()
-            .map(|item| normalize_datasource_bundle_item(&item))
-            .collect::<Result<Vec<_>>>()?;
-        metadata.insert(
-            "datasourceProvisioningFile".to_string(),
-            Value::String(datasource_provisioning_file.display().to_string()),
-        );
-    } else if let Some(datasource_export_file) = datasource_export_file.as_ref() {
-        datasources = load_json_array_file(datasource_export_file, "Datasource export inventory")?
-            .into_iter()
-            .map(|item| normalize_datasource_bundle_item(&item))
-            .collect::<Result<Vec<_>>>()?;
-        metadata.insert(
-            "datasourceExportFile".to_string(),
-            Value::String(datasource_export_file.display().to_string()),
-        );
-    }
-    let alerting = match alert_export_dir.as_ref() {
-        Some(output_dir) => {
-            metadata.insert(
-                "alertExportDir".to_string(),
-                Value::String(output_dir.display().to_string()),
-            );
-            load_alerting_bundle_section(output_dir)?
-        }
-        None => Value::Object(Map::new()),
-    };
-    let alerts = build_alert_sync_specs(&alerting)?;
-    if let Some(extra_metadata) =
-        load_optional_json_object_file(args.metadata_file.as_ref(), "Sync bundle metadata input")?
-    {
-        if let Some(object) = extra_metadata.as_object() {
-            metadata.extend(object.clone());
-        }
-    }
+    let artifacts = load_sync_bundle_input_artifacts(&bundle_input_selection)?;
     let mut document = build_sync_source_bundle_document(
-        &dashboards,
-        &datasources,
-        &folders,
-        &alerts,
-        Some(&alerting),
-        Some(&Value::Object(metadata)),
+        &artifacts.dashboards,
+        &artifacts.datasources,
+        &artifacts.folders,
+        &artifacts.alerts,
+        Some(&artifacts.alerting),
+        Some(&Value::Object(artifacts.metadata)),
     )?;
     let discovery = build_bundle_discovery_document(
         args.workspace.as_ref(),
-        dashboard_export_dir.as_ref(),
-        dashboard_provisioning_dir.as_ref(),
-        alert_export_dir.as_ref(),
-        datasource_export_file.as_ref(),
-        datasource_provisioning_file.as_ref(),
+        bundle_input_selection.dashboard_export_dir.as_ref(),
+        bundle_input_selection.dashboard_provisioning_dir.as_ref(),
+        bundle_input_selection.alert_export_dir.as_ref(),
+        bundle_input_selection.datasource_export_file.as_ref(),
+        bundle_input_selection.datasource_provisioning_file.as_ref(),
         args.metadata_file.as_ref(),
     );
     if let Some(discovery) = discovery {

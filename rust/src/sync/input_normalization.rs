@@ -7,10 +7,8 @@
 use std::path::PathBuf;
 
 use super::{
-    build_alert_sync_specs, load_alerting_bundle_section, load_dashboard_bundle_sections,
-    load_dashboard_provisioning_bundle_sections, load_datasource_provisioning_records,
-    load_json_array_file, load_json_value, normalize_datasource_bundle_item, ChangeCheckArgs,
-    ChangeInspectArgs, ChangeStagedInputsArgs, Result,
+    load_json_array_file, load_json_value, load_sync_bundle_input_artifacts, ChangeCheckArgs,
+    ChangeInspectArgs, ChangeStagedInputsArgs, Result, SyncBundleInputSelection,
 };
 use crate::common::message;
 use crate::dashboard::{
@@ -19,7 +17,7 @@ use crate::dashboard::{
 };
 use crate::overview::{OverviewArgs, OverviewOutputFormat};
 use crate::project_status_command::{ProjectStatusOutputFormat, ProjectStatusStagedArgs};
-use serde_json::{Map, Value};
+use serde_json::Value;
 
 #[derive(Default)]
 pub(crate) struct NormalizedChangeDashboardInputs {
@@ -274,46 +272,21 @@ pub(crate) fn build_change_bundle_specs(
         return Ok(None);
     }
 
-    let mut dashboards = Vec::new();
-    let mut datasources = Vec::new();
-    let mut folders = Vec::new();
-    if let Some(output_dir) = dashboard_export_dir {
-        let (dashboard_items, dashboard_datasources, folder_items, _dashboard_metadata) =
-            load_dashboard_bundle_sections(
-                output_dir,
-                output_dir,
-                datasource_provisioning_file.map(PathBuf::as_path),
-            )?;
-        dashboards = dashboard_items;
-        datasources.extend(dashboard_datasources);
-        folders = folder_items;
-    } else if let Some(provisioning_dir) = dashboard_provisioning_dir {
-        let (dashboard_items, dashboard_datasources, folder_items, _dashboard_metadata) =
-            load_dashboard_provisioning_bundle_sections(
-                provisioning_dir,
-                datasource_provisioning_file.map(PathBuf::as_path),
-            )?;
-        dashboards = dashboard_items;
-        datasources.extend(dashboard_datasources);
-        folders = folder_items;
-    }
-    if let Some(path) = datasource_provisioning_file {
-        datasources = load_datasource_provisioning_records(path)?
-            .into_iter()
-            .map(|item| normalize_datasource_bundle_item(&item))
-            .collect::<Result<Vec<_>>>()?;
-    }
-    let alerting = match alert_export_dir {
-        Some(path) => load_alerting_bundle_section(path)?,
-        None => Value::Object(Map::new()),
-    };
-    let alerts = build_alert_sync_specs(&alerting)?;
+    let artifacts = load_sync_bundle_input_artifacts(&SyncBundleInputSelection {
+        workspace_root: None,
+        dashboard_export_dir: dashboard_export_dir.cloned(),
+        dashboard_provisioning_dir: dashboard_provisioning_dir.cloned(),
+        alert_export_dir: alert_export_dir.cloned(),
+        datasource_export_file: None,
+        datasource_provisioning_file: datasource_provisioning_file.cloned(),
+        metadata_file: None,
+    })?;
 
     let mut desired_specs = Vec::new();
-    desired_specs.extend(dashboards);
-    desired_specs.extend(datasources);
-    desired_specs.extend(folders);
-    desired_specs.extend(alerts);
+    desired_specs.extend(artifacts.dashboards);
+    desired_specs.extend(artifacts.datasources);
+    desired_specs.extend(artifacts.folders);
+    desired_specs.extend(artifacts.alerts);
     Ok(Some(desired_specs))
 }
 

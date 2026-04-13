@@ -18,7 +18,14 @@ pub(crate) mod blocked_reasons;
 pub mod bundle_alert_contracts;
 mod bundle_builder;
 mod bundle_inputs;
+mod bundle_inputs_alert_export;
+mod bundle_inputs_alert_registry;
+mod bundle_inputs_alert_specs;
+mod bundle_inputs_dashboard;
+mod bundle_inputs_datasource;
+mod bundle_inputs_pipeline;
 pub mod bundle_preflight;
+mod bundle_preflight_assessments;
 pub mod cli;
 mod cli_args;
 mod discovery_model;
@@ -72,8 +79,9 @@ pub const DEFAULT_REVIEW_TOKEN: &str = "reviewed-workspace-plan";
 pub(crate) use bundle_inputs::{
     build_alert_sync_specs, load_alerting_bundle_section, load_dashboard_bundle_sections,
     load_dashboard_provisioning_bundle_sections, load_datasource_provisioning_records,
-    normalize_alert_managed_fields, normalize_alert_resource_identity_and_title,
-    normalize_datasource_bundle_item,
+    load_sync_bundle_input_artifacts, normalize_alert_managed_fields,
+    normalize_alert_resource_identity_and_title, normalize_datasource_bundle_item,
+    SyncBundleInputSelection,
 };
 pub(crate) use json::{
     append_unique_strings, load_json_array_file, load_json_value, load_optional_json_object_file,
