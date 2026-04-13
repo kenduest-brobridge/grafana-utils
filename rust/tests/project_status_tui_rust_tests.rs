@@ -1,9 +1,9 @@
 #[allow(dead_code)]
-#[path = "../src/common.rs"]
+#[path = "../src/common/mod.rs"]
 mod common;
-#[path = "../src/project_status.rs"]
+#[path = "../src/commands/status/contract.rs"]
 mod project_status;
-#[path = "../src/project_status_tui.rs"]
+#[path = "../src/commands/status/tui/mod.rs"]
 mod project_status_tui;
 
 use project_status::{
