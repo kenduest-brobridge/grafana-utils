@@ -35,6 +35,10 @@ class InstallScriptTests(unittest.TestCase):
         )
         self.assertIn("BIN_DIR=/custom/bin", content)
         self.assertIn("$HOME/.local/bin", content)
+        self.assertIn('INSTALL_COMPLETION="${INSTALL_COMPLETION:-}"', content)
+        self.assertIn("supported values: auto, bash, zsh", content)
+        self.assertIn("--interactive", content)
+        self.assertIn('INSTALL_TTY="${INSTALL_TTY:-/dev/tty}"', content)
 
     def test_install_script_help_describes_bin_dir_and_path_behavior(self):
         completed = subprocess.run(
@@ -49,6 +53,118 @@ class InstallScriptTests(unittest.TestCase):
         self.assertIn("BIN_DIR=/custom/bin", completed.stdout)
         self.assertIn("$HOME/.local/bin", completed.stdout)
         self.assertIn("PATH", completed.stdout)
+        self.assertIn("INSTALL_COMPLETION=auto", completed.stdout)
+        self.assertIn("--interactive", completed.stdout)
+
+    def test_install_script_can_auto_install_zsh_completion_from_installed_binary(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            fake_binary = temp_path / "grafana-util"
+            fake_binary.write_text(
+                "#!/bin/sh\n"
+                'if [ "${1:-}" = completion ] && [ "${2:-}" = zsh ]; then\n'
+                "  echo '#compdef grafana-util'\n"
+                "  exit 0\n"
+                "fi\n"
+                "echo grafana-util test build\n",
+                encoding="utf-8",
+            )
+            fake_binary.chmod(0o755)
+
+            archive_path = temp_path / "grafana-utils-rust-linux-amd64-v9.9.9.tar.gz"
+            with tarfile.open(archive_path, "w:gz") as archive:
+                archive.add(fake_binary, arcname="grafana-util")
+
+            bin_dir = temp_path / "bin"
+            home_dir = temp_path / "home"
+            completion_dir = temp_path / "completions"
+            home_dir.mkdir()
+            env = os.environ.copy()
+            env.update(
+                {
+                    "ASSET_URL": archive_path.resolve().as_uri(),
+                    "BIN_DIR": str(bin_dir),
+                    "COMPLETION_DIR": str(completion_dir),
+                    "HOME": str(home_dir),
+                    "INSTALL_COMPLETION": "auto",
+                    "PATH": "/usr/bin:/bin",
+                    "SHELL": "/bin/zsh",
+                    "VERSION": "v9.9.9",
+                }
+            )
+
+            completed = subprocess.run(
+                ["sh", str(INSTALL_SCRIPT_PATH)],
+                cwd=str(REPO_ROOT),
+                env=env,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(completed.returncode, 0, msg=completed.stderr)
+            completion_path = completion_dir / "_grafana-util"
+            self.assertTrue(completion_path.is_file())
+            self.assertEqual(completion_path.read_text(encoding="utf-8").strip(), "#compdef grafana-util")
+            self.assertIn("Installed Zsh completion to", completed.stdout)
+
+    def test_install_script_interactive_prompts_for_install_and_completion(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            fake_binary = temp_path / "grafana-util"
+            fake_binary.write_text(
+                "#!/bin/sh\n"
+                'if [ "${1:-}" = completion ] && [ "${2:-}" = zsh ]; then\n'
+                "  echo '#compdef grafana-util'\n"
+                "  exit 0\n"
+                "fi\n"
+                "echo grafana-util test build\n",
+                encoding="utf-8",
+            )
+            fake_binary.chmod(0o755)
+
+            archive_path = temp_path / "grafana-utils-rust-linux-amd64-v9.9.9.tar.gz"
+            with tarfile.open(archive_path, "w:gz") as archive:
+                archive.add(fake_binary, arcname="grafana-util")
+
+            bin_dir = temp_path / "interactive-bin"
+            home_dir = temp_path / "home"
+            completion_dir = temp_path / "interactive-completions"
+            input_path = temp_path / "interactive-input.txt"
+            home_dir.mkdir()
+            input_path.write_text(
+                f"{bin_dir}\n\n{completion_dir}\n",
+                encoding="utf-8",
+            )
+            env = os.environ.copy()
+            env.update(
+                {
+                    "ASSET_URL": archive_path.resolve().as_uri(),
+                    "HOME": str(home_dir),
+                    "INSTALL_TTY": str(input_path),
+                    "PATH": "/usr/bin:/bin",
+                    "SHELL": "/bin/zsh",
+                    "VERSION": "v9.9.9",
+                }
+            )
+
+            completed = subprocess.run(
+                ["sh", str(INSTALL_SCRIPT_PATH), "--interactive"],
+                cwd=str(REPO_ROOT),
+                env=env,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(completed.returncode, 0, msg=completed.stderr)
+            self.assertTrue((bin_dir / "grafana-util").is_file())
+            completion_path = completion_dir / "_grafana-util"
+            self.assertTrue(completion_path.is_file())
+            self.assertEqual(completion_path.read_text(encoding="utf-8").strip(), "#compdef grafana-util")
+            self.assertIn("Install grafana-util into", completed.stderr)
+            self.assertIn("Install zsh shell completion?", completed.stderr)
+            self.assertIn("Install zsh completion into", completed.stderr)
 
     def test_install_script_installs_from_local_archive_override(self):
         with tempfile.TemporaryDirectory() as temp_dir:

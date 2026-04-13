@@ -31,6 +31,24 @@ grafana-util completion zsh
 
 Because the script is generated from the command tree, it should be refreshed after upgrading `grafana-util` or switching to a checkout with different command definitions.
 
+## Install from GitHub with completion
+
+The GitHub install script can install the binary and immediately generate completion from that same binary:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | INSTALL_COMPLETION=auto sh
+```
+
+`auto` detects `bash` or `zsh` from `SHELL`. Use `INSTALL_COMPLETION=bash` or `INSTALL_COMPLETION=zsh` when you want to choose the shell explicitly. Set `COMPLETION_DIR=/path/to/dir` if your shell reads completion files from a different directory.
+
+For an interactive install, pass `--interactive` to the `sh` process after the pipe:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh -s -- --interactive
+```
+
+Interactive mode asks for the binary install directory, whether to install shell completion, and the completion output directory. It reads answers from the terminal, so it still works when the install script itself is coming from `curl`.
+
 ## Install for Bash
 
 Choose a completion directory that your Bash setup already loads. A common per-user location is:

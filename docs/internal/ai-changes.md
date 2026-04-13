@@ -10,6 +10,14 @@ Current AI change log only.
 - Keep this file limited to the latest active architecture and maintenance changes.
 - Older entries moved to [`ai-changes-archive-2026-04-13.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-changes-archive-2026-04-13.md).
 
+## 2026-04-13 - Add GitHub installer completion option
+- Summary: extended `scripts/install.sh` with opt-in `INSTALL_COMPLETION=auto|bash|zsh` support and `--interactive` prompts, writing completion from the just-installed binary to the standard Bash or Zsh per-user location unless `COMPLETION_DIR` is set. Refactored the installer into named helper stages for dependency checks, platform/archive resolution, interactive choices, installation, completion, and PATH notices. Added a GitHub-free local installer smoke script and `make test-installer-local`. Updated GitHub install examples so environment overrides and `--interactive` are attached to the `sh` side of the pipe, which is the process that reads the installer.
+- Tests: added installer coverage for auto-detected Zsh completion generation from a local archive fixture, interactive install-directory/completion prompts through a test terminal file, plus help/contract assertions for the new environment variables and option.
+- Test Run: `sh -n scripts/install.sh`; `sh -n scripts/install.sh scripts/test-local-installer.sh`; `python3 -m unittest -v python.tests.test_python_install_script`; `make test-installer-local`; `COMPLETION_SHELL=bash make test-installer-local`; `make html`.
+- Impact: `scripts/install.sh`, new `scripts/test-local-installer.sh`, `Makefile`, `python/tests/test_python_install_script.py`, `README.md`, `README.zh-TW.md`, `docs/user-guide/{en,zh-TW}/getting-started.md`, `docs/commands/{en,zh-TW}/completion.md`, `docs/internal/maintainer-quickstart.md`, generated `docs/html/`, and AI trace docs.
+- Rollback/Risk: low. The installer remains binary-only by default; completion is written only when requested or confirmed in interactive mode. Rollback removes the installer env vars/option and restores manual-only completion setup.
+- Follow-up: none.
+
 ## 2026-04-13 - Add shell completion command
 - Summary: added `grafana-util completion bash|zsh`, implemented completion rendering through `clap_complete` from the unified Clap command tree, and routed the command through the existing CLI dispatch spine without entering Grafana runtime/auth paths.
 - Tests: added parser coverage for Bash/Zsh and unsupported shell rejection, plus render coverage that completion scripts include common root commands from the unified CLI tree.
@@ -80,12 +88,4 @@ Current AI change log only.
 - Test Run: `cargo fmt --manifest-path rust/Cargo.toml --all`; `cargo test --manifest-path rust/Cargo.toml --quiet snapshot_rust_tests -- --test-threads=1`.
 - Impact: `rust/src/snapshot_review.rs`, `rust/src/snapshot_review_common.rs`, `rust/src/snapshot_review_render.rs`, `rust/src/snapshot_review_browser.rs`, `rust/src/snapshot_review_output.rs`.
 - Rollback/Risk: low. The refactor is behavior-preserving and only changes module boundaries, but the full crate still has unrelated `access` / `alert` compile failures in the current worktree, so broader verification remains blocked until those existing edits are resolved.
-- Follow-up: none.
-
-## 2026-04-12 - Split unified CLI help routing helpers
-- Summary: split unified CLI help routing into a thinner orchestration layer plus focused `contextual` and `flat` helper modules, keeping the existing public help entrypoints and inferred-subcommand behavior unchanged.
-- Tests: re-ran focused unified help, dashboard help parser, and dashboard inspect/help-full Rust suites after the module split.
-- Test Run: `cargo test --manifest-path rust/Cargo.toml --quiet cli_rust_tests`; `cargo test --manifest-path rust/Cargo.toml --quiet dashboard_cli_parser_help_rust_tests`; `cargo test --manifest-path rust/Cargo.toml --quiet dashboard_cli_inspect_help_rust_tests`.
-- Impact: `rust/src/cli_help.rs`, `rust/src/cli_help/routing.rs`, `rust/src/cli_help/contextual.rs`, `rust/src/cli_help/flat.rs`, and AI trace docs.
-- Rollback/Risk: low to moderate. The refactor is behavior-preserving and covered by focused help tests, but future help work should extend the focused helper modules instead of re-growing `routing.rs` into another mixed-responsibility file.
 - Follow-up: none.

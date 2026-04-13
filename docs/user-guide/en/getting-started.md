@@ -73,20 +73,33 @@ For the exact flags behind this chapter, keep [config](../../commands/en/config.
 curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh
 ```
 
+To install the binary and refresh shell completion in one GitHub install step, opt in explicitly:
+
+```bash
+# Install the latest release and write completion for the current shell.
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | INSTALL_COMPLETION=auto sh
+```
+
+If you prefer prompts, run the installer interactively. This asks for the install directory, whether to install shell completion, and where to write the completion file:
+
+```bash
+# Ask before choosing install and completion locations.
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh -s -- --interactive
+```
+
 If you want one fixed release or one explicit install directory, the same script also supports:
 
 ```bash
 # Install one pinned release into one explicit binary directory.
-VERSION=0.10.0 BIN_DIR="$HOME/.local/bin" \
-  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | VERSION=0.10.0 BIN_DIR="$HOME/.local/bin" sh
 ```
 
 The installer uses `BIN_DIR` when you set it. Otherwise it tries `/usr/local/bin` when that directory is writable, then falls back to `$HOME/.local/bin`.
 
-If the chosen install directory is not already on `PATH`, the installer prints the exact shell snippet to add it for `zsh` or `bash`. You can also inspect the contract first with:
+If the chosen install directory is not already on `PATH`, the installer prints the exact shell snippet to add it for `zsh` or `bash`. `INSTALL_COMPLETION=auto` detects `bash` or `zsh` from `SHELL`; use `INSTALL_COMPLETION=bash` or `INSTALL_COMPLETION=zsh` when you want to choose explicitly. In interactive mode, any value you already pass through `BIN_DIR`, `INSTALL_COMPLETION`, or `COMPLETION_DIR` is treated as already chosen and is not asked again. You can also inspect the contract first with:
 
 ```bash
-# Show install script options, BIN_DIR behavior, and PATH setup notes.
+# Show install script options, BIN_DIR behavior, completion, and PATH setup notes.
 sh ./scripts/install.sh --help
 ```
 

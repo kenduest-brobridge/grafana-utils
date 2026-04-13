@@ -959,6 +959,13 @@ grafana-util completion zsh</code></pre>
 <h2 id="這個指令做什麼">這個指令做什麼</h2>
 <p><code>grafana-util completion</code> 會從 Rust Clap command tree 產生 shell completion script。它不會連線到 Grafana，不會讀 profile，也不會解析認證。它只描述目前這個 binary 暴露出的 CLI surface。</p>
 <p>因為 script 是從 command tree 產生的，升級 <code>grafana-util</code> 或切到不同 command 定義的 checkout 後，應該重新產生一次。</p>
+<h2 id="從-github-安裝時一起安裝-completion">從 GitHub 安裝時一起安裝 completion</h2>
+<p>GitHub install script 可以安裝 binary 後，立刻用同一個 binary 產生 completion：</p>
+<pre><code>curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | INSTALL_COMPLETION=auto sh</code></pre>
+<p><code>auto</code> 會從 <code>SHELL</code> 偵測 <code>bash</code> 或 <code>zsh</code>。若想明確指定 shell，請用 <code>INSTALL_COMPLETION=bash</code> 或 <code>INSTALL_COMPLETION=zsh</code>。如果你的 shell 會從其他目錄讀取 completion file，可以設定 <code>COMPLETION_DIR=/path/to/dir</code>。</p>
+<p>若要互動安裝，請把 <code>--interactive</code> 傳給 pipe 後面的 <code>sh</code>：</p>
+<pre><code>curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh -s -- --interactive</code></pre>
+<p>互動模式會詢問 binary 安裝目錄、是否安裝 shell completion，以及 completion output directory。它會從終端機讀取回答，所以即使 install script 本身來自 <code>curl</code> pipe，也不會把 script 內容誤當成回答。</p>
 <h2 id="安裝到-bash">安裝到 Bash</h2>
 <p>選擇你的 Bash 設定已經會載入的 completion 目錄。常見的 per-user 位置是：</p>
 <pre><code>mkdir -p ~/.local/share/bash-completion/completions
@@ -984,7 +991,7 @@ compinit</code></pre>
 <aside class="sidebar">
   <button class="sidebar-toggle sidebar-toggle-right" type="button" aria-expanded="true" aria-label="Toggle page sidebar">▶</button>
   <div class="sidebar-content">
-    <section class="sidebar-section"><h2>本頁內容</h2><ul class="toc-list"><li class="toc-level-2"><a href="#root"><span class="toc-label">Root</span></a></li><li class="toc-level-2"><a href="#這個指令做什麼"><span class="toc-label">這個指令做什麼</span></a></li><li class="toc-level-2"><a href="#安裝到-bash"><span class="toc-label">安裝到 Bash</span></a></li><li class="toc-level-2"><a href="#安裝到-zsh"><span class="toc-label">安裝到 Zsh</span></a></li><li class="toc-level-2"><a href="#成功判準"><span class="toc-label">成功判準</span></a></li><li class="toc-level-2"><a href="#失敗時先檢查"><span class="toc-label">失敗時先檢查</span></a></li><li class="toc-level-2"><a href="#相關指令"><span class="toc-label">相關指令</span></a></li></ul></section><section class="sidebar-section"><h2>版本</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>語言</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: 繁體中文</a></li><li><a href="../en/completion.html" class="sidebar-meta-link">Switch to English</a></li></ul></section>
+    <section class="sidebar-section"><h2>本頁內容</h2><ul class="toc-list"><li class="toc-level-2"><a href="#root"><span class="toc-label">Root</span></a></li><li class="toc-level-2"><a href="#這個指令做什麼"><span class="toc-label">這個指令做什麼</span></a></li><li class="toc-level-2"><a href="#從-github-安裝時一起安裝-completion"><span class="toc-label">從 GitHub 安裝時一起安裝 completion</span></a></li><li class="toc-level-2"><a href="#安裝到-bash"><span class="toc-label">安裝到 Bash</span></a></li><li class="toc-level-2"><a href="#安裝到-zsh"><span class="toc-label">安裝到 Zsh</span></a></li><li class="toc-level-2"><a href="#成功判準"><span class="toc-label">成功判準</span></a></li><li class="toc-level-2"><a href="#失敗時先檢查"><span class="toc-label">失敗時先檢查</span></a></li><li class="toc-level-2"><a href="#相關指令"><span class="toc-label">相關指令</span></a></li></ul></section><section class="sidebar-section"><h2>版本</h2><p class="sidebar-meta-text">Current checkout</p></section><section class="sidebar-section"><h2>語言</h2><ul class="sidebar-meta-list"><li><a href="#" class="sidebar-meta-link sidebar-meta-current">Current: 繁體中文</a></li><li><a href="../en/completion.html" class="sidebar-meta-link">Switch to English</a></li></ul></section>
   </div>
 </aside>
 

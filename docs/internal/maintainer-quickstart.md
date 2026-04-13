@@ -190,6 +190,14 @@ make man
 make html
 ```
 
+For installer work:
+
+```bash
+# Purpose: Build a local binary, pack a local archive, and verify install.sh
+# without downloading from GitHub.
+make test-installer-local
+```
+
 ## Repo-Specific Gotchas
 
 - handbook content and command-reference content are separate source layers

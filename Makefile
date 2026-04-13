@@ -2,11 +2,12 @@ VERSIONING_TARGETS := help print-version sync-version set-release-version set-de
 PYTHON_TARGETS := poetry-install poetry-lock poetry-test poetry-quality-python build-python
 DOC_TARGETS := man man-check html html-check pages-site schema schema-check quality-docs-surface
 RUST_BUILD_TARGETS := build-rust build-rust-browser build-rust-native build-rust-native-browser build-rust-host build-rust-host-browser build-rust-macos-arm64 build-rust-macos-arm64-browser build-rust-linux-amd64 build-rust-linux-amd64-browser build-rust-linux-amd64-docker build-rust-linux-amd64-browser-docker build-rust-linux-amd64-zig validate-rust-linux-amd64-artifact validate-rust-linux-amd64-browser-artifact
+INSTALLER_TARGETS := test-installer-local
 QUALITY_TARGETS := test test-python test-rust fmt-rust-check lint-rust quality quality-python quality-rust quality-ai-workflow quality-architecture quality-docs-surface quality-alert-rust quality-sync-rust quality-workspace-noise
 LIVE_TARGETS := seed-grafana-sample-data destroy-grafana-sample-data reset-grafana-all-data test-rust-live test-sync-live test-alert-live test-alert-live-artifact test-alert-live-replay test-access-live test-python-datasource-live test-datasource-live
 META_TARGETS := build
 
-.PHONY: $(VERSIONING_TARGETS) $(PYTHON_TARGETS) $(DOC_TARGETS) $(RUST_BUILD_TARGETS) $(QUALITY_TARGETS) $(LIVE_TARGETS) $(META_TARGETS)
+.PHONY: $(VERSIONING_TARGETS) $(PYTHON_TARGETS) $(DOC_TARGETS) $(RUST_BUILD_TARGETS) $(INSTALLER_TARGETS) $(QUALITY_TARGETS) $(LIVE_TARGETS) $(META_TARGETS)
 
 PYTHON ?= python3
 PIP ?= $(PYTHON) -m pip
@@ -87,6 +88,7 @@ define HELP_ARTIFACT_VALIDATION
 $(BLUE)$(BOLD)Artifact validation$(RESET)
   $(GREEN)make validate-rust-linux-amd64-artifact$(RESET)  Run the default Linux amd64 artifact in a fixed-name Linux Docker container
   $(GREEN)make validate-rust-linux-amd64-browser-artifact$(RESET)  Run the browser-enabled Linux amd64 artifact in a fixed-name Linux Docker container
+  $(GREEN)make test-installer-local$(RESET)  Build a local binary, pack a local archive, and test install.sh with INSTALL_COMPLETION=auto
 
 endef
 
@@ -263,6 +265,9 @@ validate-rust-linux-amd64-artifact:
 
 validate-rust-linux-amd64-browser-artifact:
 	BUILD_BROWSER=1 bash ./scripts/validate-rust-linux-amd64-artifact.sh --version
+
+test-installer-local:
+	./scripts/test-local-installer.sh
 
 seed-grafana-sample-data:
 	bash ./scripts/seed-grafana-sample-data.sh

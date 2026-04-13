@@ -959,13 +959,18 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h3 id="download-and-install">Download and Install</h3>
 <pre><code># Install the latest release.
 curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh</code></pre>
+<p>To install the binary and refresh shell completion in one GitHub install step, opt in explicitly:</p>
+<pre><code># Install the latest release and write completion for the current shell.
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | INSTALL_COMPLETION=auto sh</code></pre>
+<p>If you prefer prompts, run the installer interactively. This asks for the install directory, whether to install shell completion, and where to write the completion file:</p>
+<pre><code># Ask before choosing install and completion locations.
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh -s -- --interactive</code></pre>
 <p>If you want one fixed release or one explicit install directory, the same script also supports:</p>
 <pre><code># Install one pinned release into one explicit binary directory.
-VERSION=0.10.0 BIN_DIR=&quot;$HOME/.local/bin&quot; \
-  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh</code></pre>
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | VERSION=0.10.0 BIN_DIR=&quot;$HOME/.local/bin&quot; sh</code></pre>
 <p>The installer uses <code>BIN_DIR</code> when you set it. Otherwise it tries <code>/usr/local/bin</code> when that directory is writable, then falls back to <code>$HOME/.local/bin</code>.</p>
-<p>If the chosen install directory is not already on <code>PATH</code>, the installer prints the exact shell snippet to add it for <code>zsh</code> or <code>bash</code>. You can also inspect the contract first with:</p>
-<pre><code># Show install script options, BIN_DIR behavior, and PATH setup notes.
+<p>If the chosen install directory is not already on <code>PATH</code>, the installer prints the exact shell snippet to add it for <code>zsh</code> or <code>bash</code>. <code>INSTALL_COMPLETION=auto</code> detects <code>bash</code> or <code>zsh</code> from <code>SHELL</code>; use <code>INSTALL_COMPLETION=bash</code> or <code>INSTALL_COMPLETION=zsh</code> when you want to choose explicitly. In interactive mode, any value you already pass through <code>BIN_DIR</code>, <code>INSTALL_COMPLETION</code>, or <code>COMPLETION_DIR</code> is treated as already chosen and is not asked again. You can also inspect the contract first with:</p>
+<pre><code># Show install script options, BIN_DIR behavior, completion, and PATH setup notes.
 sh ./scripts/install.sh --help</code></pre>
 <h3 id="verify-version">Verify Version</h3>
 <pre><code># Confirm the installed binary and version.

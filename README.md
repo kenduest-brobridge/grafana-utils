@@ -45,18 +45,28 @@ Install the latest release:
 curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh
 ```
 
+Install the latest release and write shell completion for your current shell:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | INSTALL_COMPLETION=auto sh
+```
+
+Install interactively, then choose the install directory and shell completion setup when prompted:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh -s -- --interactive
+```
+
 Install a specific version:
 
 ```bash
-VERSION=0.10.0 \
-  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | VERSION=0.10.0 sh
 ```
 
 Install into a custom directory:
 
 ```bash
-BIN_DIR="$HOME/.local/bin" \
-  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | BIN_DIR="$HOME/.local/bin" sh
 ```
 
 Local installer help:
@@ -68,6 +78,8 @@ sh ./scripts/install.sh --help
 - **Releases**: [GitHub releases](https://github.com/kenduest-brobridge/grafana-util/releases)
 - **Binaries**: standard `linux-amd64` and `macos-arm64`; screenshot-enabled builds use `*-browser-*`
 - **Default path**: `/usr/local/bin` if writable, otherwise `$HOME/.local/bin`
+- **Completion**: set `INSTALL_COMPLETION=auto`, `INSTALL_COMPLETION=bash`, or `INSTALL_COMPLETION=zsh` to install completion from the downloaded binary
+- **Interactive install**: use `sh -s -- --interactive` after the pipe to answer install directory and completion prompts
 
 Shell completion:
 

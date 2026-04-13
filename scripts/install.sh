@@ -9,6 +9,10 @@ BIN_DIR="${BIN_DIR:-}"
 ASSET_URL="${ASSET_URL:-}"
 INSTALL_TMPDIR="${TMPDIR:-/tmp}"
 RUST_ARTIFACT_FLAVOR="${RUST_ARTIFACT_FLAVOR:-standard}"
+INSTALL_COMPLETION="${INSTALL_COMPLETION:-}"
+COMPLETION_DIR="${COMPLETION_DIR:-}"
+INSTALL_TTY="${INSTALL_TTY:-/dev/tty}"
+INTERACTIVE=0
 
 log() {
   printf '%s\n' "$*"
@@ -23,6 +27,8 @@ print_help() {
   cat <<'EOF'
 Usage:
   curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh
+  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | INSTALL_COMPLETION=auto sh
+  curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh -s -- --interactive
 
 Environment overrides:
   VERSION=0.10.0          Install one specific release tag instead of latest.
@@ -32,6 +38,13 @@ Environment overrides:
   BINARY_NAME=name        Override the binary name inside the archive.
   RUST_ARTIFACT_FLAVOR=browser
                           Install the browser-enabled archive lane.
+  INSTALL_COMPLETION=auto Install shell completion after the binary.
+                          Supported values: auto, bash, zsh.
+  COMPLETION_DIR=/custom  Override the completion output directory.
+
+Options:
+  --interactive           Ask for install directory and shell completion setup.
+  -h, --help              Show this help.
 
 Install directory selection:
   1. Use BIN_DIR if you set it.
@@ -41,20 +54,46 @@ Install directory selection:
 After install:
   If the install directory is not already on PATH, the script prints the
   exact export command to add it for the current shell.
+
+Completion:
+  INSTALL_COMPLETION=auto detects bash or zsh from SHELL. The installer writes
+  Bash completion to ~/.local/share/bash-completion/completions/grafana-util
+  and Zsh completion to ~/.zfunc/_grafana-util unless COMPLETION_DIR is set.
+
+Interactive mode:
+  Use sh -s -- --interactive when piping through curl. Values provided through
+  BIN_DIR, INSTALL_COMPLETION, or COMPLETION_DIR are treated as already chosen
+  and are not asked again.
 EOF
 }
 
-case "${1:-}" in
-  -h|--help|help)
-    print_help
-    exit 0
-    ;;
-esac
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -h|--help|help)
+      print_help
+      exit 0
+      ;;
+    --interactive)
+      INTERACTIVE=1
+      shift
+      ;;
+    *)
+      fail "unknown option: $1"
+      ;;
+  esac
+done
 
-command -v curl >/dev/null 2>&1 || fail "curl is required"
-command -v tar >/dev/null 2>&1 || fail "tar is required"
-command -v install >/dev/null 2>&1 || fail "install is required"
-command -v mktemp >/dev/null 2>&1 || fail "mktemp is required"
+require_tool() {
+  tool_name="$1"
+  command -v "$tool_name" >/dev/null 2>&1 || fail "${tool_name} is required"
+}
+
+require_tools() {
+  require_tool curl
+  require_tool tar
+  require_tool install
+  require_tool mktemp
+}
 
 resolve_artifact_suffix() {
   case "$RUST_ARTIFACT_FLAVOR" in
@@ -108,6 +147,213 @@ resolve_default_bin_dir() {
   printf '%s\n' "$user_bin"
 }
 
+expand_user_path() {
+  case "$1" in
+    "~") printf '%s\n' "$HOME" ;;
+    "~/"*) printf '%s/%s\n' "$HOME" "${1#~/}" ;;
+    *) printf '%s\n' "$1" ;;
+  esac
+}
+
+detect_completion_shell() {
+  shell_path="${SHELL:-}"
+  [ -n "$shell_path" ] || return 1
+  shell_name=$(basename "$shell_path")
+  case "$shell_name" in
+    bash|zsh)
+      printf '%s\n' "$shell_name"
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+open_interactive_tty() {
+  [ "$INTERACTIVE" -eq 1 ] || return 0
+  [ -r "$INSTALL_TTY" ] || fail "--interactive requires a readable terminal; tried ${INSTALL_TTY}"
+  exec 3< "$INSTALL_TTY"
+}
+
+prompt_line() {
+  prompt_text="$1"
+  default_value="$2"
+  answer=""
+
+  if [ -n "$default_value" ]; then
+    printf '%s [%s]: ' "$prompt_text" "$default_value" >&2
+  else
+    printf '%s: ' "$prompt_text" >&2
+  fi
+
+  if ! IFS= read -r answer <&3; then
+    fail "unable to read interactive input"
+  fi
+
+  if [ -z "$answer" ]; then
+    printf '%s\n' "$default_value"
+  else
+    printf '%s\n' "$answer"
+  fi
+}
+
+prompt_yes_no() {
+  prompt_text="$1"
+  default_value="$2"
+
+  while :; do
+    answer=$(prompt_line "$prompt_text" "$default_value")
+    case "$answer" in
+      y|Y|yes|YES|Yes) return 0 ;;
+      n|N|no|NO|No) return 1 ;;
+      *) log "Please answer y or n." ;;
+    esac
+  done
+}
+
+prompt_install_dir() {
+  [ "$INTERACTIVE" -eq 1 ] || return 0
+  [ -z "$BIN_DIR" ] || return 0
+
+  default_dir=$(resolve_default_bin_dir)
+  while :; do
+    chosen_dir=$(prompt_line "Install ${BINARY_NAME} into" "$default_dir")
+    chosen_dir=$(expand_user_path "$chosen_dir")
+    if mkdir -p "$chosen_dir" 2>/dev/null && [ -w "$chosen_dir" ]; then
+      BIN_DIR="$chosen_dir"
+      export BIN_DIR
+      return 0
+    fi
+    log "Directory is not writable: ${chosen_dir}"
+  done
+}
+
+prompt_completion_shell() {
+  [ "$INTERACTIVE" -eq 1 ] || return 0
+  [ -z "$INSTALL_COMPLETION" ] || return 0
+
+  detected_shell=""
+  if detected_shell=$(detect_completion_shell); then
+    completion_prompt="Install ${detected_shell} shell completion?"
+  else
+    completion_prompt="Install shell completion?"
+  fi
+
+  if ! prompt_yes_no "$completion_prompt" "Y"; then
+    INSTALL_COMPLETION="none"
+    export INSTALL_COMPLETION
+    return 0
+  fi
+
+  if [ -n "$detected_shell" ]; then
+    INSTALL_COMPLETION="$detected_shell"
+    export INSTALL_COMPLETION
+    return 0
+  fi
+
+  while :; do
+    chosen_shell=$(prompt_line "Which shell completion should be installed? (bash/zsh/none)" "none")
+    case "$chosen_shell" in
+      bash|zsh|none)
+        INSTALL_COMPLETION="$chosen_shell"
+        export INSTALL_COMPLETION
+        return 0
+        ;;
+      *)
+        log "Please choose bash, zsh, or none."
+        ;;
+    esac
+  done
+}
+
+default_completion_dir() {
+  case "$1" in
+    bash) printf '%s\n' "${HOME}/.local/share/bash-completion/completions" ;;
+    zsh) printf '%s\n' "${HOME}/.zfunc" ;;
+    *) printf '%s\n' "" ;;
+  esac
+}
+
+prompt_completion_dir() {
+  [ "$INTERACTIVE" -eq 1 ] || return 0
+  [ -z "$COMPLETION_DIR" ] || return 0
+
+  case "$INSTALL_COMPLETION" in
+    bash|zsh) ;;
+    *) return 0 ;;
+  esac
+
+  default_dir=$(default_completion_dir "$INSTALL_COMPLETION")
+  while :; do
+    chosen_dir=$(prompt_line "Install ${INSTALL_COMPLETION} completion into" "$default_dir")
+    chosen_dir=$(expand_user_path "$chosen_dir")
+    if mkdir -p "$chosen_dir" 2>/dev/null && [ -w "$chosen_dir" ]; then
+      COMPLETION_DIR="$chosen_dir"
+      export COMPLETION_DIR
+      return 0
+    fi
+    log "Directory is not writable: ${chosen_dir}"
+  done
+}
+
+resolve_completion_shell() {
+  case "$INSTALL_COMPLETION" in
+    ""|none|false|0|no)
+      printf '%s\n' ""
+      ;;
+    bash|zsh)
+      printf '%s\n' "$INSTALL_COMPLETION"
+      ;;
+    auto)
+      shell_path="${SHELL:-}"
+      [ -n "$shell_path" ] || fail "INSTALL_COMPLETION=auto could not detect bash or zsh because SHELL is unset; set INSTALL_COMPLETION=bash or INSTALL_COMPLETION=zsh"
+      shell_name=$(basename "$shell_path")
+      case "$shell_name" in
+        bash|zsh)
+          printf '%s\n' "$shell_name"
+          ;;
+        *)
+          fail "INSTALL_COMPLETION=auto could not detect bash or zsh from SHELL=${SHELL:-unset}; set INSTALL_COMPLETION=bash or INSTALL_COMPLETION=zsh"
+          ;;
+      esac
+      ;;
+    *)
+      fail "unsupported INSTALL_COMPLETION: ${INSTALL_COMPLETION}; supported values: auto, bash, zsh"
+      ;;
+  esac
+}
+
+install_shell_completion() {
+  completion_shell="$1"
+  installed_binary="$2"
+
+  [ -n "$completion_shell" ] || return 0
+  [ -n "${HOME:-}" ] || fail "HOME is required when INSTALL_COMPLETION is set"
+
+  case "$completion_shell" in
+    bash)
+      completion_dir="${COMPLETION_DIR:-${HOME}/.local/share/bash-completion/completions}"
+      completion_path="${completion_dir}/${BINARY_NAME}"
+      mkdir -p "$completion_dir" || fail "unable to create completion directory ${completion_dir}"
+      "$installed_binary" completion bash > "$completion_path" || fail "failed to generate Bash completion"
+      log "Installed Bash completion to ${completion_path}"
+      ;;
+    zsh)
+      completion_dir="${COMPLETION_DIR:-${HOME}/.zfunc}"
+      completion_path="${completion_dir}/_${BINARY_NAME}"
+      mkdir -p "$completion_dir" || fail "unable to create completion directory ${completion_dir}"
+      "$installed_binary" completion zsh > "$completion_path" || fail "failed to generate Zsh completion"
+      log "Installed Zsh completion to ${completion_path}"
+      if [ -z "$COMPLETION_DIR" ]; then
+        log "For Zsh, ensure this appears before compinit: fpath=(${completion_dir} \$fpath)"
+      fi
+      ;;
+    *)
+      fail "unsupported completion shell: ${completion_shell}"
+      ;;
+  esac
+}
+
 resolve_latest_tag() {
   api_url="https://api.github.com/repos/${REPO}/releases/latest"
   response=$(curl -fsSL "$api_url") || fail "failed to query latest release from ${api_url}"
@@ -120,72 +366,130 @@ resolve_latest_tag() {
   printf '%s\n' "$tag"
 }
 
-OS=$(detect_os)
-ARCH=$(detect_arch)
-PLATFORM="${OS}-${ARCH}"
-ARTIFACT_SUFFIX="$(resolve_artifact_suffix)"
+resolve_platform() {
+  OS=$(detect_os)
+  ARCH=$(detect_arch)
+  PLATFORM="${OS}-${ARCH}"
 
-case "$PLATFORM" in
-  linux-amd64|macos-arm64) ;;
-  *)
-    fail "no published release binary for ${PLATFORM}; supported targets: linux-amd64, macos-arm64"
-    ;;
-esac
+  case "$PLATFORM" in
+    linux-amd64|macos-arm64) ;;
+    *)
+      fail "no published release binary for ${PLATFORM}; supported targets: linux-amd64, macos-arm64"
+      ;;
+  esac
 
-if [ -n "$ASSET_URL" ]; then
-  release_tag="$VERSION"
-  archive_url="$ASSET_URL"
-else
-  if [ "$VERSION" = "latest" ]; then
-    release_tag=$(resolve_latest_tag)
+  export PLATFORM
+}
+
+resolve_archive_url() {
+  ARTIFACT_SUFFIX="$(resolve_artifact_suffix)"
+
+  if [ -n "$ASSET_URL" ]; then
+    release_tag="$VERSION"
+    archive_url="$ASSET_URL"
   else
-    release_tag=$(normalize_tag "$VERSION")
+    if [ "$VERSION" = "latest" ]; then
+      release_tag=$(resolve_latest_tag)
+    else
+      release_tag=$(normalize_tag "$VERSION")
+    fi
+    archive_name="grafana-utils-rust-${PLATFORM}${ARTIFACT_SUFFIX}-${release_tag}.tar.gz"
+    archive_url="https://github.com/${REPO}/releases/download/${release_tag}/${archive_name}"
   fi
-  archive_name="grafana-utils-rust-${PLATFORM}${ARTIFACT_SUFFIX}-${release_tag}.tar.gz"
-  archive_url="https://github.com/${REPO}/releases/download/${release_tag}/${archive_name}"
-fi
 
-install_dir=$(resolve_default_bin_dir)
-mkdir -p "$install_dir" || fail "unable to create install directory ${install_dir}"
-[ -w "$install_dir" ] || fail "${install_dir} is not writable; set BIN_DIR to a writable directory"
+  export release_tag archive_url
+}
 
-tmpdir=$(mktemp -d "${INSTALL_TMPDIR%/}/grafana-util-install.XXXXXX")
+configure_interactive_choices() {
+  open_interactive_tty
+  prompt_install_dir
+  prompt_completion_shell
+  prompt_completion_dir
+}
+
+resolve_install_dir() {
+  install_dir=$(resolve_default_bin_dir)
+  mkdir -p "$install_dir" || fail "unable to create install directory ${install_dir}"
+  [ -w "$install_dir" ] || fail "${install_dir} is not writable; set BIN_DIR to a writable directory"
+
+  export install_dir
+}
+
+prepare_tempdir() {
+  tmpdir=$(mktemp -d "${INSTALL_TMPDIR%/}/grafana-util-install.XXXXXX")
+  archive_path="${tmpdir}/grafana-util.tar.gz"
+
+  export tmpdir archive_path
+}
+
 cleanup() {
   rm -rf "$tmpdir"
 }
-trap cleanup EXIT INT TERM
 
-archive_path="${tmpdir}/grafana-util.tar.gz"
-log "Downloading ${BINARY_NAME} for ${PLATFORM} from ${archive_url}"
-curl -fsSL "$archive_url" -o "$archive_path" || fail "failed to download ${archive_url}"
-tar -xzf "$archive_path" -C "$tmpdir" || fail "failed to extract ${archive_path}"
+download_archive() {
+  log "Downloading ${BINARY_NAME} for ${PLATFORM} from ${archive_url}"
+  curl -fsSL "$archive_url" -o "$archive_path" || fail "failed to download ${archive_url}"
+}
 
-binary_path="${tmpdir}/${BINARY_NAME}"
-[ -f "$binary_path" ] || fail "archive did not contain ${BINARY_NAME}"
+extract_binary() {
+  tar -xzf "$archive_path" -C "$tmpdir" || fail "failed to extract ${archive_path}"
 
-target_path="${install_dir}/${BINARY_NAME}"
-install -m 0755 "$binary_path" "$target_path" || fail "failed to install ${BINARY_NAME} into ${install_dir}"
+  binary_path="${tmpdir}/${BINARY_NAME}"
+  [ -f "$binary_path" ] || fail "archive did not contain ${BINARY_NAME}"
 
-log "Installed ${BINARY_NAME} to ${target_path}"
-case ":${PATH:-}:" in
-  *:"${install_dir}":*) ;;
-  *)
-    shell_name=$(basename "${SHELL:-sh}")
-    log ""
-    log "The install directory is not currently on PATH."
-    log "Add ${install_dir} to PATH if needed:"
-    case "$shell_name" in
-      zsh)
-        log "  echo 'export PATH=\"${install_dir}:\$PATH\"' >> ~/.zshrc"
-        log "  exec zsh"
-        ;;
-      bash)
-        log "  echo 'export PATH=\"${install_dir}:\$PATH\"' >> ~/.bashrc"
-        log "  exec bash"
-        ;;
-      *)
-        log "  export PATH=\"${install_dir}:\$PATH\""
-        ;;
-    esac
-    ;;
-esac
+  export binary_path
+}
+
+install_binary() {
+  target_path="${install_dir}/${BINARY_NAME}"
+  install -m 0755 "$binary_path" "$target_path" || fail "failed to install ${BINARY_NAME} into ${install_dir}"
+
+  log "Installed ${BINARY_NAME} to ${target_path}"
+  export target_path
+}
+
+install_requested_completion() {
+  completion_shell=$(resolve_completion_shell)
+  install_shell_completion "$completion_shell" "$target_path"
+}
+
+print_path_notice() {
+  case ":${PATH:-}:" in
+    *:"${install_dir}":*) return 0 ;;
+  esac
+
+  shell_name=$(basename "${SHELL:-sh}")
+  log ""
+  log "The install directory is not currently on PATH."
+  log "Add ${install_dir} to PATH if needed:"
+  case "$shell_name" in
+    zsh)
+      log "  echo 'export PATH=\"${install_dir}:\$PATH\"' >> ~/.zshrc"
+      log "  exec zsh"
+      ;;
+    bash)
+      log "  echo 'export PATH=\"${install_dir}:\$PATH\"' >> ~/.bashrc"
+      log "  exec bash"
+      ;;
+    *)
+      log "  export PATH=\"${install_dir}:\$PATH\""
+      ;;
+  esac
+}
+
+main() {
+  require_tools
+  resolve_platform
+  resolve_archive_url
+  configure_interactive_choices
+  resolve_install_dir
+  prepare_tempdir
+  trap cleanup EXIT INT TERM
+  download_archive
+  extract_binary
+  install_binary
+  install_requested_completion
+  print_path_notice
+}
+
+main
