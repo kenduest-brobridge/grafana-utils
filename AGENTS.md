@@ -34,6 +34,7 @@
 - Default Rust builds stay lean and do not include the `browser` feature unless the task explicitly targets the browser-enabled artifact lane.
 - In Rust, use `///` only for public API surfaces and `//` for local implementation notes.
 - Keep comments short and behavior-focused.
+- When a screenshot or image task only needs text extraction, run OCR first with `tesseract <image> stdout -l chi_tra+eng`; if OCR quality is poor, preprocess with ImageMagick, for example `magick <image> -resize 200% -colorspace Gray <tmp-image>`.
 
 ## Validation And Commits
 
