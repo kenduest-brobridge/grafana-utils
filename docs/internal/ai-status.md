@@ -12,6 +12,13 @@ Current AI-maintained status only.
 - Older entries moved to [`ai-status-archive-2026-04-14.md`](docs/internal/archive/ai-status-archive-2026-04-14.md).
 - Older entries moved to [`ai-status-archive-2026-04-15.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-status-archive-2026-04-15.md).
 
+## 2026-04-15 - Start Rust TODO maintainability pass
+- State: In Progress
+- Scope: conservative-boundary TODO execution across Rust tests, access TUI input, and status producer model. Python implementation and README files are out of scope.
+- Baseline: `todo.md` records the Rust-first maintainability backlog and requires responsibility-based splits instead of line-count-only splits.
+- Current Update: workers are being assigned disjoint TODO slices with conservative write scopes and focused validation.
+- Result: In progress.
+
 ## 2026-04-15 - Improve Rust maintainability priorities
 - State: Done
 - Scope: Rust feature matrix policy, dashboard review source/model boundaries, dashboard orchestration/test splitting, output contract depth checks, and validation. Python implementation and README files are out of scope.
