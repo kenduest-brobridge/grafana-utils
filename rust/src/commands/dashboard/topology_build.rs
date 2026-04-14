@@ -6,6 +6,7 @@ use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::common::{message, Result};
+use crate::reference_graph::{ReferenceGraph, ReferenceNode, ReferenceNodeKind, ReferenceRelation};
 
 use super::{
     ImpactAlertResource, ImpactDashboard, ImpactDocument, ImpactSummary, ParsedAlertResource,
@@ -437,24 +438,24 @@ pub(crate) fn build_impact_document(
     }
 
     let topology = build_topology_document(governance_document, alert_contract_document)?;
-    let mut adjacency = BTreeMap::<String, Vec<String>>::new();
+    let mut graph = ReferenceGraph::new();
+    for node in &topology.nodes {
+        graph.insert_node(ReferenceNode {
+            id: node.id.clone(),
+            kind: ReferenceNodeKind::from_topology_kind(&node.kind),
+            label: node.label.clone(),
+            source_path: None,
+        });
+    }
     for edge in &topology.edges {
-        adjacency
-            .entry(edge.from.clone())
-            .or_default()
-            .push(edge.to.clone());
+        graph.add_edge(
+            edge.from.clone(),
+            edge.to.clone(),
+            ReferenceRelation::from_topology_relation(&edge.relation),
+        );
     }
 
-    let mut reachable = BTreeSet::<String>::new();
-    let mut stack = vec![format!("datasource:{datasource_uid}")];
-    while let Some(node_id) = stack.pop() {
-        if !reachable.insert(node_id.clone()) {
-            continue;
-        }
-        if let Some(targets) = adjacency.get(&node_id) {
-            stack.extend(targets.iter().cloned());
-        }
-    }
+    let reachable = graph.reachable_from(&format!("datasource:{datasource_uid}"));
 
     let mut affected_dashboards = BTreeMap::<String, ImpactDashboard>::new();
     for node in &topology.nodes {

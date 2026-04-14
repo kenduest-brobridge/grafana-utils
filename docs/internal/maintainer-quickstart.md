@@ -174,6 +174,7 @@ When you are still orienting, prefer the narrowest non-destructive checks:
 ```bash
 # Purpose: When you are still orienting, prefer the narrowest non-destructive checks.
 make help
+make quality-output-contracts
 make quality-docs-surface
 make quality-ai-workflow
 make man-check

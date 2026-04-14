@@ -74,6 +74,95 @@ ONBOARDING_FORBIDDEN_SNIPPETS = {
     "grafana-util status overview --url": "live overview requires grafana-util status overview live --url",
 }
 
+PUBLIC_NAMING_POLICY_FILES = {
+    "README.md": {
+        "excerpt_lines": 20,
+        "required_snippets": (
+            "review-first",
+            "workspace preview",
+            "workspace apply",
+        ),
+        "forbidden_snippets": (
+            "grafana-util sync",
+            "sync-first",
+            "sync workflow",
+            "sync is the public",
+            "sync is the primary",
+            "use sync instead",
+            "start with sync",
+        ),
+    },
+    "README.zh-TW.md": {
+        "excerpt_lines": 20,
+        "required_snippets": (
+            "review-first",
+            "workspace 預覽",
+            "workspace 套用",
+        ),
+        "forbidden_snippets": (
+            "grafana-util sync",
+            "sync-first",
+            "sync workflow",
+            "sync is the public",
+            "sync is the primary",
+            "use sync instead",
+            "start with sync",
+        ),
+    },
+    "docs/user-guide/en/index.md": {
+        "excerpt_lines": 40,
+        "required_snippets": ("workspace",),
+        "forbidden_snippets": (
+            "grafana-util sync",
+            "sync-first",
+            "sync workflow",
+            "sync is the public",
+            "sync is the primary",
+            "use sync instead",
+            "start with sync",
+        ),
+    },
+    "docs/user-guide/zh-TW/index.md": {
+        "excerpt_lines": 40,
+        "required_snippets": ("workspace",),
+        "forbidden_snippets": (
+            "grafana-util sync",
+            "sync-first",
+            "sync workflow",
+            "sync is the public",
+            "sync is the primary",
+            "use sync instead",
+            "start with sync",
+        ),
+    },
+    "docs/commands/en/index.md": {
+        "excerpt_lines": 40,
+        "required_snippets": ("workspace",),
+        "forbidden_snippets": (
+            "grafana-util sync",
+            "sync-first",
+            "sync workflow",
+            "sync is the public",
+            "sync is the primary",
+            "use sync instead",
+            "start with sync",
+        ),
+    },
+    "docs/commands/zh-TW/index.md": {
+        "excerpt_lines": 40,
+        "required_snippets": ("workspace",),
+        "forbidden_snippets": (
+            "grafana-util sync",
+            "sync-first",
+            "sync workflow",
+            "sync is the public",
+            "sync is the primary",
+            "use sync instead",
+            "start with sync",
+        ),
+    },
+}
+
 MEANINGFUL_INTERNAL_DOC_FILES = {
     "docs/DEVELOPER.md",
     "docs/internal/ai-workflow-note.md",
@@ -110,6 +199,10 @@ def is_meaningful_internal_doc(path: str) -> bool:
 
 def is_workspace_noise_path(path: str) -> bool:
     return any(path.startswith(prefix) for prefix in WORKSPACE_NOISE_PREFIXES)
+
+
+def leading_section(text: str, excerpt_lines: int) -> str:
+    return "\n".join(text.splitlines()[:excerpt_lines]).lower()
 
 
 def detect_changed_files() -> list[str]:
@@ -187,6 +280,21 @@ def validate_paths(
         for snippet, guidance in ONBOARDING_FORBIDDEN_SNIPPETS.items():
             if snippet in text:
                 errors.append(f"{path} contains '{snippet}'; {guidance}")
+
+    for path, policy in PUBLIC_NAMING_POLICY_FILES.items():
+        if path not in path_set:
+            continue
+        section = leading_section((root / path).read_text(encoding="utf-8"), policy["excerpt_lines"])
+        for required_snippet in policy["required_snippets"]:
+            if required_snippet.lower() not in section:
+                errors.append(
+                    f"{path} opening section must mention '{required_snippet}' to keep the public workflow review-first and workspace-centered"
+                )
+        for forbidden_snippet in policy["forbidden_snippets"]:
+            if forbidden_snippet.lower() in section:
+                errors.append(
+                    f"{path} opening section contains '{forbidden_snippet}'; use workspace as the public workflow and keep sync as internal/compatibility vocabulary"
+                )
 
     if check_trace_size:
         errors.extend(

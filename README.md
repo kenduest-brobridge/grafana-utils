@@ -1,5 +1,5 @@
 # grafana-state-kit
-### An SRE-focused Grafana operations toolkit for inventory, review, recovery, and CI/CD workflows
+### A review-first Grafana operations toolkit for inventory, workspace preview, and safe apply across environments
 
 [![CI](https://img.shields.io/github/actions/workflow/status/kenduest-brobridge/grafana-state-kit/ci.yml?branch=main)](https://github.com/kenduest-brobridge/grafana-state-kit/actions)
 [![License](https://img.shields.io/github/license/kenduest-brobridge/grafana-state-kit)](LICENSE)
@@ -7,9 +7,9 @@
 
 English | [繁體中文](./README.zh-TW.md)
 
-**Live inventory, export/import, diff, change preview, and safe apply in one workflow.**
+**Inspect live state, stage workspace changes, review diffs, and apply only after approval.**
 
-`grafana-state-kit` ships `grafana-util`, a Rust CLI for Grafana operators, SREs, and dashboard teams. It helps you inventory common Grafana resources, back up and restore dashboards, move dashboards across environments, compare local changes with live state, and run safer review steps before CI/CD or manual updates. It is not just a thin API wrapper; it pulls day-to-day operational work into one repeatable command-line workflow.
+`grafana-state-kit` ships `grafana-util`, a Rust CLI for Grafana operators, SREs, and dashboard teams. It helps you inspect live Grafana resources, package a local workspace, preview changes before they land, and apply reviewed updates across environments. It is not just a thin API wrapper; it turns day-to-day Grafana work into one repeatable review-first workflow centered on `workspace scan`, `workspace preview`, and `workspace apply`.
 
 Developer note:
 
@@ -21,6 +21,13 @@ This tool came from recurring Grafana work that did not have one convenient supp
 4. Operators often need to inventory which dashboards use which data sources, which users and teams exist, and how accounts, groups, and permissions are shaped.
 
 Grafana itself does not make those workflows especially convenient for dashboard developers, SREs, or internal users. `grafana-state-kit` exists to make those operational loops easier to review and repeat through the `grafana-util` CLI.
+
+## Before / After
+
+| Before | After |
+| :--- | :--- |
+| Live checks, local JSON edits, dashboard exports, and apply steps are handled through separate scripts or UI clicks. | Start with `grafana-util status live`, inspect the workspace, run `grafana-util workspace preview`, then apply only after review. |
+| Dashboard dependency review means manually opening panels and data source settings. | Run `grafana-util dashboard analyze --input-dir ./dashboards/raw --input-format raw --output-format dependency` to produce a reviewable dependency report. |
 
 Common uses:
 

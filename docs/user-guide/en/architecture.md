@@ -44,13 +44,19 @@ For the command surface behind these ideas, see [status](../../commands/en/statu
 | Surface | Purpose | Primary Target | Output Formats |
 | :--- | :--- | :--- | :--- |
 | **Observe** | **Readiness, summary, and read-only estate views** | Human operators, CI scripts | JSON, Table, YAML, Interactive |
-| **Change** | **Intent & Lifecycle** | PR Reviews, Audit Logs | JSON Plan, Diff |
+| **Change (conceptual)** | **Intent & Lifecycle** | PR Reviews, Audit Logs | JSON Plan, Diff |
+
+`workspace` is the public CLI surface for the conceptual `Change` workflow.
+Use `Change` when you are naming the architecture or review lifecycle, and use
+`workspace` when you are naming the command.
 
 ### How to choose the right surface
 
 - Use `status live` when you need a gate, a machine-readable result, or a clean pass/fail readout.
 - Use `status overview live` when you need to look across the estate as a human and decide where to drill in next.
 - Use `workspace` when you already know there is intended work and need to inspect, check, preview, or apply it.
+- Use `Change` only in design/docs discussions about the staged change lifecycle; do not use it as the command name.
+- Use `sync` only for internal runtime kinds, fixtures, and compatibility surfaces.
 
 Typical operator decisions:
 

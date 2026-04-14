@@ -1,0 +1,24 @@
+{
+  "kind": "grafana-utils-sync-preflight",
+  "schemaVersion": 1,
+  "summary": {
+    "checkCount": 2,
+    "blockingCount": 0
+  },
+  "checks": [
+    {
+      "kind": "datasource",
+      "identity": "prom-main",
+      "status": "ok",
+      "detail": "present",
+      "blocking": false
+    },
+    {
+      "kind": "plugin",
+      "identity": "prometheus",
+      "status": "ok",
+      "detail": "available",
+      "blocking": false
+    }
+  ]
+}

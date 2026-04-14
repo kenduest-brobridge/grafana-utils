@@ -28,6 +28,12 @@ backlogs, market analysis, and progress snapshots have been moved into
 - `../scripts/contracts/command-surface.json`
   - machine-readable CLI/docs synchronization contract for public paths,
     legacy replacements, command-doc routing, and `--help-full` / `--help-flat` support
+- `../scripts/contracts/output-contracts.json`
+  - machine-readable registry of core JSON output contract fixtures and
+    required root fields
+- `../scripts/check_output_contracts.py`
+  - executable validation entrypoint for the output contract registry and
+    fixture set
 - `profile-secret-storage-architecture.md`
   - profile secret backend model, platform support, and maintainer rules
 - `rust-architecture-guardrails.md`
@@ -42,7 +48,7 @@ backlogs, market analysis, and progress snapshots have been moved into
   - project-wide status-model architecture behind the public `status` surface
 - `project-surface-boundaries.md`
   - current public-name, internal-name, and ownership map for `overview`,
-    `status`, and `change`
+    `status`, `workspace`, and `Change`
 
 ## Inventory And Name Bridge
 
@@ -62,6 +68,8 @@ backlogs, market analysis, and progress snapshots have been moved into
 - `zh-tw-style-guide.md` -> review rules for Taiwan-facing Traditional Chinese docs and product-object naming
 - `maintainer-quickstart.md` -> first-entry reading order, source-of-truth map, task routing, and safe validation commands
 - `../scripts/contracts/command-surface.json` -> machine-readable CLI/docs synchronization contract for public paths, legacy replacements, routing, and `--help-full` / `--help-flat` support
+- `../scripts/contracts/output-contracts.json` -> machine-readable registry of core JSON output fixtures and root contract checks
+- `../scripts/check_output_contracts.py` -> repo-owned validation entrypoint for the output contract registry and fixture set
 - `../scripts/contracts/docs-entrypoints.json` -> machine-readable docs-entry/navigation contract for landing quick commands, jump-select entries, and handbook sidebar command shortcuts
 - `profile-secret-storage-architecture.md` -> profile secret modes, macOS/Linux backend behavior, and secret-resolution design rules
 - `rust-architecture-guardrails.md` -> Rust layer boundaries, split thresholds, hotspot order, and lint expectations
@@ -69,7 +77,7 @@ backlogs, market analysis, and progress snapshots have been moved into
 - `maintainer-role-map.md` -> maintainer persona entrypoint and validation map by concern
 - `overview-architecture.md` -> legacy overview map behind `grafana-util status overview` and extension rules
 - `project-status-architecture.md` -> cross-domain status model behind the public `status` surface
-- `project-surface-boundaries.md` -> public-name and internal-name bridge plus current-vs-target ownership
+- `project-surface-boundaries.md` -> public-name and internal-name bridge plus current-vs-target ownership for `status`, `workspace`, and `Change`
 - `docs/DEVELOPER.md` -> maintainer policy, routing, and validation guidance
 
 ## Internal Examples

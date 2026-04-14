@@ -1,0 +1,47 @@
+{
+  "kind": "grafana-utils-sync-plan",
+  "schemaVersion": 1,
+  "dryRun": true,
+  "reviewRequired": true,
+  "reviewed": false,
+  "allowPrune": false,
+  "summary": {
+    "would_create": 1,
+    "would_update": 0,
+    "would_delete": 0,
+    "noop": 0,
+    "unmanaged": 0,
+    "alert_candidate": 0,
+    "alert_plan_only": 0,
+    "alert_blocked": 0
+  },
+  "alertAssessment": {
+    "kind": "grafana-utils-alert-sync-plan",
+    "schemaVersion": 1,
+    "summary": {
+      "alertCount": 0,
+      "candidateCount": 0,
+      "planOnlyCount": 0,
+      "blockedCount": 0
+    },
+    "alerts": []
+  },
+  "operations": [
+    {
+      "kind": "folder",
+      "identity": "ops",
+      "title": "Operations",
+      "action": "would-create",
+      "reason": "missing-live",
+      "changedFields": [
+        "title"
+      ],
+      "managedFields": [],
+      "desired": {
+        "title": "Operations"
+      },
+      "live": null,
+      "sourcePath": "folders/ops.json"
+    }
+  ]
+}

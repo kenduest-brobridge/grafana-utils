@@ -1,0 +1,77 @@
+{
+  "schema": 1,
+  "contracts": [
+    {
+      "name": "sync-plan",
+      "kind": "grafana-utils-sync-plan",
+      "schemaVersion": 1,
+      "fixture": "output-fixtures/sync-plan.json",
+      "requiredFields": [
+        "kind",
+        "schemaVersion",
+        "summary",
+        "alertAssessment",
+        "operations"
+      ]
+    },
+    {
+      "name": "sync-preflight",
+      "kind": "grafana-utils-sync-preflight",
+      "schemaVersion": 1,
+      "fixture": "output-fixtures/sync-preflight.json",
+      "requiredFields": [
+        "kind",
+        "schemaVersion",
+        "summary",
+        "checks"
+      ]
+    },
+    {
+      "name": "sync-source-bundle",
+      "kind": "grafana-utils-sync-source-bundle",
+      "schemaVersion": 1,
+      "fixture": "output-fixtures/sync-source-bundle.json",
+      "requiredFields": [
+        "kind",
+        "schemaVersion",
+        "summary",
+        "datasources",
+        "metadata"
+      ],
+      "forbiddenFields": [
+        "secureJsonData"
+      ]
+    },
+    {
+      "name": "datasource-export-index",
+      "kind": "grafana-utils-datasource-export-index",
+      "schemaVersion": 1,
+      "fixture": "output-fixtures/datasource-export-index.json",
+      "requiredFields": [
+        "kind",
+        "schemaVersion",
+        "variant",
+        "scopeKind",
+        "resource",
+        "datasourceCount",
+        "datasourcesFile",
+        "indexFile",
+        "format",
+        "exportMode",
+        "masked",
+        "recoveryCapable",
+        "secretMaterial"
+      ],
+      "requiredValues": {
+        "format": "grafana-datasource-masked-recovery-v1",
+        "exportMode": "masked-recovery",
+        "masked": true,
+        "recoveryCapable": true,
+        "secretMaterial": "placeholders-only"
+      },
+      "forbiddenFields": [
+        "secureJsonData"
+      ]
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 # grafana-state-kit
-### 面向 SRE 與維運流程的 Grafana 盤點、審查、備份復原與 CI/CD 工具
+### 面向 SRE 與維運流程的 review-first Grafana 盤點、workspace 預覽與安全套用工具
 
 [![CI](https://img.shields.io/github/actions/workflow/status/kenduest-brobridge/grafana-state-kit/ci.yml?branch=main)](https://github.com/kenduest-brobridge/grafana-state-kit/actions)
 [![License](https://img.shields.io/github/license/kenduest-brobridge/grafana-state-kit)](LICENSE)
@@ -7,9 +7,9 @@
 
 [English](./README.md) | 繁體中文
 
-**線上盤點、匯出匯入、差異比對、變更預覽與安全套用，整合在同一套流程裡。**
+**先看 live state，再進 workspace 預覽、審查差異，最後才 workspace 套用。**
 
-`grafana-state-kit` 提供 `grafana-util` 這個 Rust CLI，給 Grafana 維運、SRE 與 Dashboard 開發人員使用。它可以協助快速盤點常見的 Grafana 資源，例如 Dashboard、Data Source、User、Team，也能支援 Dashboard 備份復原、跨環境搬移、本機匯入開發與變更審查。
+`grafana-state-kit` 提供 `grafana-util` 這個 Rust CLI，給 Grafana 維運、SRE 與 Dashboard 開發人員使用。它可以協助檢查 live Grafana 資源、封裝本地 workspace、在變更落地前先 workspace 預覽，並在審查後再 workspace 套用到不同環境。它不是單純把 API 包一層，而是把日常 Grafana 工作整理成以 `workspace scan`、`workspace preview` 與 `workspace apply` 為中心的 review-first 流程。
 
 這個工具不是單純把 API 包一層，而是把日常常用的狀態查看、匯出匯入、差異比對、工作區預覽、安全套用、不同環境的連線設定檔與認證密鑰處理，整理成一套可以重複執行的流程。要查狀態、備份、比對或套用變更時，不用在不同腳本和手動操作之間切來切去。
 
@@ -23,6 +23,13 @@
 4. 維運時常需要盤點 Dashboard 使用了哪些 Data Source，也需要了解目前有哪些 user、team、帳號群組與權限設定。
 
 Grafana 本身對 Dashboard Developer、SRE 或內部使用者來說，還沒有把這些流程整理成一個方便操作的工具。`grafana-state-kit` 就是為了透過 `grafana-util` CLI 補上這段日常維運與開發流程而做的。
+
+## 採用前後對照
+
+| 採用前 | 採用後 |
+| :--- | :--- |
+| live 檢查、本地 JSON 修改、dashboard 匯出與套用步驟分散在不同腳本或 UI 操作裡。 | 先跑 `grafana-util status live`，檢查 workspace，再跑 `grafana-util workspace preview`，審查後才套用。 |
+| Dashboard 相依性審查需要手動打開 panel 和 data source 設定。 | 用 `grafana-util dashboard analyze --input-dir ./dashboards/raw --input-format raw --output-format dependency` 產生可審查的相依性報告。 |
 
 常見用途：
 

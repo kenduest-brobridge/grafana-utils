@@ -9,6 +9,14 @@ Current AI-maintained status only.
 - Detailed 2026-04-01 through 2026-04-12 entries moved to [`archive/ai-status-archive-2026-04-12.md`](docs/internal/archive/ai-status-archive-2026-04-12.md).
 - Keep this file short and current. Additive historical detail belongs in `docs/internal/archive/`.
 - Older entries moved to [`ai-status-archive-2026-04-13.md`](docs/internal/archive/ai-status-archive-2026-04-13.md).
+- Older entries moved to [`ai-status-archive-2026-04-14.md`](docs/internal/archive/ai-status-archive-2026-04-14.md).
+
+## 2026-04-14 - Tighten review-first workflow contracts
+- State: Done
+- Scope: public/internal workspace naming policy, core output contract registry, README positioning, generated handbook HTML, access browse loading boundaries, dashboard impact traversal, and validation.
+- Baseline: maintainer docs still described `change` as a public command surface while user-facing docs and CLI expose `workspace`; core JSON output contracts were covered by scattered Rust/Python tests but did not have a small central registry of golden fixture expectations. Access user browsing also kept data loading in the input handler, and dashboard impact traversal did not have a reusable reference graph model.
+- Current Update: clarified `workspace` as the public command surface, `Change` as the conceptual lifecycle name, and `sync` as internal/compatibility vocabulary; added an output contract registry with golden fixtures plus `make quality-output-contracts`; refreshed README opening copy and public naming checks; split user browse row loading into a focused module; added an internal reference graph used by dashboard impact reachability.
+- Result: Rust tests, contract checks, docs-surface validation, HTML drift validation, AI workflow validation, and whitespace checks pass for the changed surfaces.
 
 ## 2026-04-13 - Reorganize Rust command modules
 - State: Done
@@ -44,10 +52,3 @@ Current AI-maintained status only.
 - Baseline: root `grafana-util --help` ended with the vague label `First 3 commands:` and included completion setup as one of the first commands. Colored help also split terminal styling between Clap's `CLI_HELP_STYLES` and the custom help-example palette, so Clap-rendered `Commands:` entries such as `browse` stayed blue while custom `grafana-util ...` examples could be bright white.
 - Current Update: changed the root quick-start footer and full-help section to `Suggested flow:`, aligned the suggested commands to version, read-only status, and profile setup, moved terminal help color ownership into `help_styles`, set Clap literal styling and custom command rendering to the same bright-white command treatment, and routed full command lines plus grouped `Usage:` command syntax through a shared CLI-command detector.
 - Result: CLI help now presents a workflow-oriented footer, and command syntax/entries are highlighted consistently across Clap-generated help and custom Rust help renderers.
-
-## 2026-04-13 - Reduce sync maintainability hotspots
-- State: Done
-- Scope: sync bundle preflight, promotion preflight, workspace discovery rules, source-bundle input loading, Rust maintainability reporting, and architecture guardrail notes.
-- Baseline: `sync/bundle_preflight.rs`, `sync/promotion_preflight.rs`, `sync/workspace_discovery.rs`, and `sync/bundle_inputs.rs` mixed document assembly, mapping/discovery rules, rendering, file loading, and normalization helpers in large files; the maintainability reporter listed only file-level findings, so domain-level sync growth was harder to see.
-- Current Update: split bundle preflight assessments, promotion preflight checks/mapping/rendering, workspace discovery path rules, and source-bundle input loading into focused modules; converted alert artifact, promotion remap, alert export section, and alert sync-kind differences into small rule/spec structures instead of scattered per-case branches; added a shared source-bundle input pipeline and directory summaries in the maintainability reporter.
-- Result: public CLI and JSON/text contracts are unchanged; focused sync tests, reporter tests, formatting, and static checks pass locally. The remaining sync hotspots are now other production/test domains rather than the preflight/discovery/bundle-input facades.

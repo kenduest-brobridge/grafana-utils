@@ -1,0 +1,61 @@
+{
+  "kind": "grafana-utils-sync-source-bundle",
+  "schemaVersion": 1,
+  "summary": {
+    "dashboardCount": 1,
+    "datasourceCount": 1,
+    "folderCount": 1,
+    "alertRuleCount": 0,
+    "contactPointCount": 0,
+    "muteTimingCount": 0,
+    "policyCount": 0,
+    "templateCount": 0
+  },
+  "dashboards": [
+    {
+      "kind": "dashboard",
+      "identity": "cpu-main",
+      "sourcePath": "dashboards/cpu-main.json"
+    }
+  ],
+  "datasources": [
+    {
+      "kind": "datasource",
+      "identity": "prom-main",
+      "title": "Prometheus Main",
+      "sourcePath": "datasources/prom-main.json",
+      "body": {
+        "uid": "prom-main",
+        "name": "Prometheus Main",
+        "type": "prometheus",
+        "access": "proxy",
+        "url": "http://prometheus:9090",
+        "isDefault": false,
+        "jsonData": {
+          "httpMethod": "POST"
+        }
+      }
+    }
+  ],
+  "folders": [
+    {
+      "kind": "folder",
+      "identity": "ops",
+      "sourcePath": "folders/ops.json"
+    }
+  ],
+  "alerts": [],
+  "alerting": {
+    "summary": {
+      "ruleCount": 0,
+      "contactPointCount": 0,
+      "muteTimingCount": 0,
+      "policyCount": 0,
+      "templateCount": 0
+    }
+  },
+  "metadata": {
+    "dashboardExportDir": "./dashboards/raw",
+    "alertExportDir": "./alerts/raw"
+  }
+}

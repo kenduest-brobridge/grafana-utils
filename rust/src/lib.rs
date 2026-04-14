@@ -132,6 +132,9 @@ pub(crate) mod project_status_support;
 #[cfg(any(feature = "tui", test))]
 #[path = "commands/status/tui/mod.rs"]
 pub(crate) mod project_status_tui;
+/// Internal resource reference graph shared by preview/status/impact style consumers.
+#[path = "reference_graph.rs"]
+pub(crate) mod reference_graph;
 /// Generic Grafana resource discovery and read-only query commands.
 #[path = "commands/resource/mod.rs"]
 pub mod resource;

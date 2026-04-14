@@ -1,0 +1,29 @@
+{
+  "kind": "grafana-utils-datasource-export-index",
+  "schemaVersion": 1,
+  "toolVersion": "0.10.0",
+  "variant": "root",
+  "scopeKind": "org-root",
+  "resource": "datasource",
+  "datasourceCount": 1,
+  "datasourcesFile": "datasources.json",
+  "indexFile": "index.json",
+  "format": "grafana-datasource-masked-recovery-v1",
+  "exportMode": "masked-recovery",
+  "masked": true,
+  "recoveryCapable": true,
+  "secretMaterial": "placeholders-only",
+  "secretPlaceholderProvider": {
+    "kind": "inline-secret-placeholders",
+    "schemaVersion": 1,
+    "fields": [
+      {
+        "datasourceUid": "prom-main",
+        "field": "basicAuthPassword",
+        "placeholder": "${secret:datasource/prom-main/basicAuthPassword}"
+      }
+    ]
+  },
+  "provisioningProjection": "derived-projection",
+  "provisioningFile": "provisioning/datasources.yaml"
+}

@@ -1,0 +1,9 @@
+# ai-changes-archive-2026-04-14
+
+## 2026-04-13 - Split Rust snapshot/import/live-status hotspots
+- Summary: split `snapshot.rs` into focused CLI definition, lane-loading, count/warning, and review-document modules; changed snapshot review output assembly from one large `json!` object to module-local `Serialize` structs for the stable document contract; integrated worker splits for dashboard import lookup, dashboard inspect CLI definitions, and access live-status helpers.
+- Tests: preserved existing behavior coverage and added no new public output changes.
+- Test Run: `cargo fmt --manifest-path rust/Cargo.toml --all`; `cd rust && cargo test --quiet snapshot_rust_tests --no-run`; `cd rust && cargo test --quiet dashboard_import --no-run`; `cd rust && cargo test --quiet access_live_project_status --no-run`; `cd rust && cargo test --quiet`; `cargo fmt --manifest-path rust/Cargo.toml --all --check`; `python3 scripts/rust_maintainability_report.py --root rust/src`.
+- Impact: `rust/src/commands/snapshot/mod.rs`, new `rust/src/commands/snapshot/cli_defs.rs`, `rust/src/commands/snapshot/review/counts.rs`, `rust/src/commands/snapshot/review/document.rs`, `rust/src/commands/snapshot/review/lanes.rs`, `rust/src/commands/dashboard/import_lookup*.rs`, `rust/src/commands/dashboard/cli_defs_inspect*.rs`, and `rust/src/commands/access/live_project_status*.rs`.
+- Rollback/Risk: behavior-preserving module-boundary refactor; rollback would collapse helper modules back into their former large files. The snapshot review document is now constrained by internal serde structs plus existing tests, but there is still no external JSON Schema file.
+- Follow-up: keep using the maintainability report to target remaining non-test hotspots, especially datasource project status/live status, `snapshot_support.rs`, dashboard browse/export/import-apply/project-status/topology, and sync preflight modules.
