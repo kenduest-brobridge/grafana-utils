@@ -965,7 +965,10 @@ grafana-util completion zsh</code></pre>
 <p><code>auto</code> detects <code>bash</code> or <code>zsh</code> from <code>SHELL</code>. Use <code>INSTALL_COMPLETION=bash</code> or <code>INSTALL_COMPLETION=zsh</code> when you want to choose the shell explicitly. Set <code>COMPLETION_DIR=/path/to/dir</code> if your shell reads completion files from a different directory.</p>
 <p>For an interactive install, pass <code>--interactive</code> to the <code>sh</code> process after the pipe:</p>
 <pre><code>curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh -s -- --interactive</code></pre>
-<p>Interactive mode asks for the binary install directory, whether to install shell completion, and the completion output directory. It reads answers from the terminal, so it still works when the install script itself is coming from <code>curl</code>.</p>
+<p>Interactive mode asks for the binary install directory, whether to install shell completion, and the completion output directory. For Zsh, it can also update <code>~/.zshrc</code> with the required <code>fpath</code> setup so the completion file is loaded before <code>compinit</code>. It reads answers from the terminal, so it still works when the install script itself is coming from <code>curl</code>.</p>
+<p>For local checkout validation, use the Makefile wrapper instead of waiting for a release artifact:</p>
+<pre><code>make install-local-interactive</code></pre>
+<p>That target builds the local Rust binary, packs it into a temporary release-style archive, and runs <code>scripts/install.sh --interactive</code> against that archive.</p>
 <h2 id="install-for-bash">Install for Bash</h2>
 <p>Choose a completion directory that your Bash setup already loads. A common per-user location is:</p>
 <pre><code>mkdir -p ~/.local/share/bash-completion/completions
@@ -979,11 +982,11 @@ grafana-util completion zsh &gt; ~/.zfunc/_grafana-util</code></pre>
 <pre><code>fpath=(~/.zfunc $fpath)
 autoload -Uz compinit
 compinit</code></pre>
-<p>Put those lines in your Zsh startup file if they are not already present.</p>
+<p>Put those lines in your Zsh startup file if they are not already present. The interactive installer can add a managed <code>grafana-util completion</code> block to <code>~/.zshrc</code> for this setup and clear stale <code>.zcompdump*</code> completion caches.</p>
 <h2 id="what-success-looks-like">What success looks like</h2>
 <ul><li>pressing tab after <code>grafana-util </code> offers root commands such as <code>dashboard</code>, <code>datasource</code>, <code>alert</code>, <code>access</code>, <code>status</code>, <code>workspace</code>, <code>config</code>, <code>version</code>, and <code>completion</code></li><li>pressing tab after a subcommand offers the flags and nested subcommands known to this binary</li><li>regenerating the script after an upgrade updates the available completions</li></ul>
 <h2 id="failure-checks">Failure checks</h2>
-<ul><li>if no completions appear, confirm your shell is loading the file you wrote</li><li>if completions are stale, regenerate the script from the currently installed binary</li><li>if Bash or Zsh rejects the file, confirm you used the matching shell value</li></ul>
+<ul><li>if no completions appear, confirm your shell is loading the file you wrote; for Zsh, <code>~/.zfunc</code> must be in <code>fpath</code> before <code>compinit</code>, and stale <code>.zcompdump*</code> files may need to be removed</li><li>if completions are stale, regenerate the script from the currently installed binary</li><li>if Bash or Zsh rejects the file, confirm you used the matching shell value</li></ul>
 <h2 id="related-commands">Related commands</h2>
 <ul><li><a href="version.html">version</a></li><li><a href="config.html">config</a></li><li><a href="status.html">status</a></li></ul>
 

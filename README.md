@@ -75,11 +75,18 @@ Local installer help:
 sh ./scripts/install.sh --help
 ```
 
+Install and verify a local checkout build through the same installer path:
+
+```bash
+make install-local-interactive
+```
+
 - **Releases**: [GitHub releases](https://github.com/kenduest-brobridge/grafana-util/releases)
 - **Binaries**: standard `linux-amd64` and `macos-arm64`; screenshot-enabled builds use `*-browser-*`
 - **Default path**: `/usr/local/bin` if writable, otherwise `$HOME/.local/bin`
 - **Completion**: set `INSTALL_COMPLETION=auto`, `INSTALL_COMPLETION=bash`, or `INSTALL_COMPLETION=zsh` to install completion from the downloaded binary
-- **Interactive install**: use `sh -s -- --interactive` after the pipe to answer install directory and completion prompts
+- **Interactive install**: use `sh -s -- --interactive` after the pipe to answer install directory and completion prompts; Zsh installs can also update `~/.zshrc` so `~/.zfunc` loads before `compinit`
+- **Local install test**: use `make install-local` or `make install-local-interactive` to install a local checkout build through `scripts/install.sh`
 
 Shell completion:
 
@@ -95,7 +102,7 @@ mkdir -p ~/.zfunc
 grafana-util completion zsh > ~/.zfunc/_grafana-util
 ```
 
-For Zsh, make sure `~/.zfunc` is in `fpath` before `compinit`.
+For Zsh, make sure `~/.zfunc` is in `fpath` before `compinit`. Interactive installs can add that block to `~/.zshrc` for you and clear stale `.zcompdump*` completion caches.
 
 ---
 

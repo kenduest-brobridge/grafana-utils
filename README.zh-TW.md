@@ -75,11 +75,18 @@ curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main
 sh ./scripts/install.sh --help
 ```
 
+用同一套 installer 流程安裝並驗證目前 checkout 的本地 build：
+
+```bash
+make install-local-interactive
+```
+
 - **Releases**：[GitHub releases](https://github.com/kenduest-brobridge/grafana-util/releases)
 - **執行檔**：標準版提供 `linux-amd64` 與 `macos-arm64`；需要截圖功能請選 `*-browser-*`
 - **預設路徑**：優先 `/usr/local/bin`，否則改用 `$HOME/.local/bin`
 - **Completion**：設定 `INSTALL_COMPLETION=auto`、`INSTALL_COMPLETION=bash` 或 `INSTALL_COMPLETION=zsh`，即可用下載後的 binary 產生並安裝 completion
-- **互動安裝**：pipe 後使用 `sh -s -- --interactive`，即可依提示選擇安裝目錄與 completion 設定
+- **互動安裝**：pipe 後使用 `sh -s -- --interactive`，即可依提示選擇安裝目錄與 completion 設定；Zsh 安裝也可以協助更新 `~/.zshrc`，讓 `~/.zfunc` 在 `compinit` 前載入
+- **本地安裝測試**：使用 `make install-local` 或 `make install-local-interactive`，可用 `scripts/install.sh` 安裝目前 checkout build
 
 Shell completion：
 
@@ -95,7 +102,7 @@ mkdir -p ~/.zfunc
 grafana-util completion zsh > ~/.zfunc/_grafana-util
 ```
 
-Zsh 請確認 `~/.zfunc` 已經在 `compinit` 之前放進 `fpath`。
+Zsh 請確認 `~/.zfunc` 已經在 `compinit` 之前放進 `fpath`。互動安裝可以替你把這段設定加到 `~/.zshrc`，並清掉過期的 `.zcompdump*` completion cache。
 
 ---
 

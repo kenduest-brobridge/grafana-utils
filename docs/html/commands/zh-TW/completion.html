@@ -965,7 +965,10 @@ grafana-util completion zsh</code></pre>
 <p><code>auto</code> 會從 <code>SHELL</code> 偵測 <code>bash</code> 或 <code>zsh</code>。若想明確指定 shell，請用 <code>INSTALL_COMPLETION=bash</code> 或 <code>INSTALL_COMPLETION=zsh</code>。如果你的 shell 會從其他目錄讀取 completion file，可以設定 <code>COMPLETION_DIR=/path/to/dir</code>。</p>
 <p>若要互動安裝，請把 <code>--interactive</code> 傳給 pipe 後面的 <code>sh</code>：</p>
 <pre><code>curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh -s -- --interactive</code></pre>
-<p>互動模式會詢問 binary 安裝目錄、是否安裝 shell completion，以及 completion output directory。它會從終端機讀取回答，所以即使 install script 本身來自 <code>curl</code> pipe，也不會把 script 內容誤當成回答。</p>
+<p>互動模式會詢問 binary 安裝目錄、是否安裝 shell completion，以及 completion output directory。若安裝 Zsh completion，它也可以更新 <code>~/.zshrc</code>，把必要的 <code>fpath</code> 設定放在 <code>compinit</code> 前面。它會從終端機讀取回答，所以即使 install script 本身來自 <code>curl</code> pipe，也不會把 script 內容誤當成回答。</p>
+<p>如果要驗證目前 checkout 的本地 build，不必等 release artifact，可以使用 Makefile wrapper：</p>
+<pre><code>make install-local-interactive</code></pre>
+<p>這個 target 會 build 本地 Rust binary，打包成暫時的 release-style archive，再用該 archive 執行 <code>scripts/install.sh --interactive</code>。</p>
 <h2 id="安裝到-bash">安裝到 Bash</h2>
 <p>選擇你的 Bash 設定已經會載入的 completion 目錄。常見的 per-user 位置是：</p>
 <pre><code>mkdir -p ~/.local/share/bash-completion/completions
@@ -979,11 +982,11 @@ grafana-util completion zsh &gt; ~/.zfunc/_grafana-util</code></pre>
 <pre><code>fpath=(~/.zfunc $fpath)
 autoload -Uz compinit
 compinit</code></pre>
-<p>如果你的 Zsh 啟動檔還沒有這些設定，請把它們放進去。</p>
+<p>如果你的 Zsh 啟動檔還沒有這些設定，請把它們放進去。互動 installer 可以替你把受管理的 <code>grafana-util completion</code> block 加到 <code>~/.zshrc</code>，並清掉過期的 <code>.zcompdump*</code> completion cache。</p>
 <h2 id="成功判準">成功判準</h2>
 <ul><li>在 <code>grafana-util </code> 後按 tab，會看到 <code>dashboard</code>、<code>datasource</code>、<code>alert</code>、<code>access</code>、<code>status</code>、<code>workspace</code>、<code>config</code>、<code>version</code>、<code>completion</code> 這類 root commands</li><li>在 subcommand 後按 tab，會看到目前 binary 知道的 flags 與下一層 subcommands</li><li>升級後重新產生 script，completion 內容會跟著更新</li></ul>
 <h2 id="失敗時先檢查">失敗時先檢查</h2>
-<ul><li>如果沒有任何補完，先確認 shell 有載入你寫出的檔案</li><li>如果補完內容過舊，請用目前安裝的 binary 重新產生 script</li><li>如果 Bash 或 Zsh 無法載入檔案，確認你使用的 shell value 跟實際 shell 一致</li></ul>
+<ul><li>如果沒有任何補完，先確認 shell 有載入你寫出的檔案；Zsh 需要在 <code>compinit</code> 前把 <code>~/.zfunc</code> 放進 <code>fpath</code>，而過期的 <code>.zcompdump*</code> 也可能需要清掉</li><li>如果補完內容過舊，請用目前安裝的 binary 重新產生 script</li><li>如果 Bash 或 Zsh 無法載入檔案，確認你使用的 shell value 跟實際 shell 一致</li></ul>
 <h2 id="相關指令">相關指令</h2>
 <ul><li><a href="version.html">version</a></li><li><a href="config.html">config</a></li><li><a href="status.html">status</a></li></ul>
 

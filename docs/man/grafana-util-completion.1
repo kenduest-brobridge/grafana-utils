@@ -21,7 +21,7 @@ pressing tab after a subcommand offers the flags and nested subcommands known to
 regenerating the script after an upgrade updates the available completions
 .SH FAILURE CHECKS
 .IP \(bu 2
-if no completions appear, confirm your shell is loading the file you wrote
+if no completions appear, confirm your shell is loading the file you wrote; for Zsh, ~/.zfunc must be in fpath before compinit, and stale .zcompdump* files may need to be removed
 .IP \(bu 2
 if completions are stale, regenerate the script from the currently installed binary
 .IP \(bu 2

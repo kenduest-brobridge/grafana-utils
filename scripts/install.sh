@@ -59,6 +59,8 @@ Completion:
   INSTALL_COMPLETION=auto detects bash or zsh from SHELL. The installer writes
   Bash completion to ~/.local/share/bash-completion/completions/grafana-util
   and Zsh completion to ~/.zfunc/_grafana-util unless COMPLETION_DIR is set.
+  In interactive Zsh installs, the installer can also add the required fpath
+  setup to ~/.zshrc with a managed marker block.
 
 Interactive mode:
   Use sh -s -- --interactive when piping through curl. Values provided through
@@ -344,14 +346,164 @@ install_shell_completion() {
       mkdir -p "$completion_dir" || fail "unable to create completion directory ${completion_dir}"
       "$installed_binary" completion zsh > "$completion_path" || fail "failed to generate Zsh completion"
       log "Installed Zsh completion to ${completion_path}"
-      if [ -z "$COMPLETION_DIR" ]; then
-        log "For Zsh, ensure this appears before compinit: fpath=(${completion_dir} \$fpath)"
-      fi
+      maybe_update_zshrc_for_completion "$completion_dir"
       ;;
     *)
       fail "unsupported completion shell: ${completion_shell}"
       ;;
   esac
+}
+
+quote_for_zsh_double_quotes() {
+  printf '%s\n' "$1" | sed 's/[\\`"$]/\\&/g'
+}
+
+zsh_fpath_entry() {
+  completion_dir="$1"
+  if [ "$completion_dir" = "${HOME}/.zfunc" ]; then
+    printf '%s\n' '$HOME/.zfunc'
+  else
+    quote_for_zsh_double_quotes "$completion_dir"
+  fi
+}
+
+zsh_completion_block() {
+  fpath_entry=$(zsh_fpath_entry "$1")
+  cat <<EOF
+# >>> grafana-util completion fpath >>>
+fpath=("${fpath_entry}" \$fpath)
+# <<< grafana-util completion fpath <<<
+EOF
+}
+
+zsh_completion_compdef_block() {
+  cat <<'EOF'
+# >>> grafana-util completion compdef >>>
+if (( $+functions[compdef] )); then
+  autoload -Uz _grafana-util
+  compdef _grafana-util grafana-util
+fi
+# <<< grafana-util completion compdef <<<
+EOF
+}
+
+write_zsh_completion_block() {
+  completion_dir="$1"
+  [ -n "${HOME:-}" ] || fail "HOME is required to update .zshrc"
+
+  zshrc_path="${ZSHRC:-${HOME}/.zshrc}"
+  zshrc_dir=$(dirname "$zshrc_path")
+  mkdir -p "$zshrc_dir" || fail "unable to create ${zshrc_dir}"
+  [ -e "$zshrc_path" ] || : > "$zshrc_path" || fail "unable to create ${zshrc_path}"
+  [ -w "$zshrc_path" ] || fail "${zshrc_path} is not writable"
+
+  block=$(zsh_completion_block "$completion_dir")
+  compdef_block=$(zsh_completion_compdef_block)
+  block_path=$(mktemp "${INSTALL_TMPDIR%/}/grafana-util-zshrc-block.XXXXXX")
+  compdef_block_path=$(mktemp "${INSTALL_TMPDIR%/}/grafana-util-zshrc-compdef-block.XXXXXX")
+  clean_path=$(mktemp "${INSTALL_TMPDIR%/}/grafana-util-zshrc-clean.XXXXXX")
+  output_path=$(mktemp "${INSTALL_TMPDIR%/}/grafana-util-zshrc-output.XXXXXX")
+  printf '%s\n' "$block" > "$block_path" || {
+    rm -f "$block_path" "$compdef_block_path" "$clean_path" "$output_path"
+    fail "unable to prepare Zsh completion block"
+  }
+  printf '%s\n' "$compdef_block" > "$compdef_block_path" || {
+    rm -f "$block_path" "$compdef_block_path" "$clean_path" "$output_path"
+    fail "unable to prepare Zsh completion compdef block"
+  }
+
+  awk '
+    $0 == "# >>> grafana-util completion >>>" { skip = 1; next }
+    $0 == "# <<< grafana-util completion <<<" { skip = 0; next }
+    $0 == "# >>> grafana-util completion fpath >>>" { skip = 1; next }
+    $0 == "# <<< grafana-util completion fpath <<<" { skip = 0; next }
+    $0 == "# >>> grafana-util completion compdef >>>" { skip = 1; next }
+    $0 == "# <<< grafana-util completion compdef <<<" { skip = 0; next }
+    skip != 1 { print }
+  ' "$zshrc_path" > "$clean_path" || {
+    rm -f "$block_path" "$compdef_block_path" "$clean_path" "$output_path"
+    fail "unable to read ${zshrc_path}"
+  }
+
+  awk -v block_path="$block_path" -v compdef_block_path="$compdef_block_path" '
+    function print_block() {
+      while ((getline block_line < block_path) > 0) {
+        print block_line
+      }
+      close(block_path)
+    }
+    function print_compdef_block() {
+      while ((getline compdef_block_line < compdef_block_path) > 0) {
+        print compdef_block_line
+      }
+      close(compdef_block_path)
+    }
+    inserted != 1 && ($0 ~ /oh-my-zsh\.sh/ || $0 ~ /(^|[[:space:]])compinit([[:space:]]|$)/) {
+      print_block()
+      inserted = 1
+    }
+    { print }
+    inserted == 1 && compdef_inserted != 1 && ($0 ~ /oh-my-zsh\.sh/ || $0 ~ /(^|[[:space:]])compinit([[:space:]]|$)/) {
+      print_compdef_block()
+      compdef_inserted = 1
+    }
+    END {
+      if (inserted != 1) {
+        if (NR > 0) {
+          print ""
+        }
+        print_block()
+      }
+      if (compdef_inserted != 1) {
+        print_compdef_block()
+      }
+    }
+  ' "$clean_path" > "$output_path" || {
+    rm -f "$block_path" "$compdef_block_path" "$clean_path" "$output_path"
+    fail "unable to update ${zshrc_path}"
+  }
+
+  mv "$output_path" "$zshrc_path" || {
+    rm -f "$block_path" "$compdef_block_path" "$clean_path" "$output_path"
+    fail "unable to write ${zshrc_path}"
+  }
+  rm -f "$block_path" "$compdef_block_path" "$clean_path"
+  log "Updated ${zshrc_path} to load Zsh completion."
+  clear_zsh_completion_cache
+  log "Open a new shell or run: exec zsh"
+}
+
+clear_zsh_completion_cache() {
+  [ -n "${HOME:-}" ] || return 0
+
+  cleared=0
+  for compdump_path in "${HOME}"/.zcompdump "${HOME}"/.zcompdump-* "${HOME}"/.zcompdump.*; do
+    [ -e "$compdump_path" ] || continue
+    if rm -f "$compdump_path" 2>/dev/null; then
+      cleared=1
+    else
+      log "Could not remove ${compdump_path}; remove it manually if Zsh completion stays stale."
+    fi
+  done
+
+  if [ "$cleared" = "1" ]; then
+    log "Cleared Zsh completion cache."
+  fi
+}
+
+maybe_update_zshrc_for_completion() {
+  completion_dir="$1"
+
+  if [ "$INTERACTIVE" -eq 1 ]; then
+    if prompt_yes_no "Update ~/.zshrc to load ${BINARY_NAME} completion?" "Y"; then
+      write_zsh_completion_block "$completion_dir"
+    else
+      log "Skipped ~/.zshrc update."
+      log "For Zsh, ensure this appears before compinit: fpath=(\"${completion_dir}\" \$fpath)"
+    fi
+  else
+    log "For Zsh, ensure this appears before compinit: fpath=(\"${completion_dir}\" \$fpath)"
+  fi
 }
 
 resolve_latest_tag() {

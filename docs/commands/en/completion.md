@@ -47,7 +47,15 @@ For an interactive install, pass `--interactive` to the `sh` process after the p
 curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh -s -- --interactive
 ```
 
-Interactive mode asks for the binary install directory, whether to install shell completion, and the completion output directory. It reads answers from the terminal, so it still works when the install script itself is coming from `curl`.
+Interactive mode asks for the binary install directory, whether to install shell completion, and the completion output directory. For Zsh, it can also update `~/.zshrc` with the required `fpath` setup so the completion file is loaded before `compinit`. It reads answers from the terminal, so it still works when the install script itself is coming from `curl`.
+
+For local checkout validation, use the Makefile wrapper instead of waiting for a release artifact:
+
+```bash
+make install-local-interactive
+```
+
+That target builds the local Rust binary, packs it into a temporary release-style archive, and runs `scripts/install.sh --interactive` against that archive.
 
 ## Install for Bash
 
@@ -77,7 +85,7 @@ autoload -Uz compinit
 compinit
 ```
 
-Put those lines in your Zsh startup file if they are not already present.
+Put those lines in your Zsh startup file if they are not already present. The interactive installer can add a managed `grafana-util completion` block to `~/.zshrc` for this setup and clear stale `.zcompdump*` completion caches.
 
 ## What success looks like
 
@@ -87,7 +95,7 @@ Put those lines in your Zsh startup file if they are not already present.
 
 ## Failure checks
 
-- if no completions appear, confirm your shell is loading the file you wrote
+- if no completions appear, confirm your shell is loading the file you wrote; for Zsh, `~/.zfunc` must be in `fpath` before `compinit`, and stale `.zcompdump*` files may need to be removed
 - if completions are stale, regenerate the script from the currently installed binary
 - if Bash or Zsh rejects the file, confirm you used the matching shell value
 

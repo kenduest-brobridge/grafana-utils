@@ -47,7 +47,15 @@ curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main
 curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh -s -- --interactive
 ```
 
-互動模式會詢問 binary 安裝目錄、是否安裝 shell completion，以及 completion output directory。它會從終端機讀取回答，所以即使 install script 本身來自 `curl` pipe，也不會把 script 內容誤當成回答。
+互動模式會詢問 binary 安裝目錄、是否安裝 shell completion，以及 completion output directory。若安裝 Zsh completion，它也可以更新 `~/.zshrc`，把必要的 `fpath` 設定放在 `compinit` 前面。它會從終端機讀取回答，所以即使 install script 本身來自 `curl` pipe，也不會把 script 內容誤當成回答。
+
+如果要驗證目前 checkout 的本地 build，不必等 release artifact，可以使用 Makefile wrapper：
+
+```bash
+make install-local-interactive
+```
+
+這個 target 會 build 本地 Rust binary，打包成暫時的 release-style archive，再用該 archive 執行 `scripts/install.sh --interactive`。
 
 ## 安裝到 Bash
 
@@ -77,7 +85,7 @@ autoload -Uz compinit
 compinit
 ```
 
-如果你的 Zsh 啟動檔還沒有這些設定，請把它們放進去。
+如果你的 Zsh 啟動檔還沒有這些設定，請把它們放進去。互動 installer 可以替你把受管理的 `grafana-util completion` block 加到 `~/.zshrc`，並清掉過期的 `.zcompdump*` completion cache。
 
 ## 成功判準
 
@@ -87,7 +95,7 @@ compinit
 
 ## 失敗時先檢查
 
-- 如果沒有任何補完，先確認 shell 有載入你寫出的檔案
+- 如果沒有任何補完，先確認 shell 有載入你寫出的檔案；Zsh 需要在 `compinit` 前把 `~/.zfunc` 放進 `fpath`，而過期的 `.zcompdump*` 也可能需要清掉
 - 如果補完內容過舊，請用目前安裝的 binary 重新產生 script
 - 如果 Bash 或 Zsh 無法載入檔案，確認你使用的 shell value 跟實際 shell 一致
 
