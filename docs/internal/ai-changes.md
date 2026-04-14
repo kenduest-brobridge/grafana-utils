@@ -12,6 +12,14 @@ Current AI change log only.
 - Older entries moved to [`ai-changes-archive-2026-04-14.md`](docs/internal/archive/ai-changes-archive-2026-04-14.md).
 - Older entries moved to [`ai-changes-archive-2026-04-15.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-changes-archive-2026-04-15.md).
 
+## 2026-04-15 - Split datasource tail import and inspect tests
+- Summary: split datasource tail import validation/loader tests and inspect-export/local-source tests into focused sibling modules. The parent tail test module now keeps routed datasource import identity, summary, and export-org routing behavior.
+- Tests: preserved existing datasource import loader, inspect-export renderer, manifest classifier, local-source help, and routed import assertions while moving them into responsibility-based modules.
+- Test Run: `cargo fmt --manifest-path rust/Cargo.toml --all --check`; `cargo test --manifest-path rust/Cargo.toml --quiet datasource_`; `cargo test --manifest-path rust/Cargo.toml --quiet`; `cargo clippy --manifest-path rust/Cargo.toml --all-targets -- -D warnings`; `make quality-architecture`; `git diff --check`.
+- Impact: `rust/src/commands/datasource/tests/tail.rs`, `rust/src/commands/datasource/tests/tail_import.rs`, `rust/src/commands/datasource/tests/tail_inspect.rs`, and AI trace docs. README files and Python implementation were intentionally left unchanged.
+- Rollback/Risk: low test-only split. Rollback would move import and inspect-export tests back into the parent datasource tail module.
+- Follow-up: continue remaining architecture-warning hotspots: dashboard browse support, dashboard dependency contract, datasource staged reading, datasource CLI mutation tests, sync live apply, and help-test semantic assertions.
+
 ## 2026-04-15 - Split snapshot review tests
 - Summary: split snapshot staged-scope resolver tests and snapshot review wrapper/warning tests out of `snapshot/tests.rs` into focused sibling modules. The parent test module keeps shared fixture builders and broader snapshot export/review coverage.
 - Tests: preserved existing snapshot assertions while moving staged export scope resolver coverage and review warning/wrapper coverage to dedicated modules.
@@ -83,11 +91,3 @@ Current AI change log only.
 - Impact: `rust/src/commands/access/user_browse_input.rs`, `rust/src/commands/access/user_browse_state.rs`, `rust/src/commands/access/user_browse_render.rs`, `rust/src/commands/access/user_browse_dialog.rs`, team browse dialog/render follow-up files, and AI trace docs.
 - Rollback/Risk: medium TUI mutation change. Rollback would keep membership removal team-first only and restore right-pane delete previews. The main risk is Grafana team-list responses that omit team ids; those rows remain visible but removal errors with a missing-id message instead of guessing by name.
 - Follow-up: consider resolving missing team ids by exact team-name lookup only if real Grafana versions produce name-only user-team rows.
-
-## 2026-04-13 - Add team browse membership actions
-- Summary: added member-row relationship actions to `access team browse` while keeping user-owned profile editing out of the team browser. Pressing `e` on a member row now explains that user fields belong in `access user browse`; pressing `r` or member-row `d` opens a confirmation dialog before removing the selected user from the team through the existing `TeamModifyArgs`/membership-delete path; pressing `a` toggles team-admin state through the existing membership update path. Team-row `d` opens a whole-team delete confirmation dialog. Team browse footer controls moved to the shared TUI control grid/height helpers, and team edit/search/delete overlays moved to `tui_shell::render_dialog_shell`.
-- Tests: added focused Rust coverage for member-row edit guidance, member removal preview and confirmation through the request layer, team-admin toggle payloads, parent-team selection preservation after member-row refresh, and delete/member-removal dialog rendering.
-- Test Run: `cargo fmt --manifest-path rust/Cargo.toml --all`; `cargo test --manifest-path rust/Cargo.toml --quiet team_browse`.
-- Impact: `rust/src/commands/access/team_browse_input.rs`, `rust/src/commands/access/team_browse_render.rs`, `rust/src/commands/access/team_browse_dialog.rs`, `rust/src/commands/access/team_browse_state.rs`, and AI trace docs.
-- Rollback/Risk: medium TUI mutation change. Rollback would remove direct member-row relationship operations and return team browse to team-row-only editing. The new actions reuse existing team modify helpers, so API risk is mainly around operator expectation for immediate live relationship changes.
-- Follow-up: consider whether team-admin toggle should also ask for confirmation in high-risk environments.

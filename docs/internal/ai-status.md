@@ -12,6 +12,13 @@ Current AI-maintained status only.
 - Older entries moved to [`ai-status-archive-2026-04-14.md`](docs/internal/archive/ai-status-archive-2026-04-14.md).
 - Older entries moved to [`ai-status-archive-2026-04-15.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-status-archive-2026-04-15.md).
 
+## 2026-04-15 - Split datasource tail import and inspect tests
+- State: Done
+- Scope: Rust datasource test maintainability. README files and Python implementation are out of scope.
+- Baseline: `make quality-architecture` still warned on `datasource/tests/tail.rs` after previous tail diff and fixture splits.
+- Current Update: Moved datasource import validation/loader coverage into `tail_import.rs` and inspect-export/local source/manifest coverage into `tail_inspect.rs`, leaving `tail.rs` focused on routed import summary and export-org routing behavior.
+- Result: Datasource focused tests, full Rust tests, clippy, architecture guardrails, formatting, and whitespace checks pass. `datasource/tests/tail.rs` is no longer an architecture warning.
+
 ## 2026-04-15 - Split snapshot review tests
 - State: Done
 - Scope: Rust snapshot test maintainability. README files and Python implementation are out of scope.
@@ -46,10 +53,3 @@ Current AI-maintained status only.
 - Baseline: Rust default/browser gates pass, but no-default feature behavior is not a declared release surface; several Rust modules and test files remain large; dashboard review source concepts are shared implicitly across summary/dependencies/policy/impact; output contract validation covers root fields and golden fixtures but not nested shape depth.
 - Current Update: Added a repo-owned Rust feature matrix check that documents default/browser as supported surfaces and keeps `--no-default-features` out of release claims; split dashboard inspect input resolution and topology rendering; moved the shared dashboard source resolver to a typed `review_source` model for export-tree, saved-artifact, and live review inputs; split datasource render/parser/payload tests; and extended output contract validation with nested `requiredPaths` and `pathTypes`.
 - Result: Focused Rust tests, feature-matrix checks, output contract checks, architecture guardrails, generated docs checks, and whitespace checks pass for the changed surfaces. README files were left untouched.
-
-## 2026-04-15 - Consolidate Rust review workflow contracts
-- State: Done
-- Scope: Rust dashboard summary/dependency naming, dashboard command dispatch boundaries, public JSON output contract fixtures, docs evidence checks, generated docs, and validation.
-- Baseline: public docs and CLI use `dashboard summary` / `dashboard dependencies`, but Rust internals still carry `Analyze` names; dashboard dispatch duplicates summary/history handling across client-owned and top-level paths; output contract registry covers only core sync/datasource fixtures; docs evidence tests contained stale page/path expectations.
-- Current Update: renamed Rust dashboard summary internals away from `Analyze`/`dashboard analyze`, split dashboard dispatch into focused summary/export/live helpers, expanded output contracts for dashboard review artifacts, refreshed source/generated docs evidence sections, and added guardrails that reject removed public dashboard analysis paths outside archive/trace contexts.
-- Result: Rust tests, clippy, docs surface checks, output contract checks, generated docs checks, AI workflow checks, feature `browser` check, command smoke checks, and whitespace checks pass. README files were left untouched.
