@@ -10,7 +10,6 @@ use super::{
     DatasourceImportInputFormat, DatasourceImportRecord,
 };
 use crate::common::CliColorChoice;
-use crate::datasource_catalog::render_supported_datasource_catalog_json;
 use serde_json::{json, Value};
 use std::path::Path;
 use std::time::{SystemTime, UNIX_EPOCH};
