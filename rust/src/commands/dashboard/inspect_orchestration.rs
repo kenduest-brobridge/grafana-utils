@@ -1,10 +1,12 @@
 //! Inspection path for Dashboard resources: analysis, extraction, and report shaping.
 
+#[path = "inspect_orchestration_input.rs"]
+mod inspect_orchestration_input;
+
 #[cfg(not(feature = "tui"))]
 use std::io::Write;
 use std::io::{self, IsTerminal};
 use std::path::Path;
-use std::path::PathBuf;
 
 use crate::common::{message, Result};
 #[cfg(feature = "tui")]
@@ -16,9 +18,7 @@ use super::super::cli_defs::{
     DashboardImportInputFormat, InspectExportArgs, InspectExportInputType,
     InspectExportReportFormat, InspectOutputFormat,
 };
-use super::super::files::{
-    load_export_metadata, resolve_dashboard_export_root, DashboardSourceKind,
-};
+use super::super::files::DashboardSourceKind;
 #[cfg(feature = "tui")]
 use super::super::inspect_governance::build_export_inspection_governance_document;
 use super::super::inspect_live::TempInspectDir;
@@ -30,13 +30,13 @@ use super::super::inspect_report::{
 use super::super::inspect_workbench::run_inspect_workbench;
 #[cfg(feature = "tui")]
 use super::super::inspect_workbench_support::build_inspect_workbench_document;
-use super::super::source_loader::{load_dashboard_source, resolve_dashboard_workspace_variant_dir};
-use super::super::{PROMPT_EXPORT_SUBDIR, RAW_EXPORT_SUBDIR};
+use super::super::RAW_EXPORT_SUBDIR;
 use super::inspect_output::{
     render_export_inspection_report_output, render_export_inspection_summary_output,
 };
 use super::inspect_query_report::build_export_inspection_query_report_for_variant;
 use super::write_inspect_output;
+pub(crate) use inspect_orchestration_input::ResolvedInspectExportInput;
 
 #[cfg(feature = "tui")]
 use crossterm::event::{self, Event, KeyCode, KeyEventKind};
@@ -48,13 +48,6 @@ use ratatui::style::{Color, Modifier, Style};
 use ratatui::text::{Line, Span};
 #[cfg(feature = "tui")]
 use ratatui::widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph, Wrap};
-
-pub(crate) struct ResolvedInspectExportInput {
-    pub(crate) input_dir: PathBuf,
-    pub(crate) expected_variant: &'static str,
-    pub(crate) source_kind: Option<DashboardSourceKind>,
-    _temp_dir: Option<TempInspectDir>,
-}
 
 fn map_output_format_to_report(
     output_format: InspectOutputFormat,
@@ -106,98 +99,14 @@ pub(crate) fn resolve_inspect_export_import_dir(
     input_type: Option<InspectExportInputType>,
     interactive: bool,
 ) -> Result<ResolvedInspectExportInput> {
-    match input_format {
-        DashboardImportInputFormat::Raw => {
-            resolve_raw_inspect_input(temp_root, input_dir, input_type, interactive)
-        }
-        DashboardImportInputFormat::Provisioning => {
-            let resolved = load_dashboard_source(
-                input_dir,
-                DashboardImportInputFormat::Provisioning,
-                None,
-                false,
-            )?;
-            Ok(ResolvedInspectExportInput {
-                input_dir: resolved.input_dir,
-                expected_variant: RAW_EXPORT_SUBDIR,
-                source_kind: Some(DashboardSourceKind::ProvisioningExport),
-                _temp_dir: resolved.temp_dir,
-            })
-        }
-    }
-}
-
-fn discover_org_variant_export_dirs(
-    input_dir: &Path,
-    variant_dir_name: &'static str,
-) -> Result<Vec<PathBuf>> {
-    let mut org_variant_dirs = Vec::new();
-    if !input_dir.is_dir() {
-        return Ok(org_variant_dirs);
-    }
-    for entry in std::fs::read_dir(input_dir)? {
-        let entry = entry?;
-        let org_root = entry.path();
-        if !org_root.is_dir() {
-            continue;
-        }
-        let org_name = entry.file_name().to_string_lossy().to_string();
-        if !org_name.starts_with("org_") {
-            continue;
-        }
-        let variant_dir = org_root.join(variant_dir_name);
-        if variant_dir.is_dir() {
-            org_variant_dirs.push(variant_dir);
-        }
-    }
-    org_variant_dirs.sort();
-    Ok(org_variant_dirs)
-}
-
-fn resolve_raw_inspect_input(
-    _temp_root: &Path,
-    input_dir: &Path,
-    input_type: Option<InspectExportInputType>,
-    _interactive: bool,
-) -> Result<ResolvedInspectExportInput> {
-    let input_dir = resolve_dashboard_workspace_import_dir(input_dir)?;
-    let metadata = load_export_metadata(&input_dir, None)?;
-    let raw_dirs = discover_org_variant_export_dirs(&input_dir, RAW_EXPORT_SUBDIR)?;
-    let source_dirs = discover_org_variant_export_dirs(&input_dir, PROMPT_EXPORT_SUBDIR)?;
-    let raw_workspace_variant =
-        resolve_dashboard_workspace_variant_dir(&input_dir, RAW_EXPORT_SUBDIR);
-    let source_workspace_variant =
-        resolve_dashboard_workspace_variant_dir(&input_dir, PROMPT_EXPORT_SUBDIR);
-    let selected_input_type = match input_type {
-        Some(input_type) => input_type,
-        None if (!raw_dirs.is_empty() && !source_dirs.is_empty())
-            || (raw_workspace_variant.is_some() && source_workspace_variant.is_some()) =>
-        {
-            prompt_interactive_input_type(&input_dir)?
-        }
-        None if matches!(
-            metadata.as_ref().map(|item| item.variant.as_str()),
-            Some(PROMPT_EXPORT_SUBDIR)
-        ) =>
-        {
-            InspectExportInputType::Source
-        }
-        None => InspectExportInputType::Raw,
-    };
-
-    let resolved = load_dashboard_source(
-        &input_dir,
-        DashboardImportInputFormat::Raw,
-        Some(selected_input_type),
-        false,
-    )?;
-
-    Ok(ResolvedInspectExportInput {
-        input_dir: resolved.input_dir,
-        expected_variant: resolved.expected_variant,
-        source_kind: DashboardSourceKind::from_expected_variant(resolved.expected_variant),
-        _temp_dir: resolved.temp_dir,
-    })
+    inspect_orchestration_input::resolve_inspect_export_import_dir_with_prompt(
+        temp_root,
+        input_dir,
+        input_format,
+        input_type,
+        interactive,
+        prompt_interactive_input_type,
+    )
 }
 
 #[cfg(any(test, not(feature = "tui")))]
@@ -543,24 +452,6 @@ fn prompt_interactive_input_type(input_dir: &Path) -> Result<InspectExportInputT
     }
 }
 
-fn resolve_dashboard_workspace_import_dir(input_dir: &Path) -> Result<PathBuf> {
-    if let Some(resolved_root) = resolve_dashboard_export_root(input_dir)? {
-        return Ok(resolved_root.metadata_dir);
-    }
-
-    let dashboard_dir = input_dir.join("dashboards");
-    if dashboard_dir.is_dir() && input_dir.join("datasources").is_dir() {
-        return Err(message(format!(
-            "Import path {} looks like a workspace export root containing dashboards/ and datasources/, but dashboards/export-metadata.json is missing. Point --input-dir at {} or at a dashboard variant directory such as {}/.../{}.",
-            input_dir.display(),
-            dashboard_dir.display(),
-            dashboard_dir.display(),
-            RAW_EXPORT_SUBDIR
-        )));
-    }
-    Ok(input_dir.to_path_buf())
-}
-
 pub(crate) fn apply_query_report_filters(
     mut report: ExportInspectionQueryReport,
     datasource_filter: Option<&str>,
@@ -717,14 +608,7 @@ pub(crate) fn analyze_export_dir(args: &InspectExportArgs) -> Result<usize> {
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        parse_interactive_input_type_answer, resolve_inspect_export_import_dir,
-        InspectExportInputType,
-    };
-    use crate::dashboard::{DashboardImportInputFormat, DashboardSourceKind};
-    use serde_json::json;
-    use std::fs;
-    use tempfile::tempdir;
+    use super::{parse_interactive_input_type_answer, InspectExportInputType};
 
     #[test]
     fn parse_interactive_input_type_answer_accepts_expected_aliases() {
@@ -749,148 +633,5 @@ mod tests {
             Some(InspectExportInputType::Source)
         );
         assert_eq!(parse_interactive_input_type_answer(""), None);
-    }
-
-    #[test]
-    fn resolve_inspect_export_import_dir_marks_provisioning_source_kind() {
-        let temp = tempdir().unwrap();
-        let input_dir = temp.path().join("provisioning");
-        let dashboards_dir = input_dir.join("dashboards");
-        fs::create_dir_all(&dashboards_dir).unwrap();
-        fs::write(
-            input_dir.join("export-metadata.json"),
-            serde_json::to_string_pretty(&json!({
-                "kind": "grafana-utils-dashboard-export-index",
-                "schemaVersion": 1,
-                "variant": "provisioning",
-                "dashboardCount": 0,
-                "indexFile": "index.json",
-                "org": "Main Org.",
-                "orgId": "1"
-            }))
-            .unwrap(),
-        )
-        .unwrap();
-
-        let resolved = resolve_inspect_export_import_dir(
-            temp.path(),
-            &input_dir,
-            DashboardImportInputFormat::Provisioning,
-            None,
-            false,
-        )
-        .unwrap();
-
-        assert_eq!(resolved.expected_variant, super::RAW_EXPORT_SUBDIR);
-        assert_eq!(
-            resolved.source_kind,
-            Some(DashboardSourceKind::ProvisioningExport)
-        );
-    }
-
-    #[test]
-    fn resolve_inspect_export_import_dir_accepts_git_sync_wrapped_raw_tree() {
-        let temp = tempdir().unwrap();
-        let workspace = temp.path();
-        std::fs::write(
-            workspace.join("export-metadata.json"),
-            serde_json::to_string_pretty(&json!({
-                "kind": "grafana-utils-dashboard-export-index",
-                "schemaVersion": 1,
-                "variant": "raw",
-                "dashboardCount": 1,
-                "indexFile": "index.json",
-                "org": "Main Org.",
-                "orgId": "1"
-            }))
-            .unwrap(),
-        )
-        .unwrap();
-        let raw_root = workspace.join("dashboards/git-sync/raw");
-        std::fs::create_dir_all(raw_root.join("org_1/raw")).unwrap();
-        std::fs::write(
-            raw_root.join("export-metadata.json"),
-            serde_json::to_string_pretty(&json!({
-                "kind": "grafana-utils-dashboard-export-index",
-                "schemaVersion": 1,
-                "variant": "raw",
-                "dashboardCount": 1,
-                "indexFile": "index.json",
-                "org": "Main Org.",
-                "orgId": "1"
-            }))
-            .unwrap(),
-        )
-        .unwrap();
-
-        let resolved = resolve_inspect_export_import_dir(
-            workspace,
-            workspace,
-            DashboardImportInputFormat::Raw,
-            None,
-            false,
-        )
-        .unwrap();
-
-        assert_eq!(resolved.expected_variant, super::RAW_EXPORT_SUBDIR);
-        assert_eq!(resolved.source_kind, Some(DashboardSourceKind::RawExport));
-    }
-
-    #[test]
-    fn resolve_inspect_export_import_dir_accepts_git_sync_repo_root_without_export_metadata() {
-        let temp = tempdir().unwrap();
-        let workspace = temp.path();
-        std::fs::create_dir_all(workspace.join(".git")).unwrap();
-        let raw_root = workspace.join("dashboards/git-sync/raw");
-        std::fs::create_dir_all(raw_root.join("org_1/raw")).unwrap();
-        std::fs::write(
-            raw_root.join("export-metadata.json"),
-            serde_json::to_string_pretty(&json!({
-                "kind": "grafana-utils-dashboard-export-index",
-                "schemaVersion": 1,
-                "variant": "raw",
-                "dashboardCount": 1,
-                "indexFile": "index.json",
-                "org": "Main Org.",
-                "orgId": "1"
-            }))
-            .unwrap(),
-        )
-        .unwrap();
-
-        let resolved = resolve_inspect_export_import_dir(
-            workspace,
-            workspace,
-            DashboardImportInputFormat::Raw,
-            None,
-            false,
-        )
-        .unwrap();
-
-        assert_eq!(resolved.expected_variant, super::RAW_EXPORT_SUBDIR);
-        assert_eq!(resolved.source_kind, Some(DashboardSourceKind::RawExport));
-    }
-
-    #[test]
-    fn resolve_inspect_export_import_dir_respects_explicit_source_input_type() {
-        let temp = tempdir().unwrap();
-        let workspace = temp.path();
-        std::fs::create_dir_all(workspace.join(".git")).unwrap();
-        std::fs::create_dir_all(workspace.join("dashboards/raw")).unwrap();
-        let prompt_root = workspace.join("dashboards/prompt");
-        std::fs::create_dir_all(&prompt_root).unwrap();
-
-        let resolved = resolve_inspect_export_import_dir(
-            workspace,
-            workspace,
-            DashboardImportInputFormat::Raw,
-            Some(InspectExportInputType::Source),
-            false,
-        )
-        .unwrap();
-
-        assert_eq!(resolved.expected_variant, super::PROMPT_EXPORT_SUBDIR);
-        assert_eq!(resolved.source_kind, None);
-        assert_eq!(resolved.input_dir, prompt_root);
     }
 }
