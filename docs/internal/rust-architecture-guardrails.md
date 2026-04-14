@@ -29,6 +29,23 @@ Keep each layer focused on one job:
   - holds validation data, golden cases, and sample inputs
   - does not become a hidden production scratch area
 
+## Supported Rust Feature Matrix
+
+The maintained Rust release surfaces are intentionally narrow:
+
+- default features: TUI-enabled CLI, without browser screenshot dependencies
+- `--features browser`: default surface plus browser screenshot support
+
+`--no-default-features` is not a supported release surface. It currently
+removes the TUI dependencies while several TUI modules and tests remain part of
+the crate-level test graph, so it must not be advertised as a lean supported
+artifact until the TUI code and tests are split behind a complete feature
+boundary.
+
+Use `make quality-rust-feature-matrix` when touching Cargo features, release
+artifact policy, browser support, or TUI gating. Use `make quality-architecture`
+for the faster policy drift check that prevents accidental no-default claims.
+
 ## Anti-Patterns
 
 Treat these as refactor signals:

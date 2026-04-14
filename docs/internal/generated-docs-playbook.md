@@ -36,6 +36,18 @@ When a reader asks for something like `alert list-rules` user guidance, add or i
 - what common mistakes mean
 - when to switch to command reference for exact flags
 
+## Supported Rust Feature Matrix
+
+Generated docs checks validate the maintained Rust release surfaces only:
+default features and `--features browser`.
+`--no-default-features` is not a supported release surface, so do not describe it
+as a lean operator artifact in generated docs or examples unless the TUI feature
+boundary is completed first.
+
+Use `make quality-rust-feature-matrix` when changing Cargo features, release
+artifact wording, browser support, or generated docs that mention Rust feature
+support.
+
 ## Standard Validation Loop
 
 After any docs-generator change:
@@ -249,6 +261,24 @@ Process:
 5. rerun both determinism tests
 
 Do not patch one generator around the parser unless the behavior is truly output-specific.
+
+## Task: Change Rust Feature Or Artifact Wording
+
+Supported Rust feature matrix:
+
+- default features: TUI-enabled CLI, without browser screenshot dependencies
+- `--features browser`: default surface plus browser screenshot support
+
+`--no-default-features` is not a supported release surface. Do not describe it
+as a lean artifact in generated docs, command docs, or maintainer notes unless
+the Rust feature boundary has first been made compile-clean and test-clean.
+
+Process:
+
+1. update the Cargo feature policy and release artifact wording together
+2. run `make quality-rust-feature-matrix` for supported default/browser checks
+3. run `make quality-architecture` so docs policy drift is caught
+4. regenerate docs only when public docs or generated output source changed
 
 ## Task: Add A New Command Locale
 

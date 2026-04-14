@@ -3,7 +3,7 @@ PYTHON_TARGETS := poetry-install poetry-lock poetry-test poetry-quality-python b
 DOC_TARGETS := man man-check html html-check pages-site schema schema-check quality-docs-surface
 RUST_BUILD_TARGETS := build-rust build-rust-browser build-rust-native build-rust-native-browser build-rust-host build-rust-host-browser build-rust-macos-arm64 build-rust-macos-arm64-browser build-rust-linux-amd64 build-rust-linux-amd64-browser build-rust-linux-amd64-docker build-rust-linux-amd64-browser-docker build-rust-linux-amd64-zig validate-rust-linux-amd64-artifact validate-rust-linux-amd64-browser-artifact
 INSTALLER_TARGETS := install-local install-local-interactive test-installer-local
-QUALITY_TARGETS := test test-python test-rust fmt-rust-check lint-rust quality quality-python quality-rust quality-output-contracts quality-ai-workflow quality-architecture quality-docs-surface quality-alert-rust quality-sync-rust quality-workspace-noise
+QUALITY_TARGETS := test test-python test-rust fmt-rust-check lint-rust quality quality-python quality-rust quality-rust-feature-matrix quality-output-contracts quality-ai-workflow quality-architecture quality-docs-surface quality-alert-rust quality-sync-rust quality-workspace-noise
 LIVE_TARGETS := seed-grafana-sample-data destroy-grafana-sample-data reset-grafana-all-data test-rust-live test-sync-live test-alert-live test-alert-live-artifact test-alert-live-replay test-access-live test-python-datasource-live test-datasource-live
 META_TARGETS := build
 
@@ -104,6 +104,7 @@ $(BLUE)$(BOLD)Quality and tests$(RESET)
   $(GREEN)make quality$(RESET)  Run the repo quality gate scripts
   $(GREEN)make quality-python$(RESET)  Run the Python quality gate script
   $(GREEN)make quality-rust$(RESET)  Run the Rust quality gate script
+  $(GREEN)make quality-rust-feature-matrix$(RESET)  Validate supported Rust feature surfaces and the no-default policy
   $(GREEN)make quality-output-contracts$(RESET)  Validate core JSON output contract fixtures and registry shape
   $(GREEN)make quality-ai-workflow$(RESET)  Run lightweight AI workflow drift and public naming policy checks for the current change set
   $(GREEN)make quality-architecture$(RESET)  Run Rust architecture guardrail checks for root noise, file size, render risk, and help-test brittleness
@@ -309,6 +310,9 @@ quality-python:
 quality-rust:
 	./scripts/check-rust-quality.sh
 
+quality-rust-feature-matrix:
+	$(PYTHON) ./scripts/check_rust_feature_matrix.py --check-cargo
+
 quality-output-contracts:
 	$(PYTHON) ./scripts/check_output_contracts.py
 
@@ -317,6 +321,7 @@ quality-ai-workflow:
 
 quality-architecture:
 	$(PYTHON) ./scripts/check_rust_architecture.py
+	$(PYTHON) ./scripts/check_rust_feature_matrix.py
 
 quality-alert-rust:
 	$(RUST_RUN) $(CARGO) test --quiet alert_
