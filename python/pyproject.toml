@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "grafana-util"
-version = "0.10.1"
+version = "0.10.2"
 description = "CLI for reviewing Grafana changes with live inventory, diff, preview, and safe apply workflows."
 readme = "README.md"
 requires-python = ">=3.9"

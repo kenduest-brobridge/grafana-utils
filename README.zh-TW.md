@@ -60,7 +60,7 @@ curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main
 指定安裝版本：
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | VERSION=0.10.1 sh
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | VERSION=0.10.2 sh
 ```
 
 安裝到自訂目錄：
@@ -134,8 +134,8 @@ grafana-util config profile add dev \
 
 接下來：
 
-- 看完整流程：[新手快速入門](https://kenduest-brobridge.github.io/grafana-util/handbook/zh-TW/role-new-user.html)
-- 查精確語法：[指令參考](https://kenduest-brobridge.github.io/grafana-util/commands/zh-TW/index.html)
+- 看完整流程：[新手快速入門](https://kenduest-brobridge.github.io/grafana-state-kit/handbook/zh-TW/role-new-user.html)
+- 查精確語法：[指令參考](https://kenduest-brobridge.github.io/grafana-state-kit/commands/zh-TW/index.html)
 
 ---
 
@@ -187,11 +187,11 @@ grafana-util config profile --help
 
 手冊用來看流程脈絡；指令參考用來查精確語法。
 
-- [官方文件站](https://kenduest-brobridge.github.io/grafana-util/)
-- 第一次設定：[開始使用](https://kenduest-brobridge.github.io/grafana-util/handbook/zh-TW/getting-started.html) 與 [新手快速入門](https://kenduest-brobridge.github.io/grafana-util/handbook/zh-TW/role-new-user.html)
-- 日常維運流程：[維運導引手冊](https://kenduest-brobridge.github.io/grafana-util/handbook/zh-TW/index.html) 與 [SRE / 維運角色導讀](https://kenduest-brobridge.github.io/grafana-util/handbook/zh-TW/role-sre-ops.html)
-- 查精確指令語法：[指令參考](https://kenduest-brobridge.github.io/grafana-util/commands/zh-TW/index.html) 與 `grafana-util --help`
-- [疑難排解](https://kenduest-brobridge.github.io/grafana-util/handbook/zh-TW/troubleshooting.html)
+- [官方文件站](https://kenduest-brobridge.github.io/grafana-state-kit/)
+- 第一次設定：[開始使用](https://kenduest-brobridge.github.io/grafana-state-kit/handbook/zh-TW/getting-started.html) 與 [新手快速入門](https://kenduest-brobridge.github.io/grafana-state-kit/handbook/zh-TW/role-new-user.html)
+- 日常維運流程：[維運導引手冊](https://kenduest-brobridge.github.io/grafana-state-kit/handbook/zh-TW/index.html) 與 [SRE / 維運角色導讀](https://kenduest-brobridge.github.io/grafana-state-kit/handbook/zh-TW/role-sre-ops.html)
+- 查精確指令語法：[指令參考](https://kenduest-brobridge.github.io/grafana-state-kit/commands/zh-TW/index.html) 與 `grafana-util --help`
+- [疑難排解](https://kenduest-brobridge.github.io/grafana-state-kit/handbook/zh-TW/troubleshooting.html)
 
 版本庫內維護文件：
 
@@ -201,9 +201,9 @@ grafana-util config profile --help
 
 依角色開始：
 
-- [新使用者](https://kenduest-brobridge.github.io/grafana-util/handbook/zh-TW/role-new-user.html)
-- [SRE / 維運人員](https://kenduest-brobridge.github.io/grafana-util/handbook/zh-TW/role-sre-ops.html)
-- [自動化 / CI 維護者](https://kenduest-brobridge.github.io/grafana-util/handbook/zh-TW/role-automation-ci.html)
+- [新使用者](https://kenduest-brobridge.github.io/grafana-state-kit/handbook/zh-TW/role-new-user.html)
+- [SRE / 維運人員](https://kenduest-brobridge.github.io/grafana-state-kit/handbook/zh-TW/role-sre-ops.html)
+- [自動化 / CI 維護者](https://kenduest-brobridge.github.io/grafana-state-kit/handbook/zh-TW/role-automation-ci.html)
 - **維護者 / 開發者**：[docs/DEVELOPER.md](./docs/DEVELOPER.md)
 
 ---

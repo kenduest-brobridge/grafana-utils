@@ -91,7 +91,7 @@ If you want one fixed release or one explicit install directory, the same script
 
 ```bash
 # Install one pinned release into one explicit binary directory.
-curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | VERSION=0.10.1 BIN_DIR="$HOME/.local/bin" sh
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | VERSION=0.10.2 BIN_DIR="$HOME/.local/bin" sh
 ```
 
 The installer uses `BIN_DIR` when you set it. Otherwise it tries `/usr/local/bin` when that directory is writable, then falls back to `$HOME/.local/bin`.
@@ -110,7 +110,7 @@ grafana-util --version
 ```
 **Expected Output:**
 ```text
-grafana-util 0.10.1
+grafana-util 0.10.2
 ```
 This confirms that the binary is on your `PATH` and that you are running the version you expect.
 

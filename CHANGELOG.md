@@ -14,6 +14,29 @@ Format rule going forward:
 - keep older tagged releases below
 - use commit/tag history as the source of truth
 
+## [0.10.2] - 2026-04-14
+
+### Highlights
+
+- Local installation now has a release-style verification path, so maintainers can build from the current checkout and exercise the same installer flow before publishing.
+- Zsh completion setup is more reliable for Oh My Zsh users because the installer places the completion directory before `compinit`, adds an explicit `compdef`, and clears stale completion caches.
+- README, command docs, generated manpages, and HTML docs were refreshed so the completion setup is documented in both English and Traditional Chinese.
+
+### Added
+
+- `scripts/install-local.sh` for local release-style installer validation.
+- `make install-local` and `make install-local-interactive` targets for local install checks.
+- Installer regression coverage for managed zshrc blocks, legacy block replacement, and zsh completion cache cleanup.
+
+### Fixed
+
+- `grafana-util <tab>` on zsh could fall back to filename completion after install because completion setup did not always run after Oh My Zsh initialization.
+- Re-running the installer no longer duplicates managed completion blocks in `.zshrc`.
+
+### Migration Notes
+
+- If completion was installed before this release and still only shows filenames, re-run the interactive installer or `make install-local-interactive`, then start a new shell.
+
 ## [0.10.1] - 2026-04-14
 
 ### Highlights

@@ -60,7 +60,7 @@ curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main
 Install a specific version:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | VERSION=0.10.1 sh
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | VERSION=0.10.2 sh
 ```
 
 Install into a custom directory:
@@ -134,8 +134,8 @@ grafana-util config profile add dev \
 
 After that:
 
-- learn the workflow: [New User Path](https://kenduest-brobridge.github.io/grafana-util/handbook/en/role-new-user.html)
-- look up exact syntax: [Command Reference](https://kenduest-brobridge.github.io/grafana-util/commands/en/index.html)
+- learn the workflow: [New User Path](https://kenduest-brobridge.github.io/grafana-state-kit/handbook/en/role-new-user.html)
+- look up exact syntax: [Command Reference](https://kenduest-brobridge.github.io/grafana-state-kit/commands/en/index.html)
 
 ---
 
@@ -187,11 +187,11 @@ grafana-util config profile --help
 
 Handbook for workflow context; command reference for exact CLI syntax.
 
-- [Published docs](https://kenduest-brobridge.github.io/grafana-util/)
-- First-time setup: [Getting Started](https://kenduest-brobridge.github.io/grafana-util/handbook/en/getting-started.html) and [New User Path](https://kenduest-brobridge.github.io/grafana-util/handbook/en/role-new-user.html)
-- Operator workflow: [Operator Handbook](https://kenduest-brobridge.github.io/grafana-util/handbook/en/index.html) and [SRE / Ops Path](https://kenduest-brobridge.github.io/grafana-util/handbook/en/role-sre-ops.html)
-- Exact CLI syntax: [Command Reference](https://kenduest-brobridge.github.io/grafana-util/commands/en/index.html) and `grafana-util --help`
-- [Troubleshooting](https://kenduest-brobridge.github.io/grafana-util/handbook/en/troubleshooting.html)
+- [Published docs](https://kenduest-brobridge.github.io/grafana-state-kit/)
+- First-time setup: [Getting Started](https://kenduest-brobridge.github.io/grafana-state-kit/handbook/en/getting-started.html) and [New User Path](https://kenduest-brobridge.github.io/grafana-state-kit/handbook/en/role-new-user.html)
+- Operator workflow: [Operator Handbook](https://kenduest-brobridge.github.io/grafana-state-kit/handbook/en/index.html) and [SRE / Ops Path](https://kenduest-brobridge.github.io/grafana-state-kit/handbook/en/role-sre-ops.html)
+- Exact CLI syntax: [Command Reference](https://kenduest-brobridge.github.io/grafana-state-kit/commands/en/index.html) and `grafana-util --help`
+- [Troubleshooting](https://kenduest-brobridge.github.io/grafana-state-kit/handbook/en/troubleshooting.html)
 
 For in-repo doc maintenance:
 
@@ -201,9 +201,9 @@ For in-repo doc maintenance:
 
 By role:
 
-- [New user](https://kenduest-brobridge.github.io/grafana-util/handbook/en/role-new-user.html)
-- [SRE / operator](https://kenduest-brobridge.github.io/grafana-util/handbook/en/role-sre-ops.html)
-- [Automation / CI owner](https://kenduest-brobridge.github.io/grafana-util/handbook/en/role-automation-ci.html)
+- [New user](https://kenduest-brobridge.github.io/grafana-state-kit/handbook/en/role-new-user.html)
+- [SRE / operator](https://kenduest-brobridge.github.io/grafana-state-kit/handbook/en/role-sre-ops.html)
+- [Automation / CI owner](https://kenduest-brobridge.github.io/grafana-state-kit/handbook/en/role-automation-ci.html)
 - **Maintainer / developer**: [docs/DEVELOPER.md](./docs/DEVELOPER.md)
 
 ---

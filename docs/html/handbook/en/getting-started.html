@@ -967,7 +967,7 @@ curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main
 curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh -s -- --interactive</code></pre>
 <p>If you want one fixed release or one explicit install directory, the same script also supports:</p>
 <pre><code># Install one pinned release into one explicit binary directory.
-curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | VERSION=0.10.1 BIN_DIR=&quot;$HOME/.local/bin&quot; sh</code></pre>
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | VERSION=0.10.2 BIN_DIR=&quot;$HOME/.local/bin&quot; sh</code></pre>
 <p>The installer uses <code>BIN_DIR</code> when you set it. Otherwise it tries <code>/usr/local/bin</code> when that directory is writable, then falls back to <code>$HOME/.local/bin</code>.</p>
 <p>If the chosen install directory is not already on <code>PATH</code>, the installer prints the exact shell snippet to add it for <code>zsh</code> or <code>bash</code>. <code>INSTALL_COMPLETION=auto</code> detects <code>bash</code> or <code>zsh</code> from <code>SHELL</code>; use <code>INSTALL_COMPLETION=bash</code> or <code>INSTALL_COMPLETION=zsh</code> when you want to choose explicitly. In interactive mode, any value you already pass through <code>BIN_DIR</code>, <code>INSTALL_COMPLETION</code>, or <code>COMPLETION_DIR</code> is treated as already chosen and is not asked again. You can also inspect the contract first with:</p>
 <pre><code># Show install script options, BIN_DIR behavior, completion, and PATH setup notes.
@@ -976,7 +976,7 @@ sh ./scripts/install.sh --help</code></pre>
 <pre><code># Confirm the installed binary and version.
 grafana-util --version</code></pre>
 <p><strong>Expected Output:</strong></p>
-<pre><code>grafana-util 0.10.1</code></pre>
+<pre><code>grafana-util 0.10.2</code></pre>
 <p>This confirms that the binary is on your <code>PATH</code> and that you are running the version you expect.</p>
 <h2 id="step-2-connection-patterns-and-profile-files">Step 2: Connection Patterns And Profile Files</h2>
 <p>Profile workflows are repo-local. <code>grafana-util config profile</code> works against <code>grafana-util.yaml</code> in the current working directory by default, or against the file pointed to by <code>GRAFANA_UTIL_CONFIG</code>.</p>
