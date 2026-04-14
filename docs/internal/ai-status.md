@@ -10,6 +10,14 @@ Current AI-maintained status only.
 - Keep this file short and current. Additive historical detail belongs in `docs/internal/archive/`.
 - Older entries moved to [`ai-status-archive-2026-04-13.md`](docs/internal/archive/ai-status-archive-2026-04-13.md).
 - Older entries moved to [`ai-status-archive-2026-04-14.md`](docs/internal/archive/ai-status-archive-2026-04-14.md).
+- Older entries moved to [`ai-status-archive-2026-04-15.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-status-archive-2026-04-15.md).
+
+## 2026-04-15 - Improve Rust maintainability priorities
+- State: Done
+- Scope: Rust feature matrix policy, dashboard review source/model boundaries, dashboard orchestration/test splitting, output contract depth checks, and validation. Python implementation and README files are out of scope.
+- Baseline: Rust default/browser gates pass, but no-default feature behavior is not a declared release surface; several Rust modules and test files remain large; dashboard review source concepts are shared implicitly across summary/dependencies/policy/impact; output contract validation covers root fields and golden fixtures but not nested shape depth.
+- Current Update: Added a repo-owned Rust feature matrix check that documents default/browser as supported surfaces and keeps `--no-default-features` out of release claims; split dashboard inspect input resolution and topology rendering; moved the shared dashboard source resolver to a typed `review_source` model for export-tree, saved-artifact, and live review inputs; split datasource render/parser/payload tests; and extended output contract validation with nested `requiredPaths` and `pathTypes`.
+- Result: Focused Rust tests, feature-matrix checks, output contract checks, architecture guardrails, generated docs checks, and whitespace checks pass for the changed surfaces. README files were left untouched.
 
 ## 2026-04-15 - Consolidate Rust review workflow contracts
 - State: Done
@@ -45,10 +53,3 @@ Current AI-maintained status only.
 - Baseline: selecting a team member row in `access team browse` could show membership detail, but `e` only told users to select a team row and there was no direct way from the member row to remove that relationship or change team-admin state. Team browse also still owned local footer/control and dialog presentation code while user browse had moved to shared TUI shell helpers.
 - Current Update: member rows now keep user-owned fields read-only and direct account edits to `access user browse`; `r` and member-row `d` open a confirmation dialog before removing the selected team membership through the existing team modify flow; `a` grants or revokes team-admin state through the existing membership update path. Team-row `d` opens the whole-team delete confirmation dialog. Team browse footer controls now use the shared control grid/height helpers, and team edit/search/delete overlays use the shared dialog shell.
 - Result: team browse can manage team/member relationships without pretending to edit user profile fields, and the browser presentation is closer to the shared TUI treatment already used by user browse.
-
-## 2026-04-13 - Fix access user browse TUI layout
-- State: Done
-- Scope: access user browser detail navigation, shared TUI footer/dialog sizing/rendering, user browser footer control layout, and focused Rust regressions.
-- Baseline: `access user browse` facts navigation counted fewer user fact rows than the right pane rendered, so Down/End could not reach the final rows. The user browser footer also allocated four terminal rows while rendering three control rows plus a status line inside a bordered block, causing clipping and visual misalignment. The edit/search overlays each owned their own centering and frame style instead of using a common TUI dialog surface.
-- Current Update: corrected the user facts line count, added shared `tui_shell::footer_height`, `centered_fixed_rect`, `dialog_block`, and `render_dialog_shell` helpers, made footer controls clip instead of wrapping across rows, switched user browse footer controls to the shared grid alignment helper, and moved user edit/search overlays onto the shared dialog shell.
-- Result: the facts pane can select the final user fact row, the footer has enough height for its controls/status without rows overwriting each other, and user browse overlays now share the same centered dialog frame and background treatment.
