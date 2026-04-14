@@ -1,5 +1,5 @@
 # grafana-util
-### 針對 Grafana 提供強大的 SRE 支援需求，與維運審查、盤點 與 CICD 支援的一體式整合工具程式。 
+### 面向 SRE 與維運流程的 Grafana 盤點、審查、備份復原與 CI/CD 工具
 
 [![CI](https://img.shields.io/github/actions/workflow/status/kenduest-brobridge/grafana-util/ci.yml?branch=main)](https://github.com/kenduest-brobridge/grafana-util/actions)
 [![License](https://img.shields.io/github/license/kenduest-brobridge/grafana-util)](LICENSE)
@@ -9,7 +9,20 @@
 
 **線上盤點、匯出匯入、差異比對、變更預覽與安全套用，整合在同一套流程裡。**
 
-`grafana-util` 是給 Grafana 維運使用的 Rust CLI，包含 SRE 人員用來快速備份復原 Grafana 面板，與面板開發人員能夠匯出面板提供再行使用本機匯入開發等多重情境用途，包含快速盤點 Grafan 整個常見的 Dashboard、Data Source、User、Teams 項目的綜合支援管理支援。工具的設計不是把 API 包一層單純封裝，實際常用的內容查看、匯出匯入、差異比對、工作區預覽、安全套用異動、不同環境連線設定檔 (包含連線驗證密鑰) 整理成一套可重複執行的流程。要查狀態、備份、比對或套用變更時，不用在不同腳本和手動操作之間切來切去。
+`grafana-util` 是給 Grafana 維運、SRE 與 Dashboard 開發人員使用的 Rust CLI。它可以協助快速盤點常見的 Grafana 資源，例如 Dashboard、Data Source、User、Team，也能支援 Dashboard 備份復原、跨環境搬移、本機匯入開發與變更審查。
+
+這個工具不是單純把 API 包一層，而是把日常常用的狀態查看、匯出匯入、差異比對、工作區預覽、安全套用、不同環境的連線設定檔與認證密鑰處理，整理成一套可以重複執行的流程。要查狀態、備份、比對或套用變更時，不用在不同腳本和手動操作之間切來切去。
+
+開發者前言：
+
+這個工具來自我自己在 Grafana 專案裡反覆遇到的幾種情境：
+
+1. Dashboard 常常先在 Lab 或本機 Grafana 開發，完成後還需要匯出到其他環境重複使用。
+2. Dashboard 的修改方式不一定只在 Grafana Web UI 裡完成，有時也會透過 AI Agent 直接修改本地 Grafana JSON。
+3. 客戶環境裡有許多 Dashboard 需要匯出、調整後再匯入；比較安全的做法，是先匯入到本機開發環境確認。
+4. 維運時常需要盤點 Dashboard 使用了哪些 Data Source，也需要了解目前有哪些 user、team、帳號群組與權限設定。
+
+Grafana 本身對 Dashboard Developer、SRE 或內部使用者來說，還沒有把這些流程整理成一個方便操作的工具。`grafana-util` 就是為了補上這段日常維運與開發流程而做的。
 
 常見用途：
 
@@ -210,7 +223,7 @@ grafana-util config profile --help
 
 ## 專案狀態
 
-此專案仍在積極開發中。CLI 路徑、help 輸出、範例與文件結構可能會有異動改變整。指令介面請以 command reference 和 `--help` 輸出為準。
+此專案仍在積極開發中。CLI 路徑、help 輸出、範例與文件結構可能會有異動。指令介面請以 command reference 和 `--help` 輸出為準。
 
 ---
 

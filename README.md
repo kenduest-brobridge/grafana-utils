@@ -1,5 +1,5 @@
 # grafana-util
-### Review Grafana changes before you apply them
+### An SRE-focused Grafana operations toolkit for inventory, review, recovery, and CI/CD workflows
 
 [![CI](https://img.shields.io/github/actions/workflow/status/kenduest-brobridge/grafana-util/ci.yml?branch=main)](https://github.com/kenduest-brobridge/grafana-util/actions)
 [![License](https://img.shields.io/github/license/kenduest-brobridge/grafana-util)](LICENSE)
@@ -9,7 +9,18 @@ English | [繁體中文](./README.zh-TW.md)
 
 **Live inventory, export/import, diff, change preview, and safe apply in one workflow.**
 
-`grafana-util` is a Rust CLI for Grafana operators. Instead of stitching together scripts and manual API calls, it gives you a repeatable workflow for inspecting live state, comparing it with local config, previewing changes, and applying reviewed updates.
+`grafana-util` is a Rust CLI for Grafana operators, SREs, and dashboard teams. It helps you inventory common Grafana resources, back up and restore dashboards, move dashboards across environments, compare local changes with live state, and run safer review steps before CI/CD or manual updates. It is not just a thin API wrapper; it pulls day-to-day operational work into one repeatable command-line workflow.
+
+Developer note:
+
+This tool came from recurring Grafana work that did not have one convenient support path:
+
+1. Dashboard development often starts in a lab or local Grafana instance, then the same dashboard needs to be exported and reused elsewhere.
+2. Dashboard changes may happen through the Grafana web UI, or through an AI agent editing local Grafana JSON files directly.
+3. Customer dashboards often need to be exported, adjusted, and imported again, but the safer path is to bring them into a local developer Grafana first.
+4. Operators often need to inventory which dashboards use which data sources, which users and teams exist, and how accounts, groups, and permissions are shaped.
+
+Grafana itself does not make those workflows especially convenient for dashboard developers, SREs, or internal users. `grafana-util` exists to make those operational loops easier to review and repeat.
 
 Common uses:
 
@@ -28,12 +39,12 @@ Supported Grafana surfaces:
 
 | Area | What is covered | Good first command |
 | :--- | :--- | :--- |
-| Dashboards | Browse, list, export/import, diff, review, patch, publish, history, dependency analysis, policy checks, screenshots, and raw-to-prompt conversion. | `grafana-util dashboard browse` |
+| Dashboards | Browse, list, export/import, diff, review, patch, publish, history, dependency analysis, policy checks, screenshots, and dashboard conversion for reuse across environments. | `grafana-util dashboard browse` |
 | Datasources | Inventory, export/import, diff, create/modify/delete, secret-aware recovery, and type discovery. | `grafana-util datasource list` |
 | Alerting | Rules, contact points, mute timings, templates, notification routes, review plans, apply flows, and route previews. | `grafana-util alert plan` |
 | Access | Orgs, users, teams, service accounts, service-account tokens, export/import, diff, and delete review. | `grafana-util access user list` |
 | Status and workspace | Live readiness, resource inventory, local workspace scan/test/preview/package/apply, and CI-friendly checks. | `grafana-util status live` |
-| Profiles and secrets | Repo-local connection profiles with direct flags, environment-backed auth, prompt input, and supported secret storage. | `grafana-util config profile add` |
+| Profiles and secrets | Repo-local connection profiles with direct flags, environment-backed auth, prompted input, and multiple credential storage options. | `grafana-util config profile add` |
 
 ---
 
