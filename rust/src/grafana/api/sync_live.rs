@@ -7,6 +7,8 @@ use crate::sync::{append_unique_strings, require_json_object};
 
 #[path = "sync_live_apply.rs"]
 mod sync_live_apply;
+#[path = "sync_live_apply_result.rs"]
+mod sync_live_apply_result;
 #[path = "sync_live_read.rs"]
 mod sync_live_read;
 

@@ -9,6 +9,7 @@ use crate::alert::{
 use crate::common::{message, Result};
 use crate::sync::live::SyncApplyOperation;
 
+use super::sync_live_apply_result::{append_live_apply_result, finish_live_apply_response};
 use super::SyncLiveClient;
 
 impl<'a> SyncLiveClient<'a> {
@@ -204,8 +205,6 @@ impl<'a> SyncLiveClient<'a> {
         let mut results = Vec::new();
         for operation in operations {
             let kind = operation.kind.as_str();
-            let identity = operation.identity.as_str();
-            let action = operation.action.as_str();
             let response = match kind {
                 "folder" => {
                     apply_folder_operation_with_client(self, operation, allow_folder_delete)?
@@ -229,18 +228,9 @@ impl<'a> SyncLiveClient<'a> {
                 }
                 _ => return Err(message(format!("Unsupported sync resource kind {kind}."))),
             };
-            results.push(serde_json::json!({
-                "kind": kind,
-                "identity": identity,
-                "action": action,
-                "response": response,
-            }));
+            append_live_apply_result(&mut results, operation, response);
         }
-        Ok(serde_json::json!({
-            "mode": "live-apply",
-            "appliedCount": results.len(),
-            "results": results,
-        }))
+        Ok(finish_live_apply_response(results))
     }
 }
 
@@ -509,8 +499,6 @@ where
     let mut results = Vec::new();
     for operation in operations {
         let kind = operation.kind.as_str();
-        let identity = operation.identity.as_str();
-        let action = operation.action.as_str();
         let response = match kind {
             "folder" => apply_folder_operation_with_request(
                 &mut request_json,
@@ -536,18 +524,9 @@ where
             }
             _ => return Err(message(format!("Unsupported sync resource kind {kind}."))),
         };
-        results.push(serde_json::json!({
-            "kind": kind,
-            "identity": identity,
-            "action": action,
-            "response": response,
-        }));
+        append_live_apply_result(&mut results, operation, response);
     }
-    Ok(serde_json::json!({
-        "mode": "live-apply",
-        "appliedCount": results.len(),
-        "results": results,
-    }))
+    Ok(finish_live_apply_response(results))
 }
 
 #[cfg(test)]
