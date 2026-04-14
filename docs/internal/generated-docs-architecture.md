@@ -2,7 +2,7 @@
 
 This document explains how the repo's generated documentation works so a future maintainer can safely change it without reverse-engineering the generators first.
 
-For task-by-task maintenance steps, read [`generated-docs-playbook.md`](docs/internal/generated-docs-playbook.md).
+For task-by-task maintenance steps, read [`generated-docs-playbook.md`](generated-docs-playbook.md).
 
 ## Why This Exists
 

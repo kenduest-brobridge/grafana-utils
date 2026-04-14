@@ -193,7 +193,7 @@ The invariant is the same in both modes:
 - define the task clearly first
 - inspect the actual diff and validation results before accepting the change
 
-Use [`task-brief-template.md`](docs/internal/task-brief-template.md)
+Use [`task-brief-template.md`](task-brief-template.md)
 when you want a repo-shaped starting point for that brief.
 If the work is tracked on GitHub, reuse the same fields through
 `.github/ISSUE_TEMPLATE/ai-task-brief.md` or `.github/PULL_REQUEST_TEMPLATE.md`.

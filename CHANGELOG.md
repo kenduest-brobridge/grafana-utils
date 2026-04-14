@@ -14,6 +14,38 @@ Format rule going forward:
 - keep older tagged releases below
 - use commit/tag history as the source of truth
 
+## [0.10.1] - 2026-04-14
+
+### Highlights
+
+- Shell completion is now a first-class CLI workflow, with generated command docs and installer support so operators can enable tab completion without hand-maintaining shell snippets.
+- Access membership removal and review flows are easier to operate from the terminal, with clearer interactive prompts and safer review context before deleting user, team, or service-account relationships.
+- The Rust source tree was reorganized around command/subcommand boundaries, with shared infrastructure moved into clearer common and Grafana support modules so future command work is easier to review and maintain.
+
+### Added
+
+- `grafana-util completion` for generating shell completion output.
+- Interactive installer guidance for enabling shell completion during local installation.
+- Python datasource browse parity coverage so the secondary Python implementation stays aligned with the unified datasource browse surface.
+
+### Changed
+
+- README and handbook wording now describe the Grafana review workflow in a more concrete operator-facing style, including refreshed Traditional Chinese copy.
+- Generated command reference, manpage, and HTML docs were refreshed for the completion command, datasource browse docs, and navigation improvements.
+- Sync input, bundle preflight, snapshot review, access status, dashboard inspect, CLI help, and output-contract internals were split into smaller Rust modules.
+- Maintainer docs and architecture guardrails now reflect the command/subcommand source layout and the shared common infrastructure boundaries.
+
+### Fixed
+
+- Grafana URLs containing credentials now warn operators and ignore the embedded username/password instead of silently using them.
+- Legacy manpage and generated HTML links were repaired so older command-reference redirects keep working after docs navigation changes.
+- Workspace/docs hygiene checks were tightened to avoid stale local paths and drift in generated documentation.
+
+### Migration Notes
+
+- No public command roots were removed in this release.
+- If you build scripts around generated docs, refresh any cached command-reference pages so the new `completion` page and updated navigation are available.
+
 ## [0.10.0] - 2026-04-12
 
 ### Highlights

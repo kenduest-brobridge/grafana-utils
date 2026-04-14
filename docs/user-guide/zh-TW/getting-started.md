@@ -91,7 +91,7 @@ curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main
 
 ```bash
 # 把固定版本安裝到指定的 binary 目錄。
-curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | VERSION=0.10.0 BIN_DIR="$HOME/.local/bin" sh
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | VERSION=0.10.1 BIN_DIR="$HOME/.local/bin" sh
 ```
 
 安裝腳本會優先使用您指定的 `BIN_DIR`。若沒有設定，會先嘗試可寫入的 `/usr/local/bin`，再退回 `$HOME/.local/bin`。
@@ -110,7 +110,7 @@ grafana-util --version
 ```
 **預期輸出：**
 ```text
-grafana-util 0.10.0
+grafana-util 0.10.1
 ```
 這代表執行檔已在 `PATH` 上，而且版本與目前檢出的發行版一致。
 

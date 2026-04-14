@@ -967,7 +967,7 @@ curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main
 curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh -s -- --interactive</code></pre>
 <p>若您想固定版本，或想指定安裝到哪個 binary 目錄，也可以直接這樣裝：</p>
 <pre><code># 把固定版本安裝到指定的 binary 目錄。
-curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | VERSION=0.10.0 BIN_DIR=&quot;$HOME/.local/bin&quot; sh</code></pre>
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | VERSION=0.10.1 BIN_DIR=&quot;$HOME/.local/bin&quot; sh</code></pre>
 <p>安裝腳本會優先使用您指定的 <code>BIN_DIR</code>。若沒有設定，會先嘗試可寫入的 <code>/usr/local/bin</code>，再退回 <code>$HOME/.local/bin</code>。</p>
 <p>如果最後選到的安裝目錄尚未加入 <code>PATH</code>，安裝腳本會直接印出對應 <code>zsh</code> 或 <code>bash</code> 可貼上的設定方式。<code>INSTALL_COMPLETION=auto</code> 會從 <code>SHELL</code> 偵測 <code>bash</code> 或 <code>zsh</code>；若想明確指定，請用 <code>INSTALL_COMPLETION=bash</code> 或 <code>INSTALL_COMPLETION=zsh</code>。互動模式下，若您已經透過 <code>BIN_DIR</code>、<code>INSTALL_COMPLETION</code> 或 <code>COMPLETION_DIR</code> 傳入值，installer 會視為已選好，不再重複詢問。若想先看完整安裝說明，也可以先執行：</p>
 <pre><code># 查看安裝腳本支援的參數、BIN_DIR 行為、completion 與 PATH 設定提醒。
@@ -976,7 +976,7 @@ sh ./scripts/install.sh --help</code></pre>
 <pre><code># 確認目前 shell 找得到 binary，且版本正確。
 grafana-util --version</code></pre>
 <p><strong>預期輸出：</strong></p>
-<pre><code>grafana-util 0.10.0</code></pre>
+<pre><code>grafana-util 0.10.1</code></pre>
 <p>這代表執行檔已在 <code>PATH</code> 上，而且版本與目前檢出的發行版一致。</p>
 <h2 id="步驟-2連線方式與-profile-設定檔">步驟 2：連線方式與 Profile 設定檔</h2>
 <p>Profile 這套流程是以「專案本地設定」為中心。<code>grafana-util config profile</code> 預設會讀寫目前工作目錄中的 <code>grafana-util.yaml</code>，若有設定 <code>GRAFANA_UTIL_CONFIG</code>，則會優先讀取該路徑。</p>

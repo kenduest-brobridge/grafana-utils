@@ -2,7 +2,7 @@
 
 Use this playbook when you need to change the generated docs system without re-learning the whole design from scratch.
 
-For the architecture and rationale, read [`generated-docs-architecture.md`](docs/internal/generated-docs-architecture.md) first. This file is the practical companion: what to edit, in what order, and how to validate it.
+For the architecture and rationale, read [`generated-docs-architecture.md`](generated-docs-architecture.md) first. This file is the practical companion: what to edit, in what order, and how to validate it.
 
 ## Fast Map
 
@@ -92,14 +92,14 @@ Steps:
 
 When it also needs manpage coverage:
 
-- update the matching `NamespaceSpec` in [generate_manpages.py](scripts/generate_manpages.py)
+- update the matching `NamespaceSpec` in [generate_manpages.py](../../scripts/generate_manpages.py)
 - add the new Markdown filename to `sub_docs`
 - update `scripts/contracts/command-surface.json` so docs examples and legacy
   replacements are checked against the new public path
 
 If the new command should link back to a handbook chapter in HTML:
 
-- update `HANDBOOK_CONTEXT_BY_COMMAND` in [generate_command_html.py](scripts/generate_command_html.py)
+- update `HANDBOOK_CONTEXT_BY_COMMAND` in [generate_command_html.py](../../scripts/generate_command_html.py)
 
 ## Task: Add A New Handbook Chapter
 
@@ -108,7 +108,7 @@ Steps:
 1. add the English chapter under `docs/user-guide/en/`
 2. add the Traditional Chinese chapter under `docs/user-guide/zh-TW/`
 3. use the same filename in both locales
-4. add the filename to `HANDBOOK_ORDER` in [docgen_handbook.py](scripts/docgen_handbook.py)
+4. add the filename to `HANDBOOK_ORDER` in [docgen_handbook.py](../../scripts/docgen_handbook.py)
 5. update handbook index pages if the new chapter should be surfaced explicitly:
    - `docs/user-guide/en/index.md`
    - `docs/user-guide/zh-TW/index.md`
@@ -117,7 +117,7 @@ Steps:
 
 If command pages should link back to this chapter:
 
-- update `HANDBOOK_CONTEXT_BY_COMMAND` in [generate_command_html.py](scripts/generate_command_html.py)
+- update `HANDBOOK_CONTEXT_BY_COMMAND` in [generate_command_html.py](../../scripts/generate_command_html.py)
 
 ## Task: Add A New Namespace Manpage
 
@@ -126,7 +126,7 @@ This is for a new top-level family such as `grafana-util foo`, not every single 
 Steps:
 
 1. confirm the namespace has an English root command doc under `docs/commands/en/`
-2. add a `NamespaceSpec` entry to `NAMESPACE_SPECS` in [generate_manpages.py](scripts/generate_manpages.py)
+2. add a `NamespaceSpec` entry to `NAMESPACE_SPECS` in [generate_manpages.py](../../scripts/generate_manpages.py)
 3. set:
    - `stem`
    - `cli_path`
@@ -163,7 +163,7 @@ Checklist:
 
 ## Task: Change HTML Layout Or Theme
 
-Most layout and visual changes belong in [generate_command_html.py](scripts/generate_command_html.py) plus the shared templates under [scripts/templates/](scripts/templates).
+Most layout and visual changes belong in [generate_command_html.py](../../scripts/generate_command_html.py) plus the shared templates under [scripts/templates/](../../scripts/templates).
 
 Common places:
 
@@ -238,7 +238,7 @@ Examples:
 
 Where to change:
 
-- [docgen_command_docs.py](scripts/docgen_command_docs.py)
+- [docgen_command_docs.py](../../scripts/docgen_command_docs.py)
 
 Process:
 
@@ -252,7 +252,7 @@ Do not patch one generator around the parser unless the behavior is truly output
 
 ## Task: Add A New Command Locale
 
-Current supported HTML command locales are explicit in [generate_command_html.py](scripts/generate_command_html.py) via `COMMAND_DOC_LOCALES`.
+Current supported HTML command locales are explicit in [generate_command_html.py](../../scripts/generate_command_html.py) via `COMMAND_DOC_LOCALES`.
 
 Steps:
 
@@ -262,7 +262,7 @@ Steps:
 4. regenerate HTML
 5. verify the locale command index and page switching
 
-Handbook locales are separate and controlled by `HANDBOOK_LOCALES` and `LOCALE_LABELS` in [docgen_handbook.py](scripts/docgen_handbook.py).
+Handbook locales are separate and controlled by `HANDBOOK_LOCALES` and `LOCALE_LABELS` in [docgen_handbook.py](../../scripts/docgen_handbook.py).
 
 Do not assume adding one locale automatically wires the other layer.
 
@@ -276,9 +276,9 @@ Examples:
 
 Likely files:
 
-- [docgen_common.py](scripts/docgen_common.py)
-- [generate_command_html.py](scripts/generate_command_html.py)
-- [generate_manpages.py](scripts/generate_manpages.py)
+- [docgen_common.py](../../scripts/docgen_common.py)
+- [generate_command_html.py](../../scripts/generate_command_html.py)
+- [generate_manpages.py](../../scripts/generate_manpages.py)
 - `python/tests/test_python_generate_*.py`
 
 Checklist:
@@ -295,7 +295,7 @@ Example:
 
 ## Task: Update GitHub Pages Behavior
 
-Pages deployment is owned by [.github/workflows/docs-pages.yml](.github/workflows/docs-pages.yml).
+Pages deployment is owned by [.github/workflows/docs-pages.yml](../../.github/workflows/docs-pages.yml).
 
 Safe changes:
 
@@ -383,7 +383,7 @@ Fix:
 
 When the generated-docs system changes materially, update:
 
-- [`docs/internal/generated-docs-architecture.md`](docs/internal/generated-docs-architecture.md)
+- [`generated-docs-architecture.md`](generated-docs-architecture.md)
 - this playbook
 - `docs/DEVELOPER.md` if the maintainer entrypoint changed
 - the determinism tests if the generated file set changed
