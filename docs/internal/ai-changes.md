@@ -12,6 +12,14 @@ Current AI change log only.
 - Older entries moved to [`ai-changes-archive-2026-04-14.md`](docs/internal/archive/ai-changes-archive-2026-04-14.md).
 - Older entries moved to [`ai-changes-archive-2026-04-15.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-changes-archive-2026-04-15.md).
 
+## 2026-04-15 - Split access runtime user tests
+- Summary: split user-focused runtime coverage out of `access_runtime_org_rust_tests.rs` into `access_runtime_user_rust_tests.rs`. The new module owns user diff routing, user diff count behavior, global user export/import/diff coverage, org user export/diff-with-teams coverage, and local user list input-dir routing.
+- Tests: preserved existing access runtime assertions and moved tests without changing behavior.
+- Test Run: `cargo fmt --manifest-path rust/Cargo.toml --all --check`; `cargo test --manifest-path rust/Cargo.toml --quiet access`; `cargo test --manifest-path rust/Cargo.toml --quiet`; `cargo clippy --manifest-path rust/Cargo.toml --all-targets -- -D warnings`; `make quality-architecture`; `git diff --check`.
+- Impact: `rust/src/commands/access/access_runtime_org_rust_tests.rs`, `rust/src/commands/access/access_runtime_user_rust_tests.rs`, and AI trace docs. README files and Python implementation were intentionally left unchanged.
+- Rollback/Risk: low test-only split. Rollback would move the user runtime tests back into the org runtime test module.
+- Follow-up: continue remaining architecture-warning hotspots: dashboard browse support, dashboard dependency contract, datasource staged reading, datasource CLI mutation/tail tests, snapshot tests, sync live apply, and help-test semantic assertions.
+
 ## 2026-04-15 - Continue Rust TODO worker pass
 - Summary: continued the Rust-first maintainability TODO pass with five disjoint worker slices. Datasource tail fixture builders moved into a shared test fixture module, access team command tests moved out of the main access test hub, dashboard interactive import workflow tests moved out of the browse workflow hub, datasource staged project-status reading moved behind a thin wrapper, and sync live apply result-envelope assembly moved into a focused helper module.
 - Tests: preserved datasource tail/diff behavior, access team command behavior, dashboard browse interactive import behavior, datasource staged project-status output behavior, and sync live-apply response envelope behavior.
@@ -83,11 +91,3 @@ Current AI change log only.
 - Impact: `rust/src/commands/access/user_browse_dialog.rs`, `rust/src/commands/access/user_browse_input.rs`, `rust/src/commands/access/user_browse_render.rs`, `rust/src/common/tui/shell.rs`, and AI trace docs.
 - Rollback/Risk: low TUI presentation/input-boundary fix. Rollback would restore the old clipped footer height, leave the final user facts unreachable from the facts pane, and move user edit/search overlays back to local centering/frame code.
 - Follow-up: migrate team, datasource, and dashboard browse dialogs to `tui_shell::render_dialog_shell` in later focused passes to remove the remaining local centered-dialog implementations.
-
-## 2026-04-13 - Improve CLI help command emphasis
-- Summary: replaced the root help `First 3 commands:` footer with the clearer `Suggested flow:` label and changed the suggested sequence to version check, read-only status check, and profile setup. Moved terminal help palette ownership into `help_styles`, set Clap literal styling and custom command rendering to the same bright-white command treatment, and routed grouped help `Usage:` command syntax plus full command example lines through one CLI-command detector instead of per-call-site `starts_with("grafana-util ")` checks.
-- Tests: updated Rust CLI help regressions for the new footer copy, centralized terminal help palette, and Clap literal command styling.
-- Test Run: `cargo fmt --manifest-path rust/Cargo.toml --all --check`; `cargo test --manifest-path rust/Cargo.toml --quiet cli_help`; `cargo run --manifest-path rust/Cargo.toml --quiet --bin grafana-util -- --help`; `cargo run --manifest-path rust/Cargo.toml --quiet --bin grafana-util -- --color always --help`; `cargo run --manifest-path rust/Cargo.toml --quiet --bin grafana-util -- --color always access user --help`; `cargo test --manifest-path rust/Cargo.toml --quiet`.
-- Impact: `rust/src/common/help/styles.rs`, `rust/src/cli/help/grouped_specs.rs`, `rust/src/cli/help_examples.rs`, `rust/src/cli/tests/help_rust_tests.rs`, and AI trace docs.
-- Rollback/Risk: low CLI presentation change. Rollback restores the old blue Clap literal style, the older custom palette location, the `First 3 commands:` wording, and the previous root footer sequence. Output behavior and command parsing are unchanged.
-- Follow-up: none.
