@@ -55,3 +55,11 @@
 - Impact: `rust/src/commands/access/user_browse_input.rs`, `rust/src/commands/access/user_browse_state.rs`, `rust/src/commands/access/user_browse_render.rs`, `rust/src/commands/access/user_browse_dialog.rs`, team browse dialog/render follow-up files, and AI trace docs.
 - Rollback/Risk: medium TUI mutation change. Rollback would keep membership removal team-first only and restore right-pane delete previews. The main risk is Grafana team-list responses that omit team ids; those rows remain visible but removal errors with a missing-id message instead of guessing by name.
 - Follow-up: consider resolving missing team ids by exact team-name lookup only if real Grafana versions produce name-only user-team rows.
+
+## 2026-04-13 - Reorganize Rust command modules
+- Summary: reorganized Rust source layout around command families and shared layers. Command owners now live under `rust/src/commands/`, the unified CLI lives under `rust/src/cli/`, command-agnostic helpers live under `rust/src/common/`, and Grafana transport/API integration lives under `rust/src/grafana/`. `rust/src/lib.rs` preserves the existing crate module surface with explicit `#[path]` wiring.
+- Tests: no behavior changes; moved module paths, include paths, and integration-test source references.
+- Test Run: `cargo test --manifest-path rust/Cargo.toml --quiet --no-run`; `cargo test --manifest-path rust/Cargo.toml --quiet`; `cargo fmt --manifest-path rust/Cargo.toml --all`; `cargo fmt --manifest-path rust/Cargo.toml --all --check`.
+- Impact: `rust/src/lib.rs`, `rust/src/commands/`, `rust/src/cli/`, `rust/src/common/`, `rust/src/grafana/`, `rust/tests/project_status_tui_rust_tests.rs`, `docs/overview-rust.md`, `docs/DEVELOPER.md`, and AI trace docs.
+- Rollback/Risk: behavior-preserving filesystem/module refactor; rollback would move files back to the prior root-prefixed layout and remove the `#[path]` compatibility wiring. Main risk is stale maintainer references or external tooling that assumes old source paths.
+- Follow-up: update any external scripts or editor bookmarks that reference the old root-level Rust paths.

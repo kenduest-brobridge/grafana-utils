@@ -48,3 +48,10 @@
 - Baseline: Rust default/browser gates pass, but no-default feature behavior is not a declared release surface; several Rust modules and test files remain large; dashboard review source concepts are shared implicitly across summary/dependencies/policy/impact; output contract validation covers root fields and golden fixtures but not nested shape depth.
 - Current Update: Added a repo-owned Rust feature matrix check that documents default/browser as supported surfaces and keeps `--no-default-features` out of release claims; split dashboard inspect input resolution and topology rendering; moved the shared dashboard source resolver to a typed `review_source` model for export-tree, saved-artifact, and live review inputs; split datasource render/parser/payload tests; and extended output contract validation with nested `requiredPaths` and `pathTypes`.
 - Result: Focused Rust tests, feature-matrix checks, output contract checks, architecture guardrails, generated docs checks, and whitespace checks pass for the changed surfaces. README files were left untouched.
+
+## 2026-04-15 - Start Rust TODO maintainability pass
+- State: Done
+- Scope: conservative-boundary TODO execution across Rust tests, access TUI input, and status producer model. Python implementation and README files are out of scope.
+- Baseline: `todo.md` records the Rust-first maintainability backlog and requires responsibility-based splits instead of line-count-only splits.
+- Current Update: Split datasource tail diff parser/live comparison tests into `tail_diff.rs`, moved access team browse action handling into `team_browse_actions.rs`, and added a `ProjectDomainStatusReading` producer shape used by live status fallback and aggregation.
+- Result: Focused Rust tests, full Rust tests, clippy, architecture guardrails, AI workflow checks, and whitespace checks pass. README files and Python implementation were left untouched.

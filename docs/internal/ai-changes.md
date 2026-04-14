@@ -12,6 +12,14 @@ Current AI change log only.
 - Older entries moved to [`ai-changes-archive-2026-04-14.md`](docs/internal/archive/ai-changes-archive-2026-04-14.md).
 - Older entries moved to [`ai-changes-archive-2026-04-15.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-changes-archive-2026-04-15.md).
 
+## 2026-04-15 - Reduce dashboard help assertions
+- Summary: replaced repeated direct `help.contains()` assertions in dashboard inspect/help regressions with a shared `assert_help_includes` helper for grouped semantic help checks. The expected dashboard help fragments are unchanged.
+- Tests: preserved dashboard summary, validate-export, policy, dependencies, impact, variables, and full-help coverage while reducing the direct assertion pattern that architecture guardrails flag.
+- Test Run: `cargo fmt --manifest-path rust/Cargo.toml --all --check`; `cargo test --manifest-path rust/Cargo.toml --quiet dashboard_cli_inspect_help`; `cargo test --manifest-path rust/Cargo.toml --quiet`; `cargo clippy --manifest-path rust/Cargo.toml --all-targets -- -D warnings`; `make quality-architecture`; `git diff --check`.
+- Impact: `rust/src/commands/dashboard/dashboard_cli_inspect_help_rust_tests.rs` and AI trace docs. README files and Python implementation were intentionally left unchanged.
+- Rollback/Risk: low test-only refactor. Rollback would restore the prior direct `help.contains()` assertions.
+- Follow-up: apply the same semantic-help assertion cleanup to `sync/cli_help_rust_tests.rs`.
+
 ## 2026-04-15 - Split datasource supported catalog tests
 - Summary: split supported datasource catalog output tests out of `cli_mutation.rs` into `cli_mutation_supported_catalog.rs`. The parent module remains focused on command help, parser compatibility, and add-payload behavior.
 - Tests: preserved existing supported catalog assertions for JSON fixture projection, profile metadata, family defaults, text, table, csv, and yaml output.
@@ -83,11 +91,3 @@ Current AI change log only.
 - Impact: `README.md`, `README.zh-TW.md`, `docs/internal/project-surface-boundaries.md`, `docs/user-guide/en/architecture.md`, generated `docs/html/handbook/en/architecture.html`, `docs/internal/README.md`, `docs/internal/maintainer-quickstart.md`, `scripts/check_ai_workflow.py`, `scripts/contracts/output-contracts.json`, `scripts/contracts/output-fixtures/`, `scripts/check_output_contracts.py`, `scripts/output_contracts.py`, `python/tests/test_python_output_contracts.py`, `rust/src/commands/access/user_browse_input.rs`, `rust/src/commands/access/user_browse_load.rs`, `rust/src/reference_graph.rs`, `rust/src/commands/dashboard/topology_build.rs`, `rust/src/lib.rs`, and AI trace docs.
 - Rollback/Risk: low to medium. Runtime JSON kind strings and public CLI paths are unchanged; rollback removes the docs clarification, contract gate, README/naming guardrail, access loading split, and dashboard impact graph traversal. The main risk is internal traversal behavior drift, covered by dashboard impact and full Rust tests.
 - Follow-up: expand output contracts beyond static golden samples when generated fixture refresh tooling exists, and reuse the reference graph in status/workspace preview once those surfaces have stable identity inputs.
-
-## 2026-04-13 - Reorganize Rust command modules
-- Summary: reorganized Rust source layout around command families and shared layers. Command owners now live under `rust/src/commands/`, the unified CLI lives under `rust/src/cli/`, command-agnostic helpers live under `rust/src/common/`, and Grafana transport/API integration lives under `rust/src/grafana/`. `rust/src/lib.rs` preserves the existing crate module surface with explicit `#[path]` wiring.
-- Tests: no behavior changes; moved module paths, include paths, and integration-test source references.
-- Test Run: `cargo test --manifest-path rust/Cargo.toml --quiet --no-run`; `cargo test --manifest-path rust/Cargo.toml --quiet`; `cargo fmt --manifest-path rust/Cargo.toml --all`; `cargo fmt --manifest-path rust/Cargo.toml --all --check`.
-- Impact: `rust/src/lib.rs`, `rust/src/commands/`, `rust/src/cli/`, `rust/src/common/`, `rust/src/grafana/`, `rust/tests/project_status_tui_rust_tests.rs`, `docs/overview-rust.md`, `docs/DEVELOPER.md`, and AI trace docs.
-- Rollback/Risk: behavior-preserving filesystem/module refactor; rollback would move files back to the prior root-prefixed layout and remove the `#[path]` compatibility wiring. Main risk is stale maintainer references or external tooling that assumes old source paths.
-- Follow-up: update any external scripts or editor bookmarks that reference the old root-level Rust paths.
