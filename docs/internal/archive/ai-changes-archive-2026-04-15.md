@@ -31,3 +31,11 @@
 - Impact: `rust/src/common/help/styles.rs`, `rust/src/cli/help/grouped_specs.rs`, `rust/src/cli/help_examples.rs`, `rust/src/cli/tests/help_rust_tests.rs`, and AI trace docs.
 - Rollback/Risk: low CLI presentation change. Rollback restores the old blue Clap literal style, the older custom palette location, the `First 3 commands:` wording, and the previous root footer sequence. Output behavior and command parsing are unchanged.
 - Follow-up: none.
+
+## 2026-04-13 - Fix access user browse TUI layout
+- Summary: fixed `access user browse` right-pane navigation by matching the input-layer facts line count to the rendered user facts list. Added shared `tui_shell::footer_height` sizing for bordered footer blocks, stopped footer controls from wrapping into neighboring rows, and changed user browse footer controls to use the shared control grid so key labels and descriptions align by column. Added shared fixed-height centered dialog helpers in `tui_shell` and moved user edit/search overlays onto that shell so overlay placement and frame style are no longer owned locally by the user browser.
+- Tests: added focused regressions for user fact-row navigation, footer height calculation, and fixed-height centered dialog placement.
+- Test Run: `cargo fmt --manifest-path rust/Cargo.toml --all --check`; `cargo test --manifest-path rust/Cargo.toml --quiet user_detail_navigation_reaches_all_fact_rows`; `cargo test --manifest-path rust/Cargo.toml --quiet footer_height_accounts_for_status_line_and_borders`; `cargo test --manifest-path rust/Cargo.toml --quiet centered_fixed_rect_places_dialog_in_middle`; `cargo test --manifest-path rust/Cargo.toml --quiet`; `git diff --check`.
+- Impact: `rust/src/commands/access/user_browse_dialog.rs`, `rust/src/commands/access/user_browse_input.rs`, `rust/src/commands/access/user_browse_render.rs`, `rust/src/common/tui/shell.rs`, and AI trace docs.
+- Rollback/Risk: low TUI presentation/input-boundary fix. Rollback would restore the old clipped footer height, leave the final user facts unreachable from the facts pane, and move user edit/search overlays back to local centering/frame code.
+- Follow-up: migrate team, datasource, and dashboard browse dialogs to `tui_shell::render_dialog_shell` in later focused passes to remove the remaining local centered-dialog implementations.

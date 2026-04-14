@@ -12,6 +12,14 @@ Current AI change log only.
 - Older entries moved to [`ai-changes-archive-2026-04-14.md`](docs/internal/archive/ai-changes-archive-2026-04-14.md).
 - Older entries moved to [`ai-changes-archive-2026-04-15.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-changes-archive-2026-04-15.md).
 
+## 2026-04-15 - Split snapshot review tests
+- Summary: split snapshot staged-scope resolver tests and snapshot review wrapper/warning tests out of `snapshot/tests.rs` into focused sibling modules. The parent test module keeps shared fixture builders and broader snapshot export/review coverage.
+- Tests: preserved existing snapshot assertions while moving staged export scope resolver coverage and review warning/wrapper coverage to dedicated modules.
+- Test Run: `cargo fmt --manifest-path rust/Cargo.toml --all --check`; `cargo test --manifest-path rust/Cargo.toml --quiet snapshot`; `cargo test --manifest-path rust/Cargo.toml --quiet`; `cargo clippy --manifest-path rust/Cargo.toml --all-targets -- -D warnings`; `make quality-architecture`; `git diff --check`.
+- Impact: `rust/src/commands/snapshot/tests.rs`, `rust/src/commands/snapshot/tests_staged_scopes.rs`, `rust/src/commands/snapshot/tests_review_warnings.rs`, and AI trace docs. README files and Python implementation were intentionally left unchanged.
+- Rollback/Risk: low test-only split. Rollback would move the staged-scope and review warning tests back into the parent snapshot test module.
+- Follow-up: continue remaining architecture-warning hotspots: dashboard browse support, dashboard dependency contract, datasource staged reading, datasource CLI mutation/tail tests, sync live apply, and help-test semantic assertions.
+
 ## 2026-04-15 - Split access runtime user tests
 - Summary: split user-focused runtime coverage out of `access_runtime_org_rust_tests.rs` into `access_runtime_user_rust_tests.rs`. The new module owns user diff routing, user diff count behavior, global user export/import/diff coverage, org user export/diff-with-teams coverage, and local user list input-dir routing.
 - Tests: preserved existing access runtime assertions and moved tests without changing behavior.
@@ -83,11 +91,3 @@ Current AI change log only.
 - Impact: `rust/src/commands/access/team_browse_input.rs`, `rust/src/commands/access/team_browse_render.rs`, `rust/src/commands/access/team_browse_dialog.rs`, `rust/src/commands/access/team_browse_state.rs`, and AI trace docs.
 - Rollback/Risk: medium TUI mutation change. Rollback would remove direct member-row relationship operations and return team browse to team-row-only editing. The new actions reuse existing team modify helpers, so API risk is mainly around operator expectation for immediate live relationship changes.
 - Follow-up: consider whether team-admin toggle should also ask for confirmation in high-risk environments.
-
-## 2026-04-13 - Fix access user browse TUI layout
-- Summary: fixed `access user browse` right-pane navigation by matching the input-layer facts line count to the rendered user facts list. Added shared `tui_shell::footer_height` sizing for bordered footer blocks, stopped footer controls from wrapping into neighboring rows, and changed user browse footer controls to use the shared control grid so key labels and descriptions align by column. Added shared fixed-height centered dialog helpers in `tui_shell` and moved user edit/search overlays onto that shell so overlay placement and frame style are no longer owned locally by the user browser.
-- Tests: added focused regressions for user fact-row navigation, footer height calculation, and fixed-height centered dialog placement.
-- Test Run: `cargo fmt --manifest-path rust/Cargo.toml --all --check`; `cargo test --manifest-path rust/Cargo.toml --quiet user_detail_navigation_reaches_all_fact_rows`; `cargo test --manifest-path rust/Cargo.toml --quiet footer_height_accounts_for_status_line_and_borders`; `cargo test --manifest-path rust/Cargo.toml --quiet centered_fixed_rect_places_dialog_in_middle`; `cargo test --manifest-path rust/Cargo.toml --quiet`; `git diff --check`.
-- Impact: `rust/src/commands/access/user_browse_dialog.rs`, `rust/src/commands/access/user_browse_input.rs`, `rust/src/commands/access/user_browse_render.rs`, `rust/src/common/tui/shell.rs`, and AI trace docs.
-- Rollback/Risk: low TUI presentation/input-boundary fix. Rollback would restore the old clipped footer height, leave the final user facts unreachable from the facts pane, and move user edit/search overlays back to local centering/frame code.
-- Follow-up: migrate team, datasource, and dashboard browse dialogs to `tui_shell::render_dialog_shell` in later focused passes to remove the remaining local centered-dialog implementations.

@@ -12,6 +12,13 @@ Current AI-maintained status only.
 - Older entries moved to [`ai-status-archive-2026-04-14.md`](docs/internal/archive/ai-status-archive-2026-04-14.md).
 - Older entries moved to [`ai-status-archive-2026-04-15.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-status-archive-2026-04-15.md).
 
+## 2026-04-15 - Split snapshot review tests
+- State: Done
+- Scope: Rust snapshot test maintainability. README files and Python implementation are out of scope.
+- Baseline: `make quality-architecture` still warned on `snapshot/tests.rs` after earlier maintainability passes.
+- Current Update: Moved staged export scope resolver coverage into `tests_staged_scopes.rs` and snapshot review wrapper/warning coverage into `tests_review_warnings.rs`, leaving the main snapshot test module focused on shared fixtures and broader snapshot export/review behavior.
+- Result: Snapshot focused tests, full Rust tests, clippy, architecture guardrails, formatting, and whitespace checks pass. `snapshot/tests.rs` is no longer an architecture warning.
+
 ## 2026-04-15 - Split access runtime user tests
 - State: Done
 - Scope: Rust access runtime test maintainability. README files and Python implementation are out of scope.
@@ -46,10 +53,3 @@ Current AI-maintained status only.
 - Baseline: public docs and CLI use `dashboard summary` / `dashboard dependencies`, but Rust internals still carry `Analyze` names; dashboard dispatch duplicates summary/history handling across client-owned and top-level paths; output contract registry covers only core sync/datasource fixtures; docs evidence tests contained stale page/path expectations.
 - Current Update: renamed Rust dashboard summary internals away from `Analyze`/`dashboard analyze`, split dashboard dispatch into focused summary/export/live helpers, expanded output contracts for dashboard review artifacts, refreshed source/generated docs evidence sections, and added guardrails that reject removed public dashboard analysis paths outside archive/trace contexts.
 - Result: Rust tests, clippy, docs surface checks, output contract checks, generated docs checks, AI workflow checks, feature `browser` check, command smoke checks, and whitespace checks pass. README files were left untouched.
-
-## 2026-04-14 - Tighten review-first workflow contracts
-- State: Done
-- Scope: public/internal workspace naming policy, core output contract registry, README positioning, generated handbook HTML, access browse loading boundaries, dashboard impact traversal, and validation.
-- Baseline: maintainer docs still described `change` as a public command surface while user-facing docs and CLI expose `workspace`; core JSON output contracts were covered by scattered Rust/Python tests but did not have a small central registry of golden fixture expectations. Access user browsing also kept data loading in the input handler, and dashboard impact traversal did not have a reusable reference graph model.
-- Current Update: clarified `workspace` as the public command surface, `Change` as the conceptual lifecycle name, and `sync` as internal/compatibility vocabulary; added an output contract registry with golden fixtures plus `make quality-output-contracts`; refreshed README opening copy and public naming checks; split user browse row loading into a focused module; added an internal reference graph used by dashboard impact reachability.
-- Result: Rust tests, contract checks, docs-surface validation, HTML drift validation, AI workflow validation, and whitespace checks pass for the changed surfaces.
