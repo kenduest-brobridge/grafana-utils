@@ -1,15 +1,15 @@
-# grafana-util
+# grafana-state-kit
 ### An SRE-focused Grafana operations toolkit for inventory, review, recovery, and CI/CD workflows
 
-[![CI](https://img.shields.io/github/actions/workflow/status/kenduest-brobridge/grafana-util/ci.yml?branch=main)](https://github.com/kenduest-brobridge/grafana-util/actions)
-[![License](https://img.shields.io/github/license/kenduest-brobridge/grafana-util)](LICENSE)
-[![Version](https://img.shields.io/github/v/tag/kenduest-brobridge/grafana-util)](https://github.com/kenduest-brobridge/grafana-util/tags)
+[![CI](https://img.shields.io/github/actions/workflow/status/kenduest-brobridge/grafana-state-kit/ci.yml?branch=main)](https://github.com/kenduest-brobridge/grafana-state-kit/actions)
+[![License](https://img.shields.io/github/license/kenduest-brobridge/grafana-state-kit)](LICENSE)
+[![Version](https://img.shields.io/github/v/tag/kenduest-brobridge/grafana-state-kit)](https://github.com/kenduest-brobridge/grafana-state-kit/tags)
 
 English | [繁體中文](./README.zh-TW.md)
 
 **Live inventory, export/import, diff, change preview, and safe apply in one workflow.**
 
-`grafana-util` is a Rust CLI for Grafana operators, SREs, and dashboard teams. It helps you inventory common Grafana resources, back up and restore dashboards, move dashboards across environments, compare local changes with live state, and run safer review steps before CI/CD or manual updates. It is not just a thin API wrapper; it pulls day-to-day operational work into one repeatable command-line workflow.
+`grafana-state-kit` ships `grafana-util`, a Rust CLI for Grafana operators, SREs, and dashboard teams. It helps you inventory common Grafana resources, back up and restore dashboards, move dashboards across environments, compare local changes with live state, and run safer review steps before CI/CD or manual updates. It is not just a thin API wrapper; it pulls day-to-day operational work into one repeatable command-line workflow.
 
 Developer note:
 
@@ -20,7 +20,7 @@ This tool came from recurring Grafana work that did not have one convenient supp
 3. Customer dashboards often need to be exported, adjusted, and imported again, but the safer path is to bring them into a local developer Grafana first.
 4. Operators often need to inventory which dashboards use which data sources, which users and teams exist, and how accounts, groups, and permissions are shaped.
 
-Grafana itself does not make those workflows especially convenient for dashboard developers, SREs, or internal users. `grafana-util` exists to make those operational loops easier to review and repeat.
+Grafana itself does not make those workflows especially convenient for dashboard developers, SREs, or internal users. `grafana-state-kit` exists to make those operational loops easier to review and repeat through the `grafana-util` CLI.
 
 Common uses:
 
@@ -53,31 +53,31 @@ Supported Grafana surfaces:
 Install the latest release:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-state-kit/main/scripts/install.sh | sh
 ```
 
 Install the latest release and write shell completion for your current shell:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | INSTALL_COMPLETION=auto sh
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-state-kit/main/scripts/install.sh | INSTALL_COMPLETION=auto sh
 ```
 
 Install interactively, then choose the install directory and shell completion setup when prompted:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh -s -- --interactive
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-state-kit/main/scripts/install.sh | sh -s -- --interactive
 ```
 
 Install a specific version:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | VERSION=0.10.2 sh
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-state-kit/main/scripts/install.sh | VERSION=0.10.2 sh
 ```
 
 Install into a custom directory:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | BIN_DIR="$HOME/.local/bin" sh
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-state-kit/main/scripts/install.sh | BIN_DIR="$HOME/.local/bin" sh
 ```
 
 Local installer help:
@@ -92,7 +92,7 @@ Install and verify a local checkout build through the same installer path:
 make install-local-interactive
 ```
 
-- **Releases**: [GitHub releases](https://github.com/kenduest-brobridge/grafana-util/releases)
+- **Releases**: [GitHub releases](https://github.com/kenduest-brobridge/grafana-state-kit/releases)
 - **Binaries**: standard `linux-amd64` and `macos-arm64`; screenshot-enabled builds use `*-browser-*`
 - **Default path**: `/usr/local/bin` if writable, otherwise `$HOME/.local/bin`
 - **Completion**: set `INSTALL_COMPLETION=auto`, `INSTALL_COMPLETION=bash`, or `INSTALL_COMPLETION=zsh` to install completion from the downloaded binary

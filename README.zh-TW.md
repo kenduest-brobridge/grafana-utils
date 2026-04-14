@@ -1,15 +1,15 @@
-# grafana-util
+# grafana-state-kit
 ### 面向 SRE 與維運流程的 Grafana 盤點、審查、備份復原與 CI/CD 工具
 
-[![CI](https://img.shields.io/github/actions/workflow/status/kenduest-brobridge/grafana-util/ci.yml?branch=main)](https://github.com/kenduest-brobridge/grafana-util/actions)
-[![License](https://img.shields.io/github/license/kenduest-brobridge/grafana-util)](LICENSE)
-[![Version](https://img.shields.io/github/v/tag/kenduest-brobridge/grafana-util)](https://github.com/kenduest-brobridge/grafana-util/tags)
+[![CI](https://img.shields.io/github/actions/workflow/status/kenduest-brobridge/grafana-state-kit/ci.yml?branch=main)](https://github.com/kenduest-brobridge/grafana-state-kit/actions)
+[![License](https://img.shields.io/github/license/kenduest-brobridge/grafana-state-kit)](LICENSE)
+[![Version](https://img.shields.io/github/v/tag/kenduest-brobridge/grafana-state-kit)](https://github.com/kenduest-brobridge/grafana-state-kit/tags)
 
 [English](./README.md) | 繁體中文
 
 **線上盤點、匯出匯入、差異比對、變更預覽與安全套用，整合在同一套流程裡。**
 
-`grafana-util` 是給 Grafana 維運、SRE 與 Dashboard 開發人員使用的 Rust CLI。它可以協助快速盤點常見的 Grafana 資源，例如 Dashboard、Data Source、User、Team，也能支援 Dashboard 備份復原、跨環境搬移、本機匯入開發與變更審查。
+`grafana-state-kit` 提供 `grafana-util` 這個 Rust CLI，給 Grafana 維運、SRE 與 Dashboard 開發人員使用。它可以協助快速盤點常見的 Grafana 資源，例如 Dashboard、Data Source、User、Team，也能支援 Dashboard 備份復原、跨環境搬移、本機匯入開發與變更審查。
 
 這個工具不是單純把 API 包一層，而是把日常常用的狀態查看、匯出匯入、差異比對、工作區預覽、安全套用、不同環境的連線設定檔與認證密鑰處理，整理成一套可以重複執行的流程。要查狀態、備份、比對或套用變更時，不用在不同腳本和手動操作之間切來切去。
 
@@ -22,7 +22,7 @@
 3. 客戶環境裡有許多 Dashboard 需要匯出、調整後再匯入；比較安全的做法，是先匯入到本機開發環境確認。
 4. 維運時常需要盤點 Dashboard 使用了哪些 Data Source，也需要了解目前有哪些 user、team、帳號群組與權限設定。
 
-Grafana 本身對 Dashboard Developer、SRE 或內部使用者來說，還沒有把這些流程整理成一個方便操作的工具。`grafana-util` 就是為了補上這段日常維運與開發流程而做的。
+Grafana 本身對 Dashboard Developer、SRE 或內部使用者來說，還沒有把這些流程整理成一個方便操作的工具。`grafana-state-kit` 就是為了透過 `grafana-util` CLI 補上這段日常維運與開發流程而做的。
 
 常見用途：
 
@@ -55,31 +55,31 @@ CLI 主要圍繞這幾個指令家族：`status`、`workspace`、`dashboard`、`
 安裝最新版本：
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-state-kit/main/scripts/install.sh | sh
 ```
 
 安裝最新版本，並替目前 shell 寫入 completion：
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | INSTALL_COMPLETION=auto sh
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-state-kit/main/scripts/install.sh | INSTALL_COMPLETION=auto sh
 ```
 
 互動安裝，依提示選擇安裝目錄與是否啟用 shell completion：
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | sh -s -- --interactive
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-state-kit/main/scripts/install.sh | sh -s -- --interactive
 ```
 
 指定安裝版本：
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | VERSION=0.10.2 sh
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-state-kit/main/scripts/install.sh | VERSION=0.10.2 sh
 ```
 
 安裝到自訂目錄：
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-util/main/scripts/install.sh | BIN_DIR="$HOME/.local/bin" sh
+curl -sSL https://raw.githubusercontent.com/kenduest-brobridge/grafana-state-kit/main/scripts/install.sh | BIN_DIR="$HOME/.local/bin" sh
 ```
 
 查看本地 installer 說明：
@@ -94,7 +94,7 @@ sh ./scripts/install.sh --help
 make install-local-interactive
 ```
 
-- **Releases**：[GitHub releases](https://github.com/kenduest-brobridge/grafana-util/releases)
+- **Releases**：[GitHub releases](https://github.com/kenduest-brobridge/grafana-state-kit/releases)
 - **執行檔**：標準版提供 `linux-amd64` 與 `macos-arm64`；需要截圖功能請選 `*-browser-*`
 - **預設路徑**：優先 `/usr/local/bin`，否則改用 `$HOME/.local/bin`
 - **Completion**：設定 `INSTALL_COMPLETION=auto`、`INSTALL_COMPLETION=bash` 或 `INSTALL_COMPLETION=zsh`，即可用下載後的 binary 產生並安裝 completion
