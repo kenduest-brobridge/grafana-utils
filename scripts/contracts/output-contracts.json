@@ -91,7 +91,36 @@
         "riskRecords",
         "queryAudits",
         "dashboardAudits"
-      ]
+      ],
+      "requiredPaths": [
+        "summary.dashboardCount",
+        "summary.queryRecordCount",
+        "datasourceFamilies[].family",
+        "datasourceFamilies[].datasourceCount",
+        "dashboardDependencies[].dashboardUid",
+        "dashboardDependencies[].datasources[]",
+        "dashboardGovernance[].mixedDatasource",
+        "dashboardDatasourceEdges[].datasourceUid",
+        "datasourceGovernance[].orphaned",
+        "datasources[].queryCount",
+        "queryAudits[].severity",
+        "dashboardAudits[].score"
+      ],
+      "pathTypes": {
+        "summary.dashboardCount": "integer",
+        "summary.queryRecordCount": "integer",
+        "datasourceFamilies": "non-empty-array",
+        "datasourceFamilies[].family": "non-empty-string",
+        "datasourceFamilies[].datasourceCount": "integer",
+        "dashboardDependencies[].dashboardUid": "non-empty-string",
+        "dashboardDependencies[].datasources": "non-empty-array",
+        "dashboardGovernance[].mixedDatasource": "boolean",
+        "dashboardDatasourceEdges[].datasourceUid": "non-empty-string",
+        "datasourceGovernance[].orphaned": "boolean",
+        "datasources[].queryCount": "integer",
+        "queryAudits[].severity": "non-empty-string",
+        "dashboardAudits[].score": "integer"
+      }
     },
     {
       "name": "dashboard-dependencies-topology",
@@ -104,7 +133,31 @@
         "summary",
         "nodes",
         "edges"
-      ]
+      ],
+      "requiredPaths": [
+        "summary.nodeCount",
+        "summary.edgeCount",
+        "summary.dashboardCount",
+        "nodes[].id",
+        "nodes[].kind",
+        "nodes[].label",
+        "edges[].from",
+        "edges[].to",
+        "edges[].relation"
+      ],
+      "pathTypes": {
+        "summary.nodeCount": "integer",
+        "summary.edgeCount": "integer",
+        "summary.dashboardCount": "integer",
+        "nodes": "non-empty-array",
+        "nodes[].id": "non-empty-string",
+        "nodes[].kind": "non-empty-string",
+        "nodes[].label": "non-empty-string",
+        "edges": "non-empty-array",
+        "edges[].from": "non-empty-string",
+        "edges[].to": "non-empty-string",
+        "edges[].relation": "non-empty-string"
+      }
     },
     {
       "name": "dashboard-impact",
@@ -120,7 +173,33 @@
         "affectedContactPoints",
         "affectedPolicies",
         "affectedTemplates"
-      ]
+      ],
+      "requiredPaths": [
+        "summary.datasourceUid",
+        "summary.dashboardCount",
+        "summary.alertResourceCount",
+        "dashboards[].dashboardUid",
+        "dashboards[].panelCount",
+        "alertResources[].kind",
+        "alertResources[].identity",
+        "affectedContactPoints[].identity",
+        "affectedPolicies[].identity",
+        "affectedTemplates[].identity"
+      ],
+      "pathTypes": {
+        "summary.datasourceUid": "non-empty-string",
+        "summary.dashboardCount": "integer",
+        "summary.alertResourceCount": "integer",
+        "dashboards": "non-empty-array",
+        "dashboards[].dashboardUid": "non-empty-string",
+        "dashboards[].panelCount": "integer",
+        "alertResources": "non-empty-array",
+        "alertResources[].kind": "non-empty-string",
+        "alertResources[].identity": "non-empty-string",
+        "affectedContactPoints[].identity": "non-empty-string",
+        "affectedPolicies[].identity": "non-empty-string",
+        "affectedTemplates[].identity": "non-empty-string"
+      }
     },
     {
       "name": "dashboard-policy-gate",
@@ -134,7 +213,35 @@
         "summary",
         "violations",
         "warnings"
-      ]
+      ],
+      "requiredPaths": [
+        "summary.dashboardCount",
+        "summary.queryRecordCount",
+        "summary.checkedRules",
+        "summary.checkedRules.blockReasons[]",
+        "violations[].severity",
+        "violations[].code",
+        "violations[].message",
+        "warnings[].severity",
+        "warnings[].code",
+        "warnings[].message"
+      ],
+      "pathTypes": {
+        "ok": "boolean",
+        "summary.dashboardCount": "integer",
+        "summary.queryRecordCount": "integer",
+        "summary.checkedRules": "object",
+        "summary.checkedRules.blockReasons": "non-empty-array",
+        "summary.checkedRules.blockReasons[]": "non-empty-string",
+        "violations": "non-empty-array",
+        "violations[].severity": "non-empty-string",
+        "violations[].code": "non-empty-string",
+        "violations[].message": "non-empty-string",
+        "warnings": "non-empty-array",
+        "warnings[].severity": "non-empty-string",
+        "warnings[].code": "non-empty-string",
+        "warnings[].message": "non-empty-string"
+      }
     }
   ]
 }

@@ -27,6 +27,109 @@ def iter_field_paths(value: Any, path: tuple[str, ...] = ()):
             yield from iter_field_paths(item, path + (str(index),))
 
 
+def validate_required_path(value: Any, path: str) -> list[str]:
+    parts = path.split(".") if path else []
+    if not parts:
+        return ["path must not be empty"]
+
+    def walk(current: Any, remaining: list[str], prefix: str) -> list[str]:
+        if not remaining:
+            return []
+
+        part = remaining[0]
+        expects_array = part.endswith("[]")
+        key = part[:-2] if expects_array else part
+        current_path = f"{prefix}.{key}" if prefix else key
+
+        if not isinstance(current, dict):
+            return [f"{prefix or '<root>'} must be an object before {part!r}"]
+        if key not in current:
+            return [f"missing required path {current_path!r}"]
+
+        next_value = current[key]
+        if not expects_array:
+            return walk(next_value, remaining[1:], current_path)
+
+        if not isinstance(next_value, list):
+            return [f"required path {current_path!r} must be an array"]
+        if not next_value:
+            return [f"required path {current_path!r} must be a non-empty array"]
+
+        errors: list[str] = []
+        for item_index, item in enumerate(next_value):
+            item_path = f"{current_path}[{item_index}]"
+            errors.extend(walk(item, remaining[1:], item_path))
+        return errors
+
+    return walk(value, parts, "")
+
+
+def values_for_path(value: Any, path: str) -> tuple[list[Any], list[str]]:
+    parts = path.split(".") if path else []
+    if not parts:
+        return [], ["path must not be empty"]
+
+    def walk(current_values: list[Any], remaining: list[str], prefix: str) -> tuple[list[Any], list[str]]:
+        if not remaining:
+            return current_values, []
+
+        part = remaining[0]
+        expects_array = part.endswith("[]")
+        key = part[:-2] if expects_array else part
+        current_path = f"{prefix}.{key}" if prefix else key
+        next_values: list[Any] = []
+        errors: list[str] = []
+
+        for item_index, current in enumerate(current_values):
+            item_prefix = prefix or "<root>"
+            if not isinstance(current, dict):
+                errors.append(f"{item_prefix} must be an object before {part!r}")
+                continue
+            if key not in current:
+                errors.append(f"missing required path {current_path!r}")
+                continue
+
+            next_value = current[key]
+            if expects_array:
+                if not isinstance(next_value, list):
+                    errors.append(f"required path {current_path!r} must be an array")
+                    continue
+                if not next_value:
+                    errors.append(f"required path {current_path!r} must be a non-empty array")
+                    continue
+                next_values.extend(next_value)
+            else:
+                next_values.append(next_value)
+
+        if errors:
+            return [], errors
+        return walk(next_values, remaining[1:], current_path)
+
+    return walk([value], parts, "")
+
+
+def validate_value_type(value: Any, expected_type: str) -> bool:
+    if expected_type == "object":
+        return isinstance(value, dict)
+    if expected_type == "array":
+        return isinstance(value, list)
+    if expected_type == "non-empty-array":
+        return isinstance(value, list) and bool(value)
+    if expected_type == "string":
+        return isinstance(value, str)
+    if expected_type == "non-empty-string":
+        return isinstance(value, str) and bool(value)
+    if expected_type == "integer":
+        return isinstance(value, int) and not isinstance(value, bool)
+    if expected_type == "number":
+        return (isinstance(value, int) or isinstance(value, float)) and not isinstance(value, bool)
+    if expected_type == "boolean":
+        return isinstance(value, bool)
+    if expected_type == "nullable-number":
+        return value is None or validate_value_type(value, "number")
+    return False
+
+
 def validate_registry(registry: dict[str, Any]) -> list[str]:
     errors: list[str] = []
 
@@ -69,6 +172,40 @@ def validate_registry(registry: dict[str, Any]) -> list[str]:
             errors.append(f"contracts[{index}].requiredFields must be a non-empty list")
         if "requiredValues" in entry and not isinstance(entry["requiredValues"], dict):
             errors.append(f"contracts[{index}].requiredValues must be an object")
+        if "requiredPaths" in entry:
+            required_paths = entry["requiredPaths"]
+            if not isinstance(required_paths, list):
+                errors.append(f"contracts[{index}].requiredPaths must be a list")
+            else:
+                for path_index, path in enumerate(required_paths):
+                    if not isinstance(path, str) or not path:
+                        errors.append(
+                            f"contracts[{index}].requiredPaths[{path_index}] must be a non-empty string"
+                        )
+        if "pathTypes" in entry:
+            path_types = entry["pathTypes"]
+            if not isinstance(path_types, dict) or not path_types:
+                errors.append(f"contracts[{index}].pathTypes must be a non-empty object")
+            else:
+                for path, expected_type in path_types.items():
+                    if not isinstance(path, str) or not path:
+                        errors.append(
+                            f"contracts[{index}].pathTypes keys must be non-empty strings"
+                        )
+                    if expected_type not in {
+                        "object",
+                        "array",
+                        "non-empty-array",
+                        "string",
+                        "non-empty-string",
+                        "integer",
+                        "number",
+                        "boolean",
+                        "nullable-number",
+                    }:
+                        errors.append(
+                            f"contracts[{index}].pathTypes[{path!r}] has unsupported type {expected_type!r}"
+                        )
         if "forbiddenFields" in entry and not isinstance(entry["forbiddenFields"], list):
             errors.append(f"contracts[{index}].forbiddenFields must be a list")
 
@@ -121,6 +258,20 @@ def validate_contract_fixtures(
                 errors.append(
                     f"{name}: field {field!r} expected {expected!r} but found {actual!r}"
                 )
+
+        for path in entry.get("requiredPaths", []):
+            for error in validate_required_path(document, path):
+                errors.append(f"{name}: {error}")
+
+        for path, expected_type in entry.get("pathTypes", {}).items():
+            values, path_errors = values_for_path(document, path)
+            for error in path_errors:
+                errors.append(f"{name}: {error}")
+            for value in values:
+                if not validate_value_type(value, expected_type):
+                    errors.append(
+                        f"{name}: path {path!r} expected {expected_type} but found {type(value).__name__}"
+                    )
 
         forbidden_fields = set(entry.get("forbiddenFields", []))
         if forbidden_fields:

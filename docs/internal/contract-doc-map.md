@@ -24,6 +24,8 @@ Use three layers:
   [`alert-access-contract-policy.md`](docs/internal/alert-access-contract-policy.md)
 - CLI/docs surface contract:
   [`scripts/contracts/command-surface.json`](scripts/contracts/command-surface.json)
+- JSON output contract registry:
+  [`scripts/contracts/output-contracts.json`](scripts/contracts/output-contracts.json)
 
 ## Maintainer Rules
 
@@ -36,3 +38,6 @@ Use three layers:
 - Keep `scripts/contracts/command-surface.json` current when public command paths, legacy
   replacements, docs routing, removed public path guards, or `--help-full` /
   `--help-flat` support change.
+- Keep `scripts/contracts/output-contracts.json` current when adding or changing
+  machine-readable JSON outputs; use root `requiredFields` for envelope checks and
+  `requiredPaths` / `pathTypes` for small nested shape guarantees in golden fixtures.
