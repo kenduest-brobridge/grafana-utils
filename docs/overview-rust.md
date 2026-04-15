@@ -44,7 +44,7 @@ execution plans、gap lists、或 progress snapshots，改到 `docs/internal/arc
 
 - `rust/src/bin/grafana-util.rs`
   - 入口行為：
-    1. 先做 `--help-full` 特殊分支（dashboard inspect 用）；
+    1. 先做 `--help-full` 特殊分支（dashboard summary / inspection help 用）；
     2. 否則交由 `cli::parse_cli_from` 與 `cli::run_cli`。
   - 只處理 process exit 邏輯，不處理 domain 行為。
 
@@ -157,8 +157,8 @@ execution plans、gap lists、或 progress snapshots，改到 `docs/internal/arc
 
 ### 2.5 Contract 與 test split
 
-- `dashboard inspect` 的主要 contract 落在 `rust/src/commands/dashboard/inspect.rs`, `rust/src/commands/dashboard/inspect_query.rs`, `rust/src/commands/dashboard/inspect_live.rs`, `rust/src/commands/dashboard/inspect_live_tui.rs`，typed summary/report boundary 則分別在 `rust/src/commands/dashboard/inspect_summary.rs` 與 `rust/src/commands/dashboard/inspect_report.rs`。
-- `dashboard inspect` 的回歸測試主要落在 `rust/src/commands/dashboard/rust_tests.rs`，parser/help 類變更則仍跟著對應的 `*_cli_defs.rs`。
+- `dashboard summary` 與相關 dependency/policy review flows 的主要 inspection contract 落在 `rust/src/commands/dashboard/inspect.rs`, `rust/src/commands/dashboard/inspect_query.rs`, `rust/src/commands/dashboard/inspect_live.rs`, `rust/src/commands/dashboard/inspect_live_tui.rs`，typed summary/report boundary 則分別在 `rust/src/commands/dashboard/inspect_summary.rs` 與 `rust/src/commands/dashboard/inspect_report.rs`。
+- `dashboard summary` 的回歸測試主要落在 dashboard summary / inspection 相關 Rust test modules，parser/help 類變更則仍跟著對應的 `*_cli_defs.rs`。
 - `sync` 的主要 contract 落在 `rust/src/commands/sync/mod.rs`, `rust/src/commands/sync/cli.rs`, `rust/src/commands/sync/live.rs`, `rust/src/commands/sync/json.rs`, `rust/src/commands/sync/bundle_inputs.rs`, `rust/src/commands/sync/staged_documents.rs`, `rust/src/commands/sync/workbench.rs`。
 - `sync` 的回歸測試主要落在 `rust/src/commands/sync/cli_rust_tests.rs` 與 `rust/src/commands/sync/rust_tests.rs`。
 
@@ -211,7 +211,7 @@ execution plans、gap lists、或 progress snapshots，改到 `docs/internal/arc
   - 先改 `*_cli_defs.rs`（例如 `dashboard_cli_defs.rs`）  
   - 再看 `cli.rs` 是否需要 alias/command 樹更新  
   - 最後補 parser/help/錯誤訊息對齊測試
-- 改 dashboard inspect 相關 contract：
+- 改 dashboard summary / inspection artifact 相關 contract：
   - 先看 `dashboard/mod.rs`，再往 `dashboard/inspect.rs`、`dashboard/inspect_query.rs`、`dashboard/inspect_live.rs`、`dashboard/inspect_live_tui.rs` 分流。
 - 改 sync contract 或 live plumbing：
   - 先看 `sync/mod.rs`，再按責任拆到 `sync/cli.rs`、`sync/live.rs`、`sync/json.rs`、`sync/bundle_inputs.rs`、`sync/staged_documents.rs`。
@@ -274,7 +274,7 @@ execution plans、gap lists、或 progress snapshots，改到 `docs/internal/arc
 - 新增/調整命令：先看 `cli.rs` 的統一 topology，再更新 `dashboard/mod.rs|alert.rs|access/mod.rs|sync/mod.rs|datasource.rs` 的 runner。
 - 新增/調整 dashboard live inspect：優先看 `dashboard/mod.rs` 再往 `dashboard/inspect_live.rs` 與 `dashboard/inspect_live_tui.rs` 分流。
 - 新增/調整 dashboard query analysis：優先看 `dashboard/mod.rs` 再往 `dashboard/inspect.rs` 與 `dashboard/inspect_query.rs` 分流。
-- 新增/調整 dashboard inspect 資料契約時，先對齊這條最短修改路徑：
+- 新增/調整 dashboard summary / inspection artifact 資料契約時，先對齊這條最短修改路徑：
   - input contract：`dashboard/inspect_live.rs` 先把 live fetch 轉成與 offline inspect 相同的 raw export tree；`dashboard/inspect.rs` 假設輸入已包含 `export-metadata.json`、`index.json`、folder inventory、datasource inventory 與 dashboard JSON。
   - normalized internal model：`ExportInspectionSummary`、`ExportInspectionQueryReport`、`QueryAnalysis`，以及 governance document rows 是 downstream renderer 與跨路徑回歸測試的共同中介形狀。
   - output contract：`inspect_summary.rs` 與 `inspect_report.rs` 負責 typed summary/report document boundary；`inspect_governance.rs` 與 `inspect_render.rs` 分別擁有 governance 與 text-table-json 的輸出形狀。

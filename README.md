@@ -27,7 +27,7 @@ Grafana itself does not make those workflows especially convenient for dashboard
 | Before | After |
 | :--- | :--- |
 | Live checks, local JSON edits, dashboard exports, and apply steps are handled through separate scripts or UI clicks. | Start with `grafana-util status live`, inspect the workspace, run `grafana-util workspace preview`, then apply only after review. |
-| Dashboard dependency review means manually opening panels and data source settings. | Run `grafana-util dashboard analyze --input-dir ./dashboards/raw --input-format raw --output-format dependency` to produce a reviewable dependency report. |
+| Dashboard dependency review means manually opening panels and data source settings. | Run `grafana-util dashboard summary --input-dir ./dashboards/raw --input-format raw --output-format dependency` to produce a reviewable dependency report. |
 
 Common uses:
 

@@ -29,7 +29,7 @@ Grafana 本身對 Dashboard Developer、SRE 或內部使用者來說，還沒有
 | 採用前 | 採用後 |
 | :--- | :--- |
 | live 檢查、本地 JSON 修改、dashboard 匯出與套用步驟分散在不同腳本或 UI 操作裡。 | 先跑 `grafana-util status live`，檢查 workspace，再跑 `grafana-util workspace preview`，審查後才套用。 |
-| Dashboard 相依性審查需要手動打開 panel 和 data source 設定。 | 用 `grafana-util dashboard analyze --input-dir ./dashboards/raw --input-format raw --output-format dependency` 產生可審查的相依性報告。 |
+| Dashboard 相依性審查需要手動打開 panel 和 data source 設定。 | 用 `grafana-util dashboard summary --input-dir ./dashboards/raw --input-format raw --output-format dependency` 產生可審查的相依性報告。 |
 
 常見用途：
 

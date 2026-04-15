@@ -28,7 +28,7 @@ Detailed requirements for the current dashboard staged export contract.
 
 ## Output-Layering Rule
 
-- `dashboard inspect-export` summary output keeps `text`, `table`, and `csv`
+- `dashboard summary --input-dir ...` output keeps `text`, `table`, and `csv`
   as operator-summary views.
 - Summary `json` and `yaml` remain the machine-readable full summary contract.
 - Specialized report outputs such as governance and dependency reports stay

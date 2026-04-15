@@ -251,7 +251,7 @@ pub enum DashboardRootCommand {
     Impact(ImpactArgs),
     #[command(
         name = "policy",
-        about = "Evaluate governance policy against dashboard inspect JSON artifacts."
+        about = "Evaluate governance policy against dashboard summary JSON artifacts."
     )]
     Policy(GovernanceGateArgs),
     #[command(

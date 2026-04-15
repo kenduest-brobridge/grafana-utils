@@ -18,8 +18,8 @@ Use this when you want a policy pass or fail result before promotion. Prefer dir
 - `--url`: analyze live Grafana directly.
 - `--input-dir`: analyze a local export tree directly.
 - `--input-format`: choose `raw`, `provisioning`, or `git-sync` when analyzing local exports.
-- `--governance`: path to dashboard inspect governance JSON (`governance-json` artifact, advanced reuse).
-- `--queries`: path to dashboard inspect query-report JSON (`queries-json` artifact, advanced reuse).
+- `--governance`: path to dashboard summary governance JSON (`governance-json` artifact, advanced reuse).
+- `--queries`: path to dashboard summary query-report JSON (`queries-json` artifact, advanced reuse).
 - `--output-format`: render text or JSON.
 - `--json-output`: optionally write the normalized result JSON.
 - `--interactive`: open the interactive terminal browser over findings.

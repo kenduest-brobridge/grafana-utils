@@ -288,7 +288,7 @@ project-wide operator progress.
 - additive staged `projectStatus`
 - interactive overview workbench
 - shared TUI shell direction
-- strong dashboard inspect and sync preflight/report surfaces
+- strong dashboard summary / inspection artifact and sync preflight/report surfaces
 
 ### Still Missing
 
