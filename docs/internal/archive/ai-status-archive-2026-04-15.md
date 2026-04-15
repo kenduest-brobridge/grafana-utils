@@ -55,3 +55,10 @@
 - Baseline: `todo.md` records the Rust-first maintainability backlog and requires responsibility-based splits instead of line-count-only splits.
 - Current Update: Split datasource tail diff parser/live comparison tests into `tail_diff.rs`, moved access team browse action handling into `team_browse_actions.rs`, and added a `ProjectDomainStatusReading` producer shape used by live status fallback and aggregation.
 - Result: Focused Rust tests, full Rust tests, clippy, architecture guardrails, AI workflow checks, and whitespace checks pass. README files and Python implementation were left untouched.
+
+## 2026-04-15 - Continue Rust TODO worker pass
+- State: Done
+- Scope: worker-split Rust maintainability cleanup for datasource tail tests, access command tests, dashboard browse workflow tests, datasource staged project status, and sync live apply. README files and Python implementation are out of scope.
+- Baseline: `make quality-architecture` reports remaining warnings for large test modules and several production hotspots. Previous worker pass already split datasource tail diff tests, team browse actions, and status live reading shape.
+- Current Update: Split datasource tail fixture builders, access team tests, dashboard interactive import workflow tests, datasource staged status reading, and sync live-apply result envelope assembly into focused sibling modules.
+- Result: Focused Rust tests, full Rust tests, clippy, formatting, architecture guardrails, and whitespace checks pass. README files and Python implementation were left untouched.

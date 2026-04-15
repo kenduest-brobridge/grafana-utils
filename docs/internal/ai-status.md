@@ -12,6 +12,13 @@ Current AI-maintained status only.
 - Older entries moved to [`ai-status-archive-2026-04-14.md`](docs/internal/archive/ai-status-archive-2026-04-14.md).
 - Older entries moved to [`ai-status-archive-2026-04-15.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-status-archive-2026-04-15.md).
 
+## 2026-04-15 - Clear remaining Rust architecture warnings
+- State: Done
+- Scope: Rust maintainability cleanup for sync help assertions plus large dashboard dependency, sync live-apply, datasource staged-reading, and dashboard browse-support modules. README files, Python implementation, and dashboard summary/analyze public naming are out of scope.
+- Baseline: `make quality-architecture` reports five warnings: `sync/cli_help_rust_tests.rs` direct help assertions plus four production files over the 900-line warning threshold.
+- Current Update: Added grouped sync help assertions and split dependency contract tests, sync request-json live-apply shim, datasource staged-reading tests, and dashboard local browse tests into focused sibling modules.
+- Result: Focused tests, full Rust tests, clippy, formatting, and architecture guardrails pass. `make quality-architecture` now reports no warnings. Dashboard summary/analyze naming cleanup remains deferred.
+
 ## 2026-04-15 - Reduce dashboard help assertions
 - State: Done
 - Scope: Rust dashboard help-test maintainability. README files and Python implementation are out of scope.
@@ -46,10 +53,3 @@ Current AI-maintained status only.
 - Baseline: `make quality-architecture` still warned on `access_runtime_org_rust_tests.rs` after the previous worker pass because user runtime/export/import/diff cases remained mixed into the org runtime test module.
 - Current Update: Moved user runtime diff, global/org user export/import/diff, and local user list input-dir cases into `access_runtime_user_rust_tests.rs`, leaving the org runtime module focused on org/team/service-account routing and org workflows.
 - Result: Access focused tests, full Rust tests, clippy, architecture guardrails, formatting, and whitespace checks pass. `access_runtime_org_rust_tests.rs` is no longer an architecture warning.
-
-## 2026-04-15 - Continue Rust TODO worker pass
-- State: Done
-- Scope: worker-split Rust maintainability cleanup for datasource tail tests, access command tests, dashboard browse workflow tests, datasource staged project status, and sync live apply. README files and Python implementation are out of scope.
-- Baseline: `make quality-architecture` reports remaining warnings for large test modules and several production hotspots. Previous worker pass already split datasource tail diff tests, team browse actions, and status live reading shape.
-- Current Update: Split datasource tail fixture builders, access team tests, dashboard interactive import workflow tests, datasource staged status reading, and sync live-apply result envelope assembly into focused sibling modules.
-- Result: Focused Rust tests, full Rust tests, clippy, formatting, architecture guardrails, and whitespace checks pass. README files and Python implementation were left untouched.
