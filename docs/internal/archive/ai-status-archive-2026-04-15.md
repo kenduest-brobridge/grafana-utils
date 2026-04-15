@@ -62,3 +62,10 @@
 - Baseline: `make quality-architecture` reports remaining warnings for large test modules and several production hotspots. Previous worker pass already split datasource tail diff tests, team browse actions, and status live reading shape.
 - Current Update: Split datasource tail fixture builders, access team tests, dashboard interactive import workflow tests, datasource staged status reading, and sync live-apply result envelope assembly into focused sibling modules.
 - Result: Focused Rust tests, full Rust tests, clippy, formatting, architecture guardrails, and whitespace checks pass. README files and Python implementation were left untouched.
+
+## 2026-04-15 - Split access runtime user tests
+- State: Done
+- Scope: Rust access runtime test maintainability. README files and Python implementation are out of scope.
+- Baseline: `make quality-architecture` still warned on `access_runtime_org_rust_tests.rs` after the previous worker pass because user runtime/export/import/diff cases remained mixed into the org runtime test module.
+- Current Update: Moved user runtime diff, global/org user export/import/diff, and local user list input-dir cases into `access_runtime_user_rust_tests.rs`, leaving the org runtime module focused on org/team/service-account routing and org workflows.
+- Result: Access focused tests, full Rust tests, clippy, architecture guardrails, formatting, and whitespace checks pass. `access_runtime_org_rust_tests.rs` is no longer an architecture warning.

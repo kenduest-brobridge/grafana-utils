@@ -12,6 +12,13 @@ Current AI-maintained status only.
 - Older entries moved to [`ai-status-archive-2026-04-14.md`](docs/internal/archive/ai-status-archive-2026-04-14.md).
 - Older entries moved to [`ai-status-archive-2026-04-15.md`](/Users/kendlee/work/grafana-utils/docs/internal/archive/ai-status-archive-2026-04-15.md).
 
+## 2026-04-15 - Fix stale dashboard command references
+- State: Done
+- Scope: Public docs and maintainer guidance that still present removed dashboard command names or stale inspect-artifact wording. Python implementation is out of scope.
+- Baseline: `grafana-util dashboard analyze` and `grafana-util dashboard inspect-export` are rejected by the CLI, but README and maintainer docs still mention them as command paths.
+- Current Update: Replaced README dependency examples with `dashboard summary`, updated policy/about artifact wording to dashboard summary JSON artifacts, refreshed generated man/html docs, and clarified maintainer docs that `inspect` is an internal artifact flow rather than a public dashboard command.
+- Result: CLI smoke checks confirm `dashboard analyze` and `dashboard inspect-export` are rejected while `dashboard summary` is accepted. Docs, generated-doc, Rust help, AI workflow, and whitespace checks pass.
+
 ## 2026-04-15 - Clear remaining Rust architecture warnings
 - State: Done
 - Scope: Rust maintainability cleanup for sync help assertions plus large dashboard dependency, sync live-apply, datasource staged-reading, and dashboard browse-support modules. README files, Python implementation, and dashboard summary/analyze public naming are out of scope.
@@ -46,10 +53,3 @@ Current AI-maintained status only.
 - Baseline: `make quality-architecture` still warned on `snapshot/tests.rs` after earlier maintainability passes.
 - Current Update: Moved staged export scope resolver coverage into `tests_staged_scopes.rs` and snapshot review wrapper/warning coverage into `tests_review_warnings.rs`, leaving the main snapshot test module focused on shared fixtures and broader snapshot export/review behavior.
 - Result: Snapshot focused tests, full Rust tests, clippy, architecture guardrails, formatting, and whitespace checks pass. `snapshot/tests.rs` is no longer an architecture warning.
-
-## 2026-04-15 - Split access runtime user tests
-- State: Done
-- Scope: Rust access runtime test maintainability. README files and Python implementation are out of scope.
-- Baseline: `make quality-architecture` still warned on `access_runtime_org_rust_tests.rs` after the previous worker pass because user runtime/export/import/diff cases remained mixed into the org runtime test module.
-- Current Update: Moved user runtime diff, global/org user export/import/diff, and local user list input-dir cases into `access_runtime_user_rust_tests.rs`, leaving the org runtime module focused on org/team/service-account routing and org workflows.
-- Result: Access focused tests, full Rust tests, clippy, architecture guardrails, formatting, and whitespace checks pass. `access_runtime_org_rust_tests.rs` is no longer an architecture warning.
