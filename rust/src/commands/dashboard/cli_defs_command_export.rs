@@ -15,6 +15,15 @@ pub enum ExportLayoutVariant {
     Prompt,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum ExportLayoutOutputFormat {
+    Text,
+    Table,
+    Csv,
+    Json,
+    Yaml,
+}
+
 /// Arguments for exporting dashboards into raw, prompt, and provisioning variants.
 #[derive(Debug, Clone, Args)]
 pub struct ExportArgs {
@@ -390,12 +399,19 @@ pub struct ExportLayoutArgs {
     )]
     pub overwrite: bool,
     #[arg(
+        long = "show-operations",
+        alias = "verbose",
+        default_value_t = false,
+        help = "Show per-dashboard MOVE, SAME, BLOCKED, and EXTRA operations when rendering text output."
+    )]
+    pub show_operations: bool,
+    #[arg(
         long,
         value_enum,
-        default_value_t = RawToPromptOutputFormat::Text,
-        help = "Render the repair summary as text, table, json, or yaml."
+        default_value_t = ExportLayoutOutputFormat::Text,
+        help = "Render the repair plan as text, table, csv, json, or yaml."
     )]
-    pub output_format: RawToPromptOutputFormat,
+    pub output_format: ExportLayoutOutputFormat,
     #[arg(
         long,
         default_value_t = false,

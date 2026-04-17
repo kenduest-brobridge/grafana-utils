@@ -31,7 +31,7 @@ mod cli_defs_command_live;
 mod cli_defs_command_local;
 
 pub use cli_defs_command_export::{
-    ExportArgs, ExportLayoutArgs, ExportLayoutVariant, RawToPromptArgs,
+    ExportArgs, ExportLayoutArgs, ExportLayoutOutputFormat, ExportLayoutVariant, RawToPromptArgs,
 };
 pub use cli_defs_command_history::{
     DashboardHistoryArgs, DashboardHistorySubcommand, HistoryDiffArgs, HistoryExportArgs,

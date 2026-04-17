@@ -20,7 +20,8 @@
 - `--folders-file`：明確指定 folder inventory 檔。
 - `--dry-run`：只輸出 move plan，不寫檔案。
 - `--overwrite`：允許覆蓋既有 output 檔案。
-- `--output-format`：輸出 text、table、json 或 yaml。
+- `--show-operations`：text output 顯示每個 `MOVE`、`SAME`、`BLOCKED` 與 `EXTRA` operation。
+- `--output-format`：輸出 text、table、csv、json 或 yaml。
 
 ## 說明
 - 預設只修 `raw/` 與 `prompt/`。
@@ -29,12 +30,30 @@
 - prompt 修復會透過相同 dashboard UID 找 raw dashboard 取得 folder identity。
 - 當 raw dashboard JSON 沒有 `meta.folderUid` 時，只有在 root export index 的 `folderTitle` 對同一 org 於 `raw/folders.json` 內唯一時，才會用該 folder title 回推。
 - metadata 不足時會標成 blocked，不會猜路徑。
+- text output 預設只顯示 summary。需要逐筆 dashboard operation 時，加上 `--show-operations`。
+- table 與 csv output 預設也輸出 summary；搭配 `--show-operations` 時才輸出逐筆 dashboard operation rows。
+- json 與 yaml output 一律輸出完整 plan contract，包含 `summary`、`operations`、`extraFiles`。
 - `--dry-run --output-format json` 會輸出 `summary.extraFileCount` 與 `extraFiles`，列出 repaired lane 內存在但沒有出現在 export index 的檔案。copy mode 會保留這些檔案；in-place repair 則不搬動它們。
 
 ## 範例
 ```bash
 # 以 table 預覽舊 export layout 修復計畫。
 grafana-util dashboard convert export-layout --input-dir ./dashboards --output-dir ./dashboards.fixed --dry-run --output-format table
+```
+
+```bash
+# 只預覽 summary。
+grafana-util dashboard convert export-layout --input-dir ./dashboards --output-dir ./dashboards.fixed --dry-run
+```
+
+```bash
+# 預覽每個 dashboard operation。
+grafana-util dashboard convert export-layout --input-dir ./dashboards --output-dir ./dashboards.fixed --dry-run --show-operations
+```
+
+```bash
+# 將 operation rows 輸出成 CSV。
+grafana-util dashboard convert export-layout --input-dir ./dashboards --output-dir ./dashboards.fixed --dry-run --output-format csv --show-operations
 ```
 
 ```bash

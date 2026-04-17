@@ -383,6 +383,9 @@ fn parse_cli_supports_dashboard_convert_export_layout_surface() {
         "--variant",
         "raw",
         "--dry-run",
+        "--show-operations",
+        "--output-format",
+        "csv",
     ]);
 
     match args.command {
@@ -396,6 +399,11 @@ fn parse_cli_supports_dashboard_convert_export_layout_surface() {
                     );
                     assert_eq!(inner.variant.len(), 1);
                     assert!(inner.dry_run);
+                    assert!(inner.show_operations);
+                    assert_eq!(
+                        inner.output_format,
+                        crate::dashboard::ExportLayoutOutputFormat::Csv
+                    );
                 }
                 DashboardConvertCommand::RawToPrompt(_) => panic!("expected export-layout"),
             },

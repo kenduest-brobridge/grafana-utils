@@ -20,7 +20,8 @@ Use this when an existing export already has correct `raw/folders.json` metadata
 - `--folders-file`: explicit folder inventory file.
 - `--dry-run`: render the move plan without writing files.
 - `--overwrite`: allow existing output files to be replaced.
-- `--output-format`: render text, table, json, or yaml.
+- `--show-operations`: show each `MOVE`, `SAME`, `BLOCKED`, and `EXTRA` operation when using text output.
+- `--output-format`: render text, table, csv, json, or yaml.
 
 ## Notes
 - The command repairs `raw/` and `prompt/` by default.
@@ -29,12 +30,30 @@ Use this when an existing export already has correct `raw/folders.json` metadata
 - Prompt repair uses the matching raw dashboard UID to recover folder identity.
 - When raw dashboard JSON lacks `meta.folderUid`, repair falls back to the root export index `folderTitle` only when that title is unique for the org in `raw/folders.json`.
 - Blocked items are reported instead of guessed when metadata is missing.
+- Text output prints only the summary by default. Add `--show-operations` when you need the per-dashboard operation list.
+- Table and CSV output also render summary by default; combine them with `--show-operations` for per-dashboard operation rows.
+- JSON and YAML output always include the full plan contract with `summary`, `operations`, and `extraFiles`.
 - `--dry-run --output-format json` includes `summary.extraFileCount` and `extraFiles` for files under the repaired lanes that are not listed in the export index. Copy-mode preserves those files; in-place repair leaves them untouched.
 
 ## Examples
 ```bash
 # Preview old export layout repairs as a table.
 grafana-util dashboard convert export-layout --input-dir ./dashboards --output-dir ./dashboards.fixed --dry-run --output-format table
+```
+
+```bash
+# Preview only the summary.
+grafana-util dashboard convert export-layout --input-dir ./dashboards --output-dir ./dashboards.fixed --dry-run
+```
+
+```bash
+# Preview every per-dashboard operation.
+grafana-util dashboard convert export-layout --input-dir ./dashboards --output-dir ./dashboards.fixed --dry-run --show-operations
+```
+
+```bash
+# Export operation rows as CSV.
+grafana-util dashboard convert export-layout --input-dir ./dashboards --output-dir ./dashboards.fixed --dry-run --output-format csv --show-operations
 ```
 
 ```bash

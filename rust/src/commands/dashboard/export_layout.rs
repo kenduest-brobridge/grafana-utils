@@ -12,10 +12,10 @@ use crate::tabular_output::render_yaml;
 use super::inspect_render::render_simple_table;
 use super::{
     load_export_metadata, load_folder_inventory, load_json_file, write_json_document,
-    DashboardIndexItem, ExportLayoutArgs, ExportLayoutVariant, FolderInventoryItem,
-    RawToPromptOutputFormat, RootExportIndex, VariantIndexEntry,
-    DASHBOARD_PERMISSION_BUNDLE_FILENAME, DATASOURCE_INVENTORY_FILENAME, DEFAULT_ORG_ID,
-    EXPORT_METADATA_FILENAME, FOLDER_INVENTORY_FILENAME, PROMPT_EXPORT_SUBDIR, RAW_EXPORT_SUBDIR,
+    DashboardIndexItem, ExportLayoutArgs, ExportLayoutOutputFormat, ExportLayoutVariant,
+    FolderInventoryItem, RootExportIndex, VariantIndexEntry, DASHBOARD_PERMISSION_BUNDLE_FILENAME,
+    DATASOURCE_INVENTORY_FILENAME, DEFAULT_ORG_ID, EXPORT_METADATA_FILENAME,
+    FOLDER_INVENTORY_FILENAME, PROMPT_EXPORT_SUBDIR, RAW_EXPORT_SUBDIR,
 };
 
 const EXPORT_LAYOUT_PLAN_KIND: &str = "grafana-util-dashboard-export-layout-plan";
@@ -121,7 +121,12 @@ pub(crate) fn run_export_layout_repair(args: &ExportLayoutArgs) -> Result<()> {
     let variants = selected_variants(args);
     let output_dir = args.output_dir.as_deref();
     let plan = build_export_layout_plan(args, &variants)?;
-    print_export_layout_plan(&plan, args.output_format, args.no_header)?;
+    print_export_layout_plan(
+        &plan,
+        args.output_format,
+        args.no_header,
+        args.show_operations,
+    )?;
 
     if args.dry_run {
         return Ok(());
@@ -939,78 +944,214 @@ fn copy_dir_recursive(source: &Path, target: &Path, overwrite: bool) -> Result<(
 
 fn print_export_layout_plan(
     plan: &ExportLayoutPlan,
-    output_format: RawToPromptOutputFormat,
+    output_format: ExportLayoutOutputFormat,
     no_header: bool,
+    show_operations: bool,
 ) -> Result<()> {
     match output_format {
-        RawToPromptOutputFormat::Json => print!("{}", render_json_value(plan)?),
-        RawToPromptOutputFormat::Yaml => print!("{}", render_yaml(plan)?),
-        RawToPromptOutputFormat::Table => {
-            let mut rows = plan
-                .operations
-                .iter()
-                .map(|operation| {
-                    vec![
-                        operation.action.to_uppercase(),
-                        operation.variant.clone(),
-                        operation.uid.clone(),
-                        operation.from.clone(),
-                        operation.to.clone(),
-                        operation.reason.clone().unwrap_or_else(|| "-".to_string()),
-                    ]
-                })
-                .collect::<Vec<_>>();
-            rows.extend(plan.extra_files.iter().map(|extra_file| {
-                vec![
-                    "EXTRA".to_string(),
-                    extra_file.variant.clone(),
-                    "-".to_string(),
-                    extra_file.path.clone(),
-                    extra_file.path.clone(),
-                    extra_file.reason.clone(),
-                ]
-            }));
-            for line in render_simple_table(
-                &["ACTION", "VARIANT", "UID", "FROM", "TO", "REASON"],
-                &rows,
-                !no_header,
-            ) {
+        ExportLayoutOutputFormat::Json => print!("{}", render_json_value(plan)?),
+        ExportLayoutOutputFormat::Yaml => print!("{}", render_yaml(plan)?),
+        ExportLayoutOutputFormat::Csv => {
+            print!("{}", render_export_layout_plan_csv(plan, show_operations))
+        }
+        ExportLayoutOutputFormat::Table => {
+            for line in render_export_layout_plan_table(plan, show_operations, !no_header) {
                 println!("{line}");
             }
         }
-        RawToPromptOutputFormat::Text => {
-            println!(
-                "export-layout repair plan: move={} same={} blocked={} extra={}",
-                plan.summary.move_count,
-                plan.summary.unchanged_count,
-                plan.summary.blocked_count,
-                plan.summary.extra_file_count
-            );
-            for operation in &plan.operations {
-                let reason = operation
-                    .reason
-                    .as_ref()
-                    .map(|value| format!(" reason={value}"))
-                    .unwrap_or_default();
-                println!(
-                    "  {} {} uid={} {} -> {}{}",
-                    operation.action.to_uppercase(),
-                    operation.variant,
-                    operation.uid,
-                    operation.from,
-                    operation.to,
-                    reason
-                );
-            }
-            for extra_file in &plan.extra_files {
-                println!(
-                    "  EXTRA {} path={} handling={} reason={}",
-                    extra_file.variant, extra_file.path, extra_file.handling, extra_file.reason
-                );
-            }
+        ExportLayoutOutputFormat::Text => {
+            print!("{}", render_export_layout_plan_text(plan, show_operations));
         }
     }
     Ok(())
+}
+
+fn render_export_layout_plan_table(
+    plan: &ExportLayoutPlan,
+    show_operations: bool,
+    include_header: bool,
+) -> Vec<String> {
+    if show_operations {
+        let mut rows = plan
+            .operations
+            .iter()
+            .map(|operation| {
+                vec![
+                    operation.action.to_uppercase(),
+                    operation.variant.clone(),
+                    operation.uid.clone(),
+                    operation.from.clone(),
+                    operation.to.clone(),
+                    operation.reason.clone().unwrap_or_else(|| "-".to_string()),
+                ]
+            })
+            .collect::<Vec<_>>();
+        rows.extend(plan.extra_files.iter().map(|extra_file| {
+            vec![
+                "EXTRA".to_string(),
+                extra_file.variant.clone(),
+                "-".to_string(),
+                extra_file.path.clone(),
+                extra_file.path.clone(),
+                extra_file.reason.clone(),
+            ]
+        }));
+        return render_simple_table(
+            &["ACTION", "VARIANT", "UID", "FROM", "TO", "REASON"],
+            &rows,
+            include_header,
+        );
+    }
+
+    render_simple_table(
+        &["FIELD", "VALUE"],
+        &export_layout_summary_rows(plan),
+        include_header,
+    )
+}
+
+fn export_layout_summary_rows(plan: &ExportLayoutPlan) -> Vec<Vec<String>> {
+    let mut rows = vec![
+        vec![
+            "dashboards".to_string(),
+            (plan.summary.move_count + plan.summary.unchanged_count + plan.summary.blocked_count)
+                .to_string(),
+        ],
+        vec!["variants".to_string(), plan.variants.join(",")],
+        vec!["move".to_string(), plan.summary.move_count.to_string()],
+        vec!["same".to_string(), plan.summary.unchanged_count.to_string()],
+        vec![
+            "blocked".to_string(),
+            plan.summary.blocked_count.to_string(),
+        ],
+        vec![
+            "extra".to_string(),
+            plan.summary.extra_file_count.to_string(),
+        ],
+    ];
+    if let Some(output_dir) = &plan.output_dir {
+        rows.push(vec!["output".to_string(), output_dir.clone()]);
+    }
+    rows
+}
+
+fn render_export_layout_plan_csv(plan: &ExportLayoutPlan, show_operations: bool) -> String {
+    let mut rows = Vec::new();
+    if show_operations {
+        rows.push(vec![
+            "action".to_string(),
+            "variant".to_string(),
+            "uid".to_string(),
+            "from".to_string(),
+            "to".to_string(),
+            "reason".to_string(),
+        ]);
+        rows.extend(plan.operations.iter().map(|operation| {
+            vec![
+                operation.action.clone(),
+                operation.variant.clone(),
+                operation.uid.clone(),
+                operation.from.clone(),
+                operation.to.clone(),
+                operation.reason.clone().unwrap_or_default(),
+            ]
+        }));
+        rows.extend(plan.extra_files.iter().map(|extra_file| {
+            vec![
+                "extra".to_string(),
+                extra_file.variant.clone(),
+                String::new(),
+                extra_file.path.clone(),
+                extra_file.path.clone(),
+                extra_file.reason.clone(),
+            ]
+        }));
+    } else {
+        rows.push(vec![
+            "dashboards".to_string(),
+            "variants".to_string(),
+            "move".to_string(),
+            "same".to_string(),
+            "blocked".to_string(),
+            "extra".to_string(),
+            "output".to_string(),
+        ]);
+        rows.push(vec![
+            (plan.summary.move_count + plan.summary.unchanged_count + plan.summary.blocked_count)
+                .to_string(),
+            plan.variants.join("|"),
+            plan.summary.move_count.to_string(),
+            plan.summary.unchanged_count.to_string(),
+            plan.summary.blocked_count.to_string(),
+            plan.summary.extra_file_count.to_string(),
+            plan.output_dir.clone().unwrap_or_default(),
+        ]);
+    }
+    rows.into_iter()
+        .map(|row| {
+            row.into_iter()
+                .map(|field| csv_escape(&field))
+                .collect::<Vec<_>>()
+                .join(",")
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+        + "\n"
+}
+
+fn csv_escape(value: &str) -> String {
+    if value.contains([',', '"', '\n', '\r']) {
+        format!("\"{}\"", value.replace('"', "\"\""))
+    } else {
+        value.to_string()
+    }
+}
+
+fn render_export_layout_plan_text(plan: &ExportLayoutPlan, show_operations: bool) -> String {
+    let mut lines = Vec::new();
+    lines.push("Export layout repair plan".to_string());
+    lines.push(format!(
+        "  Dashboards: {}",
+        plan.summary.move_count + plan.summary.unchanged_count + plan.summary.blocked_count
+    ));
+    lines.push(format!("  Variants: {}", plan.variants.join(", ")));
+    lines.push(format!(
+        "  Operations: {} move, {} same, {} blocked, {} extra",
+        plan.summary.move_count,
+        plan.summary.unchanged_count,
+        plan.summary.blocked_count,
+        plan.summary.extra_file_count
+    ));
+    if let Some(output_dir) = &plan.output_dir {
+        lines.push(format!("  Output: {output_dir}"));
+    }
+    if show_operations {
+        lines.push(String::new());
+        lines.push("Operations".to_string());
+        lines.extend(plan.operations.iter().map(|operation| {
+            let reason = operation
+                .reason
+                .as_ref()
+                .map(|value| format!(" reason={value}"))
+                .unwrap_or_default();
+            format!(
+                "  {} {} uid={} {} -> {}{}",
+                operation.action.to_uppercase(),
+                operation.variant,
+                operation.uid,
+                operation.from,
+                operation.to,
+                reason
+            )
+        }));
+        lines.extend(plan.extra_files.iter().map(|extra_file| {
+            format!(
+                "  EXTRA {} path={} handling={} reason={}",
+                extra_file.variant, extra_file.path, extra_file.handling, extra_file.reason
+            )
+        }));
+    }
+    lines.join("\n") + "\n"
 }
 
 #[cfg(test)]
@@ -1139,7 +1280,8 @@ mod tests {
             folders_file: None,
             dry_run: true,
             overwrite: false,
-            output_format: RawToPromptOutputFormat::Json,
+            show_operations: false,
+            output_format: ExportLayoutOutputFormat::Json,
             no_header: false,
             color: crate::common::CliColorChoice::Never,
         };
@@ -1176,7 +1318,8 @@ mod tests {
             folders_file: None,
             dry_run: true,
             overwrite: false,
-            output_format: RawToPromptOutputFormat::Json,
+            show_operations: false,
+            output_format: ExportLayoutOutputFormat::Json,
             no_header: false,
             color: crate::common::CliColorChoice::Never,
         };
@@ -1211,7 +1354,8 @@ mod tests {
             folders_file: None,
             dry_run: true,
             overwrite: false,
-            output_format: RawToPromptOutputFormat::Json,
+            show_operations: false,
+            output_format: ExportLayoutOutputFormat::Json,
             no_header: false,
             color: crate::common::CliColorChoice::Never,
         };
@@ -1243,6 +1387,129 @@ mod tests {
     }
 
     #[test]
+    fn export_layout_text_output_defaults_to_summary_only() {
+        let temp = tempdir().unwrap();
+        let input = temp.path().join("dashboards");
+        write_old_export(&input);
+        let args = ExportLayoutArgs {
+            input_dir: input,
+            output_dir: Some(temp.path().join("fixed")),
+            in_place: false,
+            backup_dir: None,
+            variant: Vec::new(),
+            raw_dir: None,
+            folders_file: None,
+            dry_run: true,
+            overwrite: false,
+            show_operations: false,
+            output_format: ExportLayoutOutputFormat::Text,
+            no_header: false,
+            color: crate::common::CliColorChoice::Never,
+        };
+        let plan = build_export_layout_plan(&args, &selected_variants(&args)).unwrap();
+
+        let output = render_export_layout_plan_text(&plan, false);
+
+        assert!(output.contains("Dashboards: 2"));
+        assert!(output.contains("Operations: 2 move, 0 same, 0 blocked, 0 extra"));
+        assert!(!output.contains("MOVE raw uid=cpu-main"));
+    }
+
+    #[test]
+    fn export_layout_text_output_show_operations_includes_operations() {
+        let temp = tempdir().unwrap();
+        let input = temp.path().join("dashboards");
+        write_old_export(&input);
+        let args = ExportLayoutArgs {
+            input_dir: input,
+            output_dir: Some(temp.path().join("fixed")),
+            in_place: false,
+            backup_dir: None,
+            variant: Vec::new(),
+            raw_dir: None,
+            folders_file: None,
+            dry_run: true,
+            overwrite: false,
+            show_operations: true,
+            output_format: ExportLayoutOutputFormat::Text,
+            no_header: false,
+            color: crate::common::CliColorChoice::Never,
+        };
+        let plan = build_export_layout_plan(&args, &selected_variants(&args)).unwrap();
+
+        let output = render_export_layout_plan_text(&plan, true);
+
+        assert!(output.contains("Dashboards: 2"));
+        assert!(output.contains("Operations\n"));
+        assert!(output.contains("MOVE raw uid=cpu-main"));
+        assert!(
+            output.contains("Infra/CPU__cpu-main.json -> Platform/Team/Infra/CPU__cpu-main.json")
+        );
+    }
+
+    #[test]
+    fn export_layout_table_output_defaults_to_summary_rows() {
+        let temp = tempdir().unwrap();
+        let input = temp.path().join("dashboards");
+        write_old_export(&input);
+        let args = ExportLayoutArgs {
+            input_dir: input,
+            output_dir: Some(temp.path().join("fixed")),
+            in_place: false,
+            backup_dir: None,
+            variant: Vec::new(),
+            raw_dir: None,
+            folders_file: None,
+            dry_run: true,
+            overwrite: false,
+            show_operations: false,
+            output_format: ExportLayoutOutputFormat::Table,
+            no_header: false,
+            color: crate::common::CliColorChoice::Never,
+        };
+        let plan = build_export_layout_plan(&args, &selected_variants(&args)).unwrap();
+
+        let output = render_export_layout_plan_table(&plan, false, true).join("\n");
+
+        assert!(output.contains("FIELD"));
+        assert!(output.contains("dashboards"));
+        assert!(output.contains("move"));
+        assert!(!output.contains("ACTION"));
+        assert!(!output.contains("cpu-main"));
+    }
+
+    #[test]
+    fn export_layout_csv_output_supports_summary_and_operation_rows() {
+        let temp = tempdir().unwrap();
+        let input = temp.path().join("dashboards");
+        write_old_export(&input);
+        let args = ExportLayoutArgs {
+            input_dir: input,
+            output_dir: Some(temp.path().join("fixed")),
+            in_place: false,
+            backup_dir: None,
+            variant: Vec::new(),
+            raw_dir: None,
+            folders_file: None,
+            dry_run: true,
+            overwrite: false,
+            show_operations: false,
+            output_format: ExportLayoutOutputFormat::Csv,
+            no_header: false,
+            color: crate::common::CliColorChoice::Never,
+        };
+        let plan = build_export_layout_plan(&args, &selected_variants(&args)).unwrap();
+
+        let summary = render_export_layout_plan_csv(&plan, false);
+        let operations = render_export_layout_plan_csv(&plan, true);
+
+        assert!(summary.starts_with("dashboards,variants,move,same,blocked,extra,output\n"));
+        assert!(summary.contains("2,raw|prompt,2,0,0,0,"));
+        assert!(operations.starts_with("action,variant,uid,from,to,reason\n"));
+        assert!(operations.contains("move,raw,cpu-main"));
+    }
+
+    #[test]
     fn export_layout_repair_copy_mode_updates_files_and_indexes() {
         let temp = tempdir().unwrap();
         let input = temp.path().join("dashboards");
@@ -1258,7 +1525,8 @@ mod tests {
             folders_file: None,
             dry_run: false,
             overwrite: true,
-            output_format: RawToPromptOutputFormat::Text,
+            show_operations: false,
+            output_format: ExportLayoutOutputFormat::Text,
             no_header: false,
             color: crate::common::CliColorChoice::Never,
         };
@@ -1300,7 +1568,8 @@ mod tests {
             folders_file: None,
             dry_run: false,
             overwrite: true,
-            output_format: RawToPromptOutputFormat::Text,
+            show_operations: false,
+            output_format: ExportLayoutOutputFormat::Text,
             no_header: false,
             color: crate::common::CliColorChoice::Never,
         };
