@@ -36,6 +36,13 @@
 - Keep comments short and behavior-focused.
 - When a screenshot or image task only needs text extraction, run OCR first with `tesseract <image> stdout -l chi_tra+eng`; if OCR quality is poor, preprocess with ImageMagick, for example `magick <image> -resize 200% -colorspace Gray <tmp-image>`.
 
+## Model Routing
+
+- Reserve highest-reasoning frontier runs, such as GPT-5.4 with xhigh/extreme reasoning, for changes that cross CLI behavior, artifact contracts, generated docs, tests, and real export compatibility at the same time.
+- Use that heavier model tier for architecture decisions where a wrong assumption can ripple across command surface, schema contracts, workspace/review flows, or raw/prompt/provisioning lane semantics.
+- Prefer normal GPT-5.4 reasoning or worker models for single-file Rust fixes, focused test cleanup, docs edits, generated-doc refreshes, and other narrow tasks with clear local context.
+- When using workers, split by disjoint write scope and keep the main agent responsible for final integration, contract review, and validation.
+
 ## Validation And Commits
 
 - Run the smallest relevant test target first, then broaden if the change crosses subsystems.
