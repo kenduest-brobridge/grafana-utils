@@ -12,7 +12,7 @@ use crate::snapshot::{
 use serde_json::json;
 use serde_json::Value;
 
-pub(crate) fn sample_common_args() -> CommonCliArgs {
+pub(super) fn sample_common_args() -> CommonCliArgs {
     CommonCliArgs {
         color: crate::common::CliColorChoice::Auto,
         profile: Some("prod".to_string()),
@@ -27,7 +27,7 @@ pub(crate) fn sample_common_args() -> CommonCliArgs {
     }
 }
 
-pub(crate) fn write_snapshot_dashboard_metadata(
+pub(super) fn write_snapshot_dashboard_metadata(
     dashboard_root: &Path,
     orgs: &[(&str, &str, usize)],
 ) {
@@ -60,7 +60,7 @@ pub(crate) fn write_snapshot_dashboard_metadata(
     .unwrap();
 }
 
-pub(crate) fn write_snapshot_dashboard_index(dashboard_root: &Path, folders: &[Value]) {
+pub(super) fn write_snapshot_dashboard_index(dashboard_root: &Path, folders: &[Value]) {
     fs::create_dir_all(dashboard_root).unwrap();
     fs::write(
         dashboard_root.join("index.json"),
@@ -80,7 +80,7 @@ pub(crate) fn write_snapshot_dashboard_index(dashboard_root: &Path, folders: &[V
     .unwrap();
 }
 
-pub(crate) fn write_snapshot_datasource_root_metadata(
+pub(super) fn write_snapshot_datasource_root_metadata(
     datasource_root: &Path,
     datasource_count: usize,
     variant: &str,
@@ -104,7 +104,7 @@ pub(crate) fn write_snapshot_datasource_root_metadata(
     .unwrap();
 }
 
-pub(crate) fn write_datasource_inventory_rows(datasource_root: &Path, rows: &[Value]) {
+pub(super) fn write_datasource_inventory_rows(datasource_root: &Path, rows: &[Value]) {
     fs::create_dir_all(datasource_root).unwrap();
     fs::write(
         datasource_root.join(SNAPSHOT_DATASOURCE_EXPORT_FILENAME),
@@ -113,7 +113,7 @@ pub(crate) fn write_datasource_inventory_rows(datasource_root: &Path, rows: &[Va
     .unwrap();
 }
 
-pub(crate) fn write_complete_dashboard_scope(scope_dir: &Path) {
+pub(super) fn write_complete_dashboard_scope(scope_dir: &Path) {
     fs::create_dir_all(scope_dir.join("raw")).unwrap();
     fs::write(scope_dir.join("raw/index.json"), "[]").unwrap();
 
@@ -129,7 +129,7 @@ pub(crate) fn write_complete_dashboard_scope(scope_dir: &Path) {
     .unwrap();
 }
 
-pub(crate) fn write_datasource_provisioning_lane(scope_dir: &Path) {
+pub(super) fn write_datasource_provisioning_lane(scope_dir: &Path) {
     fs::create_dir_all(scope_dir.join("provisioning")).unwrap();
     fs::write(
         scope_dir.join("provisioning/datasources.yaml"),
@@ -138,7 +138,7 @@ pub(crate) fn write_datasource_provisioning_lane(scope_dir: &Path) {
     .unwrap();
 }
 
-pub(crate) fn write_snapshot_datasource_inventory_root(
+pub(super) fn write_snapshot_datasource_inventory_root(
     datasource_root: &Path,
     rows: &[Value],
     datasource_count: usize,
@@ -148,7 +148,7 @@ pub(crate) fn write_snapshot_datasource_inventory_root(
     write_datasource_inventory_rows(datasource_root, rows);
 }
 
-pub(crate) fn write_snapshot_access_lane_bundle(
+pub(super) fn write_snapshot_access_lane_bundle(
     lane_root: &Path,
     payload_filename: &str,
     kind: &str,
