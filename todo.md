@@ -13,6 +13,8 @@ Scope rules:
 ## Current Baseline
 
 - Branch is `dev`; keep new work grouped into focused Rust/test commits.
+- GitHub Actions `rust-quality` is currently green on Rust 1.95 after the
+  latest clippy compatibility pass.
 - Default Rust build and `--features browser` are supported release surfaces.
 - `--no-default-features` is explicitly not claimed as a supported release surface yet.
 - Dashboard `summary` / `dependencies` naming and review-source model are now clearer.
@@ -125,56 +127,21 @@ Validation:
 - `cargo test --manifest-path rust/Cargo.toml --quiet`
 - `cargo fmt --manifest-path rust/Cargo.toml --all --check`
 
-## P1 - Datasource Masked-Recovery Safety
-
-### Keep Export Projections Derived and Safe
-
-Status: done for the current Rust datasource masked-recovery safety pass.
-Export records now preserve additive live evidence, import update planning uses
-target UID/version evidence, read-only targets are blocked before live writes,
-and provisioning output remains documented as derived projection only.
-
-Action:
-
-- Keep `datasources.json` as the canonical replay/import/diff artifact.
-- Keep `provisioning/datasources.yaml` documented as derived output only while
-  secret placeholders remain.
-- Keep K8s datasource API support out of this task and note it separately as a
-  future adapter boundary.
-- Later, evaluate plugin-availability preflight and a separate K8s datasource
-  adapter lane without mixing either into the masked-recovery contract.
-
-Validation so far:
-
-- Focused datasource export, import-plan, dry-run JSON, render, parser, and
-  round-trip tests pass.
-
 ## P0 - Test Surface Control
 
 ### Split Oversized Rust Test Files
 
 Problem:
 
-Several Rust test files are still too large to review or debug quickly. The
-first maintainability pass split the largest sync, dashboard, snapshot, and
-access org runtime test surfaces by behavior while preserving their test names.
+Several Rust test files are still too large to review or debug quickly. Keep
+splitting only when a file mixes clearly separable behavior groups.
 
 Current hotspots:
 
 - `rust/src/commands/access/rust_tests.rs`
-- `rust/src/commands/datasource/tests/cli_mutation.rs`
 - `rust/src/commands/datasource/tests/payload.rs`
 - `rust/src/commands/dashboard/rust_tests.rs`
-- `rust/src/commands/sync/bundle_exec_sources_rust_tests.rs`
 - `rust/src/commands/snapshot/tests_review_rust_tests.rs`
-
-Recently split:
-
-- `rust/src/commands/sync/bundle_exec_rust_tests.rs`
-- `rust/src/commands/dashboard/dashboard_export_import_topology_import_format_rust_tests.rs`
-- `rust/src/commands/dashboard/dashboard_browse_workflow_rust_tests.rs`
-- `rust/src/commands/snapshot/tests.rs`
-- `rust/src/commands/access/access_runtime_org_rust_tests.rs`
 
 Action:
 
@@ -186,10 +153,10 @@ Action:
 
 Suggested order:
 
-1. `datasource/tests/cli_mutation.rs`
-2. `datasource/tests/payload.rs`
-3. `access/rust_tests.rs`
-4. `dashboard/rust_tests.rs`
+1. `datasource/tests/payload.rs`
+2. `access/rust_tests.rs`
+3. `dashboard/rust_tests.rs`
+4. `snapshot/tests_review_rust_tests.rs`
 
 Validation:
 
