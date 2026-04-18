@@ -359,7 +359,7 @@ where
     })
 }
 
-#[cfg_attr(not(test), allow(dead_code))]
+#[allow(dead_code)]
 pub(crate) fn build_dashboard_browse_document(
     summaries: &[Map<String, Value>],
     folder_inventory: &[super::FolderInventoryItem],

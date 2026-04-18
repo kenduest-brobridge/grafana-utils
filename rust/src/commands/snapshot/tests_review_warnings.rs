@@ -1,7 +1,21 @@
 //! Snapshot review wrapper and warning behavior tests.
 
-use super::*;
-use crate::snapshot::run_snapshot_review_document_with_handler;
+use std::cell::RefCell;
+use std::fs;
+use std::rc::Rc;
+
+use super::tests_fixtures::{
+    write_complete_dashboard_scope, write_datasource_inventory_rows,
+    write_datasource_provisioning_lane, write_snapshot_dashboard_metadata,
+    write_snapshot_datasource_inventory_root, write_snapshot_datasource_root_metadata,
+};
+use crate::overview::OverviewOutputFormat;
+use crate::snapshot::{
+    build_snapshot_review_browser_items, build_snapshot_review_document,
+    run_snapshot_review_document_with_handler, SnapshotReviewArgs,
+};
+use serde_json::json;
+use tempfile::tempdir;
 
 #[test]
 fn snapshot_review_wrapper_normalizes_combined_datasource_root_before_building_document() {

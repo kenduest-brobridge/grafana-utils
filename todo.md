@@ -12,7 +12,7 @@ Scope rules:
 
 ## Current Baseline
 
-- Branch is `dev`, currently ahead of `origin/dev` with grouped Rust/docs/contract commits.
+- Branch is `dev`; keep new work grouped into focused Rust/test commits.
 - Default Rust build and `--features browser` are supported release surfaces.
 - `--no-default-features` is explicitly not claimed as a supported release surface yet.
 - Dashboard `summary` / `dependencies` naming and review-source model are now clearer.
@@ -155,18 +155,26 @@ Validation so far:
 
 Problem:
 
-Several Rust test files are still too large to review or debug quickly.
+Several Rust test files are still too large to review or debug quickly. The
+first maintainability pass split the largest sync, dashboard, snapshot, and
+access org runtime test surfaces by behavior while preserving their test names.
 
 Current hotspots:
 
-- `rust/src/commands/datasource/tests/tail.rs`
 - `rust/src/commands/access/rust_tests.rs`
-- `rust/src/commands/dashboard/dashboard_browse_workflow_rust_tests.rs`
-- `rust/src/commands/access/access_runtime_org_rust_tests.rs`
-- `rust/src/commands/snapshot/tests.rs`
-- `rust/src/commands/sync/bundle_exec_rust_tests.rs`
 - `rust/src/commands/datasource/tests/cli_mutation.rs`
+- `rust/src/commands/datasource/tests/payload.rs`
+- `rust/src/commands/dashboard/rust_tests.rs`
+- `rust/src/commands/sync/bundle_exec_sources_rust_tests.rs`
+- `rust/src/commands/snapshot/tests_review_rust_tests.rs`
+
+Recently split:
+
+- `rust/src/commands/sync/bundle_exec_rust_tests.rs`
 - `rust/src/commands/dashboard/dashboard_export_import_topology_import_format_rust_tests.rs`
+- `rust/src/commands/dashboard/dashboard_browse_workflow_rust_tests.rs`
+- `rust/src/commands/snapshot/tests.rs`
+- `rust/src/commands/access/access_runtime_org_rust_tests.rs`
 
 Action:
 
@@ -178,11 +186,10 @@ Action:
 
 Suggested order:
 
-1. `datasource/tests/tail.rs`
-2. `access/rust_tests.rs`
-3. `dashboard_browse_workflow_rust_tests.rs`
-4. `access_runtime_org_rust_tests.rs`
-5. `snapshot/tests.rs`
+1. `datasource/tests/cli_mutation.rs`
+2. `datasource/tests/payload.rs`
+3. `access/rust_tests.rs`
+4. `dashboard/rust_tests.rs`
 
 Validation:
 

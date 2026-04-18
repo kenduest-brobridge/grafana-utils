@@ -15,6 +15,13 @@ Current AI-maintained status only.
 - Older entries moved to [`ai-status-archive-2026-04-17.md`](docs/internal/archive/ai-status-archive-2026-04-17.md).
 - Older entries moved to [`ai-status-archive-2026-04-18.md`](docs/internal/archive/ai-status-archive-2026-04-18.md).
 
+## 2026-04-18 - Split oversized Rust test surfaces
+- State: Done
+- Scope: Rust test-surface maintainability for sync bundle execution, dashboard export/import/topology, dashboard browse workflow, snapshot, access org runtime, TODO backlog, focused tests, full Rust test, clippy, architecture gate, and AI trace docs. README files, generated user docs, public CLI behavior, JSON contracts, and Python implementation are out of scope.
+- Baseline: Several Rust regression files mixed unrelated behavior suites in 900+ line modules, which made review and worker assignment harder even after production architecture warnings were clean.
+- Current Update: Split the largest test hubs into behavior-named sibling modules while keeping their original files as routing facades and shared fixture homes where appropriate. Restored the existing access user runtime module include and kept dashboard browse's test-only document builder explicit for clippy.
+- Result: Focused sync/dashboard/snapshot/access tests pass, full Rust tests pass, clippy and formatting pass, and `make quality-architecture` remains clean.
+
 ## 2026-04-18 - Clear Rust architecture warnings
 - State: Done
 - Scope: Rust architecture-warning cleanup across dashboard plan/export/export-layout/import-apply, status live, datasource CLI defs, alert runtime tests, focused tests, full Rust quality gate, and AI trace docs. README files, generated user docs, and Python implementation are out of scope.

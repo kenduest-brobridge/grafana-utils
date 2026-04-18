@@ -15,6 +15,14 @@ Current AI change log only.
 - Older entries moved to [`ai-changes-archive-2026-04-17.md`](docs/internal/archive/ai-changes-archive-2026-04-17.md).
 - Older entries moved to [`ai-changes-archive-2026-04-18.md`](docs/internal/archive/ai-changes-archive-2026-04-18.md).
 
+## 2026-04-18 - Split oversized Rust test surfaces
+- Summary: split large Rust regression files into behavior-focused modules while preserving public behavior and existing test names. Sync bundle execution now separates source, domain artifact, and preflight cases; dashboard export/import/topology and browse workflow tests now route through small facades; snapshot tests now separate fixture, export, review, and metadata cases; access org runtime tests now separate routing, diff, import/export, and local-list cases.
+- Tests: preserved existing coverage and added no public behavior changes.
+- Test Run: `cargo test --manifest-path rust/Cargo.toml --quiet bundle_exec --lib`; `cargo test --manifest-path rust/Cargo.toml --quiet dashboard_export_import --lib`; `cargo test --manifest-path rust/Cargo.toml --quiet routed_import --lib`; `cargo test --manifest-path rust/Cargo.toml --quiet dashboard_browse --lib`; `cargo test --manifest-path rust/Cargo.toml --quiet snapshot --lib`; `cargo test --manifest-path rust/Cargo.toml --quiet access_runtime_org --lib`; `cargo test --manifest-path rust/Cargo.toml --quiet access --lib`; `cargo test --manifest-path rust/Cargo.toml --quiet`; `cargo clippy --manifest-path rust/Cargo.toml --all-targets -- -D warnings`; `cargo fmt --manifest-path rust/Cargo.toml --all --check`; `make quality-architecture`; `make quality-ai-workflow`.
+- Impact: Rust sync, dashboard, snapshot, and access test module layout, TODO backlog, and AI trace docs. README files, generated user docs, public CLI behavior, JSON contracts, and Python implementation were intentionally left unchanged.
+- Rollback/Risk: low behavior-preserving test refactor. Rollback would restore large test hubs and remove the new sibling test modules.
+- Follow-up: continue with the remaining medium-sized test hubs only when they mix real behavior families, starting with datasource CLI mutation or payload tests.
+
 ## 2026-04-18 - Clear Rust architecture warnings
 - Summary: cleared the remaining Rust architecture warning-threshold files by splitting production modules and tests along real responsibility boundaries. Dashboard plan now has input/reconcile/render helpers; dashboard import/apply has backend/prepare/live/render helpers; dashboard export has provisioning/root-bundle helpers; export-layout has apply/render/tests helpers; status live has discovery/domains/multi-org/tests helpers; datasource CLI format parsing moved out of the clap definition file; alert runtime tests split by scenario group.
 - Tests: preserved existing behavior coverage with focused dashboard plan/import/export/export-layout, status, datasource CLI, and alert tests. Full Rust tests and clippy also pass.

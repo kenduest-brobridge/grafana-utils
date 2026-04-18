@@ -1,9 +1,17 @@
 //! Staged export scope resolver tests for snapshot review inputs.
 
-use super::*;
+use std::fs;
+
+use super::tests_fixtures::{
+    write_complete_dashboard_scope, write_datasource_inventory_rows,
+    write_datasource_provisioning_lane, write_snapshot_datasource_root_metadata,
+};
+use crate::dashboard::TOOL_SCHEMA_VERSION;
 use crate::staged_export_scopes::{
     resolve_dashboard_export_scope_dirs, resolve_datasource_export_scope_dirs,
 };
+use serde_json::json;
+use tempfile::tempdir;
 
 #[test]
 fn staged_export_scope_resolver_prefers_dashboard_export_dirs_when_they_exist() {

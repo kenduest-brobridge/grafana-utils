@@ -4,23 +4,7 @@
 //! them without duplicating setup logic.
 #![allow(unused_imports)]
 
-use crate::dashboard::CommonCliArgs;
 use serde_json::{json, Value};
-
-fn sync_common_args() -> CommonCliArgs {
-    CommonCliArgs {
-        color: crate::common::CliColorChoice::Auto,
-        profile: None,
-        url: "http://127.0.0.1:3000".to_string(),
-        api_token: Some("test-token".to_string()),
-        username: None,
-        password: None,
-        prompt_password: false,
-        prompt_token: false,
-        timeout: 30,
-        verify_ssl: false,
-    }
-}
 
 fn load_alert_export_contract_fixture() -> Value {
     serde_json::from_str(include_str!(
