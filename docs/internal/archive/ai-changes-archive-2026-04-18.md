@@ -86,3 +86,11 @@
 - Impact: Rust access user/team import workflows, dry-run document summary, focused access tests, access command docs, generated man/html docs, and AI trace docs.
 - Rollback/Risk: medium access import behavior change. Rollback would again allow login-style values into Grafana's email-only bulk membership endpoint and defer provisioned/external blockers to live Grafana errors.
 - Follow-up: none.
+
+## 2026-04-18 - Extend access preflight from Grafana source
+- Summary: extended access hardening from Grafana source behavior. Service-account import dry-run rows now carry `status`, `blocked`, blockers, target evidence, role validation, and Admin-role privilege warnings. User modify now checks external/provisioned/synced blockers before any live mutation. Org import dry-run now reads live org users when bundles include users and blocks externally synced role changes before apply. Service-account token add now keeps Grafana API behavior while appending actionable hints for TTL policy and duplicate-token failures.
+- Tests: added focused regressions for service-account import dry-run shape, target evidence, invalid roles, token error hints, user modify blockers, allowed user modify sequencing, org import dry-run planning, org external-sync blocking, and org add-user behavior.
+- Test Run: `cargo test --manifest-path rust/Cargo.toml --quiet access`; `cargo test --manifest-path rust/Cargo.toml --quiet`; `cargo clippy --manifest-path rust/Cargo.toml --all-targets -- -D warnings`; `cargo fmt --manifest-path rust/Cargo.toml --all --check`; `make man`; `make html`; `make quality-docs-surface`; `make quality-ai-workflow`; `make man-check`; `make html-check`; `git diff --check`.
+- Impact: Rust access service-account, user, and org workflows; focused access tests; access command docs; generated man/html docs; and AI trace docs.
+- Rollback/Risk: medium access behavior change. Rollback would remove early blockers and return several Grafana-source constraints to live API failures, including externally synced user role changes and service-account import role validation.
+- Follow-up: decide separately whether IAM v0alpha1/resource-permission access surfaces deserve a dedicated command family instead of being folded into legacy user/team/service-account import.

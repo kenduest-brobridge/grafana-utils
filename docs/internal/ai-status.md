@@ -15,6 +15,13 @@ Current AI-maintained status only.
 - Older entries moved to [`ai-status-archive-2026-04-17.md`](docs/internal/archive/ai-status-archive-2026-04-17.md).
 - Older entries moved to [`ai-status-archive-2026-04-18.md`](docs/internal/archive/ai-status-archive-2026-04-18.md).
 
+## 2026-04-18 - Fix datasource plan architecture gate
+- State: Done
+- Scope: Rust datasource plan module split, shared review/action contract vocabulary, focused tests, architecture quality gate, and AI trace docs. README files, generated user docs, and Python implementation are out of scope.
+- Baseline: `make quality-architecture` failed because `rust/src/commands/datasource/plan/mod.rs` was 1065 lines, above the 800-line hard limit; review action/status/reason strings were also spread through datasource/access/dashboard/sync plan, preview, apply, and TUI paths.
+- Current Update: Split datasource plan into `model`, `builder`, `render`, and `tests` modules, leaving `mod.rs` as a thin re-export layer. Added a shared review contract vocabulary and routed core plan/preview/apply summary filters through it instead of scattering `would-*`, `same`, `blocked`, `warning`, and related reason strings.
+- Result: Focused datasource plan tests, full Rust tests, clippy, formatting, and `make quality-architecture` pass. Remaining architecture output contains warning-threshold files only, with zero hard failures.
+
 ## 2026-04-18 - Advance review and contract backlog
 - State: Done
 - Scope: Rust dashboard browse render cleanup, status producer shared shape, sync live apply phase split, output contract checker depth, focused tests, generated docs if public docs change, and AI trace docs. README files and Python implementation are out of scope.
@@ -49,10 +56,3 @@ Current AI-maintained status only.
 - Baseline: `access plan` initially reviewed user bundles only while team, org, service-account, and `all` selectors remained unsupported.
 - Current Update: Added concrete `--resource org`, `--resource team`, and `--resource service-account` plan paths using the existing import/diff/live helpers. `--resource all` remains reserved for a later aggregate layer.
 - Result: Focused access tests and clippy pass; broader validation is in progress.
-
-## 2026-04-18 - Add review plans for access, dashboard, alert, and workspace
-- State: Done
-- Scope: Rust access/dashboard plan slices, alert plan contract fields, workspace preview normalized actions, focused tests, command docs, generated docs, and AI trace docs. README files and Python implementation are out of scope.
-- Baseline: `datasource plan` introduced the reconcile-plan shape, while access/dashboard still lacked a plan command, alert plan rows did not consistently expose TUI-ready metadata, and workspace preview did not normalize legacy operations into a shared action/domain/blocker contract.
-- Current Update: Added `access plan` for user bundles and `dashboard plan` for single-org dashboard exports, enriched alert plan rows with stable action/status/review fields while preserving existing apply compatibility, and normalized workspace preview output with `actions`, `domains`, and `blockedReasons` for future TUI review.
-- Result: Focused access, dashboard, alert, and workspace preview tests pass; broader validation is in progress.

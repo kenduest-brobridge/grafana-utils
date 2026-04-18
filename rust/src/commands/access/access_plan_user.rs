@@ -15,6 +15,12 @@ use crate::access::{
     ACCESS_USER_EXPORT_FILENAME,
 };
 use crate::common::{load_json_object_file, message, string_field, Result};
+use crate::review_contract::{
+    REVIEW_ACTION_BLOCKED, REVIEW_ACTION_EXTRA_REMOTE, REVIEW_ACTION_SAME,
+    REVIEW_ACTION_WOULD_CREATE, REVIEW_ACTION_WOULD_DELETE, REVIEW_ACTION_WOULD_UPDATE,
+    REVIEW_HINT_REMOTE_ONLY, REVIEW_STATUS_BLOCKED, REVIEW_STATUS_READY, REVIEW_STATUS_SAME,
+    REVIEW_STATUS_WARNING,
+};
 
 use super::{
     build_access_plan_document_from_parts, AccessPlanAction, AccessPlanChange, AccessPlanDocument,
@@ -303,8 +309,8 @@ where
                     identity: identity.clone(),
                     scope: Some(user_scope_text(&scope).to_string()),
                     source_path: source_path.clone(),
-                    action: "would-create",
-                    status: "ready",
+                    action: REVIEW_ACTION_WOULD_CREATE,
+                    status: REVIEW_STATUS_READY,
                     changed_fields: Vec::new(),
                     changes: Vec::new(),
                     target: Some(build_target_evidence(local_payload)),
@@ -320,8 +326,8 @@ where
                         identity: identity.clone(),
                         scope: Some(user_scope_text(&scope).to_string()),
                         source_path: source_path.clone(),
-                        action: "same",
-                        status: "same",
+                        action: REVIEW_ACTION_SAME,
+                        status: REVIEW_STATUS_SAME,
                         changed_fields: Vec::new(),
                         changes: Vec::new(),
                         target: Some(build_target_evidence(live_payload)),
@@ -337,8 +343,8 @@ where
                             identity: identity.clone(),
                             scope: Some(user_scope_text(&scope).to_string()),
                             source_path: source_path.clone(),
-                            action: "would-update",
-                            status: "warning",
+                            action: REVIEW_ACTION_WOULD_UPDATE,
+                            status: REVIEW_STATUS_WARNING,
                             changed_fields,
                             changes,
                             target: Some(build_target_evidence(live_payload)),
@@ -353,8 +359,8 @@ where
                             identity: identity.clone(),
                             scope: Some(user_scope_text(&scope).to_string()),
                             source_path: source_path.clone(),
-                            action: "blocked",
-                            status: "blocked",
+                            action: REVIEW_ACTION_BLOCKED,
+                            status: REVIEW_STATUS_BLOCKED,
                             changed_fields,
                             changes,
                             target: Some(build_target_evidence(live_payload)),
@@ -378,17 +384,21 @@ where
         let (identity, live_payload) = &live_map[key];
         let action = if args.prune {
             delete += 1;
-            "would-delete"
+            REVIEW_ACTION_WOULD_DELETE
         } else {
             warning += 1;
-            "extra-remote"
+            REVIEW_ACTION_EXTRA_REMOTE
         };
         actions.push(build_user_action(UserActionInput {
             identity: identity.clone(),
             scope: Some(user_scope_text(&scope).to_string()),
             source_path: source_path.clone(),
             action,
-            status: if args.prune { "ready" } else { "warning" },
+            status: if args.prune {
+                REVIEW_STATUS_READY
+            } else {
+                REVIEW_STATUS_WARNING
+            },
             changed_fields: Vec::new(),
             changes: Vec::new(),
             target: Some(build_target_evidence(live_payload)),
@@ -397,7 +407,7 @@ where
             } else {
                 Some("use --prune to include delete candidates".to_string())
             },
-            review_hints: vec!["remote-only user record".to_string()],
+            review_hints: vec![format!("{REVIEW_HINT_REMOTE_ONLY} user record")],
         }));
     }
 

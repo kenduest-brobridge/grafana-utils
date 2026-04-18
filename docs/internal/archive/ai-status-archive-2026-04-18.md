@@ -74,3 +74,10 @@
 - Baseline: `datasource diff` compares local bundles with live Grafana and reports `missing-remote` / `extra-remote`, while `datasource import --dry-run` previews create/update for import records only. There is no dedicated review-first datasource reconcile plan, no opt-in prune planning, and no TUI-ready action model.
 - Current Update: Added `datasource plan` as a review-only reconcile surface with text/table/json output, opt-in prune planning, all-org export routing, safe field comparison, read-only blocking, and stable TUI-ready action IDs. `datasource diff` and import dry-run remain separate surfaces.
 - Result: Focused datasource plan tests, datasource suite, clippy, formatting, docs-surface, and generated docs checks pass.
+
+## 2026-04-18 - Add review plans for access, dashboard, alert, and workspace
+- State: Done
+- Scope: Rust access/dashboard plan slices, alert plan contract fields, workspace preview normalized actions, focused tests, command docs, generated docs, and AI trace docs. README files and Python implementation are out of scope.
+- Baseline: `datasource plan` introduced the reconcile-plan shape, while access/dashboard still lacked a plan command, alert plan rows did not consistently expose TUI-ready metadata, and workspace preview did not normalize legacy operations into a shared action/domain/blocker contract.
+- Current Update: Added `access plan` for user bundles and `dashboard plan` for single-org dashboard exports, enriched alert plan rows with stable action/status/review fields while preserving existing apply compatibility, and normalized workspace preview output with `actions`, `domains`, and `blockedReasons` for future TUI review.
+- Result: Focused access, dashboard, alert, and workspace preview tests pass; broader validation is in progress.

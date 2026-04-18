@@ -141,6 +141,9 @@ pub(crate) mod reference_graph;
 /// Generic Grafana resource discovery and read-only query commands.
 #[path = "commands/resource/mod.rs"]
 pub mod resource;
+/// Shared review/action vocabulary used by plan, preview, apply, and TUI layers.
+#[path = "commands/review_contract.rs"]
+pub(crate) mod review_contract;
 /// Snapshot export/review wrappers for staged dashboard and datasource bundles.
 #[path = "commands/snapshot/mod.rs"]
 pub mod snapshot;

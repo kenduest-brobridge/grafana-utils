@@ -5,6 +5,7 @@ use std::fmt::Write as _;
 use crate::access::cli_defs::{AccessPlanArgs, PlanOutputFormat};
 use crate::access::render::format_table;
 use crate::common::{message, render_json_value, Result};
+use crate::review_contract::REVIEW_ACTION_SAME;
 
 use super::{AccessPlanAction, AccessPlanDocument};
 
@@ -132,7 +133,7 @@ pub(super) fn render_plan_text(document: &AccessPlanDocument, args: &AccessPlanA
     for action in document
         .actions
         .iter()
-        .filter(|action| args.show_same || action.action != "same")
+        .filter(|action| args.show_same || action.action != REVIEW_ACTION_SAME)
     {
         let _ = write!(
             output,
@@ -169,7 +170,7 @@ pub(super) fn render_plan_table(document: &AccessPlanDocument, args: &AccessPlan
     let rows = document
         .actions
         .iter()
-        .filter(|action| args.show_same || action.action != "same")
+        .filter(|action| args.show_same || action.action != REVIEW_ACTION_SAME)
         .map(|action| render_action_row(action, &columns))
         .collect::<Vec<Vec<String>>>();
     let mut rendered = String::new();

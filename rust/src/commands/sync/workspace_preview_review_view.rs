@@ -8,16 +8,23 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::common::{message, Result};
+use crate::review_contract::{
+    is_review_blocked_action, REVIEW_ACTION_BLOCKED_AMBIGUOUS, REVIEW_ACTION_BLOCKED_MISSING_ORG,
+    REVIEW_ACTION_BLOCKED_READ_ONLY, REVIEW_ACTION_BLOCKED_UID_MISMATCH,
+    REVIEW_ACTION_EXTRA_REMOTE, REVIEW_ACTION_SAME, REVIEW_ACTION_UNMANAGED,
+    REVIEW_ACTION_WOULD_CREATE, REVIEW_ACTION_WOULD_DELETE, REVIEW_ACTION_WOULD_UPDATE,
+    REVIEW_STATUS_BLOCKED, REVIEW_STATUS_READY, REVIEW_STATUS_SAME, REVIEW_STATUS_WARNING,
+};
 use serde_json::{Map, Value};
 
 fn action_rank(action: &str) -> usize {
     match action {
-        "would-create" => 0,
-        "would-update" => 1,
-        "would-delete" => 2,
-        "same" => 3,
-        "extra-remote" => 4,
-        "unmanaged" => 5,
+        REVIEW_ACTION_WOULD_CREATE => 0,
+        REVIEW_ACTION_WOULD_UPDATE => 1,
+        REVIEW_ACTION_WOULD_DELETE => 2,
+        REVIEW_ACTION_SAME => 3,
+        REVIEW_ACTION_EXTRA_REMOTE => 4,
+        REVIEW_ACTION_UNMANAGED => 5,
         _ => 6,
     }
 }
@@ -44,7 +51,7 @@ fn delete_domain_rank(domain: &str) -> usize {
 }
 
 fn operation_kind_rank(domain: &str, action: &str) -> usize {
-    if action == "would-delete" {
+    if action == REVIEW_ACTION_WOULD_DELETE {
         delete_domain_rank(domain)
     } else {
         create_update_domain_rank(domain)
@@ -53,11 +60,11 @@ fn operation_kind_rank(domain: &str, action: &str) -> usize {
 
 fn action_group(action: &str) -> &'static str {
     match action {
-        "would-delete" => "delete",
-        "would-create" | "would-update" => "create-update",
-        "same" => "read-only",
-        "extra-remote" => "warning",
-        "unmanaged" => "blocked",
+        REVIEW_ACTION_WOULD_DELETE => "delete",
+        REVIEW_ACTION_WOULD_CREATE | REVIEW_ACTION_WOULD_UPDATE => "create-update",
+        REVIEW_ACTION_SAME => "read-only",
+        REVIEW_ACTION_EXTRA_REMOTE => REVIEW_STATUS_WARNING,
+        REVIEW_ACTION_UNMANAGED => REVIEW_STATUS_BLOCKED,
         _ => "review",
     }
 }
@@ -130,15 +137,17 @@ fn derive_status(action: &str, existing: Option<&str>) -> String {
     existing
         .map(str::to_string)
         .unwrap_or_else(|| match action {
-            "same" => "same".to_string(),
-            "would-create" | "would-update" | "would-delete" => "ready".to_string(),
-            "extra-remote" => "warning".to_string(),
-            "blocked-read-only"
-            | "blocked-ambiguous"
-            | "blocked-uid-mismatch"
-            | "blocked-missing-org" => "blocked".to_string(),
-            "unmanaged" => "blocked".to_string(),
-            _ => "warning".to_string(),
+            REVIEW_ACTION_SAME => REVIEW_STATUS_SAME.to_string(),
+            REVIEW_ACTION_WOULD_CREATE
+            | REVIEW_ACTION_WOULD_UPDATE
+            | REVIEW_ACTION_WOULD_DELETE => REVIEW_STATUS_READY.to_string(),
+            REVIEW_ACTION_EXTRA_REMOTE => REVIEW_STATUS_WARNING.to_string(),
+            REVIEW_ACTION_BLOCKED_READ_ONLY
+            | REVIEW_ACTION_BLOCKED_AMBIGUOUS
+            | REVIEW_ACTION_BLOCKED_UID_MISMATCH
+            | REVIEW_ACTION_BLOCKED_MISSING_ORG
+            | REVIEW_ACTION_UNMANAGED => REVIEW_STATUS_BLOCKED.to_string(),
+            _ => REVIEW_STATUS_WARNING.to_string(),
         })
 }
 
@@ -321,10 +330,7 @@ fn collect_actions(document: &Map<String, Value>) -> Result<Vec<WorkspaceReviewA
 fn collect_blocked_reasons(actions: &[WorkspaceReviewAction]) -> Vec<String> {
     let mut reasons = BTreeSet::new();
     for action in actions {
-        if action.status != "blocked"
-            && !action.action.starts_with("blocked-")
-            && action.action != "unmanaged"
-        {
+        if action.status != REVIEW_STATUS_BLOCKED && !is_review_blocked_action(&action.action) {
             continue;
         }
         if let Some(reason) = action
@@ -353,37 +359,49 @@ fn domain_summary(actions: &[WorkspaceReviewAction]) -> Vec<WorkspaceReviewDomai
         .into_iter()
         .map(|(domain, items)| {
             let checked = items.len();
-            let same = items.iter().filter(|item| item.action == "same").count();
+            let same = items
+                .iter()
+                .filter(|item| item.action == REVIEW_ACTION_SAME)
+                .count();
             let create = items
                 .iter()
-                .filter(|item| item.action == "would-create")
+                .filter(|item| item.action == REVIEW_ACTION_WOULD_CREATE)
                 .count();
             let update = items
                 .iter()
-                .filter(|item| item.action == "would-update")
+                .filter(|item| item.action == REVIEW_ACTION_WOULD_UPDATE)
                 .count();
             let delete = items
                 .iter()
-                .filter(|item| item.action == "would-delete")
+                .filter(|item| item.action == REVIEW_ACTION_WOULD_DELETE)
                 .count();
-            let warning = items.iter().filter(|item| item.status == "warning").count();
-            let blocked = items.iter().filter(|item| item.status == "blocked").count();
+            let warning = items
+                .iter()
+                .filter(|item| item.status == REVIEW_STATUS_WARNING)
+                .count();
+            let blocked = items
+                .iter()
+                .filter(|item| item.status == REVIEW_STATUS_BLOCKED)
+                .count();
             let raw = Value::Object(Map::from_iter(vec![
                 ("id".to_string(), Value::String(domain.clone())),
                 (
                     "checked".to_string(),
                     Value::Number((checked as i64).into()),
                 ),
-                ("same".to_string(), Value::Number((same as i64).into())),
+                (
+                    REVIEW_ACTION_SAME.to_string(),
+                    Value::Number((same as i64).into()),
+                ),
                 ("create".to_string(), Value::Number((create as i64).into())),
                 ("update".to_string(), Value::Number((update as i64).into())),
                 ("delete".to_string(), Value::Number((delete as i64).into())),
                 (
-                    "warning".to_string(),
+                    REVIEW_STATUS_WARNING.to_string(),
                     Value::Number((warning as i64).into()),
                 ),
                 (
-                    "blocked".to_string(),
+                    REVIEW_STATUS_BLOCKED.to_string(),
                     Value::Number((blocked as i64).into()),
                 ),
                 (
@@ -420,12 +438,12 @@ fn domain_summary(actions: &[WorkspaceReviewAction]) -> Vec<WorkspaceReviewDomai
                 raw: Value::Object(Map::from_iter(vec![
                     ("id".to_string(), Value::String(domain.to_string())),
                     ("checked".to_string(), Value::Number(0.into())),
-                    ("same".to_string(), Value::Number(0.into())),
+                    (REVIEW_ACTION_SAME.to_string(), Value::Number(0.into())),
                     ("create".to_string(), Value::Number(0.into())),
                     ("update".to_string(), Value::Number(0.into())),
                     ("delete".to_string(), Value::Number(0.into())),
-                    ("warning".to_string(), Value::Number(0.into())),
-                    ("blocked".to_string(), Value::Number(0.into())),
+                    (REVIEW_STATUS_WARNING.to_string(), Value::Number(0.into())),
+                    (REVIEW_STATUS_BLOCKED.to_string(), Value::Number(0.into())),
                     ("actionCount".to_string(), Value::Number(0.into())),
                 ])),
             });
@@ -454,15 +472,15 @@ pub(crate) fn build_workspace_review_view(document: &Value) -> Result<WorkspaceR
         domain_count: domains.len(),
         same_count: actions
             .iter()
-            .filter(|action| action.action == "same")
+            .filter(|action| action.action == REVIEW_ACTION_SAME)
             .count(),
         blocked_count: actions
             .iter()
-            .filter(|action| action.status == "blocked")
+            .filter(|action| action.status == REVIEW_STATUS_BLOCKED)
             .count(),
         warning_count: actions
             .iter()
-            .filter(|action| action.status == "warning")
+            .filter(|action| action.status == REVIEW_STATUS_WARNING)
             .count(),
     };
     Ok(WorkspaceReviewView {

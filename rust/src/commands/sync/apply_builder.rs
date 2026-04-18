@@ -9,6 +9,7 @@ use super::apply_contract::{
 use super::json::{require_json_array_field, require_json_object};
 use super::workbench::{SYNC_APPLY_INTENT_KIND, SYNC_APPLY_INTENT_SCHEMA_VERSION, SYNC_PLAN_KIND};
 use crate::common::{message, tool_version, GrafanaCliError, Result};
+use crate::review_contract::is_review_apply_action;
 use serde_json::Value;
 
 pub fn build_sync_apply_intent_document(plan_document: &Value, approve: bool) -> Result<Value> {
@@ -38,10 +39,10 @@ pub fn build_sync_apply_intent_document(plan_document: &Value, approve: bool) ->
     let executable_operations = operations
         .into_iter()
         .filter(|item| {
-            matches!(
-                item.get("action").and_then(Value::as_str),
-                Some("would-create" | "would-update" | "would-delete")
-            )
+            item.get("action")
+                .and_then(Value::as_str)
+                .map(is_review_apply_action)
+                .unwrap_or(false)
         })
         .map(serde_json::from_value::<SyncApplyOperation>)
         .collect::<serde_json::Result<Vec<_>>>()?;

@@ -6,6 +6,9 @@ use crate::alert::{
     build_policies_import_payload, build_rule_import_payload, build_template_import_payload,
 };
 use crate::common::{message, Result};
+use crate::review_contract::{
+    REVIEW_ACTION_WOULD_CREATE, REVIEW_ACTION_WOULD_DELETE, REVIEW_ACTION_WOULD_UPDATE,
+};
 use crate::sync::live::SyncApplyOperation;
 
 use super::super::sync_live_apply_phase::execute_live_apply_phase;
@@ -60,7 +63,7 @@ where
     let identity = operation.identity.as_str();
     let desired = &operation.desired;
     match action {
-        "would-create" => {
+        REVIEW_ACTION_WOULD_CREATE => {
             let title = desired
                 .get("title")
                 .and_then(Value::as_str)
@@ -89,14 +92,14 @@ where
             )?
             .unwrap_or(Value::Null))
         }
-        "would-update" => Ok(request_json(
+        REVIEW_ACTION_WOULD_UPDATE => Ok(request_json(
             Method::PUT,
             &format!("/api/folders/{identity}"),
             &[],
             Some(&Value::Object(desired.clone())),
         )?
         .unwrap_or(Value::Null)),
-        "would-delete" => {
+        REVIEW_ACTION_WOULD_DELETE => {
             if !allow_folder_delete {
                 return Err(message(format!(
                     "Refusing live folder delete for {identity} without --allow-folder-delete."
@@ -123,7 +126,7 @@ where
 {
     let action = operation.action.as_str();
     let identity = operation.identity.as_str();
-    if action == "would-delete" {
+    if action == REVIEW_ACTION_WOULD_DELETE {
         return Ok(request_json(
             Method::DELETE,
             &format!("/api/dashboards/uid/{identity}"),
@@ -146,7 +149,7 @@ where
     payload.insert("dashboard".to_string(), Value::Object(body.clone()));
     payload.insert(
         "overwrite".to_string(),
-        Value::Bool(action == "would-update"),
+        Value::Bool(action == REVIEW_ACTION_WOULD_UPDATE),
     );
     if let Some(folder_uid) = body
         .get("folderUid")
@@ -191,14 +194,14 @@ where
         .unwrap_or(identity);
     body.insert("name".to_string(), Value::String(title.to_string()));
     match action {
-        "would-create" => Ok(request_json(
+        REVIEW_ACTION_WOULD_CREATE => Ok(request_json(
             Method::POST,
             "/api/datasources",
             &[],
             Some(&Value::Object(body)),
         )?
         .unwrap_or(Value::Null)),
-        "would-update" => {
+        REVIEW_ACTION_WOULD_UPDATE => {
             let target = resolve_live_datasource_target_with_request(request_json, identity)?
                 .ok_or_else(|| {
                     message(format!(
@@ -221,7 +224,7 @@ where
             )?
             .unwrap_or(Value::Null))
         }
-        "would-delete" => {
+        REVIEW_ACTION_WOULD_DELETE => {
             let target = resolve_live_datasource_target_with_request(request_json, identity)?
                 .ok_or_else(|| {
                     message(format!(
@@ -262,7 +265,7 @@ where
     let identity = operation.identity.as_str();
     let desired = &operation.desired;
     match action {
-        "would-delete" => match kind {
+        REVIEW_ACTION_WOULD_DELETE => match kind {
             "alert" => {
                 if identity.is_empty() {
                     return Err(message(
@@ -306,7 +309,7 @@ where
             }
             _ => Err(message(format!("Unsupported alert sync kind {kind}."))),
         },
-        "would-create" | "would-update" => match kind {
+        REVIEW_ACTION_WOULD_CREATE | REVIEW_ACTION_WOULD_UPDATE => match kind {
             "alert" => {
                 let mut payload = build_rule_import_payload(desired)?;
                 if !identity.is_empty() && !payload.contains_key("uid") {
@@ -320,12 +323,12 @@ where
                     .ok_or_else(|| {
                         message("Alert sync live apply requires alert rule payloads with a uid.")
                     })?;
-                let method = if action == "would-create" {
+                let method = if action == REVIEW_ACTION_WOULD_CREATE {
                     Method::POST
                 } else {
                     Method::PUT
                 };
-                let path = if action == "would-create" {
+                let path = if action == REVIEW_ACTION_WOULD_CREATE {
                     "/api/v1/provisioning/alert-rules".to_string()
                 } else {
                     format!("/api/v1/provisioning/alert-rules/{uid}")
@@ -340,12 +343,12 @@ where
                 if !identity.is_empty() && !payload.contains_key("uid") {
                     payload.insert("uid".to_string(), Value::String(identity.to_string()));
                 }
-                let method = if action == "would-create" {
+                let method = if action == REVIEW_ACTION_WOULD_CREATE {
                     Method::POST
                 } else {
                     Method::PUT
                 };
-                let path = if action == "would-create" {
+                let path = if action == REVIEW_ACTION_WOULD_CREATE {
                     "/api/v1/provisioning/contact-points".to_string()
                 } else {
                     format!("/api/v1/provisioning/contact-points/{identity}")
@@ -363,12 +366,12 @@ where
                     .map(str::trim)
                     .filter(|value: &&str| !value.is_empty())
                     .unwrap_or(identity);
-                let method = if action == "would-create" {
+                let method = if action == REVIEW_ACTION_WOULD_CREATE {
                     Method::POST
                 } else {
                     Method::PUT
                 };
-                let path = if action == "would-create" {
+                let path = if action == REVIEW_ACTION_WOULD_CREATE {
                     "/api/v1/provisioning/mute-timings".to_string()
                 } else {
                     format!("/api/v1/provisioning/mute-timings/{name}")

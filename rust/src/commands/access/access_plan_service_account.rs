@@ -18,6 +18,11 @@ use crate::access::service_account::{
 use crate::access::user::build_record_diff_fields;
 use crate::access::{ACCESS_EXPORT_KIND_SERVICE_ACCOUNTS, ACCESS_SERVICE_ACCOUNT_EXPORT_FILENAME};
 use crate::common::{message, tool_version, Result};
+use crate::review_contract::{
+    REVIEW_ACTION_EXTRA_REMOTE, REVIEW_ACTION_SAME, REVIEW_ACTION_WOULD_CREATE,
+    REVIEW_ACTION_WOULD_DELETE, REVIEW_ACTION_WOULD_UPDATE, REVIEW_STATUS_READY,
+    REVIEW_STATUS_SAME, REVIEW_STATUS_WARNING,
+};
 
 use super::{
     sort_actions, AccessPlanAction, AccessPlanChange, AccessPlanDocument, AccessPlanResourceReport,
@@ -228,8 +233,12 @@ where
                 actions.push(build_service_account_action(
                     identity.clone(),
                     source_path.clone(),
-                    "would-create",
-                    if hints.is_empty() { "ready" } else { "warning" },
+                    REVIEW_ACTION_WOULD_CREATE,
+                    if hints.is_empty() {
+                        REVIEW_STATUS_READY
+                    } else {
+                        REVIEW_STATUS_WARNING
+                    },
                     Vec::new(),
                     Vec::new(),
                     Some(build_target_evidence(local_record)),
@@ -248,8 +257,8 @@ where
                     actions.push(build_service_account_action(
                         identity.clone(),
                         source_path.clone(),
-                        "same",
-                        "same",
+                        REVIEW_ACTION_SAME,
+                        REVIEW_STATUS_SAME,
                         Vec::new(),
                         Vec::new(),
                         Some(build_target_evidence(live_record)),
@@ -263,8 +272,8 @@ where
                     actions.push(build_service_account_action(
                         identity.clone(),
                         source_path.clone(),
-                        "would-update",
-                        "warning",
+                        REVIEW_ACTION_WOULD_UPDATE,
+                        REVIEW_STATUS_WARNING,
                         changed_fields,
                         changes,
                         Some(build_target_evidence(live_record)),
@@ -290,10 +299,10 @@ where
         let hints = review_hints(live_record);
         let (action, status) = if args.prune {
             delete += 1;
-            ("would-delete", "ready")
+            (REVIEW_ACTION_WOULD_DELETE, REVIEW_STATUS_READY)
         } else {
             warning += 1;
-            ("extra-remote", "warning")
+            (REVIEW_ACTION_EXTRA_REMOTE, REVIEW_STATUS_WARNING)
         };
         actions.push(build_service_account_action(
             identity.clone(),
@@ -452,10 +461,10 @@ mod tests {
             .iter()
             .map(|action| (action.identity.clone(), action))
             .collect();
-        assert_eq!(actions["svc-same"].action, "same");
-        assert_eq!(actions["svc-create"].action, "would-create");
-        assert_eq!(actions["svc-update"].action, "would-update");
-        assert_eq!(actions["svc-extra"].action, "extra-remote");
+        assert_eq!(actions["svc-same"].action, REVIEW_ACTION_SAME);
+        assert_eq!(actions["svc-create"].action, REVIEW_ACTION_WOULD_CREATE);
+        assert_eq!(actions["svc-update"].action, REVIEW_ACTION_WOULD_UPDATE);
+        assert_eq!(actions["svc-extra"].action, REVIEW_ACTION_EXTRA_REMOTE);
         assert!(actions["svc-create"]
             .review_hints
             .iter()
@@ -488,7 +497,7 @@ mod tests {
             .iter()
             .find(|action| action.identity == "svc-extra")
             .unwrap();
-        assert_eq!(action.action, "would-delete");
-        assert_eq!(action.status, "ready");
+        assert_eq!(action.action, REVIEW_ACTION_WOULD_DELETE);
+        assert_eq!(action.status, REVIEW_STATUS_READY);
     }
 }

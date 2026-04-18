@@ -6,6 +6,10 @@
 use super::summary_builder::{is_alert_sync_kind, normalize_resource_specs};
 use super::workbench::{SyncResourceSpec, SYNC_PLAN_KIND, SYNC_PLAN_SCHEMA_VERSION};
 use crate::common::{message, tool_version, Result};
+use crate::review_contract::{
+    REVIEW_ACTION_UNMANAGED, REVIEW_ACTION_WOULD_CREATE, REVIEW_ACTION_WOULD_DELETE,
+    REVIEW_ACTION_WOULD_UPDATE, REVIEW_STATUS_BLOCKED,
+};
 use serde_json::Value;
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -33,17 +37,17 @@ fn delete_kind_rank(kind: &str) -> usize {
 
 fn action_rank(action: &str) -> usize {
     match action {
-        "would-create" => 0,
-        "would-update" => 1,
-        "would-delete" => 2,
-        "unmanaged" => 3,
+        REVIEW_ACTION_WOULD_CREATE => 0,
+        REVIEW_ACTION_WOULD_UPDATE => 1,
+        REVIEW_ACTION_WOULD_DELETE => 2,
+        REVIEW_ACTION_UNMANAGED => 3,
         "noop" => 4,
         _ => 5,
     }
 }
 
 fn operation_kind_rank(kind: &str, action: &str) -> usize {
-    if action == "would-delete" {
+    if action == REVIEW_ACTION_WOULD_DELETE {
         delete_kind_rank(kind)
     } else {
         create_update_kind_rank(kind)
@@ -52,9 +56,9 @@ fn operation_kind_rank(kind: &str, action: &str) -> usize {
 
 fn operation_group_label(action: &str) -> &'static str {
     match action {
-        "would-delete" => "delete",
-        "would-create" | "would-update" => "create-update",
-        "unmanaged" => "blocked",
+        REVIEW_ACTION_WOULD_DELETE => "delete",
+        REVIEW_ACTION_WOULD_CREATE | REVIEW_ACTION_WOULD_UPDATE => "create-update",
+        REVIEW_ACTION_UNMANAGED => REVIEW_STATUS_BLOCKED,
         _ => "read-only",
     }
 }
@@ -128,7 +132,7 @@ fn collect_plan_blocked_reasons(operations: &[Value]) -> Vec<String> {
             .get("action")
             .and_then(Value::as_str)
             .unwrap_or_default();
-        if action != "unmanaged" {
+        if action != REVIEW_ACTION_UNMANAGED {
             continue;
         }
         let kind = object
@@ -142,7 +146,7 @@ fn collect_plan_blocked_reasons(operations: &[Value]) -> Vec<String> {
         let reason = object
             .get("reason")
             .and_then(Value::as_str)
-            .unwrap_or("blocked");
+            .unwrap_or(REVIEW_STATUS_BLOCKED);
         reasons.push(format!("kind={kind} identity={identity} reason={reason}"));
         if reasons.len() >= 3 {
             break;
@@ -297,7 +301,7 @@ pub(crate) fn build_sync_alert_assessment_document(operations: &[Value]) -> Valu
                 .to_string();
             if !has_condition {
                 (
-                    "blocked",
+                    REVIEW_STATUS_BLOCKED,
                     false,
                     "Alert sync must manage condition explicitly before live apply can be considered.",
                 )
@@ -309,7 +313,7 @@ pub(crate) fn build_sync_alert_assessment_document(operations: &[Value]) -> Valu
                 )
             } else if condition_text.is_empty() {
                 (
-                    "blocked",
+                    REVIEW_STATUS_BLOCKED,
                     false,
                     "Alert sync body must include a non-empty condition.",
                 )
@@ -404,11 +408,11 @@ pub(crate) fn build_sync_plan_summary_document(operations: &[Value]) -> Value {
             .and_then(Value::as_str)
             .unwrap_or_default()
         {
-            "would-create" => would_create += 1,
-            "would-update" => would_update += 1,
-            "would-delete" => would_delete += 1,
+            REVIEW_ACTION_WOULD_CREATE => would_create += 1,
+            REVIEW_ACTION_WOULD_UPDATE => would_update += 1,
+            REVIEW_ACTION_WOULD_DELETE => would_delete += 1,
             "noop" => noop += 1,
-            "unmanaged" => unmanaged += 1,
+            REVIEW_ACTION_UNMANAGED => unmanaged += 1,
             _ => {}
         }
     }
@@ -447,7 +451,7 @@ pub fn build_sync_plan_document(
             let action = if changed_fields.is_empty() {
                 "noop"
             } else {
-                "would-update"
+                REVIEW_ACTION_WOULD_UPDATE
             };
             operations.push(serde_json::json!({
                 "kind": desired_spec.kind,
@@ -466,7 +470,7 @@ pub fn build_sync_plan_document(
                 "kind": desired_spec.kind,
                 "identity": desired_spec.identity,
                 "title": desired_spec.title,
-                "action": "would-create",
+                "action": REVIEW_ACTION_WOULD_CREATE,
                 "reason": "missing-live",
                 "changedFields": desired_spec.body.keys().cloned().collect::<Vec<String>>(),
                 "managedFields": desired_spec.managed_fields,
@@ -485,9 +489,9 @@ pub fn build_sync_plan_document(
             continue;
         }
         let action = if allow_prune && supports_prune_delete(&live_spec.kind) {
-            "would-delete"
+            REVIEW_ACTION_WOULD_DELETE
         } else {
-            "unmanaged"
+            REVIEW_ACTION_UNMANAGED
         };
         operations.push(serde_json::json!({
             "kind": live_spec.kind,

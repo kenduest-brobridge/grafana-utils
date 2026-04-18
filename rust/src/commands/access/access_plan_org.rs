@@ -11,6 +11,11 @@ use super::org::load_org_import_records;
 use super::org::{build_org_diff_map, build_org_live_records_for_diff, build_record_diff_fields};
 use crate::access::render::scalar_text;
 use crate::common::{load_json_object_file, string_field, Result};
+use crate::review_contract::{
+    REVIEW_ACTION_EXTRA_REMOTE, REVIEW_ACTION_SAME, REVIEW_ACTION_WOULD_CREATE,
+    REVIEW_ACTION_WOULD_DELETE, REVIEW_ACTION_WOULD_UPDATE, REVIEW_HINT_REMOTE_ONLY,
+    REVIEW_STATUS_READY, REVIEW_STATUS_SAME, REVIEW_STATUS_WARNING,
+};
 
 fn build_action_id(identity: &str) -> String {
     format!("access:org:{identity}")
@@ -272,8 +277,8 @@ where
                     identity.clone(),
                     scope.clone(),
                     source_path.clone(),
-                    "would-create",
-                    "ready",
+                    REVIEW_ACTION_WOULD_CREATE,
+                    REVIEW_STATUS_READY,
                     Vec::new(),
                     Vec::new(),
                     Some(build_target_evidence(local_payload)),
@@ -289,8 +294,8 @@ where
                         identity.clone(),
                         scope.clone(),
                         source_path.clone(),
-                        "same",
-                        "same",
+                        REVIEW_ACTION_SAME,
+                        REVIEW_STATUS_SAME,
                         Vec::new(),
                         Vec::new(),
                         Some(build_target_evidence(live_payload)),
@@ -318,8 +323,8 @@ where
                         identity.clone(),
                         scope.clone(),
                         source_path.clone(),
-                        "would-update",
-                        "warning",
+                        REVIEW_ACTION_WOULD_UPDATE,
+                        REVIEW_STATUS_WARNING,
                         changed_fields,
                         changes,
                         Some(build_target_evidence(live_payload)),
@@ -344,13 +349,13 @@ where
                 identity.clone(),
                 scope.clone(),
                 source_path.clone(),
-                "would-delete",
-                "ready",
+                REVIEW_ACTION_WOULD_DELETE,
+                REVIEW_STATUS_READY,
                 Vec::new(),
                 Vec::new(),
                 Some(build_target_evidence(live_payload)),
                 None,
-                vec!["remote-only org record".to_string()],
+                vec![format!("{REVIEW_HINT_REMOTE_ONLY} org record")],
             ));
         } else {
             warning += 1;
@@ -358,13 +363,13 @@ where
                 identity.clone(),
                 scope.clone(),
                 source_path.clone(),
-                "extra-remote",
-                "warning",
+                REVIEW_ACTION_EXTRA_REMOTE,
+                REVIEW_STATUS_WARNING,
                 Vec::new(),
                 Vec::new(),
                 Some(build_target_evidence(live_payload)),
                 Some("use --prune to include delete candidates".to_string()),
-                vec!["remote-only org record".to_string()],
+                vec![format!("{REVIEW_HINT_REMOTE_ONLY} org record")],
             ));
         }
     }

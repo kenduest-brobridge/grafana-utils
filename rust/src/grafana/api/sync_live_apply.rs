@@ -5,6 +5,9 @@ use crate::alert::{
     build_policies_import_payload, build_rule_import_payload, build_template_import_payload,
 };
 use crate::common::{message, Result};
+use crate::review_contract::{
+    REVIEW_ACTION_WOULD_CREATE, REVIEW_ACTION_WOULD_DELETE, REVIEW_ACTION_WOULD_UPDATE,
+};
 use crate::sync::live::SyncApplyOperation;
 
 use super::sync_live_apply_phase::execute_live_apply_phase;
@@ -249,7 +252,7 @@ fn apply_folder_operation_with_client(
     let identity = operation.identity.as_str();
     let desired = &operation.desired;
     match action {
-        "would-create" => {
+        REVIEW_ACTION_WOULD_CREATE => {
             let title = desired
                 .get("title")
                 .and_then(Value::as_str)
@@ -268,13 +271,13 @@ fn apply_folder_operation_with_client(
                     .collect(),
             ))
         }
-        "would-update" => Ok(Value::Object(
+        REVIEW_ACTION_WOULD_UPDATE => Ok(Value::Object(
             client
                 .update_folder(identity, desired)?
                 .into_iter()
                 .collect(),
         )),
-        "would-delete" => {
+        REVIEW_ACTION_WOULD_DELETE => {
             if !allow_folder_delete {
                 return Err(message(format!(
                     "Refusing live folder delete for {identity} without --allow-folder-delete."
@@ -292,7 +295,7 @@ fn apply_dashboard_operation_with_client(
 ) -> Result<Value> {
     let action = operation.action.as_str();
     let identity = operation.identity.as_str();
-    if action == "would-delete" {
+    if action == REVIEW_ACTION_WOULD_DELETE {
         return client.delete_dashboard(identity);
     }
     let mut body = operation.desired.clone();
@@ -311,7 +314,7 @@ fn apply_dashboard_operation_with_client(
         .and_then(Value::as_str)
         .map(str::trim)
         .filter(|value: &&str| !value.is_empty());
-    client.upsert_dashboard(&body, action == "would-update", folder_uid)
+    client.upsert_dashboard(&body, action == REVIEW_ACTION_WOULD_UPDATE, folder_uid)
 }
 
 fn apply_datasource_operation_with_client(
@@ -333,10 +336,10 @@ fn apply_datasource_operation_with_client(
         .unwrap_or(identity);
     body.insert("name".to_string(), Value::String(title.to_string()));
     match action {
-        "would-create" => Ok(Value::Object(
+        REVIEW_ACTION_WOULD_CREATE => Ok(Value::Object(
             client.create_datasource(&body)?.into_iter().collect(),
         )),
-        "would-update" => {
+        REVIEW_ACTION_WOULD_UPDATE => {
             let target = client.resolve_datasource_target(identity)?.ok_or_else(|| {
                 message(format!(
                     "Could not resolve live datasource target {identity} during sync apply."
@@ -357,7 +360,7 @@ fn apply_datasource_operation_with_client(
                     .collect(),
             ))
         }
-        "would-delete" => {
+        REVIEW_ACTION_WOULD_DELETE => {
             let target = client.resolve_datasource_target(identity)?.ok_or_else(|| {
                 message(format!(
                     "Could not resolve live datasource target {identity} during sync apply."
@@ -388,7 +391,7 @@ fn apply_alert_operation_with_client(
     let identity = operation.identity.as_str();
     let desired = &operation.desired;
     match action {
-        "would-delete" => match kind {
+        REVIEW_ACTION_WOULD_DELETE => match kind {
             "alert" => {
                 if identity.is_empty() {
                     return Err(message(
@@ -403,7 +406,7 @@ fn apply_alert_operation_with_client(
             "alert-policy" => Ok(client.delete_notification_policies()?),
             _ => Err(message(format!("Unsupported alert sync kind {kind}."))),
         },
-        "would-create" | "would-update" => match kind {
+        REVIEW_ACTION_WOULD_CREATE | REVIEW_ACTION_WOULD_UPDATE => match kind {
             "alert" => {
                 let mut payload = build_rule_import_payload(desired)?;
                 if !identity.is_empty() && !payload.contains_key("uid") {
@@ -417,7 +420,7 @@ fn apply_alert_operation_with_client(
                     .ok_or_else(|| {
                         message("Alert sync live apply requires alert rule payloads with a uid.")
                     })?;
-                let response = if action == "would-create" {
+                let response = if action == REVIEW_ACTION_WOULD_CREATE {
                     client.create_alert_rule(&payload)?
                 } else {
                     client.update_alert_rule(uid, &payload)?
@@ -429,7 +432,7 @@ fn apply_alert_operation_with_client(
                 if !identity.is_empty() && !payload.contains_key("uid") {
                     payload.insert("uid".to_string(), Value::String(identity.to_string()));
                 }
-                let response = if action == "would-create" {
+                let response = if action == REVIEW_ACTION_WOULD_CREATE {
                     client.create_contact_point(&payload)?
                 } else {
                     client.update_contact_point(identity, &payload)?
@@ -444,7 +447,7 @@ fn apply_alert_operation_with_client(
                     .map(str::trim)
                     .filter(|value: &&str| !value.is_empty())
                     .unwrap_or(identity);
-                let response = if action == "would-create" {
+                let response = if action == REVIEW_ACTION_WOULD_CREATE {
                     client.create_mute_timing(&payload)?
                 } else {
                     client.update_mute_timing(name, &payload)?

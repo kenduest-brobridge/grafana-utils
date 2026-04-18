@@ -6,6 +6,12 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use crate::common::{load_json_object_file, string_field, tool_version, Result};
+use crate::review_contract::{
+    REVIEW_ACTION_BLOCKED, REVIEW_ACTION_EXTRA_REMOTE, REVIEW_ACTION_SAME,
+    REVIEW_ACTION_WOULD_CREATE, REVIEW_ACTION_WOULD_DELETE, REVIEW_ACTION_WOULD_UPDATE,
+    REVIEW_HINT_REMOTE_ONLY, REVIEW_STATUS_BLOCKED, REVIEW_STATUS_READY, REVIEW_STATUS_SAME,
+    REVIEW_STATUS_WARNING,
+};
 
 use super::access_plan::{
     AccessPlanAction, AccessPlanChange, AccessPlanDocument, AccessPlanResourceReport,
@@ -335,8 +341,8 @@ where
                     identity.clone(),
                     scope.clone(),
                     source_path.clone(),
-                    "would-create",
-                    "ready",
+                    REVIEW_ACTION_WOULD_CREATE,
+                    REVIEW_STATUS_READY,
                     Vec::new(),
                     Vec::new(),
                     Some(build_team_target_evidence(local_row)),
@@ -353,8 +359,8 @@ where
                         identity.clone(),
                         scope.clone(),
                         source_path.clone(),
-                        "same",
-                        "same",
+                        REVIEW_ACTION_SAME,
+                        REVIEW_STATUS_SAME,
                         Vec::new(),
                         Vec::new(),
                         Some(build_team_target_evidence(live_row)),
@@ -370,8 +376,8 @@ where
                             identity.clone(),
                             scope.clone(),
                             source_path.clone(),
-                            "would-update",
-                            "warning",
+                            REVIEW_ACTION_WOULD_UPDATE,
+                            REVIEW_STATUS_WARNING,
                             changed_fields.clone(),
                             changes,
                             Some(build_team_target_evidence(live_row)),
@@ -384,8 +390,8 @@ where
                             identity.clone(),
                             scope.clone(),
                             source_path.clone(),
-                            "blocked",
-                            "blocked",
+                            REVIEW_ACTION_BLOCKED,
+                            REVIEW_STATUS_BLOCKED,
                             changed_fields.clone(),
                             changes,
                             Some(build_team_target_evidence(live_row)),
@@ -408,17 +414,21 @@ where
         let live_row = live_rows_by_key.get(key).unwrap_or(live_payload);
         let action = if args.prune {
             delete += 1;
-            "would-delete"
+            REVIEW_ACTION_WOULD_DELETE
         } else {
             warning += 1;
-            "extra-remote"
+            REVIEW_ACTION_EXTRA_REMOTE
         };
         actions.push(build_team_action(
             identity.clone(),
             scope.clone(),
             source_path.clone(),
             action,
-            if args.prune { "ready" } else { "warning" },
+            if args.prune {
+                REVIEW_STATUS_READY
+            } else {
+                REVIEW_STATUS_WARNING
+            },
             Vec::new(),
             Vec::new(),
             Some(build_team_target_evidence(live_row)),
@@ -428,7 +438,7 @@ where
                 Some("use --prune to include delete candidates".to_string())
             },
             {
-                let mut hints = vec!["remote-only team record".to_string()];
+                let mut hints = vec![format!("{REVIEW_HINT_REMOTE_ONLY} team record")];
                 if value_bool(live_row.get("isProvisioned")).unwrap_or(false) {
                     hints.push(
                         "team is provisioned; verify delete support before pruning".to_string(),

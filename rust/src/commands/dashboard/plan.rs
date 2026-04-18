@@ -28,6 +28,13 @@ use crate::common::{
     message, print_supported_columns, render_json_value, string_field, tool_version,
     value_as_object, Result,
 };
+use crate::review_contract::{
+    REVIEW_ACTION_BLOCKED_TARGET, REVIEW_ACTION_EXTRA_REMOTE, REVIEW_ACTION_SAME,
+    REVIEW_ACTION_WOULD_CREATE, REVIEW_ACTION_WOULD_DELETE, REVIEW_ACTION_WOULD_UPDATE,
+    REVIEW_HINT_REMOTE_ONLY, REVIEW_REASON_TARGET_ORG_MISSING,
+    REVIEW_REASON_TARGET_PROVISIONED_OR_MANAGED, REVIEW_STATUS_BLOCKED, REVIEW_STATUS_READY,
+    REVIEW_STATUS_SAME, REVIEW_STATUS_WARNING,
+};
 
 const PLAN_KIND: &str = "grafana-util-dashboard-plan";
 const PLAN_SCHEMA_VERSION: i64 = 1;
@@ -662,7 +669,7 @@ fn build_action_id(org_id: Option<&str>, uid: &str, seed: usize) -> String {
 fn build_org_actions(org: &OrgPlanInput, prune: bool) -> Vec<DashboardPlanAction> {
     let no_live_target = org.target_org_id.is_none();
     let missing_target = no_live_target && org.org_action == "missing";
-    let would_create_target = no_live_target && org.org_action == "would-create";
+    let would_create_target = no_live_target && org.org_action == REVIEW_ACTION_WOULD_CREATE;
     let mut live_by_uid = BTreeMap::new();
     let mut live_by_title: BTreeMap<String, Vec<usize>> = BTreeMap::new();
     let mut live_matched = vec![false; org.live_dashboards.len()];
@@ -730,7 +737,7 @@ fn build_org_actions(org: &OrgPlanInput, prune: bool) -> Vec<DashboardPlanAction
         }
 
         if missing_target {
-            review_hints.push("target-org-missing".to_string());
+            review_hints.push(REVIEW_REASON_TARGET_ORG_MISSING.to_string());
         }
         if would_create_target {
             review_hints.push("target-org-would-create".to_string());
@@ -747,39 +754,42 @@ fn build_org_actions(org: &OrgPlanInput, prune: bool) -> Vec<DashboardPlanAction
             .unwrap_or(false);
 
         let mut action = if missing_target || would_create_target || live.is_none() {
-            "would-create".to_string()
+            REVIEW_ACTION_WOULD_CREATE.to_string()
         } else if changed_fields.is_empty()
             && local.folder_uid == live.map(|item| item.folder_uid.clone()).unwrap_or_default()
         {
-            "same".to_string()
+            REVIEW_ACTION_SAME.to_string()
         } else {
-            "would-update".to_string()
+            REVIEW_ACTION_WOULD_UPDATE.to_string()
         };
-        let mut status = if action == "same" {
-            "same".to_string()
+        let mut status = if action == REVIEW_ACTION_SAME {
+            REVIEW_STATUS_SAME.to_string()
         } else if missing_target {
-            "blocked".to_string()
+            REVIEW_STATUS_BLOCKED.to_string()
         } else if would_create_target {
-            "warning".to_string()
+            REVIEW_STATUS_WARNING.to_string()
         } else {
-            "ready".to_string()
+            REVIEW_STATUS_READY.to_string()
         };
         let mut blocked_reason = None;
         if missing_target {
-            blocked_reason = Some("target-org-missing".to_string());
+            blocked_reason = Some(REVIEW_REASON_TARGET_ORG_MISSING.to_string());
         } else if target_review_blocked
-            && matches!(action.as_str(), "would-update" | "would-delete")
+            && matches!(
+                action.as_str(),
+                REVIEW_ACTION_WOULD_UPDATE | REVIEW_ACTION_WOULD_DELETE
+            )
         {
-            action = "blocked-target".to_string();
-            status = "blocked".to_string();
-            blocked_reason = Some("target-provisioned-or-managed".to_string());
-        } else if action != "same"
+            action = REVIEW_ACTION_BLOCKED_TARGET.to_string();
+            status = REVIEW_STATUS_BLOCKED.to_string();
+            blocked_reason = Some(REVIEW_REASON_TARGET_PROVISIONED_OR_MANAGED.to_string());
+        } else if action != REVIEW_ACTION_SAME
             && (!dependency_hints.is_empty()
                 || review_hints
                     .iter()
                     .any(|hint| hint.starts_with("missing-folder-uid=")))
         {
-            status = "warning".to_string();
+            status = REVIEW_STATUS_WARNING.to_string();
         }
 
         let target_uid = live.as_ref().map(|item| item.uid.clone());
@@ -849,16 +859,16 @@ fn build_org_actions(org: &OrgPlanInput, prune: bool) -> Vec<DashboardPlanAction
             target_org_name: org.target_org_name.clone(),
             match_basis: "live-only".to_string(),
             action: if prune {
-                "would-delete".to_string()
+                REVIEW_ACTION_WOULD_DELETE.to_string()
             } else {
-                "extra-remote".to_string()
+                REVIEW_ACTION_EXTRA_REMOTE.to_string()
             },
             status: if blocked {
-                "blocked".to_string()
+                REVIEW_STATUS_BLOCKED.to_string()
             } else if prune {
-                "ready".to_string()
+                REVIEW_STATUS_READY.to_string()
             } else {
-                "warning".to_string()
+                REVIEW_STATUS_WARNING.to_string()
             },
             changed_fields: Vec::new(),
             changes: Vec::new(),
@@ -867,8 +877,9 @@ fn build_org_actions(org: &OrgPlanInput, prune: bool) -> Vec<DashboardPlanAction
             target_version: live.version,
             target_evidence: live.evidence.clone(),
             dependency_hints: Vec::new(),
-            blocked_reason: blocked.then_some("target-provisioned-or-managed".to_string()),
-            review_hints: vec!["remote-only dashboard candidate".to_string()],
+            blocked_reason: blocked
+                .then_some(REVIEW_REASON_TARGET_PROVISIONED_OR_MANAGED.to_string()),
+            review_hints: vec![format!("{REVIEW_HINT_REMOTE_ONLY} dashboard candidate")],
         });
     }
 
@@ -897,16 +908,16 @@ fn build_org_summary(
     };
     for action in actions {
         match action.action.as_str() {
-            "same" => summary.same += 1,
-            "would-create" => summary.create += 1,
-            "would-update" => summary.update += 1,
-            "extra-remote" => summary.extra += 1,
-            "would-delete" => summary.delete += 1,
+            REVIEW_ACTION_SAME => summary.same += 1,
+            REVIEW_ACTION_WOULD_CREATE => summary.create += 1,
+            REVIEW_ACTION_WOULD_UPDATE => summary.update += 1,
+            REVIEW_ACTION_EXTRA_REMOTE => summary.extra += 1,
+            REVIEW_ACTION_WOULD_DELETE => summary.delete += 1,
             _ => {}
         }
         match action.status.as_str() {
-            "blocked" => summary.blocked += 1,
-            "warning" => summary.warning += 1,
+            REVIEW_STATUS_BLOCKED => summary.blocked += 1,
+            REVIEW_STATUS_WARNING => summary.warning += 1,
             _ => {}
         }
     }
@@ -937,7 +948,7 @@ fn build_summary(
         summary.delete += org.delete;
         summary.blocked += org.blocked;
         summary.warning += org.warning;
-        if org.org_action == "would-create" {
+        if org.org_action == REVIEW_ACTION_WOULD_CREATE {
             summary.would_create_org_count += 1;
         }
     }
@@ -981,20 +992,20 @@ fn render_plan_text(report: &DashboardPlanReport, show_same: bool) -> Vec<String
         ));
     }
     for action in &report.actions {
-        if !show_same && action.action == "same" {
+        if !show_same && action.action == REVIEW_ACTION_SAME {
             continue;
         }
         lines.push(format!(
             "{} org={} uid={} title={} folder={} action={} status={} changed={}",
-            if action.status == "blocked" {
+            if action.status == REVIEW_STATUS_BLOCKED {
                 "BLOCK"
-            } else if action.action == "would-delete" {
+            } else if action.action == REVIEW_ACTION_WOULD_DELETE {
                 "DELETE"
-            } else if action.action == "would-create" {
+            } else if action.action == REVIEW_ACTION_WOULD_CREATE {
                 "CREATE"
-            } else if action.action == "would-update" {
+            } else if action.action == REVIEW_ACTION_WOULD_UPDATE {
                 "UPDATE"
-            } else if action.action == "extra-remote" {
+            } else if action.action == REVIEW_ACTION_EXTRA_REMOTE {
                 "EXTRA"
             } else {
                 "SAME"
@@ -1025,7 +1036,7 @@ fn render_plan_table(
     let rows = report
         .actions
         .iter()
-        .filter(|action| show_same || action.action != "same")
+        .filter(|action| show_same || action.action != REVIEW_ACTION_SAME)
         .map(|action| {
             columns
                 .iter()

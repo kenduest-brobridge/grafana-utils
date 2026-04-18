@@ -1,6 +1,7 @@
 use serde_json::Value;
 
 use crate::common::{message, Result};
+use crate::review_contract::REVIEW_ACTION_WOULD_DELETE;
 use crate::sync::live::SyncApplyOperation;
 
 use super::sync_live_apply_result::{append_live_apply_result, finish_live_apply_response};
@@ -16,7 +17,7 @@ where
     let mut results = Vec::new();
     for operation in operations {
         if operation.kind == "alert-policy"
-            && operation.action == "would-delete"
+            && operation.action == REVIEW_ACTION_WOULD_DELETE
             && !allow_policy_reset
         {
             return Err(message(
@@ -32,6 +33,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::review_contract::{REVIEW_ACTION_WOULD_DELETE, REVIEW_ACTION_WOULD_UPDATE};
     use serde_json::json;
 
     fn operation(kind: &str, action: &str, identity: &str) -> SyncApplyOperation {
@@ -45,7 +47,7 @@ mod tests {
 
     #[test]
     fn phase_preserves_operation_order_and_results() {
-        let operations = vec![operation("dashboard", "would-update", "dash-a")];
+        let operations = vec![operation("dashboard", REVIEW_ACTION_WOULD_UPDATE, "dash-a")];
         let result = execute_live_apply_phase(&operations, false, |op| {
             Ok(json!({
                 "kind": op.kind,
@@ -62,7 +64,11 @@ mod tests {
 
     #[test]
     fn phase_blocks_policy_reset_when_not_allowed() {
-        let operations = vec![operation("alert-policy", "would-delete", "policies")];
+        let operations = vec![operation(
+            "alert-policy",
+            REVIEW_ACTION_WOULD_DELETE,
+            "policies",
+        )];
         let result =
             execute_live_apply_phase(&operations, false, |_| Ok(json!({"should_not_run": true})));
 
