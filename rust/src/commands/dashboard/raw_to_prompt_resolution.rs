@@ -259,69 +259,6 @@ fn collect_library_panel_reference_count(node: &Value, count: &mut usize) {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use serde_json::json;
-
-    #[test]
-    fn collect_live_library_panel_exports_with_request_returns_exports_for_models() {
-        let dashboard = json!({
-            "panels": [{
-                "id": 1,
-                "libraryPanel": {"uid": "shared-panel", "name": "Shared Panel"}
-            }]
-        });
-        let (exports, warnings) =
-            collect_live_library_panel_exports_with_request(&dashboard, |_, path, _, _| {
-                assert_eq!(path, "/api/library-elements/shared-panel");
-                Ok(Some(json!({
-                    "result": {
-                        "uid": "shared-panel",
-                        "name": "Shared Panel",
-                        "kind": 1,
-                        "type": "graph",
-                        "model": {
-                            "type": "graph",
-                            "datasource": {"uid": "prom-main", "type": "prometheus"}
-                        }
-                    }
-                })))
-            })
-            .unwrap();
-        assert!(warnings.is_empty());
-        assert_eq!(exports.len(), 1);
-        assert_eq!(exports["shared-panel"]["model"]["type"], "graph");
-    }
-
-    #[test]
-    fn collect_live_library_panel_exports_with_request_warns_when_model_is_missing() {
-        let dashboard = json!({
-            "panels": [{
-                "id": 1,
-                "libraryPanel": {"uid": "shared-panel", "name": "Shared Panel"}
-            }]
-        });
-        let (exports, warnings) =
-            collect_live_library_panel_exports_with_request(&dashboard, |_, path, _, _| {
-                assert_eq!(path, "/api/library-elements/shared-panel");
-                Ok(Some(json!({
-                    "result": {
-                        "uid": "shared-panel",
-                        "name": "Shared Panel",
-                        "kind": 1,
-                        "type": "graph"
-                    }
-                })))
-            })
-            .unwrap();
-        assert!(exports.is_empty());
-        assert!(warnings
-            .iter()
-            .any(|warning| warning.contains("Unexpected library panel payload")));
-    }
-}
-
 pub(crate) fn load_datasource_mapping(
     mapping_path: Option<&Path>,
 ) -> Result<Option<DatasourceMapDocument>> {
@@ -921,4 +858,67 @@ fn synthetic_uid_from_reference(reference: &Value) -> String {
 
 fn synthetic_name(datasource_type: &str, uid: &str) -> String {
     format!("{datasource_type} ({uid})")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn collect_live_library_panel_exports_with_request_returns_exports_for_models() {
+        let dashboard = json!({
+            "panels": [{
+                "id": 1,
+                "libraryPanel": {"uid": "shared-panel", "name": "Shared Panel"}
+            }]
+        });
+        let (exports, warnings) =
+            collect_live_library_panel_exports_with_request(&dashboard, |_, path, _, _| {
+                assert_eq!(path, "/api/library-elements/shared-panel");
+                Ok(Some(json!({
+                    "result": {
+                        "uid": "shared-panel",
+                        "name": "Shared Panel",
+                        "kind": 1,
+                        "type": "graph",
+                        "model": {
+                            "type": "graph",
+                            "datasource": {"uid": "prom-main", "type": "prometheus"}
+                        }
+                    }
+                })))
+            })
+            .unwrap();
+        assert!(warnings.is_empty());
+        assert_eq!(exports.len(), 1);
+        assert_eq!(exports["shared-panel"]["model"]["type"], "graph");
+    }
+
+    #[test]
+    fn collect_live_library_panel_exports_with_request_warns_when_model_is_missing() {
+        let dashboard = json!({
+            "panels": [{
+                "id": 1,
+                "libraryPanel": {"uid": "shared-panel", "name": "Shared Panel"}
+            }]
+        });
+        let (exports, warnings) =
+            collect_live_library_panel_exports_with_request(&dashboard, |_, path, _, _| {
+                assert_eq!(path, "/api/library-elements/shared-panel");
+                Ok(Some(json!({
+                    "result": {
+                        "uid": "shared-panel",
+                        "name": "Shared Panel",
+                        "kind": 1,
+                        "type": "graph"
+                    }
+                })))
+            })
+            .unwrap();
+        assert!(exports.is_empty());
+        assert!(warnings
+            .iter()
+            .any(|warning| warning.contains("Unexpected library panel payload")));
+    }
 }
