@@ -4,10 +4,11 @@ DOC_TARGETS := man man-check html html-check pages-site schema schema-check qual
 RUST_BUILD_TARGETS := build-rust build-rust-browser build-rust-native build-rust-native-browser build-rust-host build-rust-host-browser build-rust-macos-arm64 build-rust-macos-arm64-browser build-rust-linux-amd64 build-rust-linux-amd64-browser build-rust-linux-amd64-docker build-rust-linux-amd64-browser-docker build-rust-linux-amd64-zig validate-rust-linux-amd64-artifact validate-rust-linux-amd64-browser-artifact
 INSTALLER_TARGETS := install-local install-local-interactive test-installer-local
 QUALITY_TARGETS := test test-python test-rust fmt-rust-check lint-rust quality quality-python quality-rust quality-rust-feature-matrix quality-rust-feature-matrix-full quality-output-contracts quality-ai-workflow quality-architecture quality-docs-surface quality-alert-rust quality-sync-rust quality-workspace-noise
+REPORT_TARGETS := contract-promotion-report
 LIVE_TARGETS := seed-grafana-sample-data destroy-grafana-sample-data reset-grafana-all-data test-rust-live test-sync-live test-alert-live test-alert-live-artifact test-alert-live-replay test-access-live test-python-datasource-live test-datasource-live
 META_TARGETS := build
 
-.PHONY: $(VERSIONING_TARGETS) $(PYTHON_TARGETS) $(DOC_TARGETS) $(RUST_BUILD_TARGETS) $(INSTALLER_TARGETS) $(QUALITY_TARGETS) $(LIVE_TARGETS) $(META_TARGETS)
+.PHONY: $(VERSIONING_TARGETS) $(PYTHON_TARGETS) $(DOC_TARGETS) $(RUST_BUILD_TARGETS) $(INSTALLER_TARGETS) $(QUALITY_TARGETS) $(REPORT_TARGETS) $(LIVE_TARGETS) $(META_TARGETS)
 
 PYTHON ?= python3
 PIP ?= $(PYTHON) -m pip
@@ -108,6 +109,7 @@ $(BLUE)$(BOLD)Quality and tests$(RESET)
   $(GREEN)make quality-rust-feature-matrix$(RESET)  Validate supported Rust feature surfaces and the no-default policy
   $(GREEN)make quality-rust-feature-matrix-full$(RESET)  Run default and browser Cargo checks, then probe no-default-features as an explicit unsupported surface
   $(GREEN)make quality-output-contracts$(RESET)  Validate core JSON output contract fixtures and registry shape
+  $(GREEN)make contract-promotion-report$(RESET)  Report overlap and gaps between schema manifests and runtime output contracts
   $(GREEN)make quality-ai-workflow$(RESET)  Run lightweight AI workflow drift and public naming policy checks for the current change set
   $(GREEN)make quality-architecture$(RESET)  Run Rust architecture guardrail checks for root noise, file size, render risk, and help-test brittleness
   $(GREEN)make quality-docs-surface$(RESET)  Run command-surface, locale parity, and local-link drift checks for Markdown docs
@@ -323,6 +325,9 @@ quality-rust-feature-matrix-full:
 
 quality-output-contracts:
 	$(PYTHON) ./scripts/check_output_contracts.py
+
+contract-promotion-report:
+	$(PYTHON) ./scripts/contract_promotion_report.py $(if $(VERBOSE),--verbose)
 
 quality-ai-workflow:
 	$(PYTHON) ./scripts/check_ai_workflow.py
