@@ -67,6 +67,11 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Also compile-check the supported default and browser feature surfaces.",
     )
+    parser.add_argument(
+        "--probe-no-default-features",
+        action="store_true",
+        help="Also run the explicit unsupported no-default-features probe.",
+    )
     args = parser.parse_args(argv)
 
     errors = validate_policy_text()
@@ -74,8 +79,34 @@ def main(argv: list[str] | None = None) -> int:
     if args.check_cargo:
         if run_cargo_check([]) != 0:
             errors.append("default Rust feature check failed")
+        else:
+            print("check_rust_feature_matrix: default Rust feature check: ok")
         if run_cargo_check(["--features", "browser"]) != 0:
             errors.append("browser-enabled Rust feature check failed")
+        else:
+            print("check_rust_feature_matrix: browser-enabled Rust feature check: ok")
+
+    if args.probe_no_default_features:
+        no_default_features_rc = subprocess.run(
+            [
+                "cargo",
+                "check",
+                "--manifest-path",
+                str(RUST_MANIFEST),
+                "--quiet",
+                "--no-default-features",
+            ],
+            cwd=REPO_ROOT,
+            check=False,
+            capture_output=True,
+            text=True,
+        ).returncode
+        if no_default_features_rc == 0:
+            errors.append("--no-default-features probe unexpectedly succeeded")
+        else:
+            print(
+                "check_rust_feature_matrix: no-default-features probe: expected unsupported"
+            )
 
     if errors:
         for error in errors:
