@@ -2050,7 +2050,7 @@ run_dashboard_smoke() {
   [[ -n "${prompt_file}" ]] || fail "dashboard prompt export did not produce a dashboard file"
   jq -e '.__inputs | length > 0' "${prompt_file}" >/dev/null \
     || fail "dashboard prompt export did not include __inputs"
-  jq -e '.__inputs | map(.name) | any(startswith("DS_PROMETHEUS"))' "${prompt_file}" >/dev/null \
+  jq -e '.__inputs | any(.type == "datasource" and .pluginId == "prometheus")' "${prompt_file}" >/dev/null \
     || fail "dashboard prompt export did not rewrite datasource inputs"
 
   "$(dashboard_bin)" dashboard diff \
