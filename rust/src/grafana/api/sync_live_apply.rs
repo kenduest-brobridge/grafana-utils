@@ -10,12 +10,14 @@ use crate::review_contract::{
 };
 use crate::sync::live::SyncApplyOperation;
 
+use super::sync_live_apply_datasource::{
+    resolve_live_datasource_id, resolve_live_datasource_target,
+};
 use super::sync_live_apply_error::{
     alert_sync_delete_requires_uid, alert_sync_live_apply_requires_uid,
-    datasource_sync_requires_live_id, datasource_sync_target_not_resolved,
-    refuse_live_folder_delete, unsupported_alert_sync_action, unsupported_alert_sync_kind,
-    unsupported_datasource_sync_action, unsupported_folder_sync_action,
-    unsupported_sync_resource_kind,
+    datasource_sync_target_not_resolved, refuse_live_folder_delete, unsupported_alert_sync_action,
+    unsupported_alert_sync_kind, unsupported_datasource_sync_action,
+    unsupported_folder_sync_action, unsupported_sync_resource_kind,
 };
 use super::sync_live_apply_phase::execute_live_apply_phase;
 use super::SyncLiveClient;
@@ -90,23 +92,7 @@ impl<'a> SyncLiveClient<'a> {
         &self,
         identity: &str,
     ) -> Result<Option<Map<String, Value>>> {
-        let datasources = self.list_datasources()?;
-        for datasource in &datasources {
-            if datasource.get("uid").and_then(Value::as_str).map(str::trim) == Some(identity) {
-                return Ok(Some(datasource.clone()));
-            }
-        }
-        for datasource in &datasources {
-            if datasource
-                .get("name")
-                .and_then(Value::as_str)
-                .map(str::trim)
-                == Some(identity)
-            {
-                return Ok(Some(datasource.clone()));
-            }
-        }
-        Ok(None)
+        resolve_live_datasource_target(&self.list_datasources()?, identity)
     }
 
     pub(crate) fn create_datasource(
@@ -348,14 +334,7 @@ fn apply_datasource_operation_with_client(
             let target = client
                 .resolve_datasource_target(identity)?
                 .ok_or_else(|| datasource_sync_target_not_resolved(identity))?;
-            let datasource_id = target
-                .get("id")
-                .map(|value| match value {
-                    Value::String(text) => text.clone(),
-                    _ => value.to_string(),
-                })
-                .filter(|value: &String| !value.is_empty())
-                .ok_or_else(|| datasource_sync_requires_live_id("update"))?;
+            let datasource_id = resolve_live_datasource_id(&target, "update")?;
             Ok(Value::Object(
                 client
                     .update_datasource(&datasource_id, &body)?
@@ -367,14 +346,7 @@ fn apply_datasource_operation_with_client(
             let target = client
                 .resolve_datasource_target(identity)?
                 .ok_or_else(|| datasource_sync_target_not_resolved(identity))?;
-            let datasource_id = target
-                .get("id")
-                .map(|value| match value {
-                    Value::String(text) => text.clone(),
-                    _ => value.to_string(),
-                })
-                .filter(|value: &String| !value.is_empty())
-                .ok_or_else(|| datasource_sync_requires_live_id("delete"))?;
+            let datasource_id = resolve_live_datasource_id(&target, "delete")?;
             Ok(client.delete_datasource(&datasource_id)?)
         }
         _ => Err(unsupported_datasource_sync_action(action)),

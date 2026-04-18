@@ -11,12 +11,14 @@ use crate::review_contract::{
 };
 use crate::sync::live::SyncApplyOperation;
 
+use super::super::sync_live_apply_datasource::{
+    resolve_live_datasource_id, resolve_live_datasource_target,
+};
 use super::super::sync_live_apply_error::{
     alert_sync_delete_requires_uid, alert_sync_live_apply_requires_uid,
-    datasource_sync_requires_live_id, datasource_sync_target_not_resolved,
-    refuse_live_folder_delete, unsupported_alert_sync_action, unsupported_alert_sync_kind,
-    unsupported_datasource_sync_action, unsupported_folder_sync_action,
-    unsupported_sync_resource_kind,
+    datasource_sync_target_not_resolved, refuse_live_folder_delete, unsupported_alert_sync_action,
+    unsupported_alert_sync_kind, unsupported_datasource_sync_action,
+    unsupported_folder_sync_action, unsupported_sync_resource_kind,
 };
 use super::super::sync_live_apply_phase::execute_live_apply_phase;
 
@@ -207,16 +209,24 @@ where
         )?
         .unwrap_or(Value::Null)),
         REVIEW_ACTION_WOULD_UPDATE => {
-            let target = resolve_live_datasource_target_with_request(request_json, identity)?
-                .ok_or_else(|| datasource_sync_target_not_resolved(identity))?;
-            let datasource_id = target
-                .get("id")
-                .map(|value| match value {
-                    Value::String(text) => text.clone(),
-                    _ => value.to_string(),
+            let datasources = match request_json(Method::GET, "/api/datasources", &[], None)? {
+                Some(Value::Array(items)) => items,
+                Some(_) => {
+                    return Err(crate::common::message(
+                        "Unexpected datasource list response from Grafana.",
+                    ))
+                }
+                None => Vec::new(),
+            };
+            let datasources = datasources
+                .iter()
+                .map(|item| {
+                    crate::sync::require_json_object(item, "Grafana datasource payload").cloned()
                 })
-                .filter(|value: &String| !value.is_empty())
-                .ok_or_else(|| datasource_sync_requires_live_id("update"))?;
+                .collect::<Result<Vec<_>>>()?;
+            let target = resolve_live_datasource_target(&datasources, identity)?
+                .ok_or_else(|| datasource_sync_target_not_resolved(identity))?;
+            let datasource_id = resolve_live_datasource_id(&target, "update")?;
             Ok(request_json(
                 Method::PUT,
                 &format!("/api/datasources/{datasource_id}"),
@@ -226,16 +236,24 @@ where
             .unwrap_or(Value::Null))
         }
         REVIEW_ACTION_WOULD_DELETE => {
-            let target = resolve_live_datasource_target_with_request(request_json, identity)?
-                .ok_or_else(|| datasource_sync_target_not_resolved(identity))?;
-            let datasource_id = target
-                .get("id")
-                .map(|value| match value {
-                    Value::String(text) => text.clone(),
-                    _ => value.to_string(),
+            let datasources = match request_json(Method::GET, "/api/datasources", &[], None)? {
+                Some(Value::Array(items)) => items,
+                Some(_) => {
+                    return Err(crate::common::message(
+                        "Unexpected datasource list response from Grafana.",
+                    ))
+                }
+                None => Vec::new(),
+            };
+            let datasources = datasources
+                .iter()
+                .map(|item| {
+                    crate::sync::require_json_object(item, "Grafana datasource payload").cloned()
                 })
-                .filter(|value: &String| !value.is_empty())
-                .ok_or_else(|| datasource_sync_requires_live_id("delete"))?;
+                .collect::<Result<Vec<_>>>()?;
+            let target = resolve_live_datasource_target(&datasources, identity)?
+                .ok_or_else(|| datasource_sync_target_not_resolved(identity))?;
+            let datasource_id = resolve_live_datasource_id(&target, "delete")?;
             Ok(request_json(
                 Method::DELETE,
                 &format!("/api/datasources/{datasource_id}"),
@@ -404,35 +422,4 @@ where
         },
         _ => Err(unsupported_alert_sync_action(action)),
     }
-}
-
-fn resolve_live_datasource_target_with_request<F>(
-    request_json: &mut F,
-    identity: &str,
-) -> Result<Option<Map<String, Value>>>
-where
-    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
-{
-    let datasources = match request_json(Method::GET, "/api/datasources", &[], None)? {
-        Some(Value::Array(items)) => items,
-        Some(_) => {
-            return Err(crate::common::message(
-                "Unexpected datasource list response from Grafana.",
-            ))
-        }
-        None => Vec::new(),
-    };
-    for datasource in &datasources {
-        let object = crate::sync::require_json_object(datasource, "Grafana datasource payload")?;
-        if object.get("uid").and_then(Value::as_str).map(str::trim) == Some(identity) {
-            return Ok(Some(object.clone()));
-        }
-    }
-    for datasource in &datasources {
-        let object = crate::sync::require_json_object(datasource, "Grafana datasource payload")?;
-        if object.get("name").and_then(Value::as_str).map(str::trim) == Some(identity) {
-            return Ok(Some(object.clone()));
-        }
-    }
-    Ok(None)
 }
