@@ -5,7 +5,7 @@
 | 你現在想做的事 | 先開哪個命令頁 | 這頁會幫你回答什麼 |
 | --- | --- | --- |
 | 想先看 live dashboard 現況 | [dashboard browse](./dashboard-browse.md) / [dashboard list](./dashboard-list.md) | 先知道有哪些 dashboard、要不要往下抓內容 |
-| 想把 live 或本地內容整理成可重用分析成品 | [dashboard summary](./dashboard-summary.md) / [dashboard dependencies](./dashboard-dependencies.md) | 先決定分析來源是 live 還是本地匯出樹 |
+| 想把 live 或本地內容整理成可重用 review 成品 | [dashboard summary](./dashboard-summary.md) / [dashboard dependencies](./dashboard-dependencies.md) | 先決定來源是 live 還是本地匯出樹 |
 | 想知道某個 datasource 會牽動哪些 dashboard 或 alert | [dashboard impact](./dashboard-impact.md) | 先看變更影響面，避免直接動 live |
 | 想比對草稿與 live 差異 | [dashboard diff](./dashboard-diff.md) / [dashboard review](./dashboard-review.md) | 先做 review，再決定是否 publish |
 | 想先看本地匯出樹套到 live 會改什麼 | [dashboard plan](./dashboard-plan.md) | 先產生 create/update/delete/review hints，再決定是否 import |
@@ -16,7 +16,7 @@
 
 `grafana-util dashboard` 把 dashboard 相關工作收在同一個入口：從瀏覽、草稿、匯出、匯入、比對，到相依性、影響面、政策和截圖。它也可用 `grafana-util db` 呼叫。命令本身維持扁平，help 和文件用分組降低閱讀壓力。
 
-這組頁面採用扁平 command path，例如 `grafana-util dashboard list`、`grafana-util dashboard summary`、`grafana-util dashboard publish`，不再另外包一層 author / migrate / inspect namespace。
+這組頁面採用扁平 command path，例如 `grafana-util dashboard list`、`grafana-util dashboard summary`、`grafana-util dashboard publish`，不再另外包一層 author / migrate / summary namespace。
 
 如果是單一 dashboard 的 authoring 路徑，建議把它想成：
 - `dashboard get` 或 `dashboard clone`：先做草稿
@@ -67,8 +67,8 @@
 
 ## 失敗時先檢查
 
-- 如果 browse 或 inspect 結果比預期少，先核對 `--profile`、`--url`、org 與權限
-- 如果 dependencies 或 impact 是空的，先確認你餵的是同一次 inspect 產物
+- 如果 browse 或 summary 結果比預期少，先核對 `--profile`、`--url`、org 與權限
+- 如果 dependencies 或 impact 是空的，先確認你餵的是同一次 summary 成品
 - 如果政策檢查看起來怪怪的，先看 `governance` 和 `queries` 是否來自相同來源
 
 ## 重點旗標

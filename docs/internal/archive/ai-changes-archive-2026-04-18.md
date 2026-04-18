@@ -70,3 +70,11 @@
 - Impact: Rust datasource export/import planning, dry-run rendering, datasource import parser/table tests, datasource command docs, datasource masked-recovery contract docs, TODO backlog, and AI trace docs.
 - Rollback/Risk: medium datasource import behavior change. Rollback would restore numeric-id update requests and remove early read-only blocking/target evidence from dry-run output.
 - Follow-up: Grafana K8s datasource API support remains a later adapter and is intentionally not part of this change.
+
+## 2026-04-17 - Finish classic prompt export guardrails
+- Summary: completed the next classic prompt-lane guardrails without adding dashboard v2 export support. Raw-to-prompt now emits `VAR_*` inputs for constant variables, keeps expression datasource refs out of user-mapped inputs, rejects dashboard v2 resource/spec input with a clear unsupported message, and warns when library panel references are preserved without inlining models.
+- Tests: added focused raw-to-prompt regressions for constant variables, expression datasource refs, dashboard v2 rejection, and library panel warnings; added validation coverage for dashboard v2 resource warning.
+- Test Run: `cargo fmt --manifest-path rust/Cargo.toml --all --check`; `cargo test --manifest-path rust/Cargo.toml --quiet raw_to_prompt`; `cargo test --manifest-path rust/Cargo.toml --quiet validate_dashboard_export_dir_warns_for_dashboard_v2_resource_shape`; `cargo test --manifest-path rust/Cargo.toml --quiet`; `cargo clippy --manifest-path rust/Cargo.toml --all-targets -- -D warnings`; `make quality-ai-workflow`; `git diff --check`.
+- Impact: prompt-lane Rust conversion, raw-to-prompt regression coverage, dashboard export validation, maintainer prompt semantics docs, TODO backlog, and AI trace docs.
+- Rollback/Risk: medium prompt-lane behavior change. Rollback would remove constant variable prompt inputs and v2/library panel guardrails, returning those cases to less explicit conversion behavior.
+- Follow-up: full library panel external-export parity still needs live model lookup; dashboard v2 remains a future adapter rather than a prompt-lane format.

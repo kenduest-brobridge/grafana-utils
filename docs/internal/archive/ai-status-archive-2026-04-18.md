@@ -60,3 +60,10 @@
 - Baseline: prompt export always emitted empty `__elements`, raw-to-prompt parity coverage did not include Grafana-source datasource/library/v2 fixture shapes, and dashboard import/publish did not surface or block provisioned target dashboard ownership before live overwrite.
 - Current Update: Live dashboard export now fetches referenced library panel models into prompt `__elements` while offline raw-to-prompt remains warning-only. Raw-to-prompt tests now cover selected datasource variables, default datasource variables, special datasource refs, string datasource mappings, library panel warnings, and v2/k8s rejection. Dashboard import/publish dry-run surfaces target evidence and live apply blocks provisioned overwrite before POST.
 - Result: Focused dashboard tests, full Rust tests, clippy, formatting, docs-surface, generated man/html checks, and whitespace checks pass.
+
+## 2026-04-18 - Repair legacy dashboard all-orgs root aggregates
+- State: Done
+- Scope: Rust dashboard export-layout repair, all-orgs export regression coverage, command docs, generated docs, and AI trace docs. README files, Python implementation, and live export behavior beyond regression coverage are out of scope.
+- Baseline: older all-orgs export artifacts can contain valid `org_*` child exports while the root `index.json` and `export-metadata.json` only describe one org. `export-layout` repairs file layout and existing root index paths, but it does not rebuild missing all-orgs aggregate root data from child org indexes.
+- Current Update: `dashboard convert export-layout` now rebuilds legacy all-orgs root `index.json` and root metadata from child `org_*/raw` and `org_*/prompt` indexes, even when no layout moves are possible because legacy folder identity is missing. The current exporter regression now asserts all-orgs root metadata uses all-orgs scope and does not carry a single root `org/orgId`.
+- Result: Focused export-layout and all-orgs export tests pass; a copied legacy sample rebuilds root aggregate metadata to 138 dashboards across 2 orgs.

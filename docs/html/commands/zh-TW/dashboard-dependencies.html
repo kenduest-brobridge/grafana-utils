@@ -971,11 +971,11 @@ grafana-util dashboard dependencies --input-dir ./dashboards/provisioning --inpu
 <pre><code># 分析 repo-backed Git Sync 樹，保留治理輸出給下一步。
 grafana-util dashboard dependencies --input-dir ./grafana-oac-repo --input-format git-sync --output-format governance</code></pre>
 <h2 id="什麼叫做這次跑成功">什麼叫做這次跑成功</h2>
-<ul><li>不必逐一打開 JSON，也能說清楚匯出樹裡有哪些 dashboard、查詢與相依關係</li><li>產物格式足以直接交給下一步，而不是還要重新分析一次</li><li>同一份輸出可以支撐 review、治理或影響分析</li></ul>
+<ul><li>不必逐一打開 JSON，也能說清楚匯出樹裡有哪些 dashboard、查詢與相依關係</li><li>產物格式足以直接交給下一步，而不是還要重新檢視一次</li><li>同一份輸出可以支撐 review、治理或影響分析</li></ul>
 <h2 id="成功判準">成功判準</h2>
-<ul><li>不必逐一打開 dashboard 檔案，也能說清楚匯出樹裡有哪些內容</li><li>governance 或 dependency 輸出穩定到可以直接交給 CI 或另一位維護者</li><li>後續要跑 <code>dashboard dependencies</code>、<code>dashboard impact</code>、<code>dashboard policy</code> 時，可以直接從分析產物開始，不用再重新讀原始匯出樹</li></ul>
+<ul><li>不必逐一打開 dashboard 檔案，也能說清楚匯出樹裡有哪些內容</li><li>governance 或 dependency 輸出穩定到可以直接交給 CI 或另一位維護者</li><li>後續要跑 <code>dashboard dependencies</code>、<code>dashboard impact</code>、<code>dashboard policy</code> 時，可以直接從 review 成品開始，不用再重新讀原始匯出樹</li></ul>
 <h2 id="失敗時先檢查">失敗時先檢查</h2>
-<ul><li>如果匯出樹看起來不完整，先確認你指的是 <code>raw</code> 還是 <code>provisioning</code> 內容</li><li>如果後續命令讀不進去，先確認你輸出的是 <code>governance-json</code> 還是別的分析成品格式</li><li>如果匯出樹來自較舊的匯出結果，先重跑 <code>dashboard export</code>，避免分析到過期檔案</li></ul>
+<ul><li>如果匯出樹看起來不完整，先確認你指的是 <code>raw</code> 還是 <code>provisioning</code> 內容</li><li>如果後續命令讀不進去，先確認你輸出的是 <code>governance-json</code> 還是別的 review 成品格式</li><li>如果匯出樹來自較舊的匯出結果，先重跑 <code>dashboard export</code>，避免檢視到過期檔案</li></ul>
 <h2 id="相關指令">相關指令</h2>
 <ul><li><a href="dashboard-export.html">dashboard export</a></li><li><a href="dashboard-diff.html">dashboard diff</a></li><li><a href="dashboard-policy.html">dashboard policy</a></li></ul>
 

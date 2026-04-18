@@ -12,9 +12,9 @@ Use this when you are about to review a workspace, migrate, or troubleshoot one 
 - **After**: one `impact` run tells you which dashboards and alert-linked resources are downstream of a datasource UID.
 
 ## Key flags
-- `--url`: analyze live Grafana directly.
-- `--input-dir`: analyze a local export tree directly.
-- `--input-format`: choose `raw`, `provisioning`, or `git-sync` when analyzing local exports.
+- `--url`: review live Grafana directly.
+- `--input-dir`: review a local export tree directly.
+- `--input-format`: choose `raw`, `provisioning`, or `git-sync` when reviewing local exports.
 - `--governance`: dashboard governance JSON input (`governance-json` artifact).
 - `--datasource-uid`: datasource UID to trace.
 - `--alert-contract`: optional alert contract JSON input.

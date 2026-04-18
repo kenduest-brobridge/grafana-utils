@@ -27,9 +27,9 @@
 - **採用後**：跑一次 `impact`，就能知道某個 datasource UID 往下會影響哪些 dashboard 與 alert 資產。
 
 ## 重點旗標
-- `--url`：直接分析線上 Grafana。
-- `--input-dir`：直接分析本地匯出樹。
-- `--input-format`：分析本地來源時選擇 `raw`、`provisioning` 或 `git-sync`。
+- `--url`：直接檢視線上 Grafana。
+- `--input-dir`：直接檢視本地匯出樹。
+- `--input-format`：檢視本地來源時選擇 `raw`、`provisioning` 或 `git-sync`。
 - `--governance`：dashboard governance JSON 輸入（`governance-json` 成品）。
 - `--datasource-uid`：要追蹤的 datasource UID。
 - `--alert-contract`：可選的 alert contract JSON 輸入。

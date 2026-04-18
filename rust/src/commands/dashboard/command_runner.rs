@@ -30,7 +30,7 @@ use super::vars::inspect_dashboard_variables;
 #[allow(unused_imports)]
 use super::{
     build_dashboard_review, build_http_client, materialize_dashboard_common_auth,
-    render_inspect_export_help_full, render_inspect_live_help_full, DashboardCliArgs,
+    render_summary_export_help_full, render_summary_live_help_full, DashboardCliArgs,
     DashboardCommand, DashboardHistorySubcommand, InspectExportArgs, InspectLiveArgs, ReviewArgs,
     SimpleOutputFormat, SummaryArgs,
 };
@@ -133,7 +133,7 @@ fn run_dashboard_inspect_export_dispatch(
         return Ok(());
     }
     if inspect_args.help_full {
-        print!("{}", render_inspect_export_help_full());
+        print!("{}", render_summary_export_help_full());
         return Ok(());
     }
     run(inspect_args).map(|_| ())
@@ -148,7 +148,7 @@ fn run_dashboard_inspect_live_dispatch(
         return Ok(());
     }
     if inspect_args.help_full {
-        print!("{}", render_inspect_live_help_full());
+        print!("{}", render_summary_live_help_full());
         return Ok(());
     }
     run(inspect_args).map(|_| ())

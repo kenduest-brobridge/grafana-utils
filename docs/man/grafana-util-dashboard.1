@@ -18,7 +18,7 @@ The command path stays flat, such as grafana\-util dashboard list, so experience
 .PP
 \- Export & Import: move dashboard artifacts between Grafana, raw JSON, prompt JSON, or provisioning files. Commands: export, import, convert raw\-to\-prompt.
 .PP
-\- Review & Diff: collect proof, compare state, plan local\-vs\-live reconciliation, analyze dependencies, review blast radius, or run governance checks. Commands: plan, diff, review, summary, dependencies, impact, policy.
+\- Review & Diff: collect proof, compare state, plan local\-vs\-live reconciliation, review dependencies, review blast radius, or run governance checks. Commands: plan, diff, review, summary, dependencies, impact, policy.
 .PP
 \- Edit & Publish: create or change one local draft, then publish or delete deliberately. Commands: get, clone, patch, serve, edit\-live, publish, delete.
 .PP
@@ -40,12 +40,12 @@ For single\-dashboard authoring, the local draft path is:
 .PP
 review, patch, and publish also accept \-\-input \- for one wrapped or bare dashboard JSON document from standard input. Use that when an external generator already writes the dashboard JSON to stdout. patch \-\-input \- requires \-\-output, and publish \-\-watch is the local\-file variant for repeated save\-and\-preview loops and does not support \-\-input \-.
 .PP
-Choose this page when the task is dashboard work but you are still deciding whether the next step is to inspect, review, normalize, or capture.
+Choose this page when the task is dashboard work but you are still deciding whether the next step is to summarize, review, normalize, or capture.
 .SH BEFORE / AFTER
 .IP \(bu 2
 Before: dashboard work is often split across UI browsing, one\-off exports, local JSON edits, and ad hoc screenshot or review steps.
 .IP \(bu 2
-After: the dashboard namespace keeps browse, inspect, review, normalize, and capture in one place, with grouped help so you can pick the lane first and then jump to the matching flat subcommand.
+After: the dashboard namespace keeps browse, summary, review, normalize, and capture in one place, with grouped help so you can pick the lane first and then jump to the matching flat subcommand.
 .SH SUBCOMMANDS
 .TP
 .B browse
@@ -125,11 +125,11 @@ load repo\-local defaults from grafana\-util.yaml.
 control JSON color output for the namespace.
 .SH SUCCESS CRITERIA
 .IP \(bu 2
-you can tell whether the task is inspect, review, normalize, or capture before opening a subcommand
+you can tell whether the task is summarize, review, normalize, or capture before opening a subcommand
 .IP \(bu 2
 inventory reads, export/import flows, and review surfaces share the same auth and bundle conventions
 .IP \(bu 2
-screenshot and dependency\-analysis paths stay available when you need proof instead of only a final JSON blob
+screenshot and dependency\-review paths stay available when you need proof instead of only a final JSON blob
 .SH FAILURE CHECKS
 .IP \(bu 2
 if browse output looks incomplete, verify the profile, auth flags, and target org before retrying

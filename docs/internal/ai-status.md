@@ -15,6 +15,13 @@ Current AI-maintained status only.
 - Older entries moved to [`ai-status-archive-2026-04-17.md`](docs/internal/archive/ai-status-archive-2026-04-17.md).
 - Older entries moved to [`ai-status-archive-2026-04-18.md`](docs/internal/archive/ai-status-archive-2026-04-18.md).
 
+## 2026-04-18 - Advance workspace review aggregation and cleanup
+- State: Done
+- Scope: Rust workspace review aggregation, access team browse TUI boundary cleanup, dashboard summary/review naming cleanup, focused tests, generated docs if public docs change, and AI trace docs. README files and Python implementation are out of scope.
+- Baseline: Domain plan surfaces now expose stable action-style review documents, but workspace aggregation, TUI input boundaries, and dashboard summary naming still have follow-up TODOs.
+- Current Update: Added a shared workspace review view adapter for preview/review normalization, split access team browse key dispatch and tests out of the input surface, and cleaned public dashboard summary/review wording while preserving true query analyzer internals.
+- Result: Focused workspace/access/dashboard tests, full Rust tests, clippy, formatting, generated docs, docs-surface, and dashboard wording scan pass.
+
 ## 2026-04-18 - Add access plan aggregate resource
 - State: Done
 - Scope: Rust access plan aggregate routing/tests, access plan docs/help, generated docs, and AI trace docs. README files and Python implementation are out of scope.
@@ -49,10 +56,3 @@ Current AI-maintained status only.
 - Baseline: `datasource diff` compares local bundles with live Grafana and reports `missing-remote` / `extra-remote`, while `datasource import --dry-run` previews create/update for import records only. There is no dedicated review-first datasource reconcile plan, no opt-in prune planning, and no TUI-ready action model.
 - Current Update: Added `datasource plan` as a review-only reconcile surface with text/table/json output, opt-in prune planning, all-org export routing, safe field comparison, read-only blocking, and stable TUI-ready action IDs. `datasource diff` and import dry-run remain separate surfaces.
 - Result: Focused datasource plan tests, datasource suite, clippy, formatting, docs-surface, and generated docs checks pass.
-
-## 2026-04-18 - Repair legacy dashboard all-orgs root aggregates
-- State: Done
-- Scope: Rust dashboard export-layout repair, all-orgs export regression coverage, command docs, generated docs, and AI trace docs. README files, Python implementation, and live export behavior beyond regression coverage are out of scope.
-- Baseline: older all-orgs export artifacts can contain valid `org_*` child exports while the root `index.json` and `export-metadata.json` only describe one org. `export-layout` repairs file layout and existing root index paths, but it does not rebuild missing all-orgs aggregate root data from child org indexes.
-- Current Update: `dashboard convert export-layout` now rebuilds legacy all-orgs root `index.json` and root metadata from child `org_*/raw` and `org_*/prompt` indexes, even when no layout moves are possible because legacy folder identity is missing. The current exporter regression now asserts all-orgs root metadata uses all-orgs scope and does not carry a single root `org/orgId`.
-- Result: Focused export-layout and all-orgs export tests pass; a copied legacy sample rebuilds root aggregate metadata to 138 dashboards across 2 orgs.

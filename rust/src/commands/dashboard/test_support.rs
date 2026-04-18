@@ -38,8 +38,8 @@ pub(crate) use crate::dashboard::governance_policy::{
     load_governance_policy_source,
 };
 pub(crate) use crate::dashboard::help::{
-    maybe_render_dashboard_help_full_from_os_args, render_inspect_export_help_full,
-    render_inspect_live_help_full,
+    maybe_render_dashboard_help_full_from_os_args, render_summary_export_help_full,
+    render_summary_live_help_full,
 };
 pub(crate) use crate::dashboard::history::{
     build_dashboard_history_diff_document_with_request,

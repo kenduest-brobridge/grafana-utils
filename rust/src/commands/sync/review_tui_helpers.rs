@@ -348,18 +348,53 @@ pub(crate) fn filter_review_plan_operations(
         Value::Array(filtered_operations.clone()),
     );
     filtered.insert("actions".to_string(), Value::Array(filtered_operations));
-    if let Ok(enriched) = crate::sync::workspace_preview_contract::enrich_workspace_preview_document(
+    if let Ok(view) = crate::sync::workspace_preview_review_view::build_workspace_review_view(
         &Value::Object(filtered.clone()),
     ) {
-        if let Some(object) = enriched.as_object() {
-            if let Some(domains) = object.get("domains") {
-                filtered.insert("domains".to_string(), domains.clone());
-            }
-            if let Some(blocked) = object.get("blockedReasons") {
-                filtered.insert("blockedReasons".to_string(), blocked.clone());
-            }
-            if let Some(summary) = object.get("summary") {
-                filtered.insert("summary".to_string(), summary.clone());
+        filtered.insert(
+            "domains".to_string(),
+            Value::Array(
+                view.domains
+                    .iter()
+                    .map(|domain| domain.raw.clone())
+                    .collect(),
+            ),
+        );
+        filtered.insert(
+            "blockedReasons".to_string(),
+            Value::Array(
+                view.blocked_reasons
+                    .iter()
+                    .map(|reason| Value::String(reason.clone()))
+                    .collect(),
+            ),
+        );
+        if let Some(summary) = filtered.get_mut("summary").and_then(Value::as_object_mut) {
+            summary
+                .entry("actionCount".to_string())
+                .or_insert(Value::Number((view.summary.action_count as i64).into()));
+            summary
+                .entry("domainCount".to_string())
+                .or_insert(Value::Number((view.summary.domain_count as i64).into()));
+            summary
+                .entry("sameCount".to_string())
+                .or_insert(Value::Number((view.summary.same_count as i64).into()));
+            summary
+                .entry("blockedCount".to_string())
+                .or_insert(Value::Number((view.summary.blocked_count as i64).into()));
+            summary
+                .entry("warningCount".to_string())
+                .or_insert(Value::Number((view.summary.warning_count as i64).into()));
+            if !summary.contains_key("blocked_reasons") {
+                summary.insert(
+                    "blocked_reasons".to_string(),
+                    Value::Array(
+                        view.blocked_reasons
+                            .iter()
+                            .map(|reason| Value::String(reason.clone()))
+                            .collect(),
+                    ),
+                );
             }
         }
     }

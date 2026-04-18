@@ -363,19 +363,19 @@ pub struct InspectExportArgs {
         help = "Do not print table headers when rendering the table summary, table, csv, or tree-table query report output."
     )]
     pub no_header: bool,
-    #[arg(long, help = "Write inspect output to this file.")]
+    #[arg(long, help = "Write dashboard summary output to this file.")]
     pub output_file: Option<PathBuf>,
     #[arg(
         long,
         default_value_t = false,
         requires = "output_file",
-        help = "When --output-file is set, also print inspect output to stdout."
+        help = "When --output-file is set, also print dashboard summary output to stdout."
     )]
     pub also_stdout: bool,
     #[arg(
         long,
         default_value_t = false,
-        help = "Open the shared interactive inspect workbench over the export artifacts."
+        help = "Open the shared interactive summary workbench over the export artifacts."
     )]
     pub interactive: bool,
 }
@@ -390,55 +390,55 @@ pub struct InspectLiveArgs {
     #[arg(
         long,
         default_value_t = 8usize,
-        help = "Maximum parallel dashboard fetch workers used for live inspect when supported."
+        help = "Maximum parallel dashboard fetch workers used for live summary when supported."
     )]
     pub concurrency: usize,
     #[arg(
         long,
         conflicts_with = "all_orgs",
-        help = "Inspect dashboards from this Grafana org ID."
+        help = "Summarize dashboards from this Grafana org ID."
     )]
     pub org_id: Option<i64>,
     #[arg(
         long,
         default_value_t = false,
         conflicts_with = "org_id",
-        help = "Enumerate all visible Grafana orgs and inspect dashboards across them."
+        help = "Enumerate all visible Grafana orgs and summarize dashboards across them."
     )]
     pub all_orgs: bool,
     #[arg(
         long,
         default_value_t = false,
         conflicts_with_all = ["table", "csv", "json", "yaml", "output_format"],
-        help = "Render the live inspection summary as plain text."
+        help = "Render the live dashboard summary as plain text."
     )]
     pub text: bool,
     #[arg(
         long,
         default_value_t = false,
         conflicts_with_all = ["text", "csv", "json", "yaml", "output_format"],
-        help = "Render the live inspection summary as a table-oriented view."
+        help = "Render the live dashboard summary as a table-oriented view."
     )]
     pub table: bool,
     #[arg(
         long,
         default_value_t = false,
         conflicts_with_all = ["text", "table", "json", "yaml", "output_format"],
-        help = "Render the live inspection summary as CSV."
+        help = "Render the live dashboard summary as CSV."
     )]
     pub csv: bool,
     #[arg(
         long,
         default_value_t = false,
         conflicts_with_all = ["text", "table", "csv", "yaml", "output_format"],
-        help = "Render the live inspection summary as JSON."
+        help = "Render the live dashboard summary as JSON."
     )]
     pub json: bool,
     #[arg(
         long,
         default_value_t = false,
         conflicts_with_all = ["text", "table", "csv", "json", "output_format"],
-        help = "Render the live inspection summary as YAML."
+        help = "Render the live dashboard summary as YAML."
     )]
     pub yaml: bool,
     #[arg(
@@ -474,7 +474,7 @@ pub struct InspectLiveArgs {
     #[arg(
         long,
         default_value_t = false,
-        help = "Show a progress bar while live dashboards are fetched for inspection."
+        help = "Show a progress bar while live dashboards are fetched for summary."
     )]
     pub progress: bool,
     #[arg(
@@ -486,22 +486,22 @@ pub struct InspectLiveArgs {
     #[arg(
         long,
         default_value_t = false,
-        help = "Do not print headers when rendering table, csv, or tree-table inspection output."
+        help = "Do not print headers when rendering table, csv, or tree-table summary output."
     )]
     pub no_header: bool,
-    #[arg(long, help = "Write inspect output to this file.")]
+    #[arg(long, help = "Write summary output to this file.")]
     pub output_file: Option<PathBuf>,
     #[arg(
         long,
         default_value_t = false,
         requires = "output_file",
-        help = "When --output-file is set, also print inspect output to stdout."
+        help = "When --output-file is set, also print summary output to stdout."
     )]
     pub also_stdout: bool,
     #[arg(
         long,
         default_value_t = false,
-        help = "Open the shared interactive inspect workbench over the live inspection artifacts."
+        help = "Open the shared interactive summary workbench over the live summary artifacts."
     )]
     pub interactive: bool,
 }

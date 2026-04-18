@@ -30,7 +30,7 @@ pub struct GovernanceGateArgs {
         long,
         default_value_t = false,
         conflicts_with = "org_id",
-        help = "Stage dashboard findings across all visible Grafana orgs when reading live Grafana. Prefer Basic auth when you need cross-org analysis because API tokens are often scoped to one org."
+        help = "Stage dashboard findings across all visible Grafana orgs when reading live Grafana. Prefer Basic auth when you need cross-org review because API tokens are often scoped to one org."
     )]
     pub all_orgs: bool,
     #[arg(
@@ -44,7 +44,7 @@ pub struct GovernanceGateArgs {
         default_value = "raw",
         value_parser = parse_dashboard_summary_input_format,
         value_name = "raw|provisioning|git-sync",
-        help = "Interpret --input-dir as raw export files, Grafana file-provisioning artifacts, or a repo-backed Git Sync dashboard tree from a local analysis source."
+        help = "Interpret --input-dir as raw export files, Grafana file-provisioning artifacts, or a repo-backed Git Sync dashboard tree from a local review source."
     )]
     pub input_format: DashboardImportInputFormat,
     #[arg(
@@ -122,7 +122,7 @@ pub struct TopologyArgs {
         long,
         default_value_t = false,
         conflicts_with = "org_id",
-        help = "Stage dashboard findings across all visible Grafana orgs when reading live Grafana. Prefer Basic auth when you need cross-org analysis because API tokens are often scoped to one org."
+        help = "Stage dashboard findings across all visible Grafana orgs when reading live Grafana. Prefer Basic auth when you need cross-org review because API tokens are often scoped to one org."
     )]
     pub all_orgs: bool,
     #[arg(
@@ -136,7 +136,7 @@ pub struct TopologyArgs {
         default_value = "raw",
         value_parser = parse_dashboard_summary_input_format,
         value_name = "raw|provisioning|git-sync",
-        help = "Interpret --input-dir as raw export files, Grafana file-provisioning artifacts, or a repo-backed Git Sync dashboard tree from a local analysis source."
+        help = "Interpret --input-dir as raw export files, Grafana file-provisioning artifacts, or a repo-backed Git Sync dashboard tree from a local review source."
     )]
     pub input_format: DashboardImportInputFormat,
     #[arg(
@@ -152,7 +152,7 @@ pub struct TopologyArgs {
     pub governance: Option<PathBuf>,
     #[arg(
         long,
-        help = "Reuse a saved queries-json artifact when you already split analysis into artifact files. Prefer --url or --input-dir for the common path; keep this for advanced reuse."
+        help = "Reuse a saved queries-json artifact when you already split review into artifact files. Prefer --url or --input-dir for the common path; keep this for advanced reuse."
     )]
     pub queries: Option<PathBuf>,
     #[arg(
@@ -208,7 +208,7 @@ pub struct ImpactArgs {
         long,
         default_value_t = false,
         conflicts_with = "org_id",
-        help = "Trace dashboard impact across all visible Grafana orgs when reading live Grafana. Prefer Basic auth when you need cross-org analysis because API tokens are often scoped to one org."
+        help = "Trace dashboard impact across all visible Grafana orgs when reading live Grafana. Prefer Basic auth when you need cross-org review because API tokens are often scoped to one org."
     )]
     pub all_orgs: bool,
     #[arg(
@@ -233,17 +233,17 @@ pub struct ImpactArgs {
     pub input_type: Option<InspectExportInputType>,
     #[arg(
         long,
-        help = "Reuse this dashboard governance JSON artifact instead of analyzing live Grafana or an export tree first."
+        help = "Reuse this dashboard governance JSON artifact instead of running dashboard summary or dependencies first."
     )]
     pub governance: Option<PathBuf>,
     #[arg(
         long,
-        help = "Optional query report artifact path when reusing prebuilt analysis files. Impact itself derives blast radius from governance data plus optional alert-contract data."
+        help = "Optional query report artifact path when reusing prebuilt review files. Impact itself derives blast radius from governance data plus optional alert-contract data."
     )]
     pub queries: Option<PathBuf>,
     #[arg(
         long = "datasource-uid",
-        help = "Datasource UID to analyze for downstream dashboard and alert impact."
+        help = "Datasource UID to review for downstream dashboard and alert impact."
     )]
     pub datasource_uid: String,
     #[arg(

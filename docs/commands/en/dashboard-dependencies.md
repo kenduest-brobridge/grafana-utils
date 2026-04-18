@@ -41,13 +41,13 @@ grafana-util dashboard dependencies --input-dir ./grafana-oac-repo --input-forma
 
 - you can explain what is inside an export tree without manually opening dozens of dashboard files
 - governance or dependency output is stable enough to hand to CI or a second operator
-- later checks such as `dashboard dependencies`, `dashboard impact`, or `dashboard policy` can start from the inspect artifacts instead of re-reading the raw tree
+- later checks such as `dashboard dependencies`, `dashboard impact`, or `dashboard policy` can start from the review artifacts instead of re-reading the raw tree
 
 ## Failure checks
 
 - if the export tree looks incomplete, confirm whether you are pointing at `raw` or `provisioning` content before you trust the report
-- if a later command cannot consume the result, check whether you emitted `governance-json` or another analysis artifact shape by mistake
-- if the tree came from an older export, rerun `dashboard export` first so you do not analyze stale files
+- if a later command cannot consume the result, check whether you emitted `governance-json` or another review artifact shape by mistake
+- if the tree came from an older export, rerun `dashboard export` first so you do not review stale files
 
 ## Related commands
 - [dashboard export](./dashboard-export.md)

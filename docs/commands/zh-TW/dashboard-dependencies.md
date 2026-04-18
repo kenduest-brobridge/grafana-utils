@@ -64,20 +64,20 @@ grafana-util dashboard dependencies --input-dir ./grafana-oac-repo --input-forma
 ## 什麼叫做這次跑成功
 
 - 不必逐一打開 JSON，也能說清楚匯出樹裡有哪些 dashboard、查詢與相依關係
-- 產物格式足以直接交給下一步，而不是還要重新分析一次
+- 產物格式足以直接交給下一步，而不是還要重新檢視一次
 - 同一份輸出可以支撐 review、治理或影響分析
 
 ## 成功判準
 
 - 不必逐一打開 dashboard 檔案，也能說清楚匯出樹裡有哪些內容
 - governance 或 dependency 輸出穩定到可以直接交給 CI 或另一位維護者
-- 後續要跑 `dashboard dependencies`、`dashboard impact`、`dashboard policy` 時，可以直接從分析產物開始，不用再重新讀原始匯出樹
+- 後續要跑 `dashboard dependencies`、`dashboard impact`、`dashboard policy` 時，可以直接從 review 成品開始，不用再重新讀原始匯出樹
 
 ## 失敗時先檢查
 
 - 如果匯出樹看起來不完整，先確認你指的是 `raw` 還是 `provisioning` 內容
-- 如果後續命令讀不進去，先確認你輸出的是 `governance-json` 還是別的分析成品格式
-- 如果匯出樹來自較舊的匯出結果，先重跑 `dashboard export`，避免分析到過期檔案
+- 如果後續命令讀不進去，先確認你輸出的是 `governance-json` 還是別的 review 成品格式
+- 如果匯出樹來自較舊的匯出結果，先重跑 `dashboard export`，避免檢視到過期檔案
 
 ## 相關指令
 - [dashboard export](./dashboard-export.md)

@@ -25,13 +25,13 @@ policy file path when using file\-based policy input.
 named built\-in policy when using builtin policy input.
 .TP
 .B \-\-url
-analyze live Grafana directly.
+review live Grafana directly.
 .TP
 .B \-\-input\-dir
-analyze a local export tree directly.
+review a local export tree directly.
 .TP
 .B \-\-input\-format
-choose raw, provisioning, or git\-sync when analyzing local exports.
+choose raw, provisioning, or git\-sync when reviewing local exports.
 .TP
 .B \-\-governance
 path to dashboard summary governance JSON (governance\-json artifact, advanced reuse).
@@ -53,12 +53,12 @@ policy checks fail before promotion, not after a dashboard lands in the wrong en
 .IP \(bu 2
 text output is readable enough for manual review, while JSON output is stable enough for CI gates
 .IP \(bu 2
-the same artifacts can be rechecked after a policy workspace without rerunning export or inspect from scratch
+the same artifacts can be rechecked after a policy workspace without rerunning export or review from scratch
 .SH FAILURE CHECKS
 .IP \(bu 2
 if the command fails immediately, confirm the policy source and whether the policy file path or builtin policy name is valid
 .IP \(bu 2
-if the gate result seems incomplete, verify that governance and queries came from the same inspect run
+if the gate result seems incomplete, verify that governance and queries came from the same review run
 .IP \(bu 2
 if automation reads the result, prefer \-\-output\-format json and validate the contract before treating a pass/fail as final
 .SH EXAMPLES

@@ -50,6 +50,7 @@ mod task_first;
 pub mod workbench;
 mod workspace_discovery;
 pub(crate) mod workspace_preview_contract;
+pub(crate) mod workspace_preview_review_view;
 
 pub(crate) use self::audit::{
     build_sync_audit_document, build_sync_lock_document, build_sync_lock_document_from_lock,
@@ -167,3 +168,7 @@ mod sync_live_rust_tests;
 #[cfg(test)]
 #[path = "rust_tests.rs"]
 mod sync_rust_tests;
+
+#[cfg(test)]
+#[path = "workspace_preview_review_view_rust_tests.rs"]
+mod workspace_preview_review_view_rust_tests;

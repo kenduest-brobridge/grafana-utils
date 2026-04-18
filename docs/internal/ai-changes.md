@@ -15,6 +15,14 @@ Current AI change log only.
 - Older entries moved to [`ai-changes-archive-2026-04-17.md`](docs/internal/archive/ai-changes-archive-2026-04-17.md).
 - Older entries moved to [`ai-changes-archive-2026-04-18.md`](docs/internal/archive/ai-changes-archive-2026-04-18.md).
 
+## 2026-04-18 - Advance workspace review aggregation and cleanup
+- Summary: added an internal `WorkspaceReviewView` adapter so workspace preview and review TUI filtering share one action/domain/blocker normalization path while preserving the existing `grafana-utils-sync-plan` JSON shape. Split access team browse key dispatch and tests out of the input surface, reducing `team_browse_input.rs` to a small input/confirmation facade. Cleaned public dashboard summary/review wording and helper names without renaming true query analyzer internals.
+- Tests: added workspace review-view contract coverage and moved access team browse input tests into a dedicated module. Updated dashboard help/parser tests and live summary help fixtures for the summary/review wording.
+- Test Run: `cargo test --manifest-path rust/Cargo.toml --quiet team_browse --lib`; `cargo test --manifest-path rust/Cargo.toml --quiet sync --lib`; `cargo test --manifest-path rust/Cargo.toml --quiet dashboard_cli_inspect_help --lib`; `cargo test --manifest-path rust/Cargo.toml --quiet dashboard_cli_parser_help --lib`; `cargo test --manifest-path rust/Cargo.toml --quiet`; `cargo clippy --manifest-path rust/Cargo.toml --all-targets -- -D warnings`; `cargo fmt --manifest-path rust/Cargo.toml --all --check`; `make man`; `make html`; `make quality-docs-surface`.
+- Impact: Rust workspace preview/review helpers, access team browse TUI input modules, dashboard summary help/docs/tests, generated command/man/html docs, and AI trace docs. README files and Python implementation were intentionally left unchanged.
+- Rollback/Risk: medium internal refactor across review/TUI surfaces. Rollback should restore the previous workspace preview contract helper, inline team browse input dispatch/tests, and previous dashboard wording while preserving already-committed domain plan contracts.
+- Follow-up: connect future TUI review surfaces to `WorkspaceReviewView` directly instead of re-parsing raw JSON in each UI layer.
+
 ## 2026-04-18 - Add access plan aggregate resource
 - Summary: added `grafana-util access plan --resource all` as a read-only aggregate over root-level `access-users`, `access-orgs`, `access-teams`, and `access-service-accounts` bundles. The aggregate delegates to concrete resource planners, reports missing bundle directories as skipped resource reports, and errors when no supported access bundle is present. The access plan implementation was split into contract types, renderers, user planner, aggregate planner, and test modules so production files stay under the 500-line review threshold.
 - Tests: added focused Rust coverage for parsing `--resource all`, aggregating present user/service-account bundles while reporting missing org/team bundles, and rejecting empty aggregate roots. Moved access plan and team plan tests into dedicated test modules without changing planner behavior.
@@ -86,11 +94,3 @@ Current AI change log only.
 - Impact: Rust access user/team import workflows, dry-run document summary, focused access tests, access command docs, generated man/html docs, and AI trace docs.
 - Rollback/Risk: medium access import behavior change. Rollback would again allow login-style values into Grafana's email-only bulk membership endpoint and defer provisioned/external blockers to live Grafana errors.
 - Follow-up: none.
-
-## 2026-04-17 - Finish classic prompt export guardrails
-- Summary: completed the next classic prompt-lane guardrails without adding dashboard v2 export support. Raw-to-prompt now emits `VAR_*` inputs for constant variables, keeps expression datasource refs out of user-mapped inputs, rejects dashboard v2 resource/spec input with a clear unsupported message, and warns when library panel references are preserved without inlining models.
-- Tests: added focused raw-to-prompt regressions for constant variables, expression datasource refs, dashboard v2 rejection, and library panel warnings; added validation coverage for dashboard v2 resource warning.
-- Test Run: `cargo fmt --manifest-path rust/Cargo.toml --all --check`; `cargo test --manifest-path rust/Cargo.toml --quiet raw_to_prompt`; `cargo test --manifest-path rust/Cargo.toml --quiet validate_dashboard_export_dir_warns_for_dashboard_v2_resource_shape`; `cargo test --manifest-path rust/Cargo.toml --quiet`; `cargo clippy --manifest-path rust/Cargo.toml --all-targets -- -D warnings`; `make quality-ai-workflow`; `git diff --check`.
-- Impact: prompt-lane Rust conversion, raw-to-prompt regression coverage, dashboard export validation, maintainer prompt semantics docs, TODO backlog, and AI trace docs.
-- Rollback/Risk: medium prompt-lane behavior change. Rollback would remove constant variable prompt inputs and v2/library panel guardrails, returning those cases to less explicit conversion behavior.
-- Follow-up: full library panel external-export parity still needs live model lookup; dashboard v2 remains a future adapter rather than a prompt-lane format.

@@ -15,9 +15,9 @@
 - `--policy-source`：選擇 `file` 或 `builtin`。
 - `--policy`：使用檔案型政策輸入時的政策檔路徑。
 - `--builtin-policy`：使用內建政策輸入時的名稱。
-- `--url`：直接分析線上 Grafana。
-- `--input-dir`：直接分析本地匯出樹。
-- `--input-format`：分析本地來源時選擇 `raw`、`provisioning` 或 `git-sync`。
+- `--url`：直接檢視線上 Grafana。
+- `--input-dir`：直接檢視本地匯出樹。
+- `--input-format`：檢視本地來源時選擇 `raw`、`provisioning` 或 `git-sync`。
 - `--governance`：儀表板 inspect governance JSON 路徑（`governance-json` 成品，進階重用）。
 - `--queries`：儀表板 inspect query-report JSON 路徑（`queries-json` 成品，進階重用）。
 - `--output-format`：輸出文字或 JSON。
@@ -48,12 +48,12 @@ grafana-util dashboard policy --policy-source builtin --builtin-policy default -
 
 - 在 promotion 前就能把政策違規擋下來，而不是等 dashboard 上線後才發現
 - 文字輸出夠清楚，適合人工檢查；JSON 輸出也夠穩定，適合接進 CI gate
-- 換政策後可以重跑同一批 inspect 成品，不必重新 export 或 inspect
+- 換政策後可以重跑同一批 review 成品，不必重新 export 或 review
 
 ## 失敗時先檢查
 
 - 如果命令一開始就失敗，先確認 policy source、policy 檔案路徑或 builtin policy 名稱是否正確
-- 如果 gate 結果看起來不完整，先檢查 `governance` 和 `queries` 是否來自同一次 inspect
+- 如果 gate 結果看起來不完整，先檢查 `governance` 和 `queries` 是否來自同一次 review
 - 如果自動化要讀結果，建議用 `--output-format json`，並先驗證 contract 再把 pass/fail 當成最終結果
 
 ## 相關指令

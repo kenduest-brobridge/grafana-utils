@@ -956,7 +956,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h2 id="採用前後對照">採用前後對照</h2>
 <ul><li><strong>採用前</strong>：即使已經把 dashboard 匯出並 inspect 完，真正的政策違規還是要靠人一條一條看。</li><li><strong>採用後</strong>：policy 會把這些成品整理成明確的 pass/fail 結果，也能直接交給 CI 或審核流程。</li></ul>
 <h2 id="重點旗標">重點旗標</h2>
-<ul><li><code>--policy-source</code>：選擇 <code>file</code> 或 <code>builtin</code>。</li><li><code>--policy</code>：使用檔案型政策輸入時的政策檔路徑。</li><li><code>--builtin-policy</code>：使用內建政策輸入時的名稱。</li><li><code>--url</code>：直接分析線上 Grafana。</li><li><code>--input-dir</code>：直接分析本地匯出樹。</li><li><code>--input-format</code>：分析本地來源時選擇 <code>raw</code>、<code>provisioning</code> 或 <code>git-sync</code>。</li><li><code>--governance</code>：儀表板 inspect governance JSON 路徑（<code>governance-json</code> 成品，進階重用）。</li><li><code>--queries</code>：儀表板 inspect query-report JSON 路徑（<code>queries-json</code> 成品，進階重用）。</li><li><code>--output-format</code>：輸出文字或 JSON。</li><li><code>--json-output</code>：可選擇輸出正規化後的結果 JSON。</li><li><code>--interactive</code>：在互動式終端機瀏覽器中檢視檢查結果。</li></ul>
+<ul><li><code>--policy-source</code>：選擇 <code>file</code> 或 <code>builtin</code>。</li><li><code>--policy</code>：使用檔案型政策輸入時的政策檔路徑。</li><li><code>--builtin-policy</code>：使用內建政策輸入時的名稱。</li><li><code>--url</code>：直接檢視線上 Grafana。</li><li><code>--input-dir</code>：直接檢視本地匯出樹。</li><li><code>--input-format</code>：檢視本地來源時選擇 <code>raw</code>、<code>provisioning</code> 或 <code>git-sync</code>。</li><li><code>--governance</code>：儀表板 inspect governance JSON 路徑（<code>governance-json</code> 成品，進階重用）。</li><li><code>--queries</code>：儀表板 inspect query-report JSON 路徑（<code>queries-json</code> 成品，進階重用）。</li><li><code>--output-format</code>：輸出文字或 JSON。</li><li><code>--json-output</code>：可選擇輸出正規化後的結果 JSON。</li><li><code>--interactive</code>：在互動式終端機瀏覽器中檢視檢查結果。</li></ul>
 <h2 id="範例">範例</h2>
 <pre><code># 直接對線上 Grafana 套用治理政策檢查。
 grafana-util dashboard policy --url http://localhost:3000 --basic-user admin --basic-password admin --policy-source file --policy ./policy.yaml</code></pre>
@@ -966,9 +966,9 @@ grafana-util dashboard policy --input-dir ./dashboards/raw --input-format raw --
 <pre><code># 進階重用：對可重用的 review 成品套用治理政策檢查。
 grafana-util dashboard policy --policy-source builtin --builtin-policy default --governance ./governance.json --queries ./queries.json --output-format json --json-output ./governance-check.json</code></pre>
 <h2 id="成功判準">成功判準</h2>
-<ul><li>在 promotion 前就能把政策違規擋下來，而不是等 dashboard 上線後才發現</li><li>文字輸出夠清楚，適合人工檢查；JSON 輸出也夠穩定，適合接進 CI gate</li><li>換政策後可以重跑同一批 inspect 成品，不必重新 export 或 inspect</li></ul>
+<ul><li>在 promotion 前就能把政策違規擋下來，而不是等 dashboard 上線後才發現</li><li>文字輸出夠清楚，適合人工檢查；JSON 輸出也夠穩定，適合接進 CI gate</li><li>換政策後可以重跑同一批 review 成品，不必重新 export 或 review</li></ul>
 <h2 id="失敗時先檢查">失敗時先檢查</h2>
-<ul><li>如果命令一開始就失敗，先確認 policy source、policy 檔案路徑或 builtin policy 名稱是否正確</li><li>如果 gate 結果看起來不完整，先檢查 <code>governance</code> 和 <code>queries</code> 是否來自同一次 inspect</li><li>如果自動化要讀結果，建議用 <code>--output-format json</code>，並先驗證 contract 再把 pass/fail 當成最終結果</li></ul>
+<ul><li>如果命令一開始就失敗，先確認 policy source、policy 檔案路徑或 builtin policy 名稱是否正確</li><li>如果 gate 結果看起來不完整，先檢查 <code>governance</code> 和 <code>queries</code> 是否來自同一次 review</li><li>如果自動化要讀結果，建議用 <code>--output-format json</code>，並先驗證 contract 再把 pass/fail 當成最終結果</li></ul>
 <h2 id="相關指令">相關指令</h2>
 <ul><li><a href="dashboard-dependencies.html">dashboard dependencies</a></li><li><a href="dashboard-summary.html">dashboard summary</a></li><li><a href="dashboard-dependencies.html">dashboard dependencies</a></li></ul>
 

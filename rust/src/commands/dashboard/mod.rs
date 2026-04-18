@@ -130,8 +130,8 @@ pub use export::{build_export_variant_dirs, build_output_path, export_dashboards
 pub(crate) use export_layout::run_export_layout_repair;
 pub use help::{
     maybe_render_dashboard_help_full_from_os_args,
-    maybe_render_dashboard_subcommand_help_from_os_args, render_inspect_export_help_full,
-    render_inspect_live_help_full,
+    maybe_render_dashboard_subcommand_help_from_os_args, render_summary_export_help_full,
+    render_summary_live_help_full,
 };
 pub use import::{diff_dashboards_with_client, import_dashboards_with_client};
 pub use list::list_dashboards_with_client;

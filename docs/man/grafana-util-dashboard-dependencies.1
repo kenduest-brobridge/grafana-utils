@@ -47,14 +47,14 @@ you can explain what is inside an export tree without manually opening dozens of
 .IP \(bu 2
 governance or dependency output is stable enough to hand to CI or a second operator
 .IP \(bu 2
-later checks such as dashboard dependencies, dashboard impact, or dashboard policy can start from the inspect artifacts instead of re\-reading the raw tree
+later checks such as dashboard dependencies, dashboard impact, or dashboard policy can start from the review artifacts instead of re\-reading the raw tree
 .SH FAILURE CHECKS
 .IP \(bu 2
 if the export tree looks incomplete, confirm whether you are pointing at raw or provisioning content before you trust the report
 .IP \(bu 2
-if a later command cannot consume the result, check whether you emitted governance\-json or another analysis artifact shape by mistake
+if a later command cannot consume the result, check whether you emitted governance\-json or another review artifact shape by mistake
 .IP \(bu 2
-if the tree came from an older export, rerun dashboard export first so you do not analyze stale files
+if the tree came from an older export, rerun dashboard export first so you do not review stale files
 .SH EXAMPLES
 .PP
 Inspect dashboard export directories through the canonical dashboard dependencies command.

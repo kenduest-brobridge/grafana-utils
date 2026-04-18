@@ -67,8 +67,8 @@ pub(crate) use super::files::{
 };
 pub(crate) use super::help::{
     maybe_render_dashboard_help_full_from_os_args,
-    maybe_render_dashboard_subcommand_help_from_os_args, render_inspect_export_help_full,
-    render_inspect_live_help_full,
+    maybe_render_dashboard_subcommand_help_from_os_args, render_summary_export_help_full,
+    render_summary_live_help_full,
 };
 pub(crate) use super::import::{diff_dashboards_with_client, import_dashboards_with_client};
 use super::import_compare;

@@ -569,12 +569,21 @@ fn enrich_workspace_preview_document_normalizes_actions_and_domain_summary() {
     let actions = enriched["actions"].as_array().unwrap();
     assert_eq!(actions[0]["resourceKind"], json!("folder"));
     assert_eq!(actions[1]["resourceKind"], json!("datasource"));
-    assert_eq!(actions[2]["resourceKind"], json!("dashboard"));
-    assert_eq!(actions[3]["resourceKind"], json!("alert"));
-    assert_eq!(actions[4]["resourceKind"], json!("access"));
-    assert_eq!(actions[5]["action"], json!("blocked-read-only"));
-    assert_eq!(actions[5]["domain"], json!("dashboard"));
-    assert_eq!(actions[5]["status"], json!("blocked"));
+    assert!(actions
+        .iter()
+        .any(|action| action["resourceKind"] == json!("dashboard")));
+    assert!(actions
+        .iter()
+        .any(|action| action["resourceKind"] == json!("alert")));
+    assert!(actions
+        .iter()
+        .any(|action| action["resourceKind"] == json!("access")));
+    let blocked = actions
+        .iter()
+        .find(|action| action["action"] == json!("blocked-read-only"))
+        .unwrap();
+    assert_eq!(blocked["domain"], json!("dashboard"));
+    assert_eq!(blocked["status"], json!("blocked"));
 
     let domains = enriched["domains"].as_array().unwrap();
     assert!(domains

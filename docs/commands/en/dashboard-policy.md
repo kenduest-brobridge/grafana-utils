@@ -15,9 +15,9 @@ Use this when you want a policy pass or fail result before promotion. Prefer dir
 - `--policy-source`: choose `file` or `builtin`.
 - `--policy`: policy file path when using file-based policy input.
 - `--builtin-policy`: named built-in policy when using builtin policy input.
-- `--url`: analyze live Grafana directly.
-- `--input-dir`: analyze a local export tree directly.
-- `--input-format`: choose `raw`, `provisioning`, or `git-sync` when analyzing local exports.
+- `--url`: review live Grafana directly.
+- `--input-dir`: review a local export tree directly.
+- `--input-format`: choose `raw`, `provisioning`, or `git-sync` when reviewing local exports.
 - `--governance`: path to dashboard summary governance JSON (`governance-json` artifact, advanced reuse).
 - `--queries`: path to dashboard summary query-report JSON (`queries-json` artifact, advanced reuse).
 - `--output-format`: render text or JSON.
@@ -49,12 +49,12 @@ grafana-util dashboard policy --policy-source builtin --builtin-policy default -
 
 - policy checks fail before promotion, not after a dashboard lands in the wrong environment
 - text output is readable enough for manual review, while JSON output is stable enough for CI gates
-- the same artifacts can be rechecked after a policy workspace without rerunning export or inspect from scratch
+- the same artifacts can be rechecked after a policy workspace without rerunning export or review from scratch
 
 ## Failure checks
 
 - if the command fails immediately, confirm the policy source and whether the policy file path or builtin policy name is valid
-- if the gate result seems incomplete, verify that `governance` and `queries` came from the same inspect run
+- if the gate result seems incomplete, verify that `governance` and `queries` came from the same review run
 - if automation reads the result, prefer `--output-format json` and validate the contract before treating a pass/fail as final
 
 ## Related commands

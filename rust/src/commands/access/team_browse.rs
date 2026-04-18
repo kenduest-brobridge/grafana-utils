@@ -23,6 +23,9 @@ mod team_browse_actions;
 #[path = "team_browse_dialog.rs"]
 mod team_browse_dialog;
 #[cfg(feature = "tui")]
+#[path = "team_browse_dispatch.rs"]
+mod team_browse_dispatch;
+#[cfg(feature = "tui")]
 #[path = "team_browse_input.rs"]
 mod team_browse_input;
 #[cfg(feature = "tui")]
