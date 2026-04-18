@@ -3,7 +3,11 @@ use crate::common::CliColorChoice;
 use crate::dashboard::{RawToPromptOutputFormat, RawToPromptResolution, EXPORT_METADATA_FILENAME};
 use serde_json::json;
 use std::fs;
+use std::io::{Read, Write};
+use std::net::TcpListener;
 use std::path::{Path, PathBuf};
+use std::thread;
+use std::time::Duration;
 use tempfile::tempdir;
 
 fn write_json(path: &std::path::Path, value: serde_json::Value) {
@@ -51,6 +55,86 @@ fn fixture_path(name: &str) -> PathBuf {
 
 fn load_fixture(name: &str) -> serde_json::Value {
     serde_json::from_str(&fs::read_to_string(fixture_path(name)).unwrap()).unwrap()
+}
+
+fn start_live_export_mock_server() -> (String, thread::JoinHandle<()>) {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let address = listener.local_addr().unwrap();
+    let server = thread::spawn(move || {
+        let mut served = 0usize;
+        while served < 3 {
+            let (mut stream, _) = listener.accept().unwrap();
+            stream
+                .set_read_timeout(Some(Duration::from_secs(5)))
+                .unwrap();
+
+            let mut request = Vec::new();
+            let mut buffer = [0_u8; 1024];
+            loop {
+                let bytes_read = stream.read(&mut buffer).unwrap();
+                if bytes_read == 0 {
+                    break;
+                }
+                request.extend_from_slice(&buffer[..bytes_read]);
+                if request.windows(4).any(|window| window == b"\r\n\r\n") {
+                    break;
+                }
+            }
+
+            let request_line_end = request
+                .windows(2)
+                .position(|window| window == b"\r\n")
+                .unwrap_or(request.len());
+            let request_line = String::from_utf8_lossy(&request[..request_line_end]);
+            let path = request_line
+                .split_whitespace()
+                .nth(1)
+                .unwrap_or_default()
+                .to_string();
+
+            let body = match path.as_str() {
+                "/api/org" => json!({"id": 1, "name": "Main Org"}),
+                "/api/datasources" => json!([
+                    {
+                        "uid": "prom-main",
+                        "name": "Prometheus Main",
+                        "type": "prometheus",
+                        "access": "proxy",
+                        "url": "http://prometheus:9090",
+                        "isDefault": true
+                    }
+                ]),
+                "/api/library-elements/shared-panel" => json!({
+                    "result": {
+                        "uid": "shared-panel",
+                        "name": "Shared Panel",
+                        "kind": 1,
+                        "type": "graph",
+                        "model": {
+                            "id": 11,
+                            "type": "graph",
+                            "datasource": {"uid": "prom-main", "type": "prometheus"},
+                            "targets": [{
+                                "refId": "A",
+                                "datasource": {"uid": "prom-main", "type": "prometheus"}
+                            }]
+                        }
+                    }
+                }),
+                other => panic!("unexpected request path: {other}"),
+            };
+            let body = serde_json::to_string(&body).unwrap();
+            let response = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                body.len(),
+                body
+            );
+            stream.write_all(response.as_bytes()).unwrap();
+            let _ = stream.flush();
+            served += 1;
+        }
+    });
+    (format!("http://{address}"), server)
 }
 
 fn write_fixture(path: &Path, name: &str) {
@@ -843,6 +927,90 @@ fn raw_to_prompt_warns_for_library_panel_references_without_inlining_fixture() {
     );
     let log = fs::read_to_string(log_file).unwrap();
     assert!(log.contains("library panel external export is not fully portable yet"));
+}
+
+#[test]
+fn raw_to_prompt_inlines_live_library_panel_models_without_losing_prompt_semantics() {
+    let temp = tempdir().unwrap();
+    let input = temp.path().join("library-live.json");
+    write_json(
+        &input,
+        json!({
+            "uid": "library-live",
+            "title": "Library Live",
+            "templating": {
+                "list": [{
+                    "name": "datasource",
+                    "type": "datasource",
+                    "query": "prometheus",
+                    "current": {
+                        "selected": true,
+                        "text": "Prometheus Main",
+                        "value": "prom-main"
+                    },
+                    "options": []
+                }]
+            },
+            "panels": [{
+                "id": 1,
+                "title": "Shared Panel",
+                "type": "graph",
+                "libraryPanel": {"uid": "shared-panel", "name": "Shared Panel"},
+                "datasource": {"uid": "$datasource", "type": "prometheus"},
+                "targets": [{
+                    "refId": "A",
+                    "datasource": {"uid": "$datasource", "type": "prometheus"}
+                }]
+            }]
+        }),
+    );
+
+    let (base_url, server) = start_live_export_mock_server();
+
+    let mut args = make_args();
+    args.input_file = vec![input.clone()];
+    args.url = Some(base_url);
+    args.api_token = Some("token".to_string());
+    args.log_file = Some(temp.path().join("raw-to-prompt.log"));
+
+    run_raw_to_prompt(&args).unwrap();
+    server.join().unwrap();
+
+    let output = temp.path().join("library-live.prompt.json");
+    let prompt: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(output).unwrap()).unwrap();
+    let inputs = prompt["__inputs"].as_array().unwrap();
+    assert_eq!(inputs.len(), 1);
+    assert_eq!(inputs[0]["pluginId"], "prometheus");
+    assert_eq!(
+        prompt["templating"]["list"][0]["type"],
+        serde_json::Value::String("datasource".to_string())
+    );
+    assert_eq!(
+        prompt["templating"]["list"][0]["query"],
+        serde_json::Value::String("prometheus".to_string())
+    );
+    assert_eq!(
+        prompt["templating"]["list"][0]["current"]["value"],
+        serde_json::Value::String("${DS_PROM_MAIN}".to_string())
+    );
+    assert_eq!(
+        prompt["panels"][0]["datasource"]["uid"],
+        serde_json::Value::String("$datasource".to_string())
+    );
+    assert_eq!(
+        prompt["panels"][0]["targets"][0]["datasource"]["uid"],
+        serde_json::Value::String("$datasource".to_string())
+    );
+    assert_eq!(prompt["__elements"]["shared-panel"]["uid"], "shared-panel");
+    assert_eq!(
+        prompt["__elements"]["shared-panel"]["model"]["datasource"]["uid"],
+        serde_json::Value::String("${DS_PROM_MAIN}".to_string())
+    );
+    assert_eq!(
+        prompt["__elements"]["shared-panel"]["model"]["targets"][0]["datasource"]["uid"],
+        serde_json::Value::String("${DS_PROM_MAIN}".to_string())
+    );
 }
 
 #[test]
