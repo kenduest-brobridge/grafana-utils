@@ -54,7 +54,7 @@ fn normalize_team_for_diff(
     payload
 }
 
-pub(super) fn build_team_diff_map(
+pub(crate) fn build_team_diff_map(
     records: &[Map<String, Value>],
     source: &str,
     include_members: bool,
@@ -81,7 +81,7 @@ pub(super) fn build_team_diff_map(
     Ok(indexed)
 }
 
-pub(super) fn build_record_diff_fields(
+pub(crate) fn build_record_diff_fields(
     left: &Map<String, Value>,
     right: &Map<String, Value>,
 ) -> Vec<String> {
@@ -246,7 +246,7 @@ pub(super) fn build_team_access_export_metadata(
     metadata
 }
 
-pub(super) fn load_team_import_records(
+pub(crate) fn load_team_import_records(
     input_dir: &Path,
     expected_kind: &str,
 ) -> Result<Vec<Map<String, Value>>> {

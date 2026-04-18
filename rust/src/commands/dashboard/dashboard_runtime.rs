@@ -73,6 +73,32 @@ pub(super) fn parse_dashboard_list_output_column(
     }
 }
 
+pub(super) fn parse_dashboard_plan_output_column(
+    value: &str,
+) -> std::result::Result<String, String> {
+    match value {
+        "all" => Ok("all".to_string()),
+        "action_id" | "actionId" => Ok("action_id".to_string()),
+        "action" => Ok("action".to_string()),
+        "status" => Ok("status".to_string()),
+        "uid" | "dashboard_uid" | "dashboardUid" => Ok("dashboard_uid".to_string()),
+        "title" | "dashboard_title" | "dashboardTitle" => Ok("dashboard_title".to_string()),
+        "folder_uid" | "folderUid" => Ok("folder_uid".to_string()),
+        "folder_path" | "folderPath" => Ok("folder_path".to_string()),
+        "source_org_id" | "sourceOrgId" => Ok("source_org_id".to_string()),
+        "source_org_name" | "sourceOrgName" => Ok("source_org_name".to_string()),
+        "target_org_id" | "targetOrgId" => Ok("target_org_id".to_string()),
+        "target_org_name" | "targetOrgName" => Ok("target_org_name".to_string()),
+        "match_basis" | "matchBasis" => Ok("match_basis".to_string()),
+        "changed_fields" | "changedFields" => Ok("changed_fields".to_string()),
+        "blocked_reason" | "blockedReason" => Ok("blocked_reason".to_string()),
+        "source_file" | "sourceFile" => Ok("source_file".to_string()),
+        _ => Err(format!(
+            "Unsupported --output-columns value '{value}'. Supported values: all, action_id, action, status, dashboard_uid, dashboard_title, folder_uid, folder_path, source_org_id, source_org_name, target_org_id, target_org_name, match_basis, changed_fields, blocked_reason, source_file."
+        )),
+    }
+}
+
 pub(super) fn parse_inspect_report_column(value: &str) -> std::result::Result<String, String> {
     match value {
         "all" => Ok("all".to_string()),

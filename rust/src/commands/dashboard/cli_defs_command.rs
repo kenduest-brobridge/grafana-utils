@@ -13,10 +13,10 @@ use super::{
     DASHBOARD_EXPORT_AFTER_HELP, DASHBOARD_FETCH_LIVE_AFTER_HELP,
     DASHBOARD_GOVERNANCE_GATE_AFTER_HELP, DASHBOARD_IMPACT_AFTER_HELP, DASHBOARD_IMPORT_AFTER_HELP,
     DASHBOARD_LIST_AFTER_HELP, DASHBOARD_LIST_VARS_AFTER_HELP, DASHBOARD_PATCH_FILE_AFTER_HELP,
-    DASHBOARD_PUBLISH_AFTER_HELP, DASHBOARD_REVIEW_AFTER_HELP, DASHBOARD_SCREENSHOT_AFTER_HELP,
-    DASHBOARD_SERVE_AFTER_HELP, DASHBOARD_SUMMARY_AFTER_HELP, DASHBOARD_SUMMARY_EXPORT_AFTER_HELP,
-    DASHBOARD_SUMMARY_LIVE_AFTER_HELP, DASHBOARD_TOPOLOGY_AFTER_HELP,
-    DASHBOARD_VALIDATE_EXPORT_AFTER_HELP,
+    DASHBOARD_PLAN_AFTER_HELP, DASHBOARD_PUBLISH_AFTER_HELP, DASHBOARD_REVIEW_AFTER_HELP,
+    DASHBOARD_SCREENSHOT_AFTER_HELP, DASHBOARD_SERVE_AFTER_HELP, DASHBOARD_SUMMARY_AFTER_HELP,
+    DASHBOARD_SUMMARY_EXPORT_AFTER_HELP, DASHBOARD_SUMMARY_LIVE_AFTER_HELP,
+    DASHBOARD_TOPOLOGY_AFTER_HELP, DASHBOARD_VALIDATE_EXPORT_AFTER_HELP,
 };
 
 #[path = "cli_defs_command_export.rs"]
@@ -29,6 +29,8 @@ mod cli_defs_command_list;
 mod cli_defs_command_live;
 #[path = "cli_defs_command_local.rs"]
 mod cli_defs_command_local;
+#[path = "cli_defs_command_plan.rs"]
+mod cli_defs_command_plan;
 
 pub use cli_defs_command_export::{
     ExportArgs, ExportLayoutArgs, ExportLayoutOutputFormat, ExportLayoutVariant, RawToPromptArgs,
@@ -42,6 +44,7 @@ pub use cli_defs_command_live::{
     BrowseArgs, CloneLiveArgs, DeleteArgs, DiffArgs, EditLiveArgs, GetArgs,
 };
 pub use cli_defs_command_local::{ImportArgs, PatchFileArgs, PublishArgs, ReviewArgs, ServeArgs};
+pub use cli_defs_command_plan::{DashboardPlanOutputFormat, PlanArgs};
 
 /// Arguments for importing dashboards from a local export directory.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
@@ -129,6 +132,12 @@ pub enum DashboardCommand {
         after_help = DASHBOARD_DIFF_AFTER_HELP
     )]
     Diff(DiffArgs),
+    #[command(
+        name = "plan",
+        about = "Build a review-first dashboard reconcile plan from a local export tree against live Grafana.",
+        after_help = DASHBOARD_PLAN_AFTER_HELP
+    )]
+    Plan(PlanArgs),
     #[command(
         name = "patch",
         about = "Patch one local dashboard JSON file in place or to a new path.",

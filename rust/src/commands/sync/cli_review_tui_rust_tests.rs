@@ -119,6 +119,32 @@ fn review_operation_preview_uses_readable_action_labels() {
 }
 
 #[test]
+fn reviewable_operations_prefer_actions_and_stable_action_ids() {
+    let plan = json!({
+        "kind": "grafana-utils-sync-plan",
+        "actions": [
+            {
+                "actionId": "dashboard:dashboard:uid:cpu-main",
+                "domain": "dashboard",
+                "resourceKind": "dashboard",
+                "kind": "dashboard",
+                "identity": "cpu-main",
+                "action": "would-update",
+                "changedFields": ["title"],
+                "live": {"title": "CPU Old"},
+                "desired": {"title": "CPU New"}
+            }
+        ],
+        "operations": []
+    });
+
+    let items = review_tui::collect_reviewable_operations(&plan).unwrap();
+    assert_eq!(items.len(), 1);
+    assert_eq!(items[0].key, "dashboard:dashboard:uid:cpu-main");
+    assert_eq!(items[0].label, "dashboard cpu-main");
+}
+
+#[test]
 fn review_diff_scroll_max_uses_longer_side() {
     let model = review_tui::ReviewDiffModel {
         title: "dashboard cpu-main".to_string(),

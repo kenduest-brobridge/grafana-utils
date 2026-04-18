@@ -60,6 +60,10 @@ fn plan_summary(rows: &[Value]) -> Value {
             .filter(|row| row.get("action").and_then(Value::as_str) == Some(action))
             .count()
     };
+    let warning = rows
+        .iter()
+        .filter(|row| row.get("status").and_then(Value::as_str) == Some("warning"))
+        .count();
     json!({
         "processed": rows.len(),
         "create": count("create"),
@@ -67,6 +71,137 @@ fn plan_summary(rows: &[Value]) -> Value {
         "noop": count("noop"),
         "delete": count("delete"),
         "blocked": count("blocked"),
+        "warning": warning,
+    })
+}
+
+fn plan_action_id(kind: &str, identity: &str, action: &str) -> String {
+    format!("{kind}::{identity}::{action}")
+}
+
+fn field_change(field: &str, before: Option<&Value>, after: Option<&Value>) -> Value {
+    json!({
+        "field": field,
+        "before": before.cloned().unwrap_or(Value::Null),
+        "after": after.cloned().unwrap_or(Value::Null),
+    })
+}
+
+fn compare_field_changes(
+    desired: Option<&Map<String, Value>>,
+    live: Option<&Map<String, Value>>,
+) -> (Vec<String>, Vec<Value>) {
+    let mut fields = BTreeSet::new();
+    if let Some(object) = desired {
+        fields.extend(object.keys().cloned());
+    }
+    if let Some(object) = live {
+        fields.extend(object.keys().cloned());
+    }
+
+    let mut changed_fields = Vec::new();
+    let mut changes = Vec::new();
+    for field in fields {
+        let desired_value = desired.and_then(|object| object.get(&field));
+        let live_value = live.and_then(|object| object.get(&field));
+        if desired_value != live_value {
+            changed_fields.push(field.clone());
+            changes.push(field_change(&field, live_value, desired_value));
+        }
+    }
+    (changed_fields, changes)
+}
+
+fn review_hint(code: &str, field: &str, before: Option<&str>, after: Option<&str>) -> Value {
+    json!({
+        "code": code,
+        "field": field,
+        "before": before.unwrap_or(""),
+        "after": after.unwrap_or(""),
+    })
+}
+
+fn build_rule_review_hints(payload: &Map<String, Value>) -> Vec<Value> {
+    let mut hints = Vec::new();
+    let annotations = payload.get("annotations").and_then(Value::as_object);
+    let dashboard_uid = annotations
+        .and_then(|value| value.get("__dashboardUid__"))
+        .and_then(Value::as_str);
+    if let Some(dashboard_uid) = dashboard_uid {
+        hints.push(review_hint(
+            "linked-dashboard-reference",
+            "annotations.__dashboardUid__",
+            Some(dashboard_uid),
+            Some(dashboard_uid),
+        ));
+    }
+
+    let panel_id =
+        annotations
+            .and_then(|value| value.get("__panelId__"))
+            .map(|value| match value {
+                Value::String(text) => text.clone(),
+                other => other.to_string(),
+            });
+    if let Some(panel_id) = panel_id {
+        hints.push(review_hint(
+            "linked-panel-reference",
+            "annotations.__panelId__",
+            Some(&panel_id),
+            Some(&panel_id),
+        ));
+    }
+
+    hints
+}
+
+fn plan_status(action: &str, blocked_reason: Option<&str>, review_hints: &[Value]) -> &'static str {
+    if blocked_reason.is_some() {
+        "blocked"
+    } else if !review_hints.is_empty() {
+        "warning"
+    } else if action == "noop" {
+        "same"
+    } else {
+        "ready"
+    }
+}
+
+struct PlanRowInput<'a> {
+    kind: &'a str,
+    identity: &'a str,
+    path: Option<&'a Path>,
+    action: &'a str,
+    reason: &'a str,
+    blocked_reason: Option<&'a str>,
+    desired: Option<&'a Map<String, Value>>,
+    live: Option<&'a Map<String, Value>>,
+    review_hints: Vec<Value>,
+}
+
+fn build_plan_row(input: PlanRowInput<'_>) -> Value {
+    let (changed_fields, changes) = if input.action == "noop" {
+        (Vec::new(), Vec::new())
+    } else {
+        compare_field_changes(input.desired, input.live)
+    };
+    let status = plan_status(input.action, input.blocked_reason, &input.review_hints);
+    json!({
+        "domain": "alert",
+        "resourceKind": input.kind,
+        "kind": input.kind,
+        "identity": input.identity,
+        "actionId": plan_action_id(input.kind, input.identity, input.action),
+        "action": input.action,
+        "status": status,
+        "reason": input.reason,
+        "blockedReason": input.blocked_reason,
+        "reviewHints": input.review_hints,
+        "changedFields": changed_fields,
+        "changes": changes,
+        "path": input.path.map(path_string).map(Value::String).unwrap_or(Value::Null),
+        "desired": input.desired.map(|value| Value::Object(value.clone())).unwrap_or(Value::Null),
+        "live": input.live.map(|value| Value::Object(value.clone())).unwrap_or(Value::Null),
     })
 }
 
@@ -137,6 +272,11 @@ where
                 kind, identity
             )));
         }
+        let review_hints = if kind == RULE_KIND {
+            build_rule_review_hints(&payload)
+        } else {
+            Vec::new()
+        };
         let desired_compare =
             build_compare_document(&kind, &normalize_compare_payload(&kind, &payload));
         let live_compare =
@@ -146,19 +286,23 @@ where
             Some(live) if live == &desired_compare => "noop",
             Some(_) => "update",
         };
-        rows.push(json!({
-            "path": path_string(&path),
-            "kind": kind,
-            "identity": identity,
-            "action": action,
-            "reason": match action {
-                "create" => "missing-live",
-                "noop" => "in-sync",
-                "update" => "drift-detected",
-                _ => unreachable!(),
-            },
-            "desired": Value::Object(payload),
-            "live": live_compare.unwrap_or(Value::Null),
+        let row_reason = match action {
+            "create" => "missing-live",
+            "noop" => "in-sync",
+            "update" => "drift-detected",
+            _ => unreachable!(),
+        };
+        let live_payload = live_compare.as_ref().and_then(Value::as_object);
+        rows.push(build_plan_row(PlanRowInput {
+            kind: &kind,
+            identity: &identity,
+            path: Some(&path),
+            action,
+            reason: row_reason,
+            blocked_reason: None,
+            desired: Some(&payload),
+            live: live_payload,
+            review_hints,
         }));
     }
 
@@ -177,18 +321,26 @@ where
                 continue;
             }
             let action = if allow_prune { "delete" } else { "blocked" };
-            rows.push(json!({
-                "path": Value::Null,
-                "kind": *kind,
-                "identity": identity,
-                "action": action,
-                "reason": if allow_prune {
-                    "missing-from-desired-state"
-                } else {
-                    "prune-required"
-                },
-                "desired": Value::Null,
-                "live": Value::Object(payload),
+            let reason = if allow_prune {
+                "missing-from-desired-state"
+            } else {
+                "prune-required"
+            };
+            let blocked_reason = if allow_prune {
+                None
+            } else {
+                Some("prune-required")
+            };
+            rows.push(build_plan_row(PlanRowInput {
+                kind,
+                identity: &identity,
+                path: None,
+                action,
+                reason,
+                blocked_reason,
+                desired: None,
+                live: Some(&payload),
+                review_hints: Vec::new(),
             }));
         }
     }

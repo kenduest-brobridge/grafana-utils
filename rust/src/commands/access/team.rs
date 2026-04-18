@@ -10,6 +10,8 @@ mod team_modify;
 
 #[allow(unused_imports)]
 pub(crate) use super::team_import_export_diff::build_team_import_dry_run_document;
+#[allow(unused_imports)]
+pub(crate) use super::team_import_export_diff::load_team_import_records;
 pub(crate) use super::team_runtime::iter_teams_with_request;
 #[allow(unused_imports)]
 pub(crate) use super::team_runtime::{list_team_members_with_request, team_member_identity};

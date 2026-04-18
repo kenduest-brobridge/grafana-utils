@@ -1,20 +1,20 @@
 # datasource
 
 ## Purpose
-`grafana-util datasource` is the namespace for catalog lookup, inventory reads, export/import, diff, and live create/modify/delete workflows. The same namespace is also available as `grafana-util ds`.
+`grafana-util datasource` is the namespace for catalog lookup, inventory reads, export/import, diff, plan, and live create/modify/delete workflows. The same namespace is also available as `grafana-util ds`.
 
 ## When to use
-Use this namespace when you want to inspect supported datasource types, read inventory from live Grafana or a local bundle, export a datasource bundle, compare a local bundle with Grafana, or create and maintain live datasources.
+Use this namespace when you want to inspect supported datasource types, read inventory from live Grafana or a local bundle, export a datasource bundle, compare or plan a local bundle against Grafana, or create and maintain live datasources.
 
 ## Description
 Open this page when your task is about the full data source lifecycle rather than one single mutation. The `datasource` namespace groups the work operators usually do together: checking supported types, reading inventory from live Grafana or local export bundles, exporting and diffing bundles, and repairing or updating live Grafana data source objects.
 
-This page is especially useful when you need to decide whether the next step is inventory, export/import, diff, or a live add/modify/delete action.
+This page is especially useful when you need to decide whether the next step is inventory, export/import, diff, plan, or a live add/modify/delete action.
 
 ## Workflow lanes
 
 - **Inspect**: types, browse, and list paths for live or local inventory.
-- **Move**: export, import, and diff paths when you are carrying datasource state between environments.
+- **Move**: export, import, diff, and plan paths when you are carrying datasource state between environments.
 - **Review Before Mutate**: add, modify, and delete flows before a live datasource changes.
 
 Choose this page when the work might turn into inventory, migration, or a reviewed datasource workspace and you want to decide the lane first.
@@ -26,7 +26,7 @@ Choose this page when the work might turn into inventory, migration, or a review
 
 ## What success looks like
 
-- you can tell whether the next step is inventory, export/import, diff, or live mutation before touching a production data source
+- you can tell whether the next step is inventory, export/import, diff, plan, or live mutation before touching a production data source
 - repeatable auth and profile settings keep the same commands usable across daily operations and CI
 - export and diff flows give you a safer path than editing a live data source first and asking questions later
 
@@ -81,6 +81,7 @@ grafana-util datasource browse --url http://localhost:3000 --basic-user admin --
 - [datasource export](./datasource-export.md)
 - [datasource import](./datasource-import.md)
 - [datasource diff](./datasource-diff.md)
+- [datasource plan](./datasource-plan.md)
 
 ### Review Before Mutate
 

@@ -8,6 +8,7 @@
 | 想把 live 或本地內容整理成可重用分析成品 | [dashboard summary](./dashboard-summary.md) / [dashboard dependencies](./dashboard-dependencies.md) | 先決定分析來源是 live 還是本地匯出樹 |
 | 想知道某個 datasource 會牽動哪些 dashboard 或 alert | [dashboard impact](./dashboard-impact.md) | 先看變更影響面，避免直接動 live |
 | 想比對草稿與 live 差異 | [dashboard diff](./dashboard-diff.md) / [dashboard review](./dashboard-review.md) | 先做 review，再決定是否 publish |
+| 想先看本地匯出樹套到 live 會改什麼 | [dashboard plan](./dashboard-plan.md) | 先產生 create/update/delete/review hints，再決定是否 import |
 | 想做本地草稿與發佈 | [dashboard get](./dashboard-get.md) / [dashboard clone](./dashboard-clone.md) / [dashboard publish](./dashboard-publish.md) | 先進 authoring 路徑，不要直接在 live 上亂改 |
 | 想補事故、報告或交接素材 | [dashboard screenshot](./dashboard-screenshot.md) | 先拿可重現的視覺證據 |
 
@@ -31,6 +32,7 @@
 
 - **live Grafana**：先用 [dashboard summary](./dashboard-summary.md)、`browse`、`list` 讀現在的環境。
 - **本地匯出樹**：先用 [dashboard dependencies](./dashboard-dependencies.md) 做離線分析，再接 `policy`、`impact` 或 `diff`。
+- **本地匯出樹對 live**：先用 [dashboard plan](./dashboard-plan.md) 產生 review plan，再決定是否 import 或 prune。
 - **單一 dashboard 草稿**：先走 `get` / `clone` / `review` / `publish` 這條草稿路徑。
 - **治理成品或 review 成品**：先確認成品格式，再交給 `policy` 或 `impact`，不要把不同輸出格式混用。
 

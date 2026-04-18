@@ -1,10 +1,10 @@
 # Datasource Operator Handbook
 
-This guide is for operators who need to inventory Grafana data sources from live Grafana or local bundles, export a masked recovery bundle, replay or diff that bundle, and make controlled live changes with reviewable dry-runs.
+This guide is for operators who need to inventory Grafana data sources from live Grafana or local bundles, export a masked recovery bundle, replay, diff, or plan that bundle, and make controlled live changes with reviewable dry-runs.
 
 A datasource can look like a simple settings record, but it is the entry point that dashboards, alerts, and queries depend on. Changing a UID, type, URL, or default datasource can move through many dashboards and alert rules. The hard part is that the secrets that make the connection work usually cannot be committed to Git, so backup, replay, and provisioning must not be treated as the same artifact.
 
-Read this chapter by treating datasources as referenced foundation assets. First inspect the live or bundled inventory, then decide whether you need a recovery package, a provisioning projection, or a live mutation. After that decision, export/import/diff becomes an operator workflow instead of just moving JSON around.
+Read this chapter by treating datasources as referenced foundation assets. First inspect the live or bundled inventory, then decide whether you need a recovery package, a provisioning projection, a reconcile plan, or a live mutation. After that decision, export/import/diff/plan becomes an operator workflow instead of just moving JSON around.
 
 ## Who It Is For
 
@@ -48,11 +48,12 @@ Datasource subcommands differ by whether they read live Grafana, read a local bu
 | Confirm supported types | `types` | CLI built-in type catalog | Type names and required fields | Choose add / modify fields |
 | Inventory live or local state | `list`, `browse` | Live Grafana or `--input-dir` | UID, type, URL, default status | Export, diff, or review |
 | Back up and recover | `export`, `import` | Live Grafana or `datasources.json` | Masked recovery bundle / dry-run | Import after review |
-| Compare drift | `diff` | Local bundle + live Grafana | Create / update / delete differences | Fix the bundle or import |
+| Compare drift | `diff` | Local bundle + live Grafana | Local-vs-live differences | Fix the bundle or import |
+| Review reconcile actions | `plan` | Local bundle + live Grafana | Create / update / delete candidates and blockers | Import, re-export, or inspect prune candidates |
 | Mutate live state directly | `add`, `modify`, `delete` | Flags + live Grafana | Dry-run or mutation result | Verify with list / diff |
 | Generate provisioning projection | `export` | Live Grafana | `provisioning/datasources.yaml` | Hand to Grafana provisioning lane |
 
-`datasources.json` is the source for recovery and diff. `provisioning/datasources.yaml` is a deployment projection. The first says what can be restored; the second matches Grafana's file provisioning lane. Do not treat the provisioning YAML as the only source of truth.
+`datasources.json` is the source for recovery, diff, and plan. `provisioning/datasources.yaml` is a deployment projection. The first says what can be restored; the second matches Grafana's file provisioning lane. Do not treat the provisioning YAML as the only source of truth.
 
 ## What This Area Is For
 
@@ -96,6 +97,12 @@ Always dry-run before import. The create / update rows in dry-run output describ
 
 Datasource diff is especially useful before dashboard or alert changes. Missing datasource UIDs and default datasource drift often appear only after a dashboard or alert apply fails. Checking datasource drift first catches that environment mismatch earlier.
 
+## Plan: Review Reconcile Actions Before Mutation
+
+`datasource plan` turns local-vs-live differences into action rows. Use it when you need a decision-quality review before deciding whether the bundle should create missing datasources, update existing datasources, leave remote-only datasources alone, or treat remote-only datasources as delete candidates with `--prune`.
+
+Plan is review-only. It does not import, update, or delete. The JSON output keeps stable action IDs and structured hints so CI and future TUI review can consume the same plan model.
+
 ## Live Mutation: Treat add / modify / delete As Exceptions
 
 `datasource add`, `modify`, and `delete` touch live Grafana directly. Use them for narrow fixes, break-glass work, or explicit operational changes. The normal path should still be export / diff / import so the change can be reviewed.
@@ -114,6 +121,7 @@ This chapter helps you choose the datasource workflow. Once you know which comma
 - [datasource export](../../commands/en/datasource-export.md)
 - [datasource import](../../commands/en/datasource-import.md)
 - [datasource diff](../../commands/en/datasource-diff.md)
+- [datasource plan](../../commands/en/datasource-plan.md)
 - [datasource add](../../commands/en/datasource-add.md)
 - [datasource modify](../../commands/en/datasource-modify.md)
 - [datasource delete](../../commands/en/datasource-delete.md)
@@ -156,7 +164,8 @@ dehk4kxat5la8b  Prometheus  prometheus  http://prometheus:9090  true            
 | **List** | `grafana-util datasource list --all-orgs --table` or `grafana-util datasource list --input-dir ./datasources --table` |
 | **Export** | `grafana-util datasource export --output-dir ./datasources --overwrite` |
 | **Import** | `grafana-util datasource import --input-dir ./datasources --replace-existing --dry-run --table` |
-| **Diff** | `grafana-util datasource diff --input-dir ./datasources` |
+| **Diff** | `grafana-util datasource diff --diff-dir ./datasources` |
+| **Plan** | `grafana-util datasource plan --input-dir ./datasources --output-format table` |
 | **Add** | `grafana-util datasource add --uid <UID> --name <NAME> --type prometheus --datasource-url <URL> --dry-run --table` |
 
 ---

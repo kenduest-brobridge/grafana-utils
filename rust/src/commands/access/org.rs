@@ -16,6 +16,8 @@ pub(crate) use self::org_workflows::{
 };
 use super::render::{normalize_org_role, scalar_text};
 use super::{request_array, request_object, OrgListArgs};
+#[allow(unused_imports)]
+pub(crate) use org_import_export_diff::load_org_import_records;
 
 fn validate_basic_auth_only(common: &CommonCliArgsNoOrgId) -> Result<()> {
     let auth_mode = build_auth_context_no_org_id(common)?.auth_mode;

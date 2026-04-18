@@ -52,6 +52,8 @@ mod datasource_inspect_export;
 mod datasource_local_list;
 #[path = "mutation/support.rs"]
 mod datasource_mutation_support;
+#[path = "plan/mod.rs"]
+mod datasource_plan;
 #[path = "runtime.rs"]
 mod datasource_runtime;
 
@@ -59,8 +61,8 @@ pub(crate) use datasource_cli_defs::{normalize_datasource_group_command, root_co
 pub use datasource_cli_defs::{
     DatasourceAddArgs, DatasourceBrowseArgs, DatasourceCliArgs, DatasourceDeleteArgs,
     DatasourceDiffArgs, DatasourceExportArgs, DatasourceGroupCommand, DatasourceImportArgs,
-    DatasourceImportInputFormat, DatasourceListArgs, DatasourceModifyArgs, DatasourceTypesArgs,
-    DryRunOutputFormat, ListOutputFormat,
+    DatasourceImportInputFormat, DatasourceListArgs, DatasourceModifyArgs, DatasourcePlanArgs,
+    DatasourcePlanOutputFormat, DatasourceTypesArgs, DryRunOutputFormat, ListOutputFormat,
 };
 #[cfg(test)]
 pub(crate) use datasource_diff_render::{
@@ -84,10 +86,12 @@ pub(crate) use datasource_import_export::{
 pub(crate) use datasource_import_export::{
     build_import_payload, build_import_payload_with_secret_values,
     classify_datasource_export_root_scope_kind, collect_datasource_import_dry_run_report,
-    discover_export_org_import_scopes, format_routed_datasource_import_summary_line,
-    format_routed_datasource_scope_summary_fields, format_routed_datasource_target_org_label,
-    render_routed_datasource_import_org_table, resolve_export_org_target_plan,
+    format_routed_datasource_import_summary_line, format_routed_datasource_scope_summary_fields,
+    format_routed_datasource_target_org_label, render_routed_datasource_import_org_table,
     DatasourceExportOrgScope, DatasourceExportOrgTargetPlan, DatasourceImportDryRunReport,
+};
+pub(crate) use datasource_import_export::{
+    discover_export_org_import_scopes, resolve_export_org_target_plan,
 };
 #[cfg(any(feature = "tui", test))]
 #[allow(unused_imports)]
@@ -113,6 +117,10 @@ use datasource_mutation_support::{
     resolve_live_mutation_match, validate_live_mutation_dry_run_args,
 };
 pub(crate) use datasource_mutation_support::{fetch_datasource_by_uid_if_exists, resolve_match};
+pub(crate) use datasource_plan::{
+    build_datasource_plan, datasource_plan_column_ids, print_datasource_plan_report,
+    DatasourcePlanInput, DatasourcePlanOrgInput,
+};
 pub use datasource_runtime::run_datasource_cli;
 
 #[cfg(test)]

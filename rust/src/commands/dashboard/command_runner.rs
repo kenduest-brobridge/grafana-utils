@@ -16,6 +16,7 @@ use super::inspect;
 use super::inspect_live;
 use super::inspect_report::SUPPORTED_REPORT_COLUMN_IDS;
 use super::list;
+use super::plan::dashboard_plan_column_ids;
 pub use super::run_inspect::{
     execute_dashboard_inspect_export, execute_dashboard_inspect_live,
     execute_dashboard_inspect_vars,
@@ -250,6 +251,13 @@ pub fn run_dashboard_cli_with_client(
             let _ = import::import_dashboards_with_client(client, &import_args)?;
             Ok(())
         }
+        DashboardCommand::Plan(plan_args) => {
+            if plan_args.list_columns {
+                print_supported_columns(dashboard_plan_column_ids());
+                return Ok(());
+            }
+            super::run_dashboard_plan(&plan_args).map(|_| ())
+        }
         DashboardCommand::PatchFile(patch_args) => super::patch_dashboard_file(&patch_args),
         DashboardCommand::Review(review_args) => review_dashboard_file(&review_args),
         DashboardCommand::Publish(publish_args) => {
@@ -344,6 +352,10 @@ pub fn run_dashboard_cli(args: DashboardCliArgs) -> Result<()> {
             print_supported_columns(DASHBOARD_IMPORT_OUTPUT_COLUMNS);
             return Ok(());
         }
+        DashboardCommand::Plan(plan_args) if plan_args.list_columns => {
+            print_supported_columns(dashboard_plan_column_ids());
+            return Ok(());
+        }
         _ => {}
     }
     materialize_dashboard_command_auth(&mut args)?;
@@ -385,6 +397,7 @@ pub fn run_dashboard_cli(args: DashboardCliArgs) -> Result<()> {
             let _ = import::import_dashboards_with_org_clients(&import_args)?;
             Ok(())
         }
+        DashboardCommand::Plan(plan_args) => super::run_dashboard_plan(&plan_args).map(|_| ()),
         DashboardCommand::PatchFile(patch_args) => super::patch_dashboard_file(&patch_args),
         DashboardCommand::Review(review_args) => review_dashboard_file(&review_args),
         DashboardCommand::Publish(publish_args) => {
@@ -527,6 +540,9 @@ pub(crate) fn materialize_dashboard_command_auth(args: &mut DashboardCliArgs) ->
             inner.common = materialize_dashboard_common_auth(inner.common.clone())?
         }
         DashboardCommand::Import(inner) => {
+            inner.common = materialize_dashboard_common_auth(inner.common.clone())?
+        }
+        DashboardCommand::Plan(inner) => {
             inner.common = materialize_dashboard_common_auth(inner.common.clone())?
         }
         DashboardCommand::InspectLive(inner) => {

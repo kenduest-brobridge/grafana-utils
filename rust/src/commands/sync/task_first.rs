@@ -424,6 +424,8 @@ pub(crate) fn run_sync_preview(args: ChangePreviewArgs) -> Result<()> {
             1,
             None,
         )?;
+        let document =
+            super::workspace_preview_contract::enrich_workspace_preview_document(&document)?;
         SyncCommandOutput {
             text_lines: super::render_sync_plan_text(&document)?,
             document,

@@ -104,34 +104,126 @@ fn build_alert_plan_with_request_generates_create_update_noop_and_blocked_rows()
     assert_eq!(plan["summary"]["update"], json!(1));
     assert_eq!(plan["summary"]["noop"], json!(1));
     assert_eq!(plan["summary"]["blocked"], json!(2));
+    assert_eq!(plan["summary"]["warning"], json!(0));
 
     let rows = plan["rows"].as_array().unwrap();
     assert!(rows.iter().any(|row| {
         row["kind"] == json!(RULE_KIND)
             && row["identity"] == json!("create-rule")
             && row["action"] == json!("create")
+            && row["status"] == json!("ready")
+            && row["actionId"].as_str().unwrap_or("").ends_with("::create")
+            && row["changedFields"].is_array()
+            && row["changes"].is_array()
     }));
     assert!(rows.iter().any(|row| {
         row["kind"] == json!(CONTACT_POINT_KIND)
             && row["identity"] == json!("cp-update")
             && row["action"] == json!("update")
+            && row["status"] == json!("ready")
+            && row["changedFields"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|field| field == "settings")
+            && row["changes"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|change| change["field"] == json!("settings"))
     }));
     assert!(rows.iter().any(|row| {
         row["kind"] == json!(TEMPLATE_KIND)
             && row["identity"] == json!("example-template")
             && row["action"] == json!("noop")
+            && row["status"] == json!("same")
+            && row["reviewHints"] == json!([])
     }));
     assert!(rows.iter().any(|row| {
         row["kind"] == json!(MUTE_TIMING_KIND)
             && row["identity"] == json!("off-hours")
             && row["action"] == json!("blocked")
+            && row["status"] == json!("blocked")
             && row["reason"] == json!("prune-required")
+            && row["blockedReason"] == json!("prune-required")
     }));
     assert!(rows.iter().any(|row| {
         row["kind"] == json!(POLICIES_KIND)
             && row["identity"] == json!("grafana-default-email")
             && row["action"] == json!("blocked")
+            && row["status"] == json!("blocked")
     }));
+}
+
+#[test]
+fn build_alert_plan_with_request_surfaces_linked_rule_review_hints() {
+    let temp = tempdir().unwrap();
+    std::fs::create_dir_all(temp.path().join("rules")).unwrap();
+    std::fs::write(
+        temp.path().join("rules/linked-rule.json"),
+        serde_json::to_string_pretty(&json!({
+            "uid": "linked-rule",
+            "title": "Linked Rule",
+            "folderUID": "alerts",
+            "ruleGroup": "linked",
+            "condition": "A",
+            "data": [],
+            "annotations": {
+                "__dashboardUid__": "src-dash",
+                "__panelId__": "7"
+            }
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+
+    let plan = build_alert_plan_with_request(
+        |method, path, _params, _payload| match (method.clone(), path) {
+            (Method::GET, "/api/v1/provisioning/alert-rules/linked-rule") => Ok(Some(json!({
+                "uid": "linked-rule",
+                "title": "Linked Rule",
+                "folderUID": "alerts",
+                "ruleGroup": "linked",
+                "condition": "A",
+                "data": [],
+                "annotations": {
+                    "__dashboardUid__": "src-dash",
+                    "__panelId__": "7"
+                }
+            }))),
+            (Method::GET, "/api/v1/provisioning/alert-rules") => Ok(Some(json!([]))),
+            (Method::GET, "/api/v1/provisioning/contact-points") => Ok(Some(json!([]))),
+            (Method::GET, "/api/v1/provisioning/mute-timings") => Ok(Some(json!([]))),
+            (Method::GET, "/api/v1/provisioning/templates") => Ok(Some(json!([]))),
+            (Method::GET, "/api/v1/provisioning/policies") => Ok(Some(json!({"receiver": "root"}))),
+            _ => panic!("unexpected request {method:?} {path}"),
+        },
+        temp.path(),
+        false,
+    )
+    .unwrap();
+
+    assert_eq!(plan["summary"]["warning"], json!(1));
+    let row = plan["rows"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|row| row["identity"] == json!("linked-rule"))
+        .unwrap();
+    assert_eq!(row["action"], json!("noop"));
+    assert_eq!(row["status"], json!("warning"));
+    assert!(row["actionId"]
+        .as_str()
+        .unwrap_or("")
+        .contains("linked-rule"));
+    let hints = row["reviewHints"].as_array().unwrap();
+    assert!(hints
+        .iter()
+        .any(|hint| hint["code"] == json!("linked-dashboard-reference")));
+    assert!(hints
+        .iter()
+        .any(|hint| hint["code"] == json!("linked-panel-reference")));
+    assert!(row["changedFields"].as_array().unwrap().is_empty());
 }
 
 #[test]
@@ -567,6 +659,16 @@ fn execute_alert_plan_with_request_applies_create_update_and_delete_rows() {
                 "kind": RULE_KIND,
                 "identity": "rule-create",
                 "action": "create",
+                "actionId": "grafana-alert-rule::rule-create::create",
+                "status": "ready",
+                "blockedReason": null,
+                "reviewHints": [],
+                "changedFields": ["title"],
+                "changes": [{
+                    "field": "title",
+                    "before": null,
+                    "after": "Create Me"
+                }],
                 "desired": {
                     "uid": "rule-create",
                     "title": "Create Me",
@@ -574,30 +676,67 @@ fn execute_alert_plan_with_request_applies_create_update_and_delete_rows() {
                     "ruleGroup": "default",
                     "condition": "A",
                     "data": []
-                }
+                },
+                "live": null
             }),
             json!({
                 "kind": CONTACT_POINT_KIND,
                 "identity": "cp-update",
                 "action": "update",
+                "actionId": "grafana-alert-contact-point::cp-update::update",
+                "status": "ready",
+                "blockedReason": null,
+                "reviewHints": [],
+                "changedFields": ["settings"],
+                "changes": [{
+                    "field": "settings",
+                    "before": {"url": "http://127.0.0.1/old"},
+                    "after": {"url": "http://127.0.0.1/new"}
+                }],
                 "desired": {
                     "uid": "cp-update",
                     "name": "Update Me",
                     "type": "webhook",
                     "settings": {"url": "http://127.0.0.1/new"}
+                },
+                "live": {
+                    "uid": "cp-update",
+                    "name": "Update Me",
+                    "type": "webhook",
+                    "settings": {"url": "http://127.0.0.1/old"}
                 }
             }),
             json!({
                 "kind": TEMPLATE_KIND,
                 "identity": "template-delete",
                 "action": "delete",
-                "desired": null
+                "actionId": "grafana-message-template::template-delete::delete",
+                "status": "ready",
+                "blockedReason": null,
+                "reviewHints": [],
+                "changedFields": ["name"],
+                "changes": [{
+                    "field": "name",
+                    "before": "template-delete",
+                    "after": null
+                }],
+                "desired": null,
+                "live": {
+                    "name": "template-delete"
+                }
             }),
             json!({
                 "kind": RULE_KIND,
                 "identity": "rule-noop",
                 "action": "noop",
-                "desired": null
+                "actionId": "grafana-alert-rule::rule-noop::noop",
+                "status": "same",
+                "blockedReason": null,
+                "reviewHints": [],
+                "changedFields": [],
+                "changes": [],
+                "desired": null,
+                "live": null
             }),
         ],
         true,

@@ -304,6 +304,26 @@ fn task_first_workspace_lane_smoke_runs_from_repo_local_workspace() {
         preview_document["discovery"]["workspaceRoot"],
         json!(workspace.display().to_string())
     );
+    assert!(preview_document["actions"].as_array().is_some());
+    assert!(preview_document["operations"].as_array().is_some());
+    assert!(preview_document["domains"].as_array().is_some());
+    assert!(preview_document["blockedReasons"].as_array().is_some());
+    let domains = preview_document["domains"].as_array().unwrap();
+    assert!(domains
+        .iter()
+        .any(|domain| domain["id"] == json!("dashboard")));
+    assert!(domains
+        .iter()
+        .any(|domain| domain["id"] == json!("datasource")));
+    assert!(domains.iter().any(|domain| domain["id"] == json!("alert")));
+    let first_action = preview_document["actions"]
+        .as_array()
+        .unwrap()
+        .first()
+        .unwrap();
+    assert!(first_action["actionId"].as_str().is_some());
+    assert!(first_action["domain"].as_str().is_some());
+    assert!(first_action["resourceKind"].as_str().is_some());
 
     let apply_args = task_first_workspace_cli_args("apply", &workspace, None, Some(&preview_file));
     match apply_args.command {

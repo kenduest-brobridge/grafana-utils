@@ -1,4 +1,8 @@
 use super::*;
+use crate::dashboard::{
+    DashboardPlanOutputFormat as DashboardPlanOutputFormatPublic,
+    InspectExportInputType as InspectExportInputTypePublic,
+};
 
 fn assert_contains_all(rendered: &str, expected: &[&str]) {
     for needle in expected {
@@ -44,6 +48,54 @@ fn parse_cli_supports_list_csv_mode() {
         }
         _ => panic!("expected list command"),
     }
+}
+
+#[test]
+fn parse_cli_supports_dashboard_plan_raw_table() {
+    let args = parse_cli_from([
+        "grafana-util",
+        "plan",
+        "--input-dir",
+        "./dashboards/raw",
+        "--input-type",
+        "raw",
+        "--output-format",
+        "table",
+        "--output-columns",
+        "actionId,dashboardTitle,folderUid",
+        "--prune",
+        "--show-same",
+    ]);
+
+    match args.command {
+        DashboardCommand::Plan(plan_args) => {
+            assert_eq!(
+                plan_args.input_dir,
+                std::path::PathBuf::from("./dashboards/raw")
+            );
+            assert_eq!(plan_args.input_type, InspectExportInputTypePublic::Raw);
+            assert!(plan_args.prune);
+            assert!(plan_args.show_same);
+            assert_eq!(
+                plan_args.output_format,
+                DashboardPlanOutputFormatPublic::Table
+            );
+            assert_eq!(
+                plan_args.output_columns,
+                vec!["action_id", "dashboard_title", "folder_uid"]
+            );
+        }
+        _ => panic!("expected plan command"),
+    }
+}
+
+#[test]
+fn plan_help_mentions_review_first_model() {
+    let help = render_dashboard_subcommand_help("plan");
+    assert!(help.contains("review-first dashboard reconcile plan"));
+    assert!(help.contains("--input-type"));
+    assert!(help.contains("--output-columns"));
+    assert!(help.contains("--show-same"));
 }
 
 #[test]

@@ -34,6 +34,9 @@ pub(crate) fn materialize_access_command_auth(mut args: AccessCliArgs) -> Result
                 inner.common = materialize_access_common_auth(inner.common.clone())?
             }
         },
+        AccessCommand::Plan(inner) => {
+            inner.common = materialize_access_common_auth(inner.common.clone())?
+        }
         AccessCommand::Org { command } => match command {
             OrgCommand::List(inner) => {
                 inner.common = materialize_access_common_auth_no_org_id(inner.common.clone())?

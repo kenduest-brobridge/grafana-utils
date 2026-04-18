@@ -84,7 +84,7 @@ fn build_org_user_diff_array(users: &[Map<String, Value>], source: &str) -> Resu
         .collect())
 }
 
-pub(super) fn build_org_live_records_for_diff<F>(
+pub(crate) fn build_org_live_records_for_diff<F>(
     mut request_json: F,
     include_users: bool,
 ) -> Result<Vec<Map<String, Value>>>
@@ -114,7 +114,7 @@ where
     Ok(records)
 }
 
-pub(super) fn build_org_diff_map(
+pub(crate) fn build_org_diff_map(
     records: &[Map<String, Value>],
     source: &str,
     include_users: bool,
@@ -157,7 +157,7 @@ pub(super) fn build_org_diff_map(
     Ok(indexed)
 }
 
-pub(super) fn build_record_diff_fields(
+pub(crate) fn build_record_diff_fields(
     left: &Map<String, Value>,
     right: &Map<String, Value>,
 ) -> Vec<String> {
@@ -235,7 +235,7 @@ pub(super) fn build_org_export_metadata(
     metadata
 }
 
-pub(super) fn load_org_import_records(input_dir: &Path) -> Result<Vec<Map<String, Value>>> {
+pub(crate) fn load_org_import_records(input_dir: &Path) -> Result<Vec<Map<String, Value>>> {
     let path = input_dir.join(ACCESS_ORG_EXPORT_FILENAME);
     if !path.is_file() {
         return Err(message(format!(

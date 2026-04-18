@@ -935,19 +935,19 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <h1><span class="hero-title-main">datasource</span></h1>
 
 <h2 id="先判斷你現在要做哪一種事">先判斷你現在要做哪一種事</h2>
-<table><thead><tr><th>你現在想做的事</th><th>先開哪個命令頁</th><th>這頁會幫你回答什麼</th></tr></thead><tbody><tr><td>想先看支援哪些 datasource 類型</td><td><a href="datasource-types.html">datasource types</a></td><td>先確認這個環境能建立什麼</td></tr><tr><td>想先盤點 live 或本地 datasource 現況</td><td><a href="datasource-list.html">datasource list</a>、<a href="datasource-browse.html">datasource browse</a></td><td>先知道有哪些 datasource 與內容</td></tr><tr><td>想先匯出、匯入或比對</td><td><a href="datasource-export.html">datasource export</a>、<a href="datasource-diff.html">datasource diff</a>、<a href="datasource-import.html">datasource import</a></td><td>先決定搬移或 review 路徑</td></tr><tr><td>想直接改 live datasource</td><td><a href="datasource-add.html">datasource add</a>、<a href="datasource-modify.html">datasource modify</a>、<a href="datasource-delete.html">datasource delete</a></td><td>先確認變更面，再動 live</td></tr></tbody></table>
+<table><thead><tr><th>你現在想做的事</th><th>先開哪個命令頁</th><th>這頁會幫你回答什麼</th></tr></thead><tbody><tr><td>想先看支援哪些 datasource 類型</td><td><a href="datasource-types.html">datasource types</a></td><td>先確認這個環境能建立什麼</td></tr><tr><td>想先盤點 live 或本地 datasource 現況</td><td><a href="datasource-list.html">datasource list</a>、<a href="datasource-browse.html">datasource browse</a></td><td>先知道有哪些 datasource 與內容</td></tr><tr><td>想先匯出、匯入、比對或產生 plan</td><td><a href="datasource-export.html">datasource export</a>、<a href="datasource-diff.html">datasource diff</a>、<a href="datasource-plan.html">datasource plan</a>、<a href="datasource-import.html">datasource import</a></td><td>先決定搬移或 review 路徑</td></tr><tr><td>想直接改 live datasource</td><td><a href="datasource-add.html">datasource add</a>、<a href="datasource-modify.html">datasource modify</a>、<a href="datasource-delete.html">datasource delete</a></td><td>先確認變更面，再動 live</td></tr></tbody></table>
 <h2 id="先選哪一條資料路徑">先選哪一條資料路徑</h2>
-<ul><li><strong>live Grafana</strong>：先用 <code>types</code>、<code>list</code>、<code>browse</code> 盤點，再決定要不要 export 或 modify</li><li><strong>本地 bundle / 匯出樹</strong>：先用 <code>diff</code>、<code>import</code> 看搬移或回放路徑</li><li><strong>直接 live mutation</strong>：只有在 scope 與輸入都確認過後，才進 <code>add</code> / <code>modify</code> / <code>delete</code></li></ul>
+<ul><li><strong>live Grafana</strong>：先用 <code>types</code>、<code>list</code>、<code>browse</code> 盤點，再決定要不要 export 或 modify</li><li><strong>本地 bundle / 匯出樹</strong>：先用 <code>diff</code>、<code>plan</code>、<code>import</code> 看搬移、回放或 prune review 路徑</li><li><strong>直接 live mutation</strong>：只有在 scope 與輸入都確認過後，才進 <code>add</code> / <code>modify</code> / <code>delete</code></li></ul>
 <h2 id="這個入口是做什麼的">這個入口是做什麼的</h2>
-<p><code>grafana-util datasource</code> 把 datasource 的生命週期收在同一個入口：從類型查找、瀏覽、讀取 live 或本地 inventory、匯出、匯入、比對，到 live add / modify / delete 都在這裡處理。這頁適合先判斷下一步該走 inventory、bundle、diff，還是 live mutation。</p>
+<p><code>grafana-util datasource</code> 把 datasource 的生命週期收在同一個入口：從類型查找、瀏覽、讀取 live 或本地 inventory、匯出、匯入、比對、plan，到 live add / modify / delete 都在這裡處理。這頁適合先判斷下一步該走 inventory、bundle、diff、plan，還是 live mutation。</p>
 <h2 id="重點旗標">重點旗標</h2>
 <ul><li><code>--url</code>：Grafana 基底網址。</li><li><code>--token</code>、<code>--basic-user</code>、<code>--basic-password</code>：共用的線上 Grafana 憑證。</li><li><code>--profile</code>：從 <code>grafana-util.yaml</code> 載入 repo 本地預設值。</li><li><code>--color</code>：控制這個指令群組的 JSON 彩色輸出。</li></ul>
 <h2 id="這一組頁面怎麼讀比較不會亂">這一組頁面怎麼讀比較不會亂</h2>
-<ol><li>先看這頁，判斷你是在做 inventory、bundle、diff，還是 live mutation。</li><li>進到子命令頁後，先看 data source 來源是 live 還是本地 bundle。</li><li>先跑最短成功路徑，再加進階旗標，不要一開始就帶滿所有 options。</li><li>如果是 production 變更，先完成 export / diff，再進 live mutation。</li></ol>
+<ol><li>先看這頁，判斷你是在做 inventory、bundle、diff、plan，還是 live mutation。</li><li>進到子命令頁後，先看 data source 來源是 live 還是本地 bundle。</li><li>先跑最短成功路徑，再加進階旗標，不要一開始就帶滿所有 options。</li><li>如果是 production 變更，先完成 export / diff，再進 live mutation。</li></ol>
 <h2 id="採用前後對照">採用前後對照</h2>
 <ul><li><strong>採用前</strong>：data source 工作常散在 Grafana UI、API 呼叫或一次性的 shell 指令裡，之後很難回頭審查。</li><li><strong>採用後</strong>：同一套生命週期集中在一個指令群組裡，browse、export、diff 和 live 修改可以共用同樣的驗證與審查習慣。</li></ul>
 <h2 id="成功判準">成功判準</h2>
-<ul><li>在動到 production data source 前，就能先判斷下一步該走 inventory、export / import、diff 還是 live mutation</li><li>可重複的 profile 與驗證設定，讓同一批命令能同時支援日常維運和 CI</li><li>export 與 diff 讓你能先看清楚內容，而不是先改 live data source 再回頭補救</li></ul>
+<ul><li>在動到 production data source 前，就能先判斷下一步該走 inventory、export / import、diff、plan 還是 live mutation</li><li>可重複的 profile 與驗證設定，讓同一批命令能同時支援日常維運和 CI</li><li>export 與 diff 讓你能先看清楚內容，而不是先改 live data source 再回頭補救</li></ul>
 <h2 id="失敗時先檢查">失敗時先檢查</h2>
 <ul><li>如果 browse 或 list 看起來不完整，先確認 token 或 profile 是否真的看得到目標 org</li><li>如果 export 或 diff 結果像是舊資料，先確認是不是指到錯的 Grafana，或用了過期的本地 bundle</li><li>如果 live mutation 失敗，先把打算送出的輸入和目前 live data source 對照清楚，再決定要不要重跑</li></ul>
 <h2 id="範例">範例</h2>
@@ -958,7 +958,7 @@ grafana-util datasource browse --profile prod</code></pre>
 <pre><code># 先匯出成 bundle，再拿去做 diff 或搬移。
 grafana-util datasource export --profile prod --output-dir ./datasources</code></pre>
 <h2 id="各工作流入口">各工作流入口</h2>
-<table><thead><tr><th>工作流</th><th>入口頁</th><th>常見延伸頁</th></tr></thead><tbody><tr><td>盤點</td><td><a href="datasource-types.html">datasource types</a></td><td><a href="datasource-list.html">datasource list</a>、<a href="datasource-browse.html">datasource browse</a></td></tr><tr><td>搬移</td><td><a href="datasource-export.html">datasource export</a></td><td><a href="datasource-import.html">datasource import</a>、<a href="datasource-diff.html">datasource diff</a></td></tr><tr><td>live 變更</td><td><a href="datasource-add.html">datasource add</a></td><td><a href="datasource-modify.html">datasource modify</a>、<a href="datasource-delete.html">datasource delete</a></td></tr></tbody></table>
+<table><thead><tr><th>工作流</th><th>入口頁</th><th>常見延伸頁</th></tr></thead><tbody><tr><td>盤點</td><td><a href="datasource-types.html">datasource types</a></td><td><a href="datasource-list.html">datasource list</a>、<a href="datasource-browse.html">datasource browse</a></td></tr><tr><td>搬移</td><td><a href="datasource-export.html">datasource export</a></td><td><a href="datasource-import.html">datasource import</a>、<a href="datasource-diff.html">datasource diff</a>、<a href="datasource-plan.html">datasource plan</a></td></tr><tr><td>live 變更</td><td><a href="datasource-add.html">datasource add</a></td><td><a href="datasource-modify.html">datasource modify</a>、<a href="datasource-delete.html">datasource delete</a></td></tr></tbody></table>
 
 </article>
 <aside class="sidebar">

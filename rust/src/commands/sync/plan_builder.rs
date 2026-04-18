@@ -15,7 +15,8 @@ fn create_update_kind_rank(kind: &str) -> usize {
         "datasource" => 1,
         "dashboard" => 2,
         kind if is_alert_sync_kind(kind) => 3,
-        _ => 4,
+        "access" => 4,
+        _ => 5,
     }
 }
 
@@ -25,7 +26,8 @@ fn delete_kind_rank(kind: &str) -> usize {
         "dashboard" => 1,
         "datasource" => 2,
         "folder" => 3,
-        _ => 4,
+        "access" => 4,
+        _ => 5,
     }
 }
 
@@ -519,8 +521,8 @@ pub fn build_sync_plan_document(
         "allowPrune": allow_prune,
         "ordering": {
             "mode": "dependency-aware",
-            "createUpdateKindOrder": ["folder", "datasource", "dashboard", "alert"],
-            "deleteKindOrder": ["alert", "dashboard", "datasource", "folder"],
+            "createUpdateKindOrder": ["folder", "datasource", "dashboard", "alert", "access"],
+            "deleteKindOrder": ["alert", "dashboard", "datasource", "folder", "access"],
         },
         "summary": build_sync_plan_summary_document(&operations),
         "alertAssessment": alert_assessment,

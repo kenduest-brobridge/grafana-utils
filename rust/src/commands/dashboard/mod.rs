@@ -77,6 +77,7 @@ mod list;
 mod live;
 mod live_project_status;
 mod models;
+mod plan;
 mod project_status;
 mod prompt;
 mod prompt_helpers;
@@ -108,16 +109,17 @@ pub use cli_defs::{
     build_auth_context, build_http_client, build_http_client_for_org, normalize_dashboard_cli_args,
     parse_cli_from, BrowseArgs, CloneLiveArgs, CommonCliArgs, DashboardAuthContext,
     DashboardCliArgs, DashboardCommand, DashboardHistoryArgs, DashboardHistorySubcommand,
-    DashboardImportInputFormat, DashboardServeScriptFormat, DeleteArgs, DiffArgs, EditLiveArgs,
-    ExportArgs, ExportLayoutArgs, ExportLayoutOutputFormat, ExportLayoutVariant, GetArgs,
-    GovernanceGateArgs, GovernanceGateOutputFormat, GovernancePolicySource, HistoryDiffArgs,
-    HistoryExportArgs, HistoryListArgs, HistoryOutputFormat, HistoryRestoreArgs, ImpactArgs,
-    ImpactOutputFormat, ImportArgs, InspectExportArgs, InspectExportInputType,
-    InspectExportReportFormat, InspectLiveArgs, InspectOutputFormat, InspectVarsArgs, ListArgs,
-    PatchFileArgs, PublishArgs, RawToPromptArgs, RawToPromptLogFormat, RawToPromptOutputFormat,
-    RawToPromptResolution, ReviewArgs, ScreenshotArgs, ScreenshotFullPageOutput,
-    ScreenshotOutputFormat, ScreenshotTheme, ServeArgs, SimpleOutputFormat, SummaryArgs,
-    TopologyArgs, TopologyOutputFormat, ValidateExportArgs, ValidationOutputFormat,
+    DashboardImportInputFormat, DashboardPlanOutputFormat, DashboardServeScriptFormat, DeleteArgs,
+    DiffArgs, EditLiveArgs, ExportArgs, ExportLayoutArgs, ExportLayoutOutputFormat,
+    ExportLayoutVariant, GetArgs, GovernanceGateArgs, GovernanceGateOutputFormat,
+    GovernancePolicySource, HistoryDiffArgs, HistoryExportArgs, HistoryListArgs,
+    HistoryOutputFormat, HistoryRestoreArgs, ImpactArgs, ImpactOutputFormat, ImportArgs,
+    InspectExportArgs, InspectExportInputType, InspectExportReportFormat, InspectLiveArgs,
+    InspectOutputFormat, InspectVarsArgs, ListArgs, PatchFileArgs, PlanArgs, PublishArgs,
+    RawToPromptArgs, RawToPromptLogFormat, RawToPromptOutputFormat, RawToPromptResolution,
+    ReviewArgs, ScreenshotArgs, ScreenshotFullPageOutput, ScreenshotOutputFormat, ScreenshotTheme,
+    ServeArgs, SimpleOutputFormat, SummaryArgs, TopologyArgs, TopologyOutputFormat,
+    ValidateExportArgs, ValidationOutputFormat,
 };
 pub use command_runner::{
     execute_dashboard_inspect_export, execute_dashboard_inspect_live,
@@ -136,6 +138,7 @@ pub use live::{
     delete_dashboard_request, delete_folder_request, fetch_dashboard, import_dashboard_request,
     list_dashboard_summaries, list_datasources,
 };
+pub(crate) use plan::run_dashboard_plan;
 pub use prompt::build_external_export_document;
 pub(crate) use raw_to_prompt::run_raw_to_prompt;
 pub use screenshot::capture_dashboard_screenshot;

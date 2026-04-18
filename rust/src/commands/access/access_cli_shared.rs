@@ -39,7 +39,7 @@ pub const ACCESS_SERVICE_ACCOUNT_EXPORT_FILENAME: &str = "service-accounts.json"
 /// Constant for access export metadata filename.
 pub const ACCESS_EXPORT_METADATA_FILENAME: &str = "export-metadata.json";
 
-pub(crate) const ACCESS_ROOT_HELP_TEXT: &str = "Examples:\n\n  List org users as JSON:\n    grafana-util access user list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --json\n\n  List exported users from a local bundle:\n    grafana-util access user list --input-dir ./access-users --with-teams --output-format yaml\n\n  Browse users across organizations interactively:\n    grafana-util access user browse --url http://localhost:3000 --basic-user admin --basic-password admin\n\n  Create a Grafana user with Basic auth:\n    grafana-util access user add --url http://localhost:3000 --basic-user admin --basic-password admin --login alice --email alice@example.com --name Alice --password secret\n\n  Import teams with destructive sync acknowledgement:\n    grafana-util access team import --url http://localhost:3000 --basic-user admin --basic-password admin --input-dir ./access-teams --replace-existing --yes\n\n  Create a service-account token:\n    grafana-util access service-account token add --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --name deploy-bot --token-name nightly";
+pub(crate) const ACCESS_ROOT_HELP_TEXT: &str = "Examples:\n\n  List org users as JSON:\n    grafana-util access user list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --json\n\n  List exported users from a local bundle:\n    grafana-util access user list --input-dir ./access-users --with-teams --output-format yaml\n\n  Plan user access changes from a local bundle:\n    grafana-util access plan --profile prod --input-dir ./access-users --resource user --output-format table\n\n  Browse users across organizations interactively:\n    grafana-util access user browse --url http://localhost:3000 --basic-user admin --basic-password admin\n\n  Create a Grafana user with Basic auth:\n    grafana-util access user add --url http://localhost:3000 --basic-user admin --basic-password admin --login alice --email alice@example.com --name Alice --password secret\n\n  Import teams with destructive sync acknowledgement:\n    grafana-util access team import --url http://localhost:3000 --basic-user admin --basic-password admin --input-dir ./access-teams --replace-existing --yes\n\n  Create a service-account token:\n    grafana-util access service-account token add --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --name deploy-bot --token-name nightly";
 pub(crate) const ACCESS_USER_HELP_TEXT: &str = "Examples:\n\n  grafana-util access user list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --json\n  grafana-util access user list --input-dir ./access-users --with-teams --output-format yaml\n  grafana-util access user browse --url http://localhost:3000 --basic-user admin --basic-password admin\n  grafana-util access user browse --input-dir ./access-users\n  grafana-util access user add --url http://localhost:3000 --basic-user admin --basic-password admin --login alice --email alice@example.com --name Alice --password secret";
 pub(crate) const ACCESS_USER_LIST_HELP_TEXT: &str = "Examples:\n\n  grafana-util access user list --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --scope org --output-format text\n  grafana-util access user list --url http://localhost:3000 --basic-user admin --basic-password admin --scope global --with-teams --output-format yaml\n  grafana-util access user list --input-dir ./access-users --with-teams --output-format json";
 pub(crate) const ACCESS_USER_BROWSE_HELP_TEXT: &str = "Examples:\n\n  grafana-util access user browse --url http://localhost:3000 --basic-user admin --basic-password admin\n  grafana-util access user browse --url http://localhost:3000 --basic-user admin --basic-password admin --current-org --login alice\n  grafana-util access user browse --input-dir ./access-users --login alice";
@@ -66,6 +66,7 @@ pub(crate) const ACCESS_TEAM_IMPORT_HELP_TEXT: &str = "Examples:\n\n  grafana-ut
 pub(crate) const ACCESS_TEAM_DIFF_HELP_TEXT: &str = "Examples:\n\n  grafana-util access team diff --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --diff-dir ./access-teams";
 pub(crate) const ACCESS_TEAM_DELETE_HELP_TEXT: &str = "Examples:\n\n  grafana-util access team delete --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --name platform-team --yes --json\n  grafana-util access team delete --url http://localhost:3000 --token \"$GRAFANA_API_TOKEN\" --prompt";
 pub(crate) const ACCESS_ORG_DELETE_HELP_TEXT: &str = "Examples:\n\n  grafana-util access org delete --basic-user admin --basic-password admin --name platform --yes\n  grafana-util access org delete --basic-user admin --basic-password admin --prompt\n  grafana-util access org delete --basic-user admin --basic-password admin --org-id 7 --yes --json";
+pub(crate) const ACCESS_PLAN_HELP_TEXT: &str = "Examples:\n\n  grafana-util access plan --url http://localhost:3000 --basic-user admin --basic-password admin --input-dir ./access-users --output-format table\n  grafana-util access plan --profile prod --input-dir ./access-users --resource user --json";
 
 /// Shared Grafana connection/authentication arguments for org-scoped access commands.
 #[derive(Debug, Clone, Args)]
@@ -245,6 +246,14 @@ pub enum ListOutputFormat {
 /// Supported output formats for destructive access dry-run flows.
 #[derive(Debug, Clone, ValueEnum, PartialEq, Eq)]
 pub enum DryRunOutputFormat {
+    Text,
+    Table,
+    Json,
+}
+
+/// Supported output formats for access plan review flows.
+#[derive(Debug, Clone, ValueEnum, PartialEq, Eq)]
+pub enum PlanOutputFormat {
     Text,
     Table,
     Json,

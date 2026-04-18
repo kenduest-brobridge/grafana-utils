@@ -167,6 +167,23 @@ pub(crate) const DASHBOARD_DIFF_AFTER_HELP: &str = r#"Examples:
 
   Compare against one explicit org as structured JSON:
     grafana-util dashboard diff --url http://localhost:3000 --basic-user admin --basic-password admin --org-id 2 --input-dir ./dashboards/raw --json"#;
+pub(crate) const DASHBOARD_PLAN_AFTER_HELP: &str = r#"What it does:
+  Build a review-first reconcile plan from a local dashboard export tree and live Grafana without mutating anything.
+
+When to use:
+  - Review create/update/delete candidates before import or publish.
+  - Compare a combined multi-org export root back to live Grafana with org-aware routing.
+
+Examples:
+
+  Build a dashboard plan from a raw export root:
+    grafana-util dashboard plan --url http://localhost:3000 --basic-user admin --basic-password admin --input-dir ./dashboards/raw --output-format table
+
+  Build a dashboard plan from a prompt/source export root:
+    grafana-util dashboard plan --profile prod --input-dir ./dashboards/prompt --input-type source --output-format json
+
+  Review a combined all-org export root and show delete candidates:
+    grafana-util dashboard plan --url http://localhost:3000 --basic-user admin --basic-password admin --input-dir ./dashboards --use-export-org --prune --output-format table"#;
 
 pub(crate) const DASHBOARD_PATCH_FILE_AFTER_HELP: &str = r#"Examples:
 

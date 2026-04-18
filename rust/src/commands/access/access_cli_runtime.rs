@@ -91,6 +91,7 @@ pub fn normalize_access_cli_args(mut args: AccessCliArgs) -> AccessCliArgs {
             }
             _ => {}
         },
+        AccessCommand::Plan(_) => {}
         AccessCommand::Org { command } => {
             if let super::OrgCommand::List(list_args) = command {
                 apply_list_output_format(

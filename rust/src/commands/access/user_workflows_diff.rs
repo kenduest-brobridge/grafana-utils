@@ -68,7 +68,7 @@ fn normalize_user_for_diff(record: &Map<String, Value>, include_teams: bool) -> 
     payload
 }
 
-fn build_user_diff_map(
+pub(crate) fn build_user_diff_map(
     records: &[Map<String, Value>],
     source: &str,
     include_teams: bool,
@@ -97,7 +97,7 @@ fn build_user_diff_map(
     Ok(indexed)
 }
 
-fn build_user_export_records_for_diff<F>(
+pub(crate) fn build_user_export_records_for_diff<F>(
     mut request_json: F,
     scope: &Scope,
     include_teams: bool,
@@ -138,7 +138,10 @@ where
     Ok(rows)
 }
 
-fn build_record_diff_fields(left: &Map<String, Value>, right: &Map<String, Value>) -> Vec<String> {
+pub(crate) fn build_record_diff_fields(
+    left: &Map<String, Value>,
+    right: &Map<String, Value>,
+) -> Vec<String> {
     let mut keys = BTreeSet::new();
     for key in left.keys().chain(right.keys()) {
         keys.insert(key.clone());

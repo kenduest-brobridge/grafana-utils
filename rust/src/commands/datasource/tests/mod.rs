@@ -7,7 +7,7 @@ use super::{
     render_data_source_json, render_data_source_table, render_import_table,
     render_live_mutation_json, render_live_mutation_table, resolve_delete_match,
     resolve_live_mutation_match, resolve_match, CommonCliArgs, DatasourceCliArgs,
-    DatasourceImportInputFormat, DatasourceImportRecord,
+    DatasourceGroupCommand, DatasourceImportInputFormat, DatasourceImportRecord,
 };
 use crate::common::CliColorChoice;
 use serde_json::{json, Value};
@@ -233,6 +233,46 @@ fn render_live_mutation_json_summarizes_actions() {
     assert_eq!(value["summary"]["updateCount"], json!(1));
     assert_eq!(value["summary"]["deleteCount"], json!(1));
     assert_eq!(value["summary"]["blockedCount"], json!(1));
+}
+
+#[test]
+fn datasource_plan_parser_accepts_prune_and_table_output() {
+    let args = DatasourceCliArgs::parse_normalized_from([
+        "grafana-util",
+        "plan",
+        "--url",
+        "http://grafana.example",
+        "--token",
+        "token",
+        "--input-dir",
+        "./datasources",
+        "--prune",
+        "--output-format",
+        "table",
+        "--output-columns",
+        "action,status,uid,targetReadOnly",
+    ]);
+
+    match args.command {
+        DatasourceGroupCommand::Plan(inner) => {
+            assert_eq!(inner.input_dir, Path::new("./datasources"));
+            assert!(inner.prune);
+            assert_eq!(
+                inner.output_format,
+                super::DatasourcePlanOutputFormat::Table
+            );
+            assert_eq!(
+                inner.output_columns,
+                vec![
+                    "action".to_string(),
+                    "status".to_string(),
+                    "uid".to_string(),
+                    "target_read_only".to_string()
+                ]
+            );
+        }
+        _ => panic!("expected datasource plan"),
+    }
 }
 
 #[test]

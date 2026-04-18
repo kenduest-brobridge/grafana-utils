@@ -15,6 +15,20 @@ Current AI-maintained status only.
 - Older entries moved to [`ai-status-archive-2026-04-17.md`](docs/internal/archive/ai-status-archive-2026-04-17.md).
 - Older entries moved to [`ai-status-archive-2026-04-18.md`](docs/internal/archive/ai-status-archive-2026-04-18.md).
 
+## 2026-04-18 - Add review plans for access, dashboard, alert, and workspace
+- State: Done
+- Scope: Rust access/dashboard plan slices, alert plan contract fields, workspace preview normalized actions, focused tests, command docs, generated docs, and AI trace docs. README files and Python implementation are out of scope.
+- Baseline: `datasource plan` introduced the reconcile-plan shape, while access/dashboard still lacked a plan command, alert plan rows did not consistently expose TUI-ready metadata, and workspace preview did not normalize legacy operations into a shared action/domain/blocker contract.
+- Current Update: Added `access plan` for user bundles and `dashboard plan` for single-org dashboard exports, enriched alert plan rows with stable action/status/review fields while preserving existing apply compatibility, and normalized workspace preview output with `actions`, `domains`, and `blockedReasons` for future TUI review.
+- Result: Focused access, dashboard, alert, and workspace preview tests pass; broader validation is in progress.
+
+## 2026-04-18 - Add datasource reconcile plan
+- State: Done
+- Scope: Rust datasource plan command, plan model/rendering, focused datasource tests, command docs, generated docs, and AI trace docs. README files and Python implementation are out of scope.
+- Baseline: `datasource diff` compares local bundles with live Grafana and reports `missing-remote` / `extra-remote`, while `datasource import --dry-run` previews create/update for import records only. There is no dedicated review-first datasource reconcile plan, no opt-in prune planning, and no TUI-ready action model.
+- Current Update: Added `datasource plan` as a review-only reconcile surface with text/table/json output, opt-in prune planning, all-org export routing, safe field comparison, read-only blocking, and stable TUI-ready action IDs. `datasource diff` and import dry-run remain separate surfaces.
+- Result: Focused datasource plan tests, datasource suite, clippy, formatting, docs-surface, and generated docs checks pass.
+
 ## 2026-04-18 - Repair legacy dashboard all-orgs root aggregates
 - State: Done
 - Scope: Rust dashboard export-layout repair, all-orgs export regression coverage, command docs, generated docs, and AI trace docs. README files, Python implementation, and live export behavior beyond regression coverage are out of scope.
@@ -42,16 +56,3 @@ Current AI-maintained status only.
 - Baseline: team import can pass login-style identities into Grafana's bulk team membership endpoint even though the official legacy endpoint resolves bulk members by email, and user/team dry-run does not consistently block externally synced users or provisioned teams before live apply.
 - Current Update: Team import now resolves member/admin identities to live org-user emails before bulk apply, blocks missing-email identities, and surfaces provisioned-team blockers with target evidence. User import now blocks external/synced profile, org role, and Grafana-admin changes before apply while dry-run rows carry target evidence and blocked status.
 - Result: Focused team/user import tests, access test suite, full Rust tests, clippy, formatting, generated docs, docs-surface, man/html checks, AI workflow, and whitespace checks pass.
-
-## 2026-04-17 - Finish classic prompt export guardrails
-- State: Done
-- Scope: Rust dashboard prompt/raw-to-prompt conversion, dashboard export validation, focused prompt conversion tests, maintainer prompt semantics docs, and AI trace docs. README files, Python implementation, and dashboard v2 export lane support are out of scope.
-- Baseline: classic prompt export already preserves datasource variables and maps used datasource-variable current values, but constant variables are not exported as `VAR_*` inputs, dashboard v2-shaped files are not explicitly rejected by raw-to-prompt, and library panel references are not surfaced as portability warnings.
-- Current Update: Added classic prompt parity for constant variables, kept expression datasource refs outside user-mapped inputs, rejected dashboard v2 resource/spec shapes in raw-to-prompt, and surfaced library panel portability warnings without adding a v2 export lane.
-- Result: Focused raw-to-prompt and validation tests, full Rust tests, formatting, AI workflow, and whitespace checks pass.
-
-## 2026-04-17 - Harden datasource masked-recovery import
-- State: Done
-- Scope: Rust datasource masked-recovery export/import, dry-run evidence, focused datasource tests, datasource command docs, internal contract docs, TODO backlog, and AI trace docs. README files, Python implementation, and Grafana K8s datasource API support are out of scope.
-- Current Update: Datasource export now preserves additive `readOnly`, `version`, and `apiVersion` evidence. Datasource import update planning now fetches target live datasource evidence, updates through `/api/datasources/uid/{uid}`, carries target `version`, and blocks read-only/provisioned targets before live writes. Dry-run JSON/table/text now exposes target UID/version/read-only and blocked reason evidence.
-- Result: Focused datasource tests, full Rust tests, clippy, formatting, generated docs checks, docs-surface checks, AI workflow, and whitespace checks pass.

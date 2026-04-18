@@ -31,6 +31,13 @@ pub enum DryRunOutputFormat {
     Json,
 }
 
+#[derive(Debug, Clone, Copy, ValueEnum, PartialEq, Eq)]
+pub enum DatasourcePlanOutputFormat {
+    Text,
+    Table,
+    Json,
+}
+
 pub(crate) fn parse_datasource_list_output_column(
     value: &str,
 ) -> std::result::Result<String, String> {
@@ -369,6 +376,101 @@ pub struct DatasourceDiffArgs {
 }
 
 #[derive(Debug, Clone, Args)]
+pub struct DatasourcePlanArgs {
+    #[command(flatten)]
+    pub common: CommonCliArgs,
+    #[arg(
+        long = "input-dir",
+        help = "Local datasource bundle to plan against live Grafana. For provisioning input, point this at the export root, provisioning directory, or concrete datasources.yaml file.",
+        help_heading = "Input Options"
+    )]
+    pub input_dir: PathBuf,
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = DatasourceImportInputFormat::Inventory,
+        help = "Select the datasource plan input format. Use inventory for datasources.json exports, or provisioning for Grafana datasource provisioning YAML.",
+        help_heading = "Input Options"
+    )]
+    pub input_format: DatasourceImportInputFormat,
+    #[arg(
+        long,
+        conflicts_with = "use_export_org",
+        help = "Plan against this Grafana org ID instead of the current org context. Requires Basic auth.",
+        help_heading = "Target Options"
+    )]
+    pub org_id: Option<i64>,
+    #[arg(
+        long,
+        default_value_t = false,
+        conflicts_with = "org_id",
+        help = "Plan a combined multi-org datasource export root by routing each org-scoped bundle back into the matching Grafana org. Requires Basic auth.",
+        help_heading = "Target Options"
+    )]
+    pub use_export_org: bool,
+    #[arg(
+        long = "only-org-id",
+        requires = "use_export_org",
+        conflicts_with = "org_id",
+        help = "With --use-export-org, plan only these exported source org IDs. Repeat the flag to select multiple orgs.",
+        help_heading = "Target Options"
+    )]
+    pub only_org_id: Vec<i64>,
+    #[arg(
+        long,
+        default_value_t = false,
+        requires = "use_export_org",
+        help = "With --use-export-org, mark missing destination orgs as would-create instead of blocked.",
+        help_heading = "Target Options"
+    )]
+    pub create_missing_orgs: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Include remote-only datasources as would-delete candidates. Plan remains review-only and does not mutate Grafana.",
+        help_heading = "Safety Options"
+    )]
+    pub prune: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Include same/unchanged rows in text and table output.",
+        help_heading = "Output Options"
+    )]
+    pub show_same: bool,
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = DatasourcePlanOutputFormat::Text,
+        help = "Render datasource plan output as text, table, or json.",
+        help_heading = "Output Options"
+    )]
+    pub output_format: DatasourcePlanOutputFormat,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "For table output only, omit the table header row.",
+        help_heading = "Output Options"
+    )]
+    pub no_header: bool,
+    #[arg(
+        long,
+        value_delimiter = ',',
+        value_parser = parse_datasource_plan_output_column,
+        help = "For table output only, render only these comma-separated columns. Supported values: action_id, action, status, uid, name, type, match_basis, source_org_id, target_org_id, target_uid, target_version, target_read_only, changed_fields, blocked_reason, source_file.",
+        help_heading = "Output Options"
+    )]
+    pub output_columns: Vec<String>,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Print the supported --output-columns values and exit.",
+        help_heading = "Output Options"
+    )]
+    pub list_columns: bool,
+}
+
+#[derive(Debug, Clone, Args)]
 pub struct DatasourceAddArgs {
     #[command(flatten)]
     pub common: CommonCliArgs,
@@ -684,6 +786,8 @@ pub enum DatasourceGroupCommand {
     Import(DatasourceImportArgs),
     #[command(about = "Compare local datasource export files against live Grafana datasources.", after_help = DATASOURCE_DIFF_HELP_TEXT)]
     Diff(DatasourceDiffArgs),
+    #[command(about = "Build a review-first datasource reconcile plan against live Grafana.", after_help = DATASOURCE_PLAN_HELP_TEXT)]
+    Plan(DatasourcePlanArgs),
 }
 
 #[derive(Debug, Clone, Parser)]
@@ -834,6 +938,30 @@ fn parse_datasource_import_output_column(value: &str) -> std::result::Result<Str
         "blocked_reason" | "blockedReason" => Ok("blocked_reason".to_string()),
         _ => Err(format!(
             "Unsupported --output-columns value '{value}'. Supported values: all, uid, name, type, match_basis, destination, action, org_id, file, target_uid, target_version, target_read_only, blocked_reason."
+        )),
+    }
+}
+
+fn parse_datasource_plan_output_column(value: &str) -> std::result::Result<String, String> {
+    match value {
+        "all" => Ok("all".to_string()),
+        "action_id" | "actionId" => Ok("action_id".to_string()),
+        "action" => Ok("action".to_string()),
+        "status" => Ok("status".to_string()),
+        "uid" => Ok("uid".to_string()),
+        "name" => Ok("name".to_string()),
+        "type" => Ok("type".to_string()),
+        "match_basis" | "matchBasis" => Ok("match_basis".to_string()),
+        "source_org_id" | "sourceOrgId" => Ok("source_org_id".to_string()),
+        "target_org_id" | "targetOrgId" => Ok("target_org_id".to_string()),
+        "target_uid" | "targetUid" => Ok("target_uid".to_string()),
+        "target_version" | "targetVersion" => Ok("target_version".to_string()),
+        "target_read_only" | "targetReadOnly" => Ok("target_read_only".to_string()),
+        "changed_fields" | "changedFields" => Ok("changed_fields".to_string()),
+        "blocked_reason" | "blockedReason" => Ok("blocked_reason".to_string()),
+        "source_file" | "sourceFile" => Ok("source_file".to_string()),
+        _ => Err(format!(
+            "Unsupported --output-columns value '{value}'. Supported values: all, action_id, action, status, uid, name, type, match_basis, source_org_id, target_org_id, target_uid, target_version, target_read_only, changed_fields, blocked_reason, source_file."
         )),
     }
 }

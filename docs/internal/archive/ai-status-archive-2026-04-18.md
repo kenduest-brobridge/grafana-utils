@@ -26,3 +26,16 @@
 - Scope: Rust prompt/raw-to-prompt datasource handling and pre-resolution, focused regression tests, internal prompt-lane semantics note, raw-to-prompt command docs in English and zh-TW, and AI trace docs. README files and Python implementation are out of scope.
 - Current Update: Aligned prompt conversion with Grafana UI external-export semantics: concrete datasource refs become `__inputs`, built-in Grafana datasource selectors stay excluded, datasource variables keep their own variable shape, and the converter no longer synthesizes a new datasource variable when the source dashboard did not already have one. Used datasource variables with a concrete current datasource now point `current.value` at the generated `${DS_*}` input while panel and target references stay variable-based.
 - Result: The prompt builder no longer over-normalizes single datasource families or turns datasource variable plugin filters into extra import inputs, and raw-to-prompt pre-resolution now preserves `$datasource` placeholders instead of failing inference. Focused raw-to-prompt coverage and full Rust tests pass; the docs record the contract, the known bug pattern, and the later `VAR_*` parity follow-up without naming local machine paths.
+
+## 2026-04-17 - Harden datasource masked-recovery import
+- State: Done
+- Scope: Rust datasource masked-recovery export/import, dry-run evidence, focused datasource tests, datasource command docs, internal contract docs, TODO backlog, and AI trace docs. README files, Python implementation, and Grafana K8s datasource API support are out of scope.
+- Current Update: Datasource export now preserves additive `readOnly`, `version`, and `apiVersion` evidence. Datasource import update planning now fetches target live datasource evidence, updates through `/api/datasources/uid/{uid}`, carries target `version`, and blocks read-only/provisioned targets before live writes. Dry-run JSON/table/text now exposes target UID/version/read-only and blocked reason evidence.
+- Result: Focused datasource tests, full Rust tests, clippy, formatting, generated docs checks, docs-surface checks, AI workflow, and whitespace checks pass.
+
+## 2026-04-17 - Finish classic prompt export guardrails
+- State: Done
+- Scope: Rust dashboard prompt/raw-to-prompt conversion, dashboard export validation, focused prompt conversion tests, maintainer prompt semantics docs, and AI trace docs. README files, Python implementation, and dashboard v2 export lane support are out of scope.
+- Baseline: classic prompt export already preserves datasource variables and maps used datasource-variable current values, but constant variables are not exported as `VAR_*` inputs, dashboard v2-shaped files are not explicitly rejected by raw-to-prompt, and library panel references are not surfaced as portability warnings.
+- Current Update: Added classic prompt parity for constant variables, kept expression datasource refs outside user-mapped inputs, rejected dashboard v2 resource/spec shapes in raw-to-prompt, and surfaced library panel portability warnings without adding a v2 export lane.
+- Result: Focused raw-to-prompt and validation tests, full Rust tests, formatting, AI workflow, and whitespace checks pass.

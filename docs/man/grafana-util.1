@@ -120,6 +120,9 @@ Convert ordinary dashboard JSON or raw/ lane files into Grafana UI prompt JSON w
 .TP
 .B grafana\-util\-dashboard\-convert\-export\-layout(1)
 Repair older dashboard export trees whose raw/ or prompt/ files were written under the leaf Grafana folder title instead of the full nested folder path, and rebuild legacy all\-orgs root indexes when child org exports are present but the root aggregate only describes one org.
+.TP
+.B grafana\-util\-dashboard\-plan(1)
+Build a review\-first dashboard reconcile plan from a local dashboard export tree against live Grafana.
 .SS alert
 .TP
 .B grafana\-util\-alert\-export(1)
@@ -203,6 +206,9 @@ Modify one live Grafana datasource through the Grafana API.
 .TP
 .B grafana\-util\-datasource\-delete(1)
 Delete one live Grafana datasource through the Grafana API.
+.TP
+.B grafana\-util\-datasource\-plan(1)
+Build a review\-first datasource reconcile plan from a local bundle against live Grafana.
 .SS access
 .TP
 .B grafana\-util\-access\-user(1)
@@ -219,6 +225,9 @@ List live or local Grafana service accounts, create, export, import, diff, or de
 .TP
 .B grafana\-util\-access\-service\-account\-token(1)
 Add or delete tokens for a Grafana service account.
+.TP
+.B grafana\-util\-access\-plan(1)
+Build a review\-first access reconcile plan from a local access bundle against live Grafana.
 .SS status
 .TP
 .B grafana\-util\-status\-live(1)

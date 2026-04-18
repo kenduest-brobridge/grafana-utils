@@ -175,3 +175,41 @@ fn render_sync_plan_text_defaults_lineage_when_missing() {
     assert!(lines[2].contains("step=0"));
     assert!(lines[2].contains("parent=none"));
 }
+
+#[test]
+fn render_sync_plan_text_shows_domain_summary_and_blocked_reasons() {
+    let lines = render_sync_plan_text(&json!({
+        "kind": "grafana-utils-sync-plan",
+        "traceId": "sync-trace-demo",
+        "stage": "plan",
+        "stepIndex": 1,
+        "summary": {
+            "would_create": 1,
+            "would_update": 1,
+            "would_delete": 1,
+            "noop": 0,
+            "unmanaged": 0,
+            "alert_candidate": 0,
+            "alert_plan_only": 0,
+            "alert_blocked": 1,
+            "blocked_reasons": ["target-read-only"]
+        },
+        "domains": [
+            {"id": "dashboard", "checked": 1},
+            {"id": "datasource", "checked": 1},
+            {"id": "alert", "checked": 1}
+        ],
+        "blockedReasons": ["target-read-only"],
+        "reviewRequired": true,
+        "reviewed": false
+    }))
+    .unwrap();
+
+    assert!(lines.iter().any(|line| line.contains("Domains:")));
+    assert!(lines.iter().any(|line| line.contains("dashboard=1")));
+    assert!(lines.iter().any(|line| line.contains("datasource=1")));
+    assert!(lines.iter().any(|line| line.contains("alert=1")));
+    assert!(lines
+        .iter()
+        .any(|line| line.contains("Blocked reason: target-read-only")));
+}

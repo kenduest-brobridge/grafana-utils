@@ -25,8 +25,8 @@ use crate::common::{set_json_color_choice, CliColorChoice, Result};
 use crate::dashboard::{
     BrowseArgs, CloneLiveArgs, DashboardHistoryArgs, DeleteArgs, DiffArgs, EditLiveArgs,
     ExportArgs as DashboardExportArgs, ExportLayoutArgs, GetArgs, GovernanceGateArgs, ImpactArgs,
-    ImportArgs, InspectVarsArgs, ListArgs, PatchFileArgs, PublishArgs, RawToPromptArgs, ReviewArgs,
-    ScreenshotArgs, ServeArgs, SummaryArgs, TopologyArgs,
+    ImportArgs, InspectVarsArgs, ListArgs, PatchFileArgs, PlanArgs as DashboardPlanArgs,
+    PublishArgs, RawToPromptArgs, ReviewArgs, ScreenshotArgs, ServeArgs, SummaryArgs, TopologyArgs,
 };
 use crate::datasource::{DatasourceExportArgs, DatasourceGroupCommand};
 use crate::overview::{OverviewArgs, OverviewCommand};
@@ -216,6 +216,11 @@ pub enum DashboardRootCommand {
         about = "Compare local raw dashboard files against live Grafana dashboards."
     )]
     Diff(DiffArgs),
+    #[command(
+        name = "plan",
+        about = "Build a review-first dashboard reconcile plan without mutating Grafana."
+    )]
+    Plan(DashboardPlanArgs),
     #[command(name = "convert", about = "Run dashboard format conversion workflows.")]
     Convert {
         #[command(subcommand)]
@@ -304,7 +309,7 @@ pub enum UnifiedCommand {
         command: DashboardRootCommand,
     },
     #[command(
-        about = "Manage datasource list, browse, export, import, and diff workflows.",
+        about = "Manage datasource list, browse, export, import, diff, and plan workflows.",
         visible_alias = "ds",
         after_help = UNIFIED_DATASOURCE_HELP_TEXT
     )]

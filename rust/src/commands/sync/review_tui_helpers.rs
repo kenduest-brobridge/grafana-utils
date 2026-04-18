@@ -70,10 +70,14 @@ pub(crate) struct DiffControlsState {
 
 #[cfg(any(feature = "tui", test))]
 fn operation_key(operation: &serde_json::Map<String, Value>) -> String {
+    if let Some(action_id) = operation.get("actionId").and_then(Value::as_str) {
+        return action_id.to_string();
+    }
     format!(
         "{}::{}",
         operation
-            .get("kind")
+            .get("resourceKind")
+            .or_else(|| operation.get("kind"))
             .and_then(Value::as_str)
             .unwrap_or("unknown"),
         operation
@@ -88,7 +92,8 @@ fn operation_label(operation: &serde_json::Map<String, Value>) -> String {
     format!(
         "{} {}",
         operation
-            .get("kind")
+            .get("resourceKind")
+            .or_else(|| operation.get("kind"))
             .and_then(Value::as_str)
             .unwrap_or("unknown"),
         operation
@@ -148,7 +153,8 @@ pub(crate) fn operation_preview(item: &ReviewableOperation) -> Vec<String> {
         .and_then(Value::as_str)
         .unwrap_or("unknown");
     let kind = object
-        .get("kind")
+        .get("resourceKind")
+        .or_else(|| object.get("kind"))
         .and_then(Value::as_str)
         .unwrap_or("unknown");
     let identity = object
@@ -278,7 +284,10 @@ pub(crate) fn selection_title_with_position(
 #[cfg(any(feature = "tui", test))]
 pub(crate) fn collect_reviewable_operations(plan: &Value) -> Result<Vec<ReviewableOperation>> {
     let plan = require_json_object(plan, "Sync plan document")?;
-    let operations = require_json_array_field(plan, "operations", "Sync plan document")?;
+    let operations = match plan.get("actions").or_else(|| plan.get("operations")) {
+        Some(Value::Array(items)) => items,
+        _ => require_json_array_field(plan, "operations", "Sync plan document")?,
+    };
     Ok(operations
         .iter()
         .filter_map(Value::as_object)
@@ -302,7 +311,13 @@ pub(crate) fn filter_review_plan_operations(
     selected_keys: &BTreeSet<String>,
 ) -> Result<Value> {
     let plan_object = require_json_object(plan, "Sync plan document")?;
-    let operations = require_json_array_field(plan_object, "operations", "Sync plan document")?;
+    let operations = match plan_object
+        .get("actions")
+        .or_else(|| plan_object.get("operations"))
+    {
+        Some(Value::Array(items)) => items,
+        _ => require_json_array_field(plan_object, "operations", "Sync plan document")?,
+    };
     let filtered_operations = operations
         .iter()
         .filter(|item| {
@@ -328,7 +343,26 @@ pub(crate) fn filter_review_plan_operations(
         "alertAssessment".to_string(),
         build_sync_alert_assessment_document(&filtered_operations),
     );
-    filtered.insert("operations".to_string(), Value::Array(filtered_operations));
+    filtered.insert(
+        "operations".to_string(),
+        Value::Array(filtered_operations.clone()),
+    );
+    filtered.insert("actions".to_string(), Value::Array(filtered_operations));
+    if let Ok(enriched) = crate::sync::workspace_preview_contract::enrich_workspace_preview_document(
+        &Value::Object(filtered.clone()),
+    ) {
+        if let Some(object) = enriched.as_object() {
+            if let Some(domains) = object.get("domains") {
+                filtered.insert("domains".to_string(), domains.clone());
+            }
+            if let Some(blocked) = object.get("blockedReasons") {
+                filtered.insert("blockedReasons".to_string(), blocked.clone());
+            }
+            if let Some(summary) = object.get("summary") {
+                filtered.insert("summary".to_string(), summary.clone());
+            }
+        }
+    }
     Ok(Value::Object(filtered))
 }
 
@@ -393,7 +427,8 @@ pub(crate) fn build_review_operation_diff_model(operation: &Value) -> Result<Rev
     let title = format!(
         "{} {}",
         object
-            .get("kind")
+            .get("resourceKind")
+            .or_else(|| object.get("kind"))
             .and_then(Value::as_str)
             .unwrap_or("unknown"),
         object

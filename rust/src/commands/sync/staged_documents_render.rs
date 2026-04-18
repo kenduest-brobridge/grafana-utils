@@ -194,6 +194,26 @@ pub fn render_sync_plan_text(document: &Value) -> Result<Vec<String>> {
                 .unwrap_or(false),
         ),
     ];
+    if let Some(domains) = document.get("domains").and_then(Value::as_array) {
+        if !domains.is_empty() {
+            let domain_text = domains
+                .iter()
+                .filter_map(Value::as_object)
+                .map(|domain| {
+                    format!(
+                        "{}={}",
+                        domain
+                            .get("id")
+                            .and_then(Value::as_str)
+                            .unwrap_or("unknown"),
+                        domain.get("checked").and_then(Value::as_i64).unwrap_or(0)
+                    )
+                })
+                .collect::<Vec<String>>()
+                .join("  ");
+            lines.insert(5, format!("Domains: {domain_text}"));
+        }
+    }
     if let Some(ordering_mode) = document
         .get("ordering")
         .and_then(Value::as_object)
@@ -211,7 +231,11 @@ pub fn render_sync_plan_text(document: &Value) -> Result<Vec<String>> {
     if let Some(review_note) = document.get("reviewNote").and_then(Value::as_str) {
         lines.push(format!("Review note: {review_note}"));
     }
-    if let Some(reasons) = summary.get("blocked_reasons").and_then(Value::as_array) {
+    if let Some(reasons) = document
+        .get("blockedReasons")
+        .and_then(Value::as_array)
+        .or_else(|| summary.get("blocked_reasons").and_then(Value::as_array))
+    {
         for reason in reasons.iter().filter_map(Value::as_str) {
             lines.push(format!("Blocked reason: {reason}"));
         }

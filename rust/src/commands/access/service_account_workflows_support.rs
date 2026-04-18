@@ -93,7 +93,7 @@ pub(super) fn build_service_account_export_metadata(
     metadata
 }
 
-pub(super) fn load_service_account_import_records(
+pub(crate) fn load_service_account_import_records(
     input_dir: &Path,
     expected_kind: &str,
 ) -> Result<Vec<Map<String, Value>>> {
@@ -311,7 +311,7 @@ pub(super) fn validate_service_account_import_dry_run_output(
     Ok(())
 }
 
-pub(super) fn build_record_diff_fields(
+pub(crate) fn build_record_diff_fields(
     left: &Map<String, Value>,
     right: &Map<String, Value>,
 ) -> Vec<String> {
@@ -349,7 +349,7 @@ fn normalize_service_account_for_diff(record: &Map<String, Value>) -> Map<String
     ])
 }
 
-pub(super) fn build_service_account_diff_map(
+pub(crate) fn build_service_account_diff_map(
     records: &[Map<String, Value>],
     source: &str,
 ) -> Result<DiffPayloadMap> {
@@ -377,7 +377,7 @@ pub(super) fn build_service_account_diff_map(
     Ok(indexed)
 }
 
-pub(super) fn list_all_service_accounts_with_request<F>(
+pub(crate) fn list_all_service_accounts_with_request<F>(
     mut request_json: F,
 ) -> Result<Vec<Map<String, Value>>>
 where

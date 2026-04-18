@@ -17,7 +17,7 @@ The command path stays flat, such as `grafana-util dashboard list`, so experienc
 
 - Browse & Inspect: find, read, or inspect dashboards before deciding what to do. Commands: `browse`, `list`, `get`, `variables`, `history`.
 - Export & Import: move dashboard artifacts between Grafana, raw JSON, prompt JSON, or provisioning files. Commands: `export`, `import`, `convert raw-to-prompt`.
-- Review & Diff: collect proof, compare state, analyze dependencies, review blast radius, or run governance checks. Commands: `diff`, `review`, `summary`, `dependencies`, `impact`, `policy`.
+- Review & Diff: collect proof, compare state, plan local-vs-live reconciliation, analyze dependencies, review blast radius, or run governance checks. Commands: `plan`, `diff`, `review`, `summary`, `dependencies`, `impact`, `policy`.
 - Edit & Publish: create or change one local draft, then publish or delete deliberately. Commands: `get`, `clone`, `patch`, `serve`, `edit-live`, `publish`, `delete`.
 - Operate & Capture: capture visual evidence for reports, incidents, or handoff. Commands: `screenshot`.
 
@@ -136,6 +136,7 @@ grafana-util dashboard summary --url http://localhost:3000 --basic-user admin --
 ### Review & Diff
 
 - [dashboard diff](./dashboard-diff.md)
+- [dashboard plan](./dashboard-plan.md)
 - [dashboard review](./dashboard-review.md)
 - [dashboard summary](./dashboard-summary.md)
 - [dashboard dependencies](./dashboard-dependencies.md)

@@ -31,6 +31,7 @@ pub(crate) use user_read::{
 #[cfg(test)]
 pub(crate) use user_workflows::build_user_import_dry_run_document;
 pub(crate) use user_workflows::{
+    build_record_diff_fields, build_user_diff_map, build_user_export_records_for_diff,
     diff_users_with_request, export_users_with_request, import_users_with_request,
     load_access_import_records,
 };

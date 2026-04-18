@@ -13,6 +13,8 @@ pub(crate) const ACCESS_IMPORT_DRY_RUN_SCHEMA_VERSION: i64 = 1;
 
 // Internal modules stay split by resource kind so user/org/team/service-account
 // workflows can evolve independently while this file keeps only domain routing.
+#[path = "access_plan.rs"]
+mod access_plan;
 #[path = "auth_materialize.rs"]
 mod auth_materialize;
 #[path = "browse_support.rs"]
@@ -221,6 +223,12 @@ pub fn run_access_cli(args: AccessCliArgs) -> Result<()> {
     // Access CLI boundary:
     // normalize and materialize auth/headers once, then dispatch to user/org/team/service-account handlers.
     let args = normalize_access_cli_args(args);
+    if let AccessCommand::Plan(plan_args) = &args.command {
+        if plan_args.list_columns {
+            access_plan::print_access_plan_columns();
+            return Ok(());
+        }
+    }
     match &args.command {
         AccessCommand::User {
             command: UserCommand::List(inner),

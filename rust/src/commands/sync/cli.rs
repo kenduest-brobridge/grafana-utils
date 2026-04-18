@@ -6,6 +6,7 @@
 
 pub(crate) use super::output::render_and_emit_sync_command_output;
 use super::output::{emit_text_or_json, sync_command_output};
+use super::workspace_preview_contract::enrich_workspace_preview_document;
 use super::*;
 use crate::sync::live::load_apply_intent_operations;
 use serde_json::Value;
@@ -200,6 +201,7 @@ pub(crate) fn execute_sync_plan(args: &SyncPlanArgs) -> Result<SyncCommandOutput
         1,
         None,
     )?;
+    let document = enrich_workspace_preview_document(&document)?;
     let text_lines = render_sync_plan_text(&document)?;
     Ok(sync_command_output(document, text_lines))
 }

@@ -22,16 +22,18 @@ use crate::tabular_output::render_yaml;
 
 use super::{
     build_add_payload, build_all_orgs_export_index, build_all_orgs_export_metadata,
-    build_all_orgs_output_dir, build_datasource_export_metadata,
+    build_all_orgs_output_dir, build_datasource_export_metadata, build_datasource_plan,
     build_datasource_provisioning_document, build_export_index, build_export_records,
     build_list_records, build_modify_payload, build_modify_updates, datasource_list_column_ids,
-    diff_datasources_with_live, import_datasources_by_export_org, import_datasources_with_client,
-    render_data_source_csv, render_data_source_json, render_data_source_table,
-    render_live_mutation_json, render_live_mutation_table, resolve_delete_match,
+    datasource_plan_column_ids, diff_datasources_with_live, discover_export_org_import_scopes,
+    import_datasources_by_export_org, import_datasources_with_client, load_import_records,
+    print_datasource_plan_report, render_data_source_csv, render_data_source_json,
+    render_data_source_table, render_live_mutation_json, render_live_mutation_table,
+    resolve_datasource_export_root_dir, resolve_delete_match, resolve_export_org_target_plan,
     resolve_live_mutation_match, resolve_target_client, validate_import_org_auth,
     validate_live_mutation_dry_run_args, write_json_file, write_yaml_file, DatasourceGroupCommand,
-    DATASOURCE_EXPORT_FILENAME, DATASOURCE_PROVISIONING_FILENAME, DATASOURCE_PROVISIONING_SUBDIR,
-    EXPORT_METADATA_FILENAME,
+    DatasourceImportArgs, DatasourcePlanInput, DatasourcePlanOrgInput, DATASOURCE_EXPORT_FILENAME,
+    DATASOURCE_PROVISIONING_FILENAME, DATASOURCE_PROVISIONING_SUBDIR, EXPORT_METADATA_FILENAME,
 };
 
 const DATASOURCE_IMPORT_LIST_COLUMNS: &[&str] = &[
@@ -73,17 +75,45 @@ fn handle_datasource_command_early_exits(command: &DatasourceGroupCommand) -> Re
             print_supported_columns(DATASOURCE_IMPORT_LIST_COLUMNS);
             Ok(true)
         }
+        DatasourceGroupCommand::Plan(args) if args.list_columns => {
+            print_supported_columns(datasource_plan_column_ids());
+            Ok(true)
+        }
         _ => Ok(false),
     }
 }
 
 fn validate_datasource_command_inputs(command: &DatasourceGroupCommand) -> Result<()> {
-    if let DatasourceGroupCommand::Import(args) = command {
-        if !args.output_columns.is_empty() && !args.table {
-            return Err(message(
-                "--output-columns is only supported with --dry-run --table or table-like --output-format for datasource import.",
-            ));
+    match command {
+        DatasourceGroupCommand::Import(args) => {
+            if !args.output_columns.is_empty() && !args.table {
+                return Err(message(
+                    "--output-columns is only supported with --dry-run --table or table-like --output-format for datasource import.",
+                ));
+            }
         }
+        DatasourceGroupCommand::Plan(args) => {
+            if !args.output_columns.is_empty()
+                && args.output_format != super::DatasourcePlanOutputFormat::Table
+            {
+                return Err(message(
+                    "--output-columns is only supported with --output-format table for datasource plan.",
+                ));
+            }
+            if args.no_header && args.output_format != super::DatasourcePlanOutputFormat::Table {
+                return Err(message(
+                    "--no-header is only supported with --output-format table for datasource plan.",
+                ));
+            }
+            if args.use_export_org
+                && args.input_format != super::DatasourceImportInputFormat::Inventory
+            {
+                return Err(message(
+                    "Datasource plan with --use-export-org requires --input-format inventory.",
+                ));
+            }
+        }
+        _ => {}
     }
     Ok(())
 }
@@ -708,6 +738,116 @@ fn execute_datasource_command(command: DatasourceGroupCommand) -> Result<()> {
             );
             Ok(())
         }
+        DatasourceGroupCommand::Plan(args) => {
+            let plan_input = if args.use_export_org {
+                build_routed_datasource_plan_input(&args)?
+            } else {
+                let client = resolve_target_client(&args.common, args.org_id)?;
+                let input_dir =
+                    if args.input_format == super::DatasourceImportInputFormat::Inventory {
+                        resolve_datasource_export_root_dir(&args.input_dir)?
+                    } else {
+                        args.input_dir.clone()
+                    };
+                let (_metadata, records) = load_import_records(&input_dir, args.input_format)?;
+                let live = DatasourceResourceClient::new(&client).list_datasources()?;
+                DatasourcePlanInput {
+                    scope: if args.org_id.is_some() {
+                        "explicit-org".to_string()
+                    } else {
+                        "current-org".to_string()
+                    },
+                    input_format: format!("{:?}", args.input_format).to_ascii_lowercase(),
+                    prune: args.prune,
+                    orgs: vec![DatasourcePlanOrgInput {
+                        source_org_id: String::new(),
+                        source_org_name: String::new(),
+                        target_org_id: args.org_id.map(|value| value.to_string()),
+                        target_org_name: String::new(),
+                        org_action: "current".to_string(),
+                        input_dir,
+                        records,
+                        live,
+                    }],
+                }
+            };
+            let report = build_datasource_plan(plan_input);
+            print_datasource_plan_report(
+                &report,
+                args.output_format,
+                args.show_same,
+                !args.no_header,
+                &args.output_columns,
+            )
+        }
+    }
+}
+
+fn build_routed_datasource_plan_input(
+    args: &super::DatasourcePlanArgs,
+) -> Result<DatasourcePlanInput> {
+    let context = build_auth_context(&args.common)?;
+    if context.auth_mode != "basic" {
+        return Err(message(
+            "Datasource plan with --use-export-org requires Basic auth (--basic-user / --basic-password).",
+        ));
+    }
+    let admin_api = build_api_client(&args.common)?;
+    let admin_client = admin_api.http_client();
+    let import_args = datasource_plan_to_import_args(args);
+    let scopes = discover_export_org_import_scopes(&import_args)?;
+    let mut orgs = Vec::new();
+    for scope in scopes {
+        let target_plan = resolve_export_org_target_plan(admin_client, &import_args, &scope)?;
+        let (_metadata, records) = load_import_records(&target_plan.input_dir, args.input_format)?;
+        let live = if let Some(target_org_id) = target_plan.target_org_id {
+            let org_client = build_http_client_for_org_from_api(&admin_api, target_org_id)?;
+            DatasourceResourceClient::new(&org_client).list_datasources()?
+        } else {
+            Vec::new()
+        };
+        orgs.push(DatasourcePlanOrgInput {
+            source_org_id: target_plan.source_org_id.to_string(),
+            source_org_name: target_plan.source_org_name,
+            target_org_id: target_plan.target_org_id.map(|value| value.to_string()),
+            target_org_name: String::new(),
+            org_action: target_plan.org_action.to_string(),
+            input_dir: target_plan.input_dir,
+            records,
+            live,
+        });
+    }
+    Ok(DatasourcePlanInput {
+        scope: "export-orgs".to_string(),
+        input_format: format!("{:?}", args.input_format).to_ascii_lowercase(),
+        prune: args.prune,
+        orgs,
+    })
+}
+
+fn datasource_plan_to_import_args(args: &super::DatasourcePlanArgs) -> DatasourceImportArgs {
+    DatasourceImportArgs {
+        common: args.common.clone(),
+        input_dir: args.input_dir.clone(),
+        input_format: args.input_format,
+        org_id: args.org_id,
+        use_export_org: args.use_export_org,
+        only_org_id: args.only_org_id.clone(),
+        create_missing_orgs: args.create_missing_orgs,
+        require_matching_export_org: false,
+        replace_existing: false,
+        update_existing_only: false,
+        secret_values: None,
+        secret_values_file: None,
+        dry_run: true,
+        table: false,
+        json: false,
+        output_format: None,
+        no_header: false,
+        output_columns: Vec::new(),
+        list_columns: false,
+        progress: false,
+        verbose: false,
     }
 }
 
@@ -734,6 +874,9 @@ fn materialize_datasource_command_auth(
             inner.common = materialize_dashboard_common_auth(inner.common.clone())?;
         }
         DatasourceGroupCommand::Diff(inner) => {
+            inner.common = materialize_dashboard_common_auth(inner.common.clone())?;
+        }
+        DatasourceGroupCommand::Plan(inner) => {
             inner.common = materialize_dashboard_common_auth(inner.common.clone())?;
         }
         DatasourceGroupCommand::Browse(inner) => {

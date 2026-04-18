@@ -31,3 +31,19 @@
 - Impact: `rust/src/cli/help/grouped_specs.rs`, `rust/src/cli/tests/help_rust_tests.rs`, `scripts/contracts/command-surface.json`, and AI trace docs. Runtime command behavior and Python implementation were intentionally left unchanged.
 - Rollback/Risk: low CLI help/contract fix. Rollback would make existing special help features undiscoverable from nearby help and would restore the unsupported dashboard root `--help-full` contract entry.
 - Follow-up: none.
+
+## 2026-04-15 - Make help-flat terminal-safe
+- Summary: changed `grafana-util --help-flat` from a padded/truncated table to one public command path per line. It no longer prints KIND/PURPOSE columns or ellipsized descriptions; detailed purpose and flags remain available through `<COMMAND> --help`.
+- Tests: updated unified help-flat coverage to require the command-only header, reject tabular columns, and keep bounded line length.
+- Test Run: `cargo fmt --manifest-path rust/Cargo.toml --all`; `cargo fmt --manifest-path rust/Cargo.toml --all --check`; `cargo test --manifest-path rust/Cargo.toml --quiet help_rust_tests`; manual `grafana-util --help-flat` smoke.
+- Impact: `rust/src/cli/help/flat.rs`, `rust/src/cli/tests/help_rust_tests.rs`, and AI trace docs. Runtime command behavior, public docs, README files, and Python implementation were intentionally left unchanged.
+- Rollback/Risk: low CLI help formatting change. Scripts that parse the old aligned table by fixed columns should switch to tabs; command paths remain first-column stable.
+- Follow-up: none.
+
+## 2026-04-16 - Mirror dashboard export folder paths
+- Summary: changed non-flat `dashboard export` raw and prompt path assembly to mirror Grafana folder inventory paths. Nested folders such as `Platform / Team / Infra` now write to `raw/Platform/Team/Infra/` and `prompt/Platform/Team/Infra/`; `--flat` and provisioning output layout remain unchanged.
+- Tests: added focused export coverage for duplicate leaf folder names under different parents and for unchanged provisioning layout.
+- Test Run: `cargo fmt --manifest-path rust/Cargo.toml --all`; `cargo fmt --manifest-path rust/Cargo.toml --all --check`; `cargo test --manifest-path rust/Cargo.toml --quiet export_dashboards_mirrors_nested_folder_paths_for_raw_and_prompt`; `cargo test --manifest-path rust/Cargo.toml --quiet export_focus_report_path_top_rust_tests`; `cargo test --manifest-path rust/Cargo.toml --quiet dashboard_export_import_topology_import_format_rust_tests`; `cargo test --manifest-path rust/Cargo.toml --quiet dashboard_cli_parser_help_list_export_rust_tests`; `cargo test --manifest-path rust/Cargo.toml --quiet help_rust_tests`; `cargo test --manifest-path rust/Cargo.toml --quiet`; `cargo clippy --manifest-path rust/Cargo.toml --all-targets -- -D warnings`; `make man`; `make html`; `make quality-docs-surface`; `make quality-ai-workflow`; `make man-check`; `make html-check`; `git diff --check`.
+- Impact: `rust/src/commands/dashboard/export.rs`, `rust/src/commands/dashboard/export_focus_report_path_top_rust_tests.rs`, dashboard export command help/docs, generated man/html docs, and AI trace docs. README files, Python implementation, and provisioning layout were intentionally left unchanged.
+- Rollback/Risk: medium operator-visible layout change for non-flat raw/prompt exports. Rollback would return raw/prompt exports to leaf-folder directories and can be limited to the new folder-inventory path helper plus docs/tests.
+- Follow-up: evaluate provisioning full-path layout separately with live Grafana file-provisioning behavior before changing that lane.

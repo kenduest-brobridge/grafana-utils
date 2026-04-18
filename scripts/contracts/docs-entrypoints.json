@@ -94,6 +94,7 @@
         "links": [
           { "command": "grafana-util dashboard export", "target": "dashboard-export.html" },
           { "command": "grafana-util dashboard import", "target": "dashboard-import.html" },
+          { "command": "grafana-util dashboard plan", "target": "dashboard-plan.html" },
           { "command": "grafana-util dashboard diff", "target": "dashboard-diff.html" },
           { "command": "grafana-util dashboard summary", "target": "dashboard-summary.html" },
           { "command": "grafana-util dashboard dependencies", "target": "dashboard-dependencies.html" },
@@ -122,7 +123,8 @@
           { "command": "grafana-util datasource types", "target": "datasource-types.html" },
           { "command": "grafana-util datasource list", "target": "datasource-list.html" },
           { "command": "grafana-util datasource browse", "target": "datasource-browse.html" },
-          { "command": "grafana-util datasource diff", "target": "datasource-diff.html" }
+          { "command": "grafana-util datasource diff", "target": "datasource-diff.html" },
+          { "command": "grafana-util datasource plan", "target": "datasource-plan.html" }
         ]
       },
       {
@@ -189,6 +191,7 @@
         "links": [
           { "command": "grafana-util access", "target": "access.html" },
           { "command": "grafana-util access user", "target": "access-user.html" },
+          { "command": "grafana-util access plan", "target": "access-plan.html" },
           { "command": "grafana-util access org", "target": "access-org.html" },
           { "command": "grafana-util access team", "target": "access-team.html" },
           { "command": "grafana-util access service-account", "target": "access-service-account.html" },

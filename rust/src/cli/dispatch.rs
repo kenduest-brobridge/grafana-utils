@@ -70,6 +70,7 @@ fn wrap_dashboard_root(command: DashboardRootCommand) -> DashboardCommand {
         DashboardRootCommand::Export(inner) => DashboardCommand::Export(inner),
         DashboardRootCommand::Import(inner) => DashboardCommand::Import(inner),
         DashboardRootCommand::Diff(inner) => DashboardCommand::Diff(inner),
+        DashboardRootCommand::Plan(inner) => DashboardCommand::Plan(inner),
         DashboardRootCommand::Convert { .. } => {
             unreachable!("convert is handled before dashboard dispatch")
         }

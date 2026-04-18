@@ -49,6 +49,7 @@ mod summary_builder;
 mod task_first;
 pub mod workbench;
 mod workspace_discovery;
+pub(crate) mod workspace_preview_contract;
 
 pub(crate) use self::audit::{
     build_sync_audit_document, build_sync_lock_document, build_sync_lock_document_from_lock,

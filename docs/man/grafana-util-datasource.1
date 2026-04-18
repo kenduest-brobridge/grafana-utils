@@ -7,14 +7,14 @@ grafana\-util\-datasource \- datasource catalog, export, import, diff, browse, a
 .PP
 .B grafana-util ds [\fISUBCOMMAND\fR] [\fIOPTIONS\fR]
 .SH DESCRIPTION
-grafana\-util datasource is the namespace for catalog lookup, inventory reads, export/import, diff, and live create/modify/delete workflows. The same namespace is also available as grafana\-util ds.
+grafana\-util datasource is the namespace for catalog lookup, inventory reads, export/import, diff, plan, and live create/modify/delete workflows. The same namespace is also available as grafana\-util ds.
 .PP
-Use this namespace when you want to inspect supported datasource types, read inventory from live Grafana or a local bundle, export a datasource bundle, compare a local bundle with Grafana, or create and maintain live datasources.
+Use this namespace when you want to inspect supported datasource types, read inventory from live Grafana or a local bundle, export a datasource bundle, compare or plan a local bundle against Grafana, or create and maintain live datasources.
 .SH WORKFLOW LANES
 .PP
 \- Inspect: types, browse, and list paths for live or local inventory.
 .PP
-\- Move: export, import, and diff paths when you are carrying datasource state between environments.
+\- Move: export, import, diff, and plan paths when you are carrying datasource state between environments.
 .PP
 \- Review Before Mutate: add, modify, and delete flows before a live datasource changes.
 .PP
@@ -67,7 +67,7 @@ load repo\-local defaults from grafana\-util.yaml.
 control JSON color output for the namespace.
 .SH SUCCESS CRITERIA
 .IP \(bu 2
-you can tell whether the next step is inventory, export/import, diff, or live mutation before touching a production data source
+you can tell whether the next step is inventory, export/import, diff, plan, or live mutation before touching a production data source
 .IP \(bu 2
 repeatable auth and profile settings keep the same commands usable across daily operations and CI
 .IP \(bu 2
@@ -84,7 +84,7 @@ if a live mutation fails, compare the intended input with the current live data 
 Datasource export follows a masked recovery contract. Treat the canonical export JSON as the replay source. Treat provisioning output as a derived projection for Grafana provisioning workflows.
 .SH EXAMPLES
 .PP
-grafana\-util datasource is the namespace for catalog lookup, inventory reads, export/import, diff, and live create/modify/delete workflows. The same namespace is also available as grafana\-util ds.
+grafana\-util datasource is the namespace for catalog lookup, inventory reads, export/import, diff, plan, and live create/modify/delete workflows. The same namespace is also available as grafana\-util ds.
 .EX
 grafana-util datasource --help
 .EE

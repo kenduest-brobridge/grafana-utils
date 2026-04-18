@@ -483,6 +483,14 @@ fn build_sync_plan_document_adds_dependency_ordering_metadata() {
     .unwrap();
 
     assert_eq!(plan["ordering"]["mode"], json!("dependency-aware"));
+    assert_eq!(
+        plan["ordering"]["createUpdateKindOrder"],
+        json!(["folder", "datasource", "dashboard", "alert", "access"])
+    );
+    assert_eq!(
+        plan["ordering"]["deleteKindOrder"],
+        json!(["alert", "dashboard", "datasource", "folder", "access"])
+    );
     let operations = plan["operations"].as_array().unwrap();
     assert_eq!(operations[0]["kind"], json!("folder"));
     assert_eq!(operations[0]["orderIndex"], json!(1));
@@ -493,6 +501,90 @@ fn build_sync_plan_document_adds_dependency_ordering_metadata() {
     assert_eq!(operations[2]["orderGroup"], json!("create-update"));
     assert_eq!(operations[2]["kindOrder"], json!(2));
     assert_eq!(plan["summary"]["blocked_reasons"], json!([]));
+}
+
+#[test]
+fn enrich_workspace_preview_document_normalizes_actions_and_domain_summary() {
+    let document = json!({
+        "kind": "grafana-utils-sync-plan",
+        "traceId": "sync-trace-demo",
+        "summary": {
+            "would_create": 1,
+            "would_update": 0,
+            "would_delete": 0,
+            "noop": 0,
+            "unmanaged": 0,
+            "alert_candidate": 0,
+            "alert_plan_only": 0,
+            "alert_blocked": 1
+        },
+        "operations": [
+            {
+                "action": "would-create",
+                "resourceKind": "alert",
+                "identity": "alert-main"
+            },
+            {
+                "action": "would-create",
+                "resourceKind": "folder",
+                "identity": "folder-main"
+            },
+            {
+                "action": "would-create",
+                "resourceKind": "dashboard",
+                "identity": "dashboard-main"
+            },
+            {
+                "action": "would-create",
+                "resourceKind": "datasource",
+                "identity": "datasource-main"
+            },
+            {
+                "action": "would-create",
+                "resourceKind": "access",
+                "identity": "team-main"
+            },
+            {
+                "action": "blocked-read-only",
+                "resourceKind": "dashboard",
+                "identity": "blocked-main",
+                "status": "blocked",
+                "reason": "target-read-only"
+            }
+        ]
+    });
+
+    let enriched =
+        crate::sync::workspace_preview_contract::enrich_workspace_preview_document(&document)
+            .unwrap();
+
+    assert_eq!(enriched["actions"].as_array().map(Vec::len), Some(6));
+    assert_eq!(enriched["operations"].as_array().map(Vec::len), Some(6));
+    assert_eq!(enriched["blockedReasons"], json!(["target-read-only"]));
+    assert_eq!(enriched["summary"]["actionCount"], json!(6));
+    assert_eq!(enriched["summary"]["domainCount"], json!(5));
+    assert_eq!(enriched["summary"]["blockedCount"], json!(1));
+    assert_eq!(enriched["summary"]["warningCount"], json!(0));
+
+    let actions = enriched["actions"].as_array().unwrap();
+    assert_eq!(actions[0]["resourceKind"], json!("folder"));
+    assert_eq!(actions[1]["resourceKind"], json!("datasource"));
+    assert_eq!(actions[2]["resourceKind"], json!("dashboard"));
+    assert_eq!(actions[3]["resourceKind"], json!("alert"));
+    assert_eq!(actions[4]["resourceKind"], json!("access"));
+    assert_eq!(actions[5]["action"], json!("blocked-read-only"));
+    assert_eq!(actions[5]["domain"], json!("dashboard"));
+    assert_eq!(actions[5]["status"], json!("blocked"));
+
+    let domains = enriched["domains"].as_array().unwrap();
+    assert!(domains
+        .iter()
+        .any(|domain| domain["id"] == json!("dashboard")));
+    assert!(domains
+        .iter()
+        .any(|domain| domain["id"] == json!("datasource")));
+    assert!(domains.iter().any(|domain| domain["id"] == json!("alert")));
+    assert!(domains.iter().any(|domain| domain["id"] == json!("access")));
 }
 
 #[test]

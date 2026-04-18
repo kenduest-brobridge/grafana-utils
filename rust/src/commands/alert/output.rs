@@ -45,14 +45,33 @@ pub(crate) fn render_alert_action_text(title: &str, document: &Value) -> Vec<Str
                 .get("action")
                 .and_then(Value::as_str)
                 .unwrap_or("unknown");
-            let reason = row.get("reason").and_then(Value::as_str).unwrap_or("");
-            if reason.is_empty() {
-                lines.push(format!("- {kind} {identity} action={action}"));
-            } else {
-                lines.push(format!(
-                    "- {kind} {identity} action={action} reason={reason}"
-                ));
+            let status = row.get("status").and_then(Value::as_str).unwrap_or("");
+            let blocked_reason = row.get("blockedReason").and_then(Value::as_str);
+            let reason = row.get("reason").and_then(Value::as_str);
+            let mut line = format!("- {kind} {identity} action={action}");
+            if !status.is_empty() {
+                line.push_str(&format!(" status={status}"));
             }
+            if let Some(blocked_reason) = blocked_reason {
+                if !blocked_reason.is_empty() {
+                    line.push_str(&format!(" blockedReason={blocked_reason}"));
+                }
+            } else if let Some(reason) = reason {
+                if !reason.is_empty() {
+                    line.push_str(&format!(" reason={reason}"));
+                }
+            }
+            if let Some(hints) = row.get("reviewHints").and_then(Value::as_array) {
+                let codes = hints
+                    .iter()
+                    .filter_map(|hint| hint.get("code").and_then(Value::as_str))
+                    .take(3)
+                    .collect::<Vec<_>>();
+                if !codes.is_empty() {
+                    line.push_str(&format!(" reviewHints={}", codes.join(",")));
+                }
+            }
+            lines.push(line);
         }
         if rows.len() > 20 {
             lines.push(format!("- ... {} more rows", rows.len() - 20));

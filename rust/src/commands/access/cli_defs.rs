@@ -1,6 +1,6 @@
 //! Clap schema for access-management CLI commands.
 //! Centralizes CLI argument enums and parser-normalization helpers for access handlers.
-use clap::{Args, Parser, Subcommand};
+use clap::{Args, Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 
 #[path = "access_cli_runtime.rs"]
@@ -24,8 +24,8 @@ pub(crate) use access_cli_runtime::{
     materialize_access_common_auth, materialize_access_common_auth_no_org_id,
 };
 pub use access_cli_shared::{
-    CommonCliArgs, CommonCliArgsNoOrgId, DryRunOutputFormat, ListOutputFormat, Scope,
-    ACCESS_EXPORT_KIND_ORGS, ACCESS_EXPORT_KIND_SERVICE_ACCOUNTS, ACCESS_EXPORT_KIND_TEAMS,
+    CommonCliArgs, CommonCliArgsNoOrgId, DryRunOutputFormat, ListOutputFormat, PlanOutputFormat,
+    Scope, ACCESS_EXPORT_KIND_ORGS, ACCESS_EXPORT_KIND_SERVICE_ACCOUNTS, ACCESS_EXPORT_KIND_TEAMS,
     ACCESS_EXPORT_KIND_USERS, ACCESS_EXPORT_METADATA_FILENAME, ACCESS_EXPORT_VERSION,
     ACCESS_ORG_EXPORT_FILENAME, ACCESS_SERVICE_ACCOUNT_EXPORT_FILENAME,
     ACCESS_TEAM_EXPORT_FILENAME, ACCESS_USER_EXPORT_FILENAME, DEFAULT_ACCESS_ORG_EXPORT_DIR,
@@ -34,11 +34,11 @@ pub use access_cli_shared::{
 use access_cli_shared::{
     ACCESS_ORG_ADD_HELP_TEXT, ACCESS_ORG_DELETE_HELP_TEXT, ACCESS_ORG_DIFF_HELP_TEXT,
     ACCESS_ORG_EXPORT_HELP_TEXT, ACCESS_ORG_HELP_TEXT, ACCESS_ORG_IMPORT_HELP_TEXT,
-    ACCESS_ORG_LIST_HELP_TEXT, ACCESS_ORG_MODIFY_HELP_TEXT, ACCESS_ROOT_HELP_TEXT,
-    ACCESS_TEAM_ADD_HELP_TEXT, ACCESS_TEAM_BROWSE_HELP_TEXT, ACCESS_TEAM_DELETE_HELP_TEXT,
-    ACCESS_TEAM_DIFF_HELP_TEXT, ACCESS_TEAM_EXPORT_HELP_TEXT, ACCESS_TEAM_HELP_TEXT,
-    ACCESS_TEAM_IMPORT_HELP_TEXT, ACCESS_TEAM_LIST_HELP_TEXT, ACCESS_TEAM_MODIFY_HELP_TEXT,
-    ACCESS_USER_HELP_TEXT,
+    ACCESS_ORG_LIST_HELP_TEXT, ACCESS_ORG_MODIFY_HELP_TEXT, ACCESS_PLAN_HELP_TEXT,
+    ACCESS_ROOT_HELP_TEXT, ACCESS_TEAM_ADD_HELP_TEXT, ACCESS_TEAM_BROWSE_HELP_TEXT,
+    ACCESS_TEAM_DELETE_HELP_TEXT, ACCESS_TEAM_DIFF_HELP_TEXT, ACCESS_TEAM_EXPORT_HELP_TEXT,
+    ACCESS_TEAM_HELP_TEXT, ACCESS_TEAM_IMPORT_HELP_TEXT, ACCESS_TEAM_LIST_HELP_TEXT,
+    ACCESS_TEAM_MODIFY_HELP_TEXT, ACCESS_USER_HELP_TEXT,
 };
 use access_service_account_cli::ACCESS_SERVICE_ACCOUNT_HELP_TEXT;
 pub use access_service_account_cli::{
@@ -65,6 +65,26 @@ fn parse_team_list_output_column(value: &str) -> std::result::Result<String, Str
         "members" => Ok("members".to_string()),
         _ => Err(format!(
             "Unsupported --output-columns value '{value}'. Supported values: all, id, name, email, member_count, members."
+        )),
+    }
+}
+
+fn parse_access_plan_output_column(value: &str) -> std::result::Result<String, String> {
+    match value {
+        "all" => Ok("all".to_string()),
+        "action_id" | "actionId" => Ok("action_id".to_string()),
+        "resource_kind" | "resourceKind" => Ok("resource_kind".to_string()),
+        "identity" => Ok("identity".to_string()),
+        "action" => Ok("action".to_string()),
+        "status" => Ok("status".to_string()),
+        "changed_fields" | "changedFields" => Ok("changed_fields".to_string()),
+        "changes" => Ok("changes".to_string()),
+        "target" => Ok("target".to_string()),
+        "blocked_reason" | "blockedReason" => Ok("blocked_reason".to_string()),
+        "review_hints" | "reviewHints" => Ok("review_hints".to_string()),
+        "source_path" | "sourcePath" => Ok("source_path".to_string()),
+        _ => Err(format!(
+            "Unsupported --output-columns value '{value}'. Supported values: all, action_id, resource_kind, identity, action, status, changed_fields, changes, target, blocked_reason, review_hints, source_path."
         )),
     }
 }
@@ -521,6 +541,74 @@ pub struct OrgDiffArgs {
     pub diff_dir: PathBuf,
 }
 
+/// Resource selector for access plan review flows.
+#[derive(Debug, Clone, ValueEnum, PartialEq, Eq)]
+pub enum AccessPlanResource {
+    User,
+    Team,
+    Org,
+    #[value(name = "service-account")]
+    ServiceAccount,
+    All,
+}
+
+/// Access plan review arguments.
+#[derive(Debug, Clone, Args)]
+pub struct AccessPlanArgs {
+    #[command(flatten)]
+    pub common: CommonCliArgs,
+    #[arg(
+        long = "input-dir",
+        help = "Directory that contains one or more access export bundles to review."
+    )]
+    pub input_dir: PathBuf,
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = AccessPlanResource::User,
+        help = "Select which access resource bundle to plan. The current vertical slice supports user bundles."
+    )]
+    pub resource: AccessPlanResource,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Include remote-only resources as delete candidates instead of just reporting them."
+    )]
+    pub prune: bool,
+    #[arg(
+        long,
+        value_delimiter = ',',
+        value_parser = parse_access_plan_output_column,
+        help = "For text or table output, render only these comma-separated columns. Use all to expand every supported column. Supported values: all, action_id, resource_kind, identity, action, status, changed_fields, changes, target, blocked_reason, review_hints, source_path. JSON-style aliases like actionId and resourceKind are also accepted."
+    )]
+    pub output_columns: Vec<String>,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Print the supported --output-columns values and exit."
+    )]
+    pub list_columns: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Hide the header row from table output."
+    )]
+    pub no_header: bool,
+    #[arg(
+        long,
+        default_value_t = false,
+        help = "Keep same-state rows visible in table output."
+    )]
+    pub show_same: bool,
+    #[arg(
+        long,
+        value_enum,
+        default_value_t = PlanOutputFormat::Text,
+        help = "Output format for access plan review. Use text, table, or json."
+    )]
+    pub output_format: PlanOutputFormat,
+}
+
 /// Organization inventory and lifecycle workflows.
 #[derive(Debug, Clone, Subcommand)]
 pub enum OrgCommand {
@@ -629,6 +717,8 @@ pub enum AccessCommand {
         #[command(subcommand)]
         command: ServiceAccountCommand,
     },
+    #[command(after_help = ACCESS_PLAN_HELP_TEXT)]
+    Plan(AccessPlanArgs),
 }
 
 #[derive(Debug, Clone, Parser)]

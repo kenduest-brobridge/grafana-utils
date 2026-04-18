@@ -6,9 +6,9 @@ use crate::http::JsonHttpClient;
 
 use super::cli_defs::{build_http_client, build_http_client_no_org_id};
 use super::{
-    browse_support, browse_terminal, org, pending_delete, service_account, team, team_browse, user,
-    user_browse, AccessCliArgs, AccessCommand, OrgCommand, ServiceAccountCommand,
-    ServiceAccountTokenCommand, TeamCommand, UserCommand,
+    access_plan, browse_support, browse_terminal, org, pending_delete, service_account, team,
+    team_browse, user, user_browse, AccessCliArgs, AccessCommand, OrgCommand,
+    ServiceAccountCommand, ServiceAccountTokenCommand, TeamCommand, UserCommand,
 };
 
 pub fn run_access_cli_with_client(client: &JsonHttpClient, args: &AccessCliArgs) -> Result<()> {
@@ -192,6 +192,9 @@ pub(crate) fn run_access_cli_with_materialized_args(args: &AccessCliArgs) -> Res
         AccessCommand::Org { command } => run_org_access_cli(command, args),
         AccessCommand::Team { command } => run_team_access_cli(command, args),
         AccessCommand::ServiceAccount { command } => run_service_account_access_cli(command, args),
+        AccessCommand::Plan(plan_args) => {
+            run_access_cli_with_common(&plan_args.common, args, build_http_client)
+        }
     }
 }
 
@@ -390,6 +393,9 @@ where
                 }
             },
         },
+        AccessCommand::Plan(args) => {
+            let _ = access_plan::access_plan_with_request(&mut request_json, args)?;
+        }
     }
     Ok(())
 }
