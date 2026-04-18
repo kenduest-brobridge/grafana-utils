@@ -23,21 +23,22 @@ Scope rules:
 - Output contracts have root and nested-path validation through `requiredFields`, `requiredPaths`, `pathTypes`, and golden fixtures.
 - Oversized Rust test facades and test-only `pub(crate)` visibility have been
   reduced. Do not re-open those unless a new mixed-responsibility hotspot appears.
-- Remaining risk is mostly maintainability: status producer drift, TUI
-  input/render modules, live apply paths, output contract depth, and overlapping
-  contract systems.
+- Remaining risk is mostly maintainability: the remaining status producers,
+  TUI input/render modules, live apply paths, output contract depth, and
+  overlapping contract systems.
 
 ## Active Execution Queue
 
 Run the next development passes in this order unless a CI failure or user report
 changes priority.
 
-1. Normalize project status producers around a shared internal status reading
-   model. Include live Grafana evidence such as health/version where available.
-2. Split the next TUI browse boundaries for access user browse input and
-   dashboard browse render/detail behavior.
-3. Split one safe phase out of sync live apply, starting with the next phase
-   boundary that is still mixed.
+1. Continue normalizing the remaining project status producers around a shared
+   internal status reading model. Include live Grafana evidence such as
+   health/version where available.
+2. Split the next TUI browse boundaries for access user browse input refresh
+   and any remaining dashboard browse support behavior that is still mixed.
+3. Continue sync live apply cleanup only where a stable phase boundary remains;
+   datasource target lookup and alert dispatch are already split.
 4. Reconcile output contracts and schema manifests so runtime goldens and
    published schema/help contracts have clear ownership.
 5. Finish dashboard prompt external export parity for the remaining library
@@ -46,6 +47,17 @@ changes priority.
 Completed cleanup now closed:
 
 - Push baseline on `dev` completed and is already validated.
+- Status producers routed through `StatusReading` for access and dashboard.
+- Access user browse mutation dispatch was split into a dedicated mutation
+  module.
+- Dashboard browse footer and action rendering were split from the main render
+  path.
+- Sync live apply datasource target lookup was split into a shared helper.
+- Sync live apply alert dispatch was split into a dedicated helper.
+- Dashboard browse live detail loading was split from browse document support.
+- Raw-to-prompt resolver responsibilities were split into prompt path and
+  datasource resolution modules.
+- Raw-to-prompt clippy test module ordering was fixed.
 - Output contract checker collection and enum constraint checks are in place.
 - Docs diff classifier is in place.
 - Feature matrix full probe is in place.
