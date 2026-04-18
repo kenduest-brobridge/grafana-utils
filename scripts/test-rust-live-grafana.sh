@@ -1675,7 +1675,7 @@ run_access_smoke() {
     and (.summary.updated == 1)
     and (.summary.skipped == (($record_count | tonumber) - 1))
     and (.rows | length == ($record_count | tonumber))
-    and (.rows | any(.identity == "rust-access-service-account" and .action == "update" and .detail == "would update fields=role,disabled"))
+    and (.rows | any(.identity == "rust-access-service-account" and .action == "update" and .detail == "would update fields=role,disabled role=Viewer"))
   ' --arg record_count "${service_account_record_count}" "${service_account_import_dry_run_json}" >/dev/null \
     || fail "rust access service-account dry-run import did not predict the expected update"
 
