@@ -363,176 +363,140 @@ pub(crate) fn run_sync_review_tui(plan: &Value) -> Result<Value> {
             }
             let selected = state.selected().unwrap_or(0);
             match key.code {
+                KeyCode::Up if diff_mode => match diff_focus {
+                    DiffPaneFocus::Live => {
+                        live_diff_cursor = live_diff_cursor.saturating_sub(1);
+                    }
+                    DiffPaneFocus::Desired => {
+                        desired_diff_cursor = desired_diff_cursor.saturating_sub(1);
+                    }
+                },
                 KeyCode::Up => {
-                    if diff_mode {
-                        match diff_focus {
-                            DiffPaneFocus::Live => {
-                                live_diff_cursor = live_diff_cursor.saturating_sub(1);
-                            }
-                            DiffPaneFocus::Desired => {
-                                desired_diff_cursor = desired_diff_cursor.saturating_sub(1);
+                    let next = selected.saturating_sub(1);
+                    state.select(Some(next));
+                }
+                KeyCode::Down if diff_mode => {
+                    if let Some(item) = items.get(selected) {
+                        if let Ok(model) = build_review_operation_diff_model(&item.operation) {
+                            match diff_focus {
+                                DiffPaneFocus::Live => {
+                                    live_diff_cursor = (live_diff_cursor + 1)
+                                        .min(diff_scroll_max(&model, DiffPaneFocus::Live));
+                                }
+                                DiffPaneFocus::Desired => {
+                                    desired_diff_cursor = (desired_diff_cursor + 1)
+                                        .min(diff_scroll_max(&model, DiffPaneFocus::Desired));
+                                }
                             }
                         }
-                    } else {
-                        let next = selected.saturating_sub(1);
-                        state.select(Some(next));
                     }
                 }
                 KeyCode::Down => {
-                    if diff_mode {
-                        if let Some(item) = items.get(selected) {
-                            if let Ok(model) = build_review_operation_diff_model(&item.operation) {
-                                match diff_focus {
-                                    DiffPaneFocus::Live => {
-                                        live_diff_cursor = (live_diff_cursor + 1)
-                                            .min(diff_scroll_max(&model, DiffPaneFocus::Live));
-                                    }
-                                    DiffPaneFocus::Desired => {
-                                        desired_diff_cursor = (desired_diff_cursor + 1)
-                                            .min(diff_scroll_max(&model, DiffPaneFocus::Desired));
-                                    }
-                                }
-                            }
+                    let next = (selected + 1).min(items.len().saturating_sub(1));
+                    state.select(Some(next));
+                }
+                KeyCode::Left if diff_mode => match diff_focus {
+                    DiffPaneFocus::Live if !live_wrap_lines => {
+                        live_horizontal_offset = live_horizontal_offset.saturating_sub(4);
+                    }
+                    DiffPaneFocus::Desired if !desired_wrap_lines => {
+                        desired_horizontal_offset = desired_horizontal_offset.saturating_sub(4);
+                    }
+                    _ => {}
+                },
+                KeyCode::Right if diff_mode => match diff_focus {
+                    DiffPaneFocus::Live if !live_wrap_lines => live_horizontal_offset += 4,
+                    DiffPaneFocus::Desired if !desired_wrap_lines => desired_horizontal_offset += 4,
+                    _ => {}
+                },
+                KeyCode::Char('[') if diff_mode => {
+                    let next = selected.saturating_sub(1);
+                    state.select(Some(next));
+                    live_diff_cursor = 0;
+                    desired_diff_cursor = 0;
+                    live_horizontal_offset = 0;
+                    desired_horizontal_offset = 0;
+                }
+                KeyCode::Char(']') if diff_mode => {
+                    let next = (selected + 1).min(items.len().saturating_sub(1));
+                    state.select(Some(next));
+                    live_diff_cursor = 0;
+                    desired_diff_cursor = 0;
+                    live_horizontal_offset = 0;
+                    desired_horizontal_offset = 0;
+                }
+                KeyCode::Tab if diff_mode => {
+                    diff_focus = match diff_focus {
+                        DiffPaneFocus::Live => DiffPaneFocus::Desired,
+                        DiffPaneFocus::Desired => DiffPaneFocus::Live,
+                    };
+                }
+                KeyCode::Char('w') | KeyCode::Char('W') if diff_mode => {
+                    let apply_both = key.modifiers.contains(KeyModifiers::SHIFT)
+                        || matches!(key.code, KeyCode::Char('W'));
+                    if apply_both {
+                        let next_wrap = !(live_wrap_lines && desired_wrap_lines);
+                        live_wrap_lines = next_wrap;
+                        desired_wrap_lines = next_wrap;
+                        if next_wrap {
+                            live_horizontal_offset = 0;
+                            desired_horizontal_offset = 0;
                         }
                     } else {
-                        let next = (selected + 1).min(items.len().saturating_sub(1));
-                        state.select(Some(next));
-                    }
-                }
-                KeyCode::Left => {
-                    if diff_mode {
-                        match diff_focus {
-                            DiffPaneFocus::Live if !live_wrap_lines => {
-                                live_horizontal_offset = live_horizontal_offset.saturating_sub(4);
-                            }
-                            DiffPaneFocus::Desired if !desired_wrap_lines => {
-                                desired_horizontal_offset =
-                                    desired_horizontal_offset.saturating_sub(4);
-                            }
-                            _ => {}
-                        }
-                    }
-                }
-                KeyCode::Right => {
-                    if diff_mode {
-                        match diff_focus {
-                            DiffPaneFocus::Live if !live_wrap_lines => live_horizontal_offset += 4,
-                            DiffPaneFocus::Desired if !desired_wrap_lines => {
-                                desired_horizontal_offset += 4
-                            }
-                            _ => {}
-                        }
-                    }
-                }
-                KeyCode::Char('[') => {
-                    if diff_mode {
-                        let next = selected.saturating_sub(1);
-                        state.select(Some(next));
-                        live_diff_cursor = 0;
-                        desired_diff_cursor = 0;
-                        live_horizontal_offset = 0;
-                        desired_horizontal_offset = 0;
-                    }
-                }
-                KeyCode::Char(']') => {
-                    if diff_mode {
-                        let next = (selected + 1).min(items.len().saturating_sub(1));
-                        state.select(Some(next));
-                        live_diff_cursor = 0;
-                        desired_diff_cursor = 0;
-                        live_horizontal_offset = 0;
-                        desired_horizontal_offset = 0;
-                    }
-                }
-                KeyCode::Tab => {
-                    if diff_mode {
-                        diff_focus = match diff_focus {
-                            DiffPaneFocus::Live => DiffPaneFocus::Desired,
-                            DiffPaneFocus::Desired => DiffPaneFocus::Live,
-                        };
-                    }
-                }
-                KeyCode::Char('w') | KeyCode::Char('W') => {
-                    if diff_mode {
-                        let apply_both = key.modifiers.contains(KeyModifiers::SHIFT)
-                            || matches!(key.code, KeyCode::Char('W'));
-                        if apply_both {
-                            let next_wrap = !(live_wrap_lines && desired_wrap_lines);
-                            live_wrap_lines = next_wrap;
-                            desired_wrap_lines = next_wrap;
-                            if next_wrap {
-                                live_horizontal_offset = 0;
-                                desired_horizontal_offset = 0;
-                            }
-                        } else {
-                            match diff_focus {
-                                DiffPaneFocus::Live => {
-                                    live_wrap_lines = !live_wrap_lines;
-                                    if live_wrap_lines {
-                                        live_horizontal_offset = 0;
-                                    }
-                                }
-                                DiffPaneFocus::Desired => {
-                                    desired_wrap_lines = !desired_wrap_lines;
-                                    if desired_wrap_lines {
-                                        desired_horizontal_offset = 0;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                KeyCode::PageUp => {
-                    if diff_mode {
                         match diff_focus {
                             DiffPaneFocus::Live => {
-                                live_diff_cursor = live_diff_cursor.saturating_sub(10);
+                                live_wrap_lines = !live_wrap_lines;
+                                if live_wrap_lines {
+                                    live_horizontal_offset = 0;
+                                }
                             }
                             DiffPaneFocus::Desired => {
-                                desired_diff_cursor = desired_diff_cursor.saturating_sub(10);
-                            }
-                        }
-                    }
-                }
-                KeyCode::PageDown => {
-                    if diff_mode {
-                        if let Some(item) = items.get(selected) {
-                            if let Ok(model) = build_review_operation_diff_model(&item.operation) {
-                                match diff_focus {
-                                    DiffPaneFocus::Live => {
-                                        live_diff_cursor = (live_diff_cursor + 10)
-                                            .min(diff_scroll_max(&model, DiffPaneFocus::Live));
-                                    }
-                                    DiffPaneFocus::Desired => {
-                                        desired_diff_cursor = (desired_diff_cursor + 10)
-                                            .min(diff_scroll_max(&model, DiffPaneFocus::Desired));
-                                    }
+                                desired_wrap_lines = !desired_wrap_lines;
+                                if desired_wrap_lines {
+                                    desired_horizontal_offset = 0;
                                 }
                             }
                         }
                     }
                 }
-                KeyCode::Home => {
-                    if diff_mode {
-                        match diff_focus {
-                            DiffPaneFocus::Live => live_diff_cursor = 0,
-                            DiffPaneFocus::Desired => desired_diff_cursor = 0,
+                KeyCode::PageUp if diff_mode => match diff_focus {
+                    DiffPaneFocus::Live => {
+                        live_diff_cursor = live_diff_cursor.saturating_sub(10);
+                    }
+                    DiffPaneFocus::Desired => {
+                        desired_diff_cursor = desired_diff_cursor.saturating_sub(10);
+                    }
+                },
+                KeyCode::PageDown if diff_mode => {
+                    if let Some(item) = items.get(selected) {
+                        if let Ok(model) = build_review_operation_diff_model(&item.operation) {
+                            match diff_focus {
+                                DiffPaneFocus::Live => {
+                                    live_diff_cursor = (live_diff_cursor + 10)
+                                        .min(diff_scroll_max(&model, DiffPaneFocus::Live));
+                                }
+                                DiffPaneFocus::Desired => {
+                                    desired_diff_cursor = (desired_diff_cursor + 10)
+                                        .min(diff_scroll_max(&model, DiffPaneFocus::Desired));
+                                }
+                            }
                         }
                     }
                 }
-                KeyCode::End => {
-                    if diff_mode {
-                        if let Some(item) = items.get(selected) {
-                            if let Ok(model) = build_review_operation_diff_model(&item.operation) {
-                                match diff_focus {
-                                    DiffPaneFocus::Live => {
-                                        live_diff_cursor =
-                                            diff_scroll_max(&model, DiffPaneFocus::Live);
-                                    }
-                                    DiffPaneFocus::Desired => {
-                                        desired_diff_cursor =
-                                            diff_scroll_max(&model, DiffPaneFocus::Desired);
-                                    }
+                KeyCode::Home if diff_mode => match diff_focus {
+                    DiffPaneFocus::Live => live_diff_cursor = 0,
+                    DiffPaneFocus::Desired => desired_diff_cursor = 0,
+                },
+                KeyCode::End if diff_mode => {
+                    if let Some(item) = items.get(selected) {
+                        if let Ok(model) = build_review_operation_diff_model(&item.operation) {
+                            match diff_focus {
+                                DiffPaneFocus::Live => {
+                                    live_diff_cursor = diff_scroll_max(&model, DiffPaneFocus::Live);
+                                }
+                                DiffPaneFocus::Desired => {
+                                    desired_diff_cursor =
+                                        diff_scroll_max(&model, DiffPaneFocus::Desired);
                                 }
                             }
                         }
@@ -545,37 +509,31 @@ pub(crate) fn run_sync_review_tui(plan: &Value) -> Result<Value> {
                         }
                     }
                 }
-                KeyCode::Char('a') => {
-                    if !diff_mode {
-                        selected_keys = items.iter().map(|item| item.key.clone()).collect();
-                    }
+                KeyCode::Char('a') if !diff_mode => {
+                    selected_keys = items.iter().map(|item| item.key.clone()).collect();
                 }
-                KeyCode::Char('n') => {
-                    if !diff_mode {
-                        selected_keys.clear();
-                    }
+                KeyCode::Char('n') if !diff_mode => {
+                    selected_keys.clear();
                 }
-                KeyCode::Enter => {
-                    if !diff_mode {
-                        diff_mode = true;
-                        diff_focus = DiffPaneFocus::Live;
-                        live_diff_cursor = 0;
-                        desired_diff_cursor = 0;
-                        live_horizontal_offset = 0;
-                        desired_horizontal_offset = 0;
-                    }
+                KeyCode::Enter if !diff_mode => {
+                    diff_mode = true;
+                    diff_focus = DiffPaneFocus::Live;
+                    live_diff_cursor = 0;
+                    desired_diff_cursor = 0;
+                    live_horizontal_offset = 0;
+                    desired_horizontal_offset = 0;
                 }
                 KeyCode::Char('c') => return filter_review_plan_operations(plan, &selected_keys),
+                KeyCode::Char('q') | KeyCode::Esc if diff_mode => {
+                    diff_mode = false;
+                    diff_focus = DiffPaneFocus::Live;
+                    live_diff_cursor = 0;
+                    desired_diff_cursor = 0;
+                    live_horizontal_offset = 0;
+                    desired_horizontal_offset = 0;
+                    continue;
+                }
                 KeyCode::Char('q') | KeyCode::Esc => {
-                    if diff_mode {
-                        diff_mode = false;
-                        diff_focus = DiffPaneFocus::Live;
-                        live_diff_cursor = 0;
-                        desired_diff_cursor = 0;
-                        live_horizontal_offset = 0;
-                        desired_horizontal_offset = 0;
-                        continue;
-                    }
                     return Err(message("Interactive sync review cancelled."));
                 }
                 _ => {}

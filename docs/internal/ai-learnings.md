@@ -1,5 +1,13 @@
 # ai-learnings.md
 
+## 2026-04-18 - Fix Rust 1.95 sync review clippy failure
+- Mistake/Symptom: local `cargo clippy --all-targets -- -D warnings` passed, but GitHub Actions `rust-quality` failed on the same branch with many `clippy::collapsible_match` errors in `sync/review_tui.rs`.
+- Root Cause: local stable was Rust 1.94.1 while CI installed Rust 1.95.0, which promoted or added stricter `collapsible_match` diagnostics for `match key.code` arms containing only nested `if diff_mode` checks.
+- Fix: rewrite the key handling as guarded match arms such as `KeyCode::Up if diff_mode` and fallback non-diff arms, preserving behavior while satisfying Rust 1.95 clippy.
+- Prevention: when CI fails only on clippy after tests pass, compare the local and CI Rust versions before assuming the code path is untested locally.
+- Keywords: Rust 1.95 clippy collapsible_match GitHub Actions rust-quality review_tui diff_mode match guard
+- Refs: `rust/src/commands/sync/review_tui.rs`, `cargo clippy --manifest-path rust/Cargo.toml --all-targets -- -D warnings`
+
 ## 2026-04-16 - Dashboard export layout extra-file detection
 - Mistake/Symptom: real export-layout dry-run initially reported four `extraFiles` for dashboards whose index paths used `ARCHIVED` while the filesystem entry was `Archived`.
 - Root Cause: the planner compared index-relative paths as strings. On a case-insensitive macOS filesystem, `ARCHIVED/...` and `Archived/...` can refer to the same file, so string comparison produced false unindexed-file findings.
