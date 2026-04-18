@@ -15,6 +15,14 @@ Current AI change log only.
 - Older entries moved to [`ai-changes-archive-2026-04-17.md`](docs/internal/archive/ai-changes-archive-2026-04-17.md).
 - Older entries moved to [`ai-changes-archive-2026-04-18.md`](docs/internal/archive/ai-changes-archive-2026-04-18.md).
 
+## 2026-04-18 - Add dashboard plan multi-org routing
+- Summary: enabled `grafana-util dashboard plan --use-export-org` for combined dashboard export roots. The planner now discovers raw/source org-scoped exports, resolves matching destination org IDs with Basic auth, collects scoped live state per existing org, aggregates multi-org plan summaries, and represents missing destination orgs as blocked or review-only `would-create` rows.
+- Tests: added focused dashboard plan regressions for multi-org aggregation, missing target org handling, Basic-auth enforcement, `--only-org-id` filtering, selected-missing errors, and missing-org live-call isolation.
+- Test Run: `cargo test --manifest-path rust/Cargo.toml --quiet dashboard_plan`; `cargo test --manifest-path rust/Cargo.toml --quiet dashboard_cli_parser_help_workflow`; `cargo test --manifest-path rust/Cargo.toml --quiet`; `cargo clippy --manifest-path rust/Cargo.toml --all-targets -- -D warnings`; `cargo fmt --manifest-path rust/Cargo.toml --all --check`; `make man`; `make html`; `make quality-docs-surface`; `make quality-ai-workflow`; `make man-check`; `make html-check`; `git diff --check`.
+- Impact: Rust dashboard plan routing/model/tests, dashboard plan type module, dashboard plan command docs in English and zh-TW, generated man/html docs, and AI trace docs. README files and Python implementation were intentionally left unchanged.
+- Rollback/Risk: medium dashboard planning behavior expansion. Rollback should restore single-org `DashboardPlanInput` handling and return `--use-export-org` to unsupported while leaving the existing single-org plan path intact.
+- Follow-up: consider extracting dashboard plan route discovery into a shared import/plan helper after source/raw routing has more real-world coverage.
+
 ## 2026-04-18 - Extend access plan resource coverage
 - Summary: extended `grafana-util access plan` beyond user bundles. The planner now supports concrete `--resource org`, `--resource team`, and `--resource service-account` modes with the same stable action contract, opt-in prune handling, changed fields, target evidence, and review hints. `--resource all` remains a future aggregate layer.
 - Tests: added focused Rust plan regressions for org, team, and service-account create/same/update/extra/delete-candidate rows, including team membership/provisioned hints and service-account role/disabled hints.
@@ -86,10 +94,3 @@ Current AI change log only.
 - Impact: Rust datasource export/import planning, dry-run rendering, datasource import parser/table tests, datasource command docs, datasource masked-recovery contract docs, TODO backlog, and AI trace docs.
 - Rollback/Risk: medium datasource import behavior change. Rollback would restore numeric-id update requests and remove early read-only blocking/target evidence from dry-run output.
 - Follow-up: Grafana K8s datasource API support remains a later adapter and is intentionally not part of this change.
-
-## 2026-04-17 - Align dashboard prompt external export semantics
-- Summary: aligned prompt-lane datasource behavior with Grafana UI external-export semantics. Prompt conversion now keeps datasource variables as variables instead of treating their plugin filter query as a datasource input, no longer synthesizes a `datasource` variable for single-family dashboards, and preserves `$datasource` placeholders during raw-to-prompt pre-resolution. When a used datasource variable has a concrete current datasource, the variable current value now points at the generated `${DS_*}` input while panel and target references stay variable-based.
-- Tests: updated raw-to-prompt regression coverage for single-family concrete datasource refs, datasource template variables, object and string placeholder datasource refs, datasource-variable current mapping, and existing multi/generic datasource behavior.
-- Test Run: `cargo fmt --manifest-path rust/Cargo.toml --all`; `cargo fmt --manifest-path rust/Cargo.toml --all --check`; `cargo test --manifest-path rust/Cargo.toml --quiet raw_to_prompt`; `cargo test --manifest-path rust/Cargo.toml --quiet`; `cargo clippy --manifest-path rust/Cargo.toml --all-targets -- -D warnings`; `make man`; `make html`; `make quality-docs-surface`; real raw-to-prompt sample conversion reported scanned=112, converted=112, failed=0.
-- Impact: prompt-lane Rust conversion, raw-to-prompt regression coverage, command/reference docs, maintainer prompt semantics note, and AI trace docs.
-- Rollback/Risk: medium prompt-lane behavior change. Rollback would restore the synthetic datasource variable shortcut, but would also reintroduce duplicate datasource input prompts for dashboards that already define a datasource variable.

@@ -78,6 +78,7 @@ mod live;
 mod live_project_status;
 mod models;
 mod plan;
+mod plan_types;
 mod project_status;
 mod prompt;
 mod prompt_helpers;

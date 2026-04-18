@@ -15,6 +15,13 @@ Current AI-maintained status only.
 - Older entries moved to [`ai-status-archive-2026-04-17.md`](docs/internal/archive/ai-status-archive-2026-04-17.md).
 - Older entries moved to [`ai-status-archive-2026-04-18.md`](docs/internal/archive/ai-status-archive-2026-04-18.md).
 
+## 2026-04-18 - Add dashboard plan multi-org routing
+- State: Done
+- Scope: Rust dashboard plan routing/model/tests, dashboard plan command docs, generated docs if needed, and AI trace docs. README files and Python implementation are out of scope.
+- Baseline: `dashboard plan` can review one local dashboard export tree against one live Grafana org, but `--use-export-org`, `--only-org-id`, and `--create-missing-orgs` are parsed and then rejected as unsupported.
+- Current Update: Added export-org routing for dashboard plan, including all-org scope discovery, Basic-auth org resolution, scoped live collection for matching orgs, and missing-org review rows.
+- Result: Focused dashboard plan/parser tests, full Rust tests, clippy, formatting, docs generation, docs-surface, AI workflow, man/html checks, and whitespace checks pass.
+
 ## 2026-04-18 - Extend access plan resource coverage
 - State: Done
 - Scope: Rust access plan team/org/service-account slices, focused access tests, access plan docs, generated docs, and AI trace docs. README files and Python implementation are out of scope.
@@ -49,10 +56,3 @@ Current AI-maintained status only.
 - Baseline: prompt export always emitted empty `__elements`, raw-to-prompt parity coverage did not include Grafana-source datasource/library/v2 fixture shapes, and dashboard import/publish did not surface or block provisioned target dashboard ownership before live overwrite.
 - Current Update: Live dashboard export now fetches referenced library panel models into prompt `__elements` while offline raw-to-prompt remains warning-only. Raw-to-prompt tests now cover selected datasource variables, default datasource variables, special datasource refs, string datasource mappings, library panel warnings, and v2/k8s rejection. Dashboard import/publish dry-run surfaces target evidence and live apply blocks provisioned overwrite before POST.
 - Result: Focused dashboard tests, full Rust tests, clippy, formatting, docs-surface, generated man/html checks, and whitespace checks pass.
-
-## 2026-04-18 - Extend access preflight from Grafana source
-- State: Done
-- Scope: Rust access service-account import/token workflows, user modify guardrails, org import user-role preflight, focused access tests, access command docs, generated docs, and AI trace docs. README files and Python implementation are out of scope.
-- Baseline: user/team import preflight is hardened, but service-account import still has an older dry-run shape, user modify can partially write before later Grafana-source blockers, org import dry-run does not inspect live users for role plans, and token add surfaces Grafana TTL/config failures as raw API errors.
-- Current Update: Service-account import now validates roles and emits status/blocked/target evidence; user modify preflights external/provisioned/synced blockers before writes; org import dry-run checks live org users and blocks externally synced role changes; token add preserves Grafana errors while adding targeted TTL/duplicate-name hints.
-- Result: Focused access tests, full Rust tests, clippy, formatting, generated docs, docs-surface, man/html checks, AI workflow, and whitespace checks pass.

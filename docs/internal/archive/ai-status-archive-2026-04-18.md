@@ -46,3 +46,10 @@
 - Baseline: team import can pass login-style identities into Grafana's bulk team membership endpoint even though the official legacy endpoint resolves bulk members by email, and user/team dry-run does not consistently block externally synced users or provisioned teams before live apply.
 - Current Update: Team import now resolves member/admin identities to live org-user emails before bulk apply, blocks missing-email identities, and surfaces provisioned-team blockers with target evidence. User import now blocks external/synced profile, org role, and Grafana-admin changes before apply while dry-run rows carry target evidence and blocked status.
 - Result: Focused team/user import tests, access test suite, full Rust tests, clippy, formatting, generated docs, docs-surface, man/html checks, AI workflow, and whitespace checks pass.
+
+## 2026-04-18 - Extend access preflight from Grafana source
+- State: Done
+- Scope: Rust access service-account import/token workflows, user modify guardrails, org import user-role preflight, focused access tests, access command docs, generated docs, and AI trace docs. README files and Python implementation are out of scope.
+- Baseline: user/team import preflight is hardened, but service-account import still has an older dry-run shape, user modify can partially write before later Grafana-source blockers, org import dry-run does not inspect live users for role plans, and token add surfaces Grafana TTL/config failures as raw API errors.
+- Current Update: Service-account import now validates roles and emits status/blocked/target evidence; user modify preflights external/provisioned/synced blockers before writes; org import dry-run checks live org users and blocks externally synced role changes; token add preserves Grafana errors while adding targeted TTL/duplicate-name hints.
+- Result: Focused access tests, full Rust tests, clippy, formatting, generated docs, docs-surface, man/html checks, AI workflow, and whitespace checks pass.

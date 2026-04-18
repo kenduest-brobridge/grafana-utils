@@ -1,158 +1,36 @@
 //! Dashboard review-first plan builder and renderer.
 
-use serde::Serialize;
 use serde_json::{Map, Value};
 use std::collections::{BTreeMap, BTreeSet};
+use std::fs;
 use std::path::{Path, PathBuf};
 
+use super::build_folder_path;
+use super::cli_defs::{DashboardImportInputFormat, InspectExportInputType};
+use super::files::resolve_dashboard_export_root;
+use super::import_lookup::ImportLookupCache;
+use super::import_target::build_dashboard_target_review;
+use super::import_validation::resolve_target_org_plan_for_export_scope_with_request;
+use super::plan_types::{
+    DashboardPlanAction, DashboardPlanChange, DashboardPlanInput, DashboardPlanOrgSummary,
+    DashboardPlanReport, DashboardPlanSummary, LiveDashboard, LocalDashboard, OrgPlanInput,
+    PlanLiveState,
+};
+use super::source_loader::resolve_dashboard_workspace_variant_dir;
+use super::{
+    build_auth_context, build_datasource_catalog, build_http_client, build_http_client_for_org,
+    collect_datasource_refs, discover_dashboard_files, extract_dashboard_object,
+    load_dashboard_source, load_datasource_inventory, load_export_metadata, load_folder_inventory,
+    load_json_file, lookup_datasource, FolderInventoryItem, DEFAULT_FOLDER_TITLE,
+    DEFAULT_FOLDER_UID, DEFAULT_PAGE_SIZE, PROMPT_EXPORT_SUBDIR, RAW_EXPORT_SUBDIR,
+};
 use crate::common::{
     message, print_supported_columns, render_json_value, string_field, tool_version,
     value_as_object, Result,
 };
-use crate::grafana_api::DashboardResourceClient;
-
-use super::build_folder_path;
-use super::cli_defs::{DashboardImportInputFormat, InspectExportInputType};
-use super::import_target::build_dashboard_target_review;
-use super::{
-    build_datasource_catalog, build_http_client, build_http_client_for_org,
-    collect_datasource_refs, discover_dashboard_files, extract_dashboard_object,
-    load_dashboard_source, load_export_metadata, load_folder_inventory, load_json_file,
-    lookup_datasource, FolderInventoryItem, LoadedDashboardSource, DEFAULT_FOLDER_TITLE,
-    DEFAULT_FOLDER_UID, DEFAULT_PAGE_SIZE,
-};
 
 const PLAN_KIND: &str = "grafana-util-dashboard-plan";
 const PLAN_SCHEMA_VERSION: i64 = 1;
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct DashboardPlanChange {
-    pub(crate) field: String,
-    pub(crate) before: Value,
-    pub(crate) after: Value,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct DashboardPlanAction {
-    pub(crate) action_id: String,
-    pub(crate) domain: String,
-    pub(crate) resource_kind: String,
-    pub(crate) dashboard_uid: String,
-    pub(crate) title: String,
-    pub(crate) folder_uid: String,
-    pub(crate) folder_path: String,
-    pub(crate) source_org_id: Option<String>,
-    pub(crate) source_org_name: String,
-    pub(crate) target_org_id: Option<String>,
-    pub(crate) target_org_name: String,
-    pub(crate) match_basis: String,
-    pub(crate) action: String,
-    pub(crate) status: String,
-    pub(crate) changed_fields: Vec<String>,
-    pub(crate) changes: Vec<DashboardPlanChange>,
-    pub(crate) source_file: Option<String>,
-    pub(crate) target_uid: Option<String>,
-    pub(crate) target_version: Option<i64>,
-    pub(crate) target_evidence: Vec<String>,
-    pub(crate) dependency_hints: Vec<String>,
-    pub(crate) blocked_reason: Option<String>,
-    pub(crate) review_hints: Vec<String>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct DashboardPlanOrgSummary {
-    pub(crate) source_org_id: Option<String>,
-    pub(crate) source_org_name: String,
-    pub(crate) target_org_id: Option<String>,
-    pub(crate) target_org_name: String,
-    pub(crate) org_action: String,
-    pub(crate) input_dir: String,
-    pub(crate) checked: usize,
-    pub(crate) same: usize,
-    pub(crate) create: usize,
-    pub(crate) update: usize,
-    pub(crate) extra: usize,
-    pub(crate) delete: usize,
-    pub(crate) blocked: usize,
-    pub(crate) warning: usize,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct DashboardPlanSummary {
-    pub(crate) checked: usize,
-    pub(crate) same: usize,
-    pub(crate) create: usize,
-    pub(crate) update: usize,
-    pub(crate) extra: usize,
-    pub(crate) delete: usize,
-    pub(crate) blocked: usize,
-    pub(crate) warning: usize,
-    pub(crate) org_count: usize,
-    pub(crate) would_create_org_count: usize,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub(crate) struct DashboardPlanReport {
-    pub(crate) kind: String,
-    #[serde(rename = "schemaVersion")]
-    pub(crate) schema_version: i64,
-    pub(crate) tool_version: String,
-    pub(crate) mode: String,
-    pub(crate) scope: String,
-    pub(crate) input_type: String,
-    pub(crate) prune: bool,
-    pub(crate) summary: DashboardPlanSummary,
-    pub(crate) orgs: Vec<DashboardPlanOrgSummary>,
-    pub(crate) actions: Vec<DashboardPlanAction>,
-}
-
-#[derive(Debug, Clone)]
-struct LocalDashboard {
-    file_path: String,
-    dashboard: Value,
-    dashboard_uid: String,
-    title: String,
-    folder_uid: String,
-    folder_path: String,
-}
-
-#[derive(Debug, Clone)]
-struct LiveDashboard {
-    uid: String,
-    title: String,
-    folder_uid: String,
-    folder_path: String,
-    version: Option<i64>,
-    evidence: Vec<String>,
-    payload: Value,
-}
-
-#[derive(Debug, Clone)]
-struct OrgPlanInput {
-    source_org_id: Option<String>,
-    source_org_name: String,
-    target_org_id: Option<String>,
-    target_org_name: String,
-    org_action: String,
-    input_dir: PathBuf,
-    local_dashboards: Vec<LocalDashboard>,
-    live_dashboards: Vec<LiveDashboard>,
-    live_datasources: Vec<Map<String, Value>>,
-    folder_inventory: Vec<FolderInventoryItem>,
-}
-
-#[derive(Debug, Clone)]
-pub(crate) struct DashboardPlanInput {
-    scope: String,
-    input_type: String,
-    prune: bool,
-    org: OrgPlanInput,
-}
 
 pub(crate) fn dashboard_plan_column_ids() -> &'static [&'static str] {
     &[
@@ -339,23 +217,29 @@ fn build_local_dashboard(
     })
 }
 
-fn resolve_live_folder_path(
-    client: &DashboardResourceClient<'_>,
+fn resolve_live_folder_path_with_request<F>(
+    request_json: &mut F,
     folder_uid: &str,
-) -> Result<String> {
+) -> Result<String>
+where
+    F: FnMut(reqwest::Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
     if folder_uid.trim().is_empty() || folder_uid == DEFAULT_FOLDER_UID {
         return Ok(DEFAULT_FOLDER_TITLE.to_string());
     }
-    match client.fetch_folder_if_exists(folder_uid)? {
+    match super::fetch_folder_if_exists_with_request(&mut *request_json, folder_uid)? {
         Some(folder) => Ok(build_folder_path(&folder, DEFAULT_FOLDER_TITLE)),
         None => Ok(folder_uid.to_string()),
     }
 }
 
-fn build_live_dashboard(
-    client: &DashboardResourceClient<'_>,
+fn build_live_dashboard_with_request<F>(
+    request_json: &mut F,
     payload: &Value,
-) -> Result<LiveDashboard> {
+) -> Result<LiveDashboard>
+where
+    F: FnMut(reqwest::Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
     let dashboard = normalize_dashboard_document(payload)?;
     let dashboard_object = dashboard
         .as_object()
@@ -370,7 +254,7 @@ fn build_live_dashboard(
         .and_then(Value::as_str)
         .unwrap_or("")
         .to_string();
-    let folder_path = resolve_live_folder_path(client, &folder_uid)?;
+    let folder_path = resolve_live_folder_path_with_request(request_json, &folder_uid)?;
     let review = build_dashboard_target_review(payload)?;
     Ok(LiveDashboard {
         uid,
@@ -431,13 +315,354 @@ fn build_dependency_hints(
     (dependency_hints, review_hints)
 }
 
-fn build_action_id(org_id: &Option<String>, uid: &str, seed: usize) -> String {
-    let org = org_id.as_deref().unwrap_or("unknown");
+fn plan_export_org_variant_dir(input_type: InspectExportInputType) -> &'static str {
+    match input_type {
+        InspectExportInputType::Raw => RAW_EXPORT_SUBDIR,
+        InspectExportInputType::Source => PROMPT_EXPORT_SUBDIR,
+    }
+}
+
+fn has_plan_export_org_scopes(input_dir: &Path, variant_dir_name: &str) -> Result<bool> {
+    if !input_dir.is_dir() {
+        return Ok(false);
+    }
+    for entry in fs::read_dir(input_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+        let Some(name) = path.file_name().and_then(|value| value.to_str()) else {
+            continue;
+        };
+        if name.starts_with("org_") && path.join(variant_dir_name).is_dir() {
+            return Ok(true);
+        }
+    }
+    Ok(false)
+}
+
+fn normalize_plan_export_org_scopes_root(
+    input_dir: &Path,
+    variant_dir_name: &str,
+) -> Result<PathBuf> {
+    if let Some(resolved_root) = resolve_dashboard_export_root(input_dir)? {
+        if resolved_root.manifest.scope_kind.is_aggregate()
+            || has_plan_export_org_scopes(&resolved_root.metadata_dir, variant_dir_name)?
+        {
+            return Ok(resolved_root.metadata_dir);
+        }
+    }
+    if has_plan_export_org_scopes(input_dir, variant_dir_name)? {
+        return Ok(input_dir.to_path_buf());
+    }
+    if let Some(workspace_variant_dir) =
+        resolve_dashboard_workspace_variant_dir(input_dir, variant_dir_name)
+    {
+        if has_plan_export_org_scopes(&workspace_variant_dir, variant_dir_name)? {
+            return Ok(workspace_variant_dir);
+        }
+    }
+    Ok(input_dir.to_path_buf())
+}
+
+fn load_plan_export_org_index_entries(
+    input_dir: &Path,
+    metadata: Option<&super::ExportMetadata>,
+) -> Result<Vec<super::VariantIndexEntry>> {
+    let index_file = metadata
+        .map(|item| item.index_file.clone())
+        .unwrap_or_else(|| "index.json".to_string());
+    let index_path = input_dir.join(index_file);
+    if !index_path.is_file() {
+        return Ok(Vec::new());
+    }
+    let raw = fs::read_to_string(&index_path)?;
+    serde_json::from_str(&raw).map_err(|error| {
+        message(format!(
+            "Invalid dashboard export index in {}: {error}",
+            index_path.display()
+        ))
+    })
+}
+
+fn org_id_text_from_value(value: Option<&Value>) -> Option<String> {
+    match value {
+        Some(Value::String(text)) => Some(text.trim().to_string()),
+        Some(Value::Number(number)) => Some(number.to_string()),
+        _ => None,
+    }
+}
+
+fn collect_plan_export_org_ids(
+    input_dir: &Path,
+    metadata: Option<&super::ExportMetadata>,
+) -> Result<BTreeSet<String>> {
+    let mut org_ids = BTreeSet::new();
+    if let Some(metadata) = metadata {
+        if let Some(org_id) = metadata
+            .org_id
+            .as_ref()
+            .map(|value| value.trim().to_string())
+        {
+            if !org_id.is_empty() {
+                org_ids.insert(org_id);
+            }
+        }
+        if let Some(orgs) = metadata.orgs.as_ref() {
+            for org in orgs {
+                let org_id = org.org_id.trim();
+                if !org_id.is_empty() {
+                    org_ids.insert(org_id.to_string());
+                }
+            }
+        }
+    }
+    for entry in load_plan_export_org_index_entries(input_dir, metadata)? {
+        if !entry.org_id.trim().is_empty() {
+            org_ids.insert(entry.org_id.trim().to_string());
+        }
+    }
+    for folder in load_folder_inventory(input_dir, metadata)? {
+        if !folder.org_id.trim().is_empty() {
+            org_ids.insert(folder.org_id.trim().to_string());
+        }
+    }
+    for datasource in load_datasource_inventory(input_dir, metadata)? {
+        if !datasource.org_id.trim().is_empty() {
+            org_ids.insert(datasource.org_id.trim().to_string());
+        }
+    }
+    Ok(org_ids)
+}
+
+fn collect_plan_export_org_names(
+    input_dir: &Path,
+    metadata: Option<&super::ExportMetadata>,
+) -> Result<BTreeSet<String>> {
+    let mut org_names = BTreeSet::new();
+    if let Some(metadata) = metadata {
+        if let Some(org) = metadata.org.as_ref().map(|value| value.trim().to_string()) {
+            if !org.is_empty() {
+                org_names.insert(org);
+            }
+        }
+        if let Some(orgs) = metadata.orgs.as_ref() {
+            for org in orgs {
+                let org_name = org.org.trim();
+                if !org_name.is_empty() {
+                    org_names.insert(org_name.to_string());
+                }
+            }
+        }
+    }
+    for entry in load_plan_export_org_index_entries(input_dir, metadata)? {
+        if !entry.org.trim().is_empty() {
+            org_names.insert(entry.org.trim().to_string());
+        }
+    }
+    for folder in load_folder_inventory(input_dir, metadata)? {
+        if !folder.org.trim().is_empty() {
+            org_names.insert(folder.org.trim().to_string());
+        }
+    }
+    for datasource in load_datasource_inventory(input_dir, metadata)? {
+        if !datasource.org.trim().is_empty() {
+            org_names.insert(datasource.org.trim().to_string());
+        }
+    }
+    Ok(org_names)
+}
+
+fn parse_plan_export_org_scope_for_variant(
+    import_root: &Path,
+    variant_dir: &Path,
+    expected_variant: &'static str,
+) -> Result<super::import_validation::ExportOrgImportScope> {
+    let metadata = load_export_metadata(variant_dir, Some(expected_variant))?;
+    let export_org_ids = collect_plan_export_org_ids(variant_dir, metadata.as_ref())?;
+    if export_org_ids.is_empty() {
+        return Err(message(format!(
+            "Dashboard plan with --use-export-org could not find {expected_variant} export orgId metadata in {}.",
+            variant_dir.display()
+        )));
+    }
+    if export_org_ids.len() > 1 {
+        return Err(message(format!(
+            "Dashboard plan with --use-export-org found multiple export orgIds in {}: {}",
+            variant_dir.display(),
+            export_org_ids
+                .into_iter()
+                .collect::<Vec<String>>()
+                .join(", ")
+        )));
+    }
+    let source_org_id_text = export_org_ids.into_iter().next().unwrap_or_default();
+    let source_org_id = source_org_id_text.parse::<i64>().map_err(|_| {
+        message(format!(
+            "Dashboard plan with --use-export-org found a non-numeric export orgId '{}' in {}.",
+            source_org_id_text,
+            variant_dir.display()
+        ))
+    })?;
+    let export_org_names = collect_plan_export_org_names(variant_dir, metadata.as_ref())?;
+    if export_org_names.len() > 1 {
+        return Err(message(format!(
+            "Dashboard plan with --use-export-org found multiple export org names in {}: {}",
+            variant_dir.display(),
+            export_org_names
+                .into_iter()
+                .collect::<Vec<String>>()
+                .join(", ")
+        )));
+    }
+    let source_org_name = export_org_names.into_iter().next().unwrap_or_else(|| {
+        variant_dir
+            .file_name()
+            .and_then(|value| value.to_str())
+            .or_else(|| import_root.file_name().and_then(|value| value.to_str()))
+            .unwrap_or("org")
+            .to_string()
+    });
+    Ok(super::import_validation::ExportOrgImportScope {
+        source_org_id,
+        source_org_name,
+        input_dir: variant_dir.to_path_buf(),
+    })
+}
+
+fn discover_plan_export_org_scopes(
+    args: &super::PlanArgs,
+) -> Result<Vec<super::import_validation::ExportOrgImportScope>> {
+    if !args.use_export_org {
+        return Ok(Vec::new());
+    }
+    let variant_dir_name = plan_export_org_variant_dir(args.input_type);
+    let scan_root = normalize_plan_export_org_scopes_root(&args.input_dir, variant_dir_name)?;
+    let selected_org_ids: BTreeSet<i64> = args.only_org_id.iter().copied().collect();
+    let mut scopes = Vec::new();
+    if scan_root.is_dir() {
+        for entry in fs::read_dir(&scan_root)? {
+            let entry = entry?;
+            let path = entry.path();
+            if !path.is_dir() {
+                continue;
+            }
+            let Some(name) = path.file_name().and_then(|item| item.to_str()) else {
+                continue;
+            };
+            if !name.starts_with("org_") {
+                continue;
+            }
+            let variant_dir = path.join(variant_dir_name);
+            if !variant_dir.is_dir() {
+                continue;
+            }
+            let scope = parse_plan_export_org_scope_for_variant(
+                &scan_root,
+                &variant_dir,
+                variant_dir_name,
+            )?;
+            if !selected_org_ids.is_empty() && !selected_org_ids.contains(&scope.source_org_id) {
+                continue;
+            }
+            scopes.push(scope);
+        }
+    }
+    scopes.sort_by(|left, right| left.source_org_id.cmp(&right.source_org_id));
+    if scopes.is_empty() {
+        if selected_org_ids.is_empty() {
+            return Err(message(format!(
+                "Dashboard plan with --use-export-org did not find any org-specific {variant_dir_name} exports under {}.",
+                scan_root.display()
+            )));
+        }
+        return Err(message(format!(
+            "Dashboard plan with --use-export-org did not find the selected exported org IDs ({}) under {}.",
+            selected_org_ids
+                .into_iter()
+                .map(|id| id.to_string())
+                .collect::<Vec<String>>()
+                .join(", "),
+            scan_root.display()
+        )));
+    }
+    let found_org_ids: BTreeSet<i64> = scopes.iter().map(|scope| scope.source_org_id).collect();
+    let missing_org_ids: Vec<String> = selected_org_ids
+        .difference(&found_org_ids)
+        .map(|id| id.to_string())
+        .collect();
+    if !missing_org_ids.is_empty() {
+        return Err(message(format!(
+            "Dashboard plan with --use-export-org did not find the selected exported org IDs ({}).",
+            missing_org_ids.join(", ")
+        )));
+    }
+    Ok(scopes)
+}
+
+fn export_org_target_org_name(
+    target_org_id: Option<i64>,
+    lookup_cache: &ImportLookupCache,
+    fallback_name: &str,
+) -> String {
+    let Some(target_org_id) = target_org_id else {
+        return "<new>".to_string();
+    };
+    if let Some(orgs) = lookup_cache.orgs.as_ref() {
+        let target_id_text = target_org_id.to_string();
+        for org in orgs {
+            if org_id_text_from_value(org.get("id")).as_deref() == Some(target_id_text.as_str()) {
+                if let Some(name) = org.get("name").and_then(Value::as_str) {
+                    return name.to_string();
+                }
+            }
+        }
+    }
+    fallback_name.to_string()
+}
+
+fn build_export_routing_import_args(args: &super::PlanArgs) -> super::ImportArgs {
+    super::ImportArgs {
+        common: args.common.clone(),
+        org_id: None,
+        use_export_org: true,
+        only_org_id: args.only_org_id.clone(),
+        create_missing_orgs: args.create_missing_orgs,
+        input_dir: args.input_dir.clone(),
+        input_format: DashboardImportInputFormat::Raw,
+        import_folder_uid: None,
+        ensure_folders: false,
+        replace_existing: false,
+        update_existing_only: false,
+        require_matching_folder_path: false,
+        require_matching_export_org: false,
+        strict_schema: false,
+        target_schema_version: None,
+        import_message: String::new(),
+        interactive: false,
+        dry_run: true,
+        table: false,
+        json: false,
+        output_format: None,
+        no_header: false,
+        output_columns: Vec::new(),
+        list_columns: false,
+        progress: false,
+        verbose: false,
+    }
+}
+
+fn build_action_id(org_id: Option<&str>, uid: &str, seed: usize) -> String {
+    let org = org_id.unwrap_or("unknown");
     let resource = if uid.is_empty() { "dashboard" } else { uid };
     format!("org:{org}/dashboard:{resource}:{seed}")
 }
 
 fn build_org_actions(org: &OrgPlanInput, prune: bool) -> Vec<DashboardPlanAction> {
+    let no_live_target = org.target_org_id.is_none();
+    let missing_target = no_live_target && org.org_action == "missing";
+    let would_create_target = no_live_target && org.org_action == "would-create";
     let mut live_by_uid = BTreeMap::new();
     let mut live_by_title: BTreeMap<String, Vec<usize>> = BTreeMap::new();
     let mut live_matched = vec![false; org.live_dashboards.len()];
@@ -484,8 +709,11 @@ fn build_org_actions(org: &OrgPlanInput, prune: bool) -> Vec<DashboardPlanAction
         } else {
             (Vec::new(), Vec::new())
         };
-        let (dependency_hints, mut review_hints) =
-            build_dependency_hints(&local.dashboard, &org.live_datasources);
+        let (dependency_hints, mut review_hints) = if no_live_target {
+            (Vec::new(), Vec::new())
+        } else {
+            build_dependency_hints(&local.dashboard, &org.live_datasources)
+        };
         if !local.folder_uid.is_empty() && local.folder_uid != DEFAULT_FOLDER_UID {
             review_hints.push(format!("folder-uid={}", local.folder_uid));
         }
@@ -501,6 +729,13 @@ fn build_org_actions(org: &OrgPlanInput, prune: bool) -> Vec<DashboardPlanAction
             review_hints.push(format!("missing-folder-uid={}", local.folder_uid));
         }
 
+        if missing_target {
+            review_hints.push("target-org-missing".to_string());
+        }
+        if would_create_target {
+            review_hints.push("target-org-would-create".to_string());
+        }
+
         let target_review_blocked = live
             .as_ref()
             .map(|dashboard| {
@@ -511,7 +746,7 @@ fn build_org_actions(org: &OrgPlanInput, prune: bool) -> Vec<DashboardPlanAction
             })
             .unwrap_or(false);
 
-        let mut action = if live.is_none() {
+        let mut action = if missing_target || would_create_target || live.is_none() {
             "would-create".to_string()
         } else if changed_fields.is_empty()
             && local.folder_uid == live.map(|item| item.folder_uid.clone()).unwrap_or_default()
@@ -522,11 +757,19 @@ fn build_org_actions(org: &OrgPlanInput, prune: bool) -> Vec<DashboardPlanAction
         };
         let mut status = if action == "same" {
             "same".to_string()
+        } else if missing_target {
+            "blocked".to_string()
+        } else if would_create_target {
+            "warning".to_string()
         } else {
             "ready".to_string()
         };
         let mut blocked_reason = None;
-        if target_review_blocked && matches!(action.as_str(), "would-update" | "would-delete") {
+        if missing_target {
+            blocked_reason = Some("target-org-missing".to_string());
+        } else if target_review_blocked
+            && matches!(action.as_str(), "would-update" | "would-delete")
+        {
             action = "blocked-target".to_string();
             status = "blocked".to_string();
             blocked_reason = Some("target-provisioned-or-managed".to_string());
@@ -546,7 +789,13 @@ fn build_org_actions(org: &OrgPlanInput, prune: bool) -> Vec<DashboardPlanAction
             .map(|item| item.evidence.clone())
             .unwrap_or_default();
         actions.push(DashboardPlanAction {
-            action_id: build_action_id(&org.target_org_id, &local.dashboard_uid, index),
+            action_id: build_action_id(
+                org.target_org_id
+                    .as_deref()
+                    .or(org.source_org_id.as_deref()),
+                &local.dashboard_uid,
+                index,
+            ),
             domain: "dashboard".to_string(),
             resource_kind: "dashboard".to_string(),
             dashboard_uid: local.dashboard_uid.clone(),
@@ -581,7 +830,13 @@ fn build_org_actions(org: &OrgPlanInput, prune: bool) -> Vec<DashboardPlanAction
             .iter()
             .any(|value| value.starts_with("provisioned=true"));
         actions.push(DashboardPlanAction {
-            action_id: build_action_id(&org.target_org_id, &live.uid, index),
+            action_id: build_action_id(
+                org.target_org_id
+                    .as_deref()
+                    .or(org.source_org_id.as_deref()),
+                &live.uid,
+                index,
+            ),
             domain: "dashboard".to_string(),
             resource_kind: "dashboard".to_string(),
             dashboard_uid: live.uid.clone(),
@@ -842,74 +1097,71 @@ fn render_plan_table(
     lines
 }
 
-fn collect_single_scope(
-    resolved: &LoadedDashboardSource,
-    target_org_id: Option<String>,
-    target_org_name: String,
+fn load_local_org_plan_input(
+    input_dir: &Path,
+    expected_variant: &'static str,
     source_org_id: Option<String>,
     source_org_name: String,
+    target_org_id: Option<String>,
+    target_org_name: String,
     org_action: String,
-    client: &DashboardResourceClient<'_>,
 ) -> Result<OrgPlanInput> {
-    let metadata = load_export_metadata(&resolved.input_dir, Some(resolved.expected_variant))?;
-    let folder_inventory = load_folder_inventory(&resolved.input_dir, metadata.as_ref())?;
+    let metadata = load_export_metadata(input_dir, Some(expected_variant))?;
+    let folder_inventory = load_folder_inventory(input_dir, metadata.as_ref())?;
     let mut local_dashboards = Vec::new();
-    for file in discover_dashboard_files(&resolved.input_dir)? {
+    for file in discover_dashboard_files(input_dir)? {
         let document = load_json_file(&file)?;
         local_dashboards.push(build_local_dashboard(&document, &file, &folder_inventory)?);
     }
-    let live_datasources = client.list_datasources()?;
-
-    let mut live_dashboards = Vec::new();
-    let summaries = client.list_dashboard_summaries(DEFAULT_PAGE_SIZE)?;
-    let mut seen_uids = BTreeSet::new();
-    for summary in summaries {
-        let uid = string_field(&summary, "uid", "");
-        if uid.is_empty() || !seen_uids.insert(uid.clone()) {
-            continue;
-        }
-        let payload = client.fetch_dashboard(&uid)?;
-        live_dashboards.push(build_live_dashboard(client, &payload)?);
-    }
-
     Ok(OrgPlanInput {
         source_org_id,
         source_org_name,
         target_org_id,
         target_org_name,
         org_action,
-        input_dir: resolved.input_dir.clone(),
+        input_dir: input_dir.to_path_buf(),
         local_dashboards,
-        live_dashboards,
-        live_datasources,
+        live_dashboards: Vec::new(),
+        live_datasources: Vec::new(),
         folder_inventory,
     })
 }
 
-fn collect_plan_input(args: &super::PlanArgs) -> Result<DashboardPlanInput> {
-    if args.use_export_org || !args.only_org_id.is_empty() || args.create_missing_orgs {
-        return Err(message(
-            "Dashboard plan export-org routing is not enabled in this minimal slice yet.",
-        ));
+fn collect_live_org_state_with_request<F>(request_json: &mut F) -> Result<PlanLiveState>
+where
+    F: FnMut(reqwest::Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    let live_datasources = super::list_datasources_with_request(&mut *request_json)?;
+    let mut live_dashboards = Vec::new();
+    let summaries =
+        super::list_dashboard_summaries_with_request(&mut *request_json, DEFAULT_PAGE_SIZE)?;
+    let mut seen_uids = BTreeSet::new();
+    for summary in summaries {
+        let uid = string_field(&summary, "uid", "");
+        if uid.is_empty() || !seen_uids.insert(uid.clone()) {
+            continue;
+        }
+        let payload = super::fetch_dashboard_with_request(&mut *request_json, &uid)?;
+        live_dashboards.push(build_live_dashboard_with_request(request_json, &payload)?);
     }
+    Ok((live_datasources, live_dashboards))
+}
 
-    let expected_variant = match args.input_type {
-        InspectExportInputType::Raw => super::RAW_EXPORT_SUBDIR,
-        InspectExportInputType::Source => super::PROMPT_EXPORT_SUBDIR,
-    };
+fn collect_single_scope_with_request<F>(
+    args: &super::PlanArgs,
+    request_json: &mut F,
+) -> Result<DashboardPlanInput>
+where
+    F: FnMut(reqwest::Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    let expected_variant = plan_export_org_variant_dir(args.input_type);
     let resolved = load_dashboard_source(
         &args.input_dir,
         DashboardImportInputFormat::Raw,
         Some(args.input_type),
         false,
     )?;
-    let client = if let Some(org_id) = args.org_id {
-        build_http_client_for_org(&args.common, org_id)?
-    } else {
-        build_http_client(&args.common)?
-    };
-    let dashboard_client = DashboardResourceClient::new(&client);
-    let current_org = dashboard_client.fetch_current_org()?;
+    let current_org = super::list::fetch_current_org_with_request(&mut *request_json)?;
     let target_org_id = current_org.get("id").map(|value| match value {
         Value::String(text) => text.clone(),
         _ => value.to_string(),
@@ -925,19 +1177,22 @@ fn collect_plan_input(args: &super::PlanArgs) -> Result<DashboardPlanInput> {
         .and_then(|item| item.org.as_ref())
         .cloned()
         .unwrap_or_else(|| target_org_name.clone());
-    let org = collect_single_scope(
-        &resolved,
-        target_org_id.clone(),
-        target_org_name.clone(),
+    let mut org = load_local_org_plan_input(
+        &resolved.input_dir,
+        expected_variant,
         source_org_id,
         source_org_name,
+        target_org_id.clone(),
+        target_org_name.clone(),
         if args.org_id.is_some() {
             "explicit-org".to_string()
         } else {
             "current-org".to_string()
         },
-        &dashboard_client,
     )?;
+    let (live_datasources, live_dashboards) = collect_live_org_state_with_request(request_json)?;
+    org.live_datasources = live_datasources;
+    org.live_dashboards = live_dashboards;
     Ok(DashboardPlanInput {
         scope: if args.org_id.is_some() {
             "explicit-org".to_string()
@@ -949,14 +1204,141 @@ fn collect_plan_input(args: &super::PlanArgs) -> Result<DashboardPlanInput> {
             InspectExportInputType::Source => "source".to_string(),
         },
         prune: args.prune,
-        org,
+        orgs: vec![org],
     })
 }
 
+#[cfg(test)]
+fn collect_export_org_scope_with_request<F>(
+    args: &super::PlanArgs,
+    request_json: &mut F,
+) -> Result<DashboardPlanInput>
+where
+    F: FnMut(reqwest::Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    collect_export_org_scope_with_live_collector(args, request_json, |_, request_json| {
+        collect_live_org_state_with_request(request_json)
+    })
+}
+
+fn collect_export_org_scope_with_live_collector<F, G>(
+    args: &super::PlanArgs,
+    request_json: &mut F,
+    mut collect_live_for_org: G,
+) -> Result<DashboardPlanInput>
+where
+    F: FnMut(reqwest::Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+    G: FnMut(i64, &mut F) -> Result<PlanLiveState>,
+{
+    let export_args = build_export_routing_import_args(args);
+    let mut lookup_cache = ImportLookupCache::default();
+    let scopes = discover_plan_export_org_scopes(args)?;
+    let mut orgs = Vec::new();
+    for scope in scopes {
+        let target_plan = resolve_target_org_plan_for_export_scope_with_request(
+            request_json,
+            &mut lookup_cache,
+            &export_args,
+            &scope,
+        )?;
+        let target_org_name = export_org_target_org_name(
+            target_plan.target_org_id,
+            &lookup_cache,
+            &target_plan.source_org_name,
+        );
+        let mut org = load_local_org_plan_input(
+            &target_plan.input_dir,
+            plan_export_org_variant_dir(args.input_type),
+            Some(target_plan.source_org_id.to_string()),
+            target_plan.source_org_name.clone(),
+            target_plan.target_org_id.map(|value| value.to_string()),
+            target_org_name,
+            target_plan.org_action.to_string(),
+        )?;
+        if let Some(target_org_id) = target_plan.target_org_id {
+            let (live_datasources, live_dashboards) =
+                collect_live_for_org(target_org_id, request_json)?;
+            org.live_datasources = live_datasources;
+            org.live_dashboards = live_dashboards;
+        }
+        orgs.push(org);
+    }
+    Ok(DashboardPlanInput {
+        scope: "export-org".to_string(),
+        input_type: match args.input_type {
+            InspectExportInputType::Raw => "raw".to_string(),
+            InspectExportInputType::Source => "source".to_string(),
+        },
+        prune: args.prune,
+        orgs,
+    })
+}
+
+#[cfg(test)]
+fn collect_plan_input_with_request<F>(
+    args: &super::PlanArgs,
+    request_json: &mut F,
+) -> Result<DashboardPlanInput>
+where
+    F: FnMut(reqwest::Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    if args.use_export_org {
+        let context = build_auth_context(&args.common)?;
+        if context.auth_mode != "basic" {
+            return Err(message(
+                "Dashboard plan with --use-export-org requires Basic auth (--basic-user / --basic-password).",
+            ));
+        }
+        return collect_export_org_scope_with_request(args, request_json);
+    }
+    collect_single_scope_with_request(args, request_json)
+}
+
+fn collect_plan_input(args: &super::PlanArgs) -> Result<DashboardPlanInput> {
+    let client = if let Some(org_id) = args.org_id {
+        build_http_client_for_org(&args.common, org_id)?
+    } else {
+        build_http_client(&args.common)?
+    };
+    let mut request_json =
+        |method: reqwest::Method,
+         path: &str,
+         params: &[(String, String)],
+         payload: Option<&Value>| { client.request_json(method, path, params, payload) };
+    if args.use_export_org {
+        let context = build_auth_context(&args.common)?;
+        if context.auth_mode != "basic" {
+            return Err(message(
+                "Dashboard plan with --use-export-org requires Basic auth (--basic-user / --basic-password).",
+            ));
+        }
+        return collect_export_org_scope_with_live_collector(
+            args,
+            &mut request_json,
+            |target_org_id, _request_json| {
+                let scoped_client = build_http_client_for_org(&args.common, target_org_id)?;
+                let mut scoped_request_json =
+                    |method: reqwest::Method,
+                     path: &str,
+                     params: &[(String, String)],
+                     payload: Option<&Value>| {
+                        scoped_client.request_json(method, path, params, payload)
+                    };
+                collect_live_org_state_with_request(&mut scoped_request_json)
+            },
+        );
+    }
+    collect_single_scope_with_request(args, &mut request_json)
+}
+
 pub(crate) fn build_dashboard_plan(input: DashboardPlanInput) -> DashboardPlanReport {
-    let actions = build_org_actions(&input.org, input.prune);
-    let org_summary = build_org_summary(&input.org, &actions);
-    let orgs = vec![org_summary];
+    let mut orgs = Vec::new();
+    let mut actions = Vec::new();
+    for org in &input.orgs {
+        let org_actions = build_org_actions(org, input.prune);
+        orgs.push(build_org_summary(org, &org_actions));
+        actions.extend(org_actions);
+    }
     let summary = build_summary(&orgs, &actions);
     DashboardPlanReport {
         kind: PLAN_KIND.to_string(),

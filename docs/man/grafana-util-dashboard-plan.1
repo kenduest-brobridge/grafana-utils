@@ -15,6 +15,8 @@ Before: dashboard import and diff flows could show pieces of local\-vs\-live sta
 After: dashboard plan shows create, update, remote\-only, delete\-candidate, blocked, and warning rows in one review model.
 .IP \(bu 2
 JSON output is structured for CI and future TUI review. Rows include stable actionId, status, changed fields, target evidence, dependency hints, and review hints.
+.IP \(bu 2
+Multi\-org export roots are resolved from exported org IDs, not from file\-system folder names alone.
 .SH COMMON OPTIONS
 .TP
 .B \-\-input\-dir
@@ -25,6 +27,15 @@ choose raw or source. Use source for prompt\-lane exports.
 .TP
 .B \-\-org\-id
 plan against one explicit Grafana org.
+.TP
+.B \-\-use\-export\-org
+route a combined multi\-org export root by exported org IDs instead of a single explicit target org.
+.TP
+.B \-\-only\-org\-id
+limit the plan to one or more exported source org IDs.
+.TP
+.B \-\-create\-missing\-orgs
+keep missing destination orgs as review\-only would\-create entries in the plan.
 .TP
 .B \-\-prune
 show remote\-only dashboards as would\-delete candidates. Without this flag they remain extra\-remote.
@@ -46,11 +57,15 @@ remote\-only dashboards are called out without deleting anything by default
 provisioned or managed targets are blocked before an operator treats the plan as ready
 .IP \(bu 2
 unresolved datasource references and folder issues are surfaced as review hints
+.IP \(bu 2
+missing destination orgs can stay as review\-only would\-create entries when \-\-create\-missing\-orgs is set
 .SH FAILURE CHECKS
 .IP \(bu 2
 if the plan points at the wrong org, confirm \-\-org\-id or the selected profile
 .IP \(bu 2
-if \-\-use\-export\-org is needed, keep using the existing export metadata and wait for the multi\-org routing slice
+if \-\-use\-export\-org is needed, make sure the export root is a combined multi\-org export and that Basic auth is configured
+.IP \(bu 2
+if \-\-only\-org\-id is set, confirm the exported source org IDs are present in the export metadata
 .IP \(bu 2
 if delete candidates appear unexpectedly, rerun without \-\-prune and inspect extra\-remote rows first
 .IP \(bu 2
