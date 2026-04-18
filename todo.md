@@ -13,13 +13,38 @@ Scope rules:
 ## Current Baseline
 
 - Branch is `dev`; keep new work grouped into focused Rust/test commits.
+- Local `dev` is ahead of `origin/dev` with validated Rust maintenance
+  commits. Push before starting a broad behavior-changing series.
 - GitHub Actions `rust-quality` is currently green on Rust 1.95 after the
   latest clippy compatibility pass.
 - Default Rust build and `--features browser` are supported release surfaces.
 - `--no-default-features` is explicitly not claimed as a supported release surface yet.
 - Dashboard `summary` / `dependencies` naming and review-source model are now clearer.
 - Output contracts have root and nested-path validation through `requiredFields`, `requiredPaths`, `pathTypes`, and golden fixtures.
-- Remaining risk is mostly maintainability: oversized Rust tests, TUI input/render modules, live apply paths, and overlapping contract systems.
+- Oversized Rust test facades and test-only `pub(crate)` visibility have been
+  reduced. Do not re-open those unless a new mixed-responsibility hotspot appears.
+- Remaining risk is mostly maintainability: status producer drift, TUI
+  input/render modules, live apply paths, output contract depth, and overlapping
+  contract systems.
+
+## Active Execution Queue
+
+Run the next development passes in this order unless a CI failure or user report
+changes priority.
+
+1. Push the validated maintenance commits on `dev`.
+2. Normalize project status producers around a shared internal status reading
+   model. Include live Grafana evidence such as health/version where available.
+3. Split the access team browse input boundary by one stable responsibility.
+4. Split one safe phase out of sync live apply, preferably response/error
+   normalization before request execution changes.
+5. Extend output contract checks for collection shape and enum constraints.
+
+Completed cleanup now closed:
+
+- Oversized Rust test suites split into smaller facades.
+- Dashboard test helper re-exports narrowed from crate-wide visibility.
+- Dashboard and snapshot test-support helpers narrowed to local module trees.
 
 ## Split Policy - Conservative Boundaries
 
