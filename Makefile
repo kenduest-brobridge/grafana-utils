@@ -1,9 +1,9 @@
 VERSIONING_TARGETS := help print-version sync-version set-release-version set-dev-version
 PYTHON_TARGETS := poetry-install poetry-lock poetry-test poetry-quality-python build-python
-DOC_TARGETS := man man-check html html-check pages-site schema schema-check quality-docs-surface
+DOC_TARGETS := man man-check html html-check pages-site schema schema-check quality-docs-surface docs-diff-classify
 RUST_BUILD_TARGETS := build-rust build-rust-browser build-rust-native build-rust-native-browser build-rust-host build-rust-host-browser build-rust-macos-arm64 build-rust-macos-arm64-browser build-rust-linux-amd64 build-rust-linux-amd64-browser build-rust-linux-amd64-docker build-rust-linux-amd64-browser-docker build-rust-linux-amd64-zig validate-rust-linux-amd64-artifact validate-rust-linux-amd64-browser-artifact
 INSTALLER_TARGETS := install-local install-local-interactive test-installer-local
-QUALITY_TARGETS := test test-python test-rust fmt-rust-check lint-rust quality quality-python quality-rust quality-rust-feature-matrix quality-output-contracts quality-ai-workflow quality-architecture quality-docs-surface quality-alert-rust quality-sync-rust quality-workspace-noise
+QUALITY_TARGETS := test test-python test-rust fmt-rust-check lint-rust quality quality-python quality-rust quality-rust-feature-matrix quality-rust-feature-matrix-full quality-output-contracts quality-ai-workflow quality-architecture quality-docs-surface quality-alert-rust quality-sync-rust quality-workspace-noise
 LIVE_TARGETS := seed-grafana-sample-data destroy-grafana-sample-data reset-grafana-all-data test-rust-live test-sync-live test-alert-live test-alert-live-artifact test-alert-live-replay test-access-live test-python-datasource-live test-datasource-live
 META_TARGETS := build
 
@@ -65,6 +65,7 @@ $(BLUE)$(BOLD)Docs$(RESET)
   $(GREEN)make html-check$(RESET)  Fail if checked-in docs/html/**/*.html is out of date
   $(GREEN)make pages-site$(RESET)  Assemble the multi-version GitHub Pages docs artifact into build/docs-pages/
   $(GREEN)make quality-docs-surface$(RESET)  Fail when Markdown command examples, locale parity, links, or help-full paths drift from the Rust CLI
+  $(GREEN)make docs-diff-classify$(RESET)  Classify the current docs-related diff into source, generated, contract, CLI, and drift buckets
 
 endef
 
@@ -105,6 +106,7 @@ $(BLUE)$(BOLD)Quality and tests$(RESET)
   $(GREEN)make quality-python$(RESET)  Run the Python quality gate script
   $(GREEN)make quality-rust$(RESET)  Run the Rust quality gate script
   $(GREEN)make quality-rust-feature-matrix$(RESET)  Validate supported Rust feature surfaces and the no-default policy
+  $(GREEN)make quality-rust-feature-matrix-full$(RESET)  Run default and browser Cargo checks, then probe no-default-features as an explicit unsupported surface
   $(GREEN)make quality-output-contracts$(RESET)  Validate core JSON output contract fixtures and registry shape
   $(GREEN)make quality-ai-workflow$(RESET)  Run lightweight AI workflow drift and public naming policy checks for the current change set
   $(GREEN)make quality-architecture$(RESET)  Run Rust architecture guardrail checks for root noise, file size, render risk, and help-test brittleness
@@ -193,6 +195,9 @@ pages-site:
 
 quality-docs-surface:
 	$(PYTHON) ./scripts/check_docs_surface.py
+
+docs-diff-classify:
+	$(PYTHON) ./scripts/classify_docs_diff.py
 
 build: build-python build-rust
 	@printf '%s\n' 'Build outputs:'
@@ -312,6 +317,9 @@ quality-rust:
 
 quality-rust-feature-matrix:
 	$(PYTHON) ./scripts/check_rust_feature_matrix.py --check-cargo
+
+quality-rust-feature-matrix-full:
+	$(PYTHON) ./scripts/check_rust_feature_matrix.py --check-cargo --probe-no-default-features
 
 quality-output-contracts:
 	$(PYTHON) ./scripts/check_output_contracts.py
