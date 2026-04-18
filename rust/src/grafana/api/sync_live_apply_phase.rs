@@ -1,9 +1,10 @@
 use serde_json::Value;
 
-use crate::common::{message, Result};
+use crate::common::Result;
 use crate::review_contract::REVIEW_ACTION_WOULD_DELETE;
 use crate::sync::live::SyncApplyOperation;
 
+use super::sync_live_apply_error::refuse_live_policy_reset;
 use super::sync_live_apply_result::{
     append_live_apply_result, finish_live_apply_response, normalize_live_apply_result,
 };
@@ -22,9 +23,7 @@ where
             && operation.action == REVIEW_ACTION_WOULD_DELETE
             && !allow_policy_reset
         {
-            return Err(message(
-                "Refusing live notification policy reset without --allow-policy-reset.",
-            ));
+            return Err(refuse_live_policy_reset());
         }
         let response = apply_operation(operation)?;
         let normalized = normalize_live_apply_result(operation, response);

@@ -5,12 +5,19 @@ use crate::alert::{
     build_contact_point_import_payload, build_mute_timing_import_payload,
     build_policies_import_payload, build_rule_import_payload, build_template_import_payload,
 };
-use crate::common::{message, Result};
+use crate::common::Result;
 use crate::review_contract::{
     REVIEW_ACTION_WOULD_CREATE, REVIEW_ACTION_WOULD_DELETE, REVIEW_ACTION_WOULD_UPDATE,
 };
 use crate::sync::live::SyncApplyOperation;
 
+use super::super::sync_live_apply_error::{
+    alert_sync_delete_requires_uid, alert_sync_live_apply_requires_uid,
+    datasource_sync_requires_live_id, datasource_sync_target_not_resolved,
+    refuse_live_folder_delete, unsupported_alert_sync_action, unsupported_alert_sync_kind,
+    unsupported_datasource_sync_action, unsupported_folder_sync_action,
+    unsupported_sync_resource_kind,
+};
 use super::super::sync_live_apply_phase::execute_live_apply_phase;
 
 pub(crate) fn execute_live_apply_with_request<F>(
@@ -47,7 +54,7 @@ where
         | "alert-mute-timing"
         | "alert-policy"
         | "alert-template" => apply_alert_operation_with_request(request_json, operation),
-        _ => Err(message(format!("Unsupported sync resource kind {kind}."))),
+        _ => Err(unsupported_sync_resource_kind(kind)),
     }
 }
 
@@ -101,9 +108,7 @@ where
         .unwrap_or(Value::Null)),
         REVIEW_ACTION_WOULD_DELETE => {
             if !allow_folder_delete {
-                return Err(message(format!(
-                    "Refusing live folder delete for {identity} without --allow-folder-delete."
-                )));
+                return Err(refuse_live_folder_delete(identity));
             }
             Ok(request_json(
                 Method::DELETE,
@@ -113,7 +118,7 @@ where
             )?
             .unwrap_or(Value::Null))
         }
-        _ => Err(message(format!("Unsupported folder sync action {action}."))),
+        _ => Err(unsupported_folder_sync_action(action)),
     }
 }
 
@@ -203,11 +208,7 @@ where
         .unwrap_or(Value::Null)),
         REVIEW_ACTION_WOULD_UPDATE => {
             let target = resolve_live_datasource_target_with_request(request_json, identity)?
-                .ok_or_else(|| {
-                    message(format!(
-                        "Could not resolve live datasource target {identity} during sync apply."
-                    ))
-                })?;
+                .ok_or_else(|| datasource_sync_target_not_resolved(identity))?;
             let datasource_id = target
                 .get("id")
                 .map(|value| match value {
@@ -215,7 +216,7 @@ where
                     _ => value.to_string(),
                 })
                 .filter(|value: &String| !value.is_empty())
-                .ok_or_else(|| message("Datasource sync update requires a live datasource id."))?;
+                .ok_or_else(|| datasource_sync_requires_live_id("update"))?;
             Ok(request_json(
                 Method::PUT,
                 &format!("/api/datasources/{datasource_id}"),
@@ -226,11 +227,7 @@ where
         }
         REVIEW_ACTION_WOULD_DELETE => {
             let target = resolve_live_datasource_target_with_request(request_json, identity)?
-                .ok_or_else(|| {
-                    message(format!(
-                        "Could not resolve live datasource target {identity} during sync apply."
-                    ))
-                })?;
+                .ok_or_else(|| datasource_sync_target_not_resolved(identity))?;
             let datasource_id = target
                 .get("id")
                 .map(|value| match value {
@@ -238,7 +235,7 @@ where
                     _ => value.to_string(),
                 })
                 .filter(|value: &String| !value.is_empty())
-                .ok_or_else(|| message("Datasource sync delete requires a live datasource id."))?;
+                .ok_or_else(|| datasource_sync_requires_live_id("delete"))?;
             Ok(request_json(
                 Method::DELETE,
                 &format!("/api/datasources/{datasource_id}"),
@@ -247,9 +244,7 @@ where
             )?
             .unwrap_or(Value::Null))
         }
-        _ => Err(message(format!(
-            "Unsupported datasource sync action {action}."
-        ))),
+        _ => Err(unsupported_datasource_sync_action(action)),
     }
 }
 
@@ -268,9 +263,7 @@ where
         REVIEW_ACTION_WOULD_DELETE => match kind {
             "alert" => {
                 if identity.is_empty() {
-                    return Err(message(
-                        "Alert sync delete requires a stable uid identity for live apply.",
-                    ));
+                    return Err(alert_sync_delete_requires_uid());
                 }
                 Ok(request_json(
                     Method::DELETE,
@@ -307,7 +300,7 @@ where
                         .unwrap_or(Value::Null),
                 )
             }
-            _ => Err(message(format!("Unsupported alert sync kind {kind}."))),
+            _ => Err(unsupported_alert_sync_kind(kind)),
         },
         REVIEW_ACTION_WOULD_CREATE | REVIEW_ACTION_WOULD_UPDATE => match kind {
             "alert" => {
@@ -320,9 +313,7 @@ where
                     .and_then(Value::as_str)
                     .map(str::trim)
                     .filter(|value: &&str| !value.is_empty())
-                    .ok_or_else(|| {
-                        message("Alert sync live apply requires alert rule payloads with a uid.")
-                    })?;
+                    .ok_or_else(alert_sync_live_apply_requires_uid)?;
                 let method = if action == REVIEW_ACTION_WOULD_CREATE {
                     Method::POST
                 } else {
@@ -409,9 +400,9 @@ where
                 )?
                 .unwrap_or(Value::Null))
             }
-            _ => Err(message(format!("Unsupported alert sync kind {kind}."))),
+            _ => Err(unsupported_alert_sync_kind(kind)),
         },
-        _ => Err(message(format!("Unsupported alert sync action {action}."))),
+        _ => Err(unsupported_alert_sync_action(action)),
     }
 }
 
@@ -424,7 +415,11 @@ where
 {
     let datasources = match request_json(Method::GET, "/api/datasources", &[], None)? {
         Some(Value::Array(items)) => items,
-        Some(_) => return Err(message("Unexpected datasource list response from Grafana.")),
+        Some(_) => {
+            return Err(crate::common::message(
+                "Unexpected datasource list response from Grafana.",
+            ))
+        }
         None => Vec::new(),
     };
     for datasource in &datasources {

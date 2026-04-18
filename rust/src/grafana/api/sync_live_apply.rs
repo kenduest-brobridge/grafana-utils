@@ -4,12 +4,19 @@ use crate::alert::{
     build_contact_point_import_payload, build_mute_timing_import_payload,
     build_policies_import_payload, build_rule_import_payload, build_template_import_payload,
 };
-use crate::common::{message, Result};
+use crate::common::Result;
 use crate::review_contract::{
     REVIEW_ACTION_WOULD_CREATE, REVIEW_ACTION_WOULD_DELETE, REVIEW_ACTION_WOULD_UPDATE,
 };
 use crate::sync::live::SyncApplyOperation;
 
+use super::sync_live_apply_error::{
+    alert_sync_delete_requires_uid, alert_sync_live_apply_requires_uid,
+    datasource_sync_requires_live_id, datasource_sync_target_not_resolved,
+    refuse_live_folder_delete, unsupported_alert_sync_action, unsupported_alert_sync_kind,
+    unsupported_datasource_sync_action, unsupported_folder_sync_action,
+    unsupported_sync_resource_kind,
+};
 use super::sync_live_apply_phase::execute_live_apply_phase;
 use super::SyncLiveClient;
 
@@ -239,7 +246,7 @@ fn apply_live_operation_with_client(
         | "alert-mute-timing"
         | "alert-policy"
         | "alert-template" => apply_alert_operation_with_client(client, operation),
-        _ => Err(message(format!("Unsupported sync resource kind {kind}."))),
+        _ => Err(unsupported_sync_resource_kind(kind)),
     }
 }
 
@@ -279,13 +286,11 @@ fn apply_folder_operation_with_client(
         )),
         REVIEW_ACTION_WOULD_DELETE => {
             if !allow_folder_delete {
-                return Err(message(format!(
-                    "Refusing live folder delete for {identity} without --allow-folder-delete."
-                )));
+                return Err(refuse_live_folder_delete(identity));
             }
             Ok(client.delete_folder(identity)?)
         }
-        _ => Err(message(format!("Unsupported folder sync action {action}."))),
+        _ => Err(unsupported_folder_sync_action(action)),
     }
 }
 
@@ -340,11 +345,9 @@ fn apply_datasource_operation_with_client(
             client.create_datasource(&body)?.into_iter().collect(),
         )),
         REVIEW_ACTION_WOULD_UPDATE => {
-            let target = client.resolve_datasource_target(identity)?.ok_or_else(|| {
-                message(format!(
-                    "Could not resolve live datasource target {identity} during sync apply."
-                ))
-            })?;
+            let target = client
+                .resolve_datasource_target(identity)?
+                .ok_or_else(|| datasource_sync_target_not_resolved(identity))?;
             let datasource_id = target
                 .get("id")
                 .map(|value| match value {
@@ -352,7 +355,7 @@ fn apply_datasource_operation_with_client(
                     _ => value.to_string(),
                 })
                 .filter(|value: &String| !value.is_empty())
-                .ok_or_else(|| message("Datasource sync update requires a live datasource id."))?;
+                .ok_or_else(|| datasource_sync_requires_live_id("update"))?;
             Ok(Value::Object(
                 client
                     .update_datasource(&datasource_id, &body)?
@@ -361,11 +364,9 @@ fn apply_datasource_operation_with_client(
             ))
         }
         REVIEW_ACTION_WOULD_DELETE => {
-            let target = client.resolve_datasource_target(identity)?.ok_or_else(|| {
-                message(format!(
-                    "Could not resolve live datasource target {identity} during sync apply."
-                ))
-            })?;
+            let target = client
+                .resolve_datasource_target(identity)?
+                .ok_or_else(|| datasource_sync_target_not_resolved(identity))?;
             let datasource_id = target
                 .get("id")
                 .map(|value| match value {
@@ -373,12 +374,10 @@ fn apply_datasource_operation_with_client(
                     _ => value.to_string(),
                 })
                 .filter(|value: &String| !value.is_empty())
-                .ok_or_else(|| message("Datasource sync delete requires a live datasource id."))?;
+                .ok_or_else(|| datasource_sync_requires_live_id("delete"))?;
             Ok(client.delete_datasource(&datasource_id)?)
         }
-        _ => Err(message(format!(
-            "Unsupported datasource sync action {action}."
-        ))),
+        _ => Err(unsupported_datasource_sync_action(action)),
     }
 }
 
@@ -394,9 +393,7 @@ fn apply_alert_operation_with_client(
         REVIEW_ACTION_WOULD_DELETE => match kind {
             "alert" => {
                 if identity.is_empty() {
-                    return Err(message(
-                        "Alert sync delete requires a stable uid identity for live apply.",
-                    ));
+                    return Err(alert_sync_delete_requires_uid());
                 }
                 Ok(client.delete_alert_rule(identity)?)
             }
@@ -404,7 +401,7 @@ fn apply_alert_operation_with_client(
             "alert-mute-timing" => Ok(client.delete_mute_timing(identity)?),
             "alert-template" => Ok(client.delete_template(identity)?),
             "alert-policy" => Ok(client.delete_notification_policies()?),
-            _ => Err(message(format!("Unsupported alert sync kind {kind}."))),
+            _ => Err(unsupported_alert_sync_kind(kind)),
         },
         REVIEW_ACTION_WOULD_CREATE | REVIEW_ACTION_WOULD_UPDATE => match kind {
             "alert" => {
@@ -417,9 +414,7 @@ fn apply_alert_operation_with_client(
                     .and_then(Value::as_str)
                     .map(str::trim)
                     .filter(|value: &&str| !value.is_empty())
-                    .ok_or_else(|| {
-                        message("Alert sync live apply requires alert rule payloads with a uid.")
-                    })?;
+                    .ok_or_else(alert_sync_live_apply_requires_uid)?;
                 let response = if action == REVIEW_ACTION_WOULD_CREATE {
                     client.create_alert_rule(&payload)?
                 } else {
@@ -480,8 +475,8 @@ fn apply_alert_operation_with_client(
                         .collect(),
                 ))
             }
-            _ => Err(message(format!("Unsupported alert sync kind {kind}."))),
+            _ => Err(unsupported_alert_sync_kind(kind)),
         },
-        _ => Err(message(format!("Unsupported alert sync action {action}."))),
+        _ => Err(unsupported_alert_sync_action(action)),
     }
 }
