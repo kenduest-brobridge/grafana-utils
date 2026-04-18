@@ -20,6 +20,9 @@ use super::browse_terminal::TerminalSession;
 #[path = "team_browse_actions.rs"]
 mod team_browse_actions;
 #[cfg(feature = "tui")]
+#[path = "team_browse_confirmation.rs"]
+mod team_browse_confirmation;
+#[cfg(feature = "tui")]
 #[path = "team_browse_dialog.rs"]
 mod team_browse_dialog;
 #[cfg(feature = "tui")]

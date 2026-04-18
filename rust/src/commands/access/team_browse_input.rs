@@ -49,8 +49,12 @@ where
         handle_search_key(state, key);
         return Ok(BrowseAction::Continue);
     }
-    if super::team_browse_actions::handle_pending_confirmation_key(request_json, args, state, key)?
-    {
+    if super::team_browse_confirmation::handle_pending_confirmation_key(
+        request_json,
+        args,
+        state,
+        key,
+    )? {
         return Ok(BrowseAction::Continue);
     }
     super::team_browse_dispatch::handle_normal_key(request_json, args, state, key)
