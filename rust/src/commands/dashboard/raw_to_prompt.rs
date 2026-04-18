@@ -53,6 +53,7 @@ pub(crate) fn run_raw_to_prompt(args: &RawToPromptArgs) -> Result<()> {
             &inventory,
             mapping.as_ref(),
             args.resolution,
+            Some(args),
         );
 
         match result {

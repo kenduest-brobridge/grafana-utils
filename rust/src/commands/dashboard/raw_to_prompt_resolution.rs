@@ -20,6 +20,10 @@ use super::{
     build_http_client, build_http_client_for_org, load_json_file, CommonCliArgs,
     DatasourceInventoryItem, RawToPromptArgs, RawToPromptResolution, DEFAULT_TIMEOUT, DEFAULT_URL,
 };
+use crate::dashboard::prompt::{
+    build_external_export_document_with_library_panels, build_library_panel_export,
+    collect_library_panel_uids,
+};
 
 pub(crate) fn load_live_datasource_inventory(
     args: &RawToPromptArgs,
@@ -71,6 +75,7 @@ pub(crate) fn convert_raw_dashboard_file(
     datasource_inventory: &[DatasourceInventoryItem],
     mapping: Option<&DatasourceMapDocument>,
     resolution: RawToPromptResolution,
+    live_args: Option<&RawToPromptArgs>,
 ) -> Result<RawToPromptOutcome> {
     let payload = load_json_file(input_path)?;
     if is_dashboard_v2_payload(&payload) {
@@ -94,12 +99,29 @@ pub(crate) fn convert_raw_dashboard_file(
         &mut stats,
     )?;
     let datasource_catalog = build_datasource_catalog(&build_synthetic_catalog(&dashboard));
-    let mut prompt_document = build_external_export_document(&dashboard, &datasource_catalog)?;
+    let live_library_panels = if let Some(args) = live_args {
+        if raw_to_prompt_live_lookup_requested(args) {
+            Some(load_live_library_panel_exports(args, &dashboard)?)
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+    let mut prompt_document = if let Some(library_panels) = live_library_panels.as_ref() {
+        build_external_export_document_with_library_panels(
+            &dashboard,
+            &datasource_catalog,
+            Some(library_panels),
+        )?
+    } else {
+        build_external_export_document(&dashboard, &datasource_catalog)?
+    };
     rewrite_prompt_panel_placeholder_paths(&mut prompt_document, &placeholder_paths);
     let datasource_slots = prompt_document
         .get("__inputs")
         .and_then(Value::as_array)
-        .map(|items| items.len())
+        .map(|items: &Vec<Value>| items.len())
         .unwrap_or(0);
     let resolution_kind = if stats.inferred > 0 {
         RawToPromptResolutionKind::Inferred
@@ -112,6 +134,74 @@ pub(crate) fn convert_raw_dashboard_file(
         resolution: resolution_kind,
         warnings,
     })
+}
+
+fn collect_live_library_panel_exports_with_request<F>(
+    dashboard_payload: &Value,
+    mut request_json: F,
+) -> Result<(BTreeMap<String, Value>, Vec<String>)>
+where
+    F: FnMut(reqwest::Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
+{
+    let mut exports = BTreeMap::new();
+    let mut warnings = Vec::new();
+
+    for uid in collect_library_panel_uids(dashboard_payload) {
+        match request_json(
+            reqwest::Method::GET,
+            &format!("/api/library-elements/{uid}"),
+            &[],
+            None,
+        ) {
+            Ok(Some(value)) => match build_library_panel_export(&value) {
+                Ok((export_uid, export)) => {
+                    exports.insert(export_uid, export);
+                }
+                Err(error) => warnings.push(format!(
+                    "Failed to normalize library panel {uid} for export: {error}"
+                )),
+            },
+            Ok(None) => warnings.push(format!(
+                "Library panel {uid} did not return a response from Grafana."
+            )),
+            Err(error) => warnings.push(format!(
+                "Failed to fetch library panel {uid} for export: {error}"
+            )),
+        }
+    }
+
+    Ok((exports, warnings))
+}
+
+fn load_live_library_panel_exports(
+    args: &RawToPromptArgs,
+    dashboard_payload: &Value,
+) -> Result<BTreeMap<String, Value>> {
+    let common = CommonCliArgs {
+        color: args.color,
+        profile: args.profile.clone(),
+        url: args.url.clone().unwrap_or_else(|| DEFAULT_URL.to_string()),
+        api_token: args.api_token.clone(),
+        username: args.username.clone(),
+        password: args.password.clone(),
+        prompt_password: args.prompt_password,
+        prompt_token: args.prompt_token,
+        timeout: args.timeout.unwrap_or(DEFAULT_TIMEOUT),
+        verify_ssl: args.verify_ssl,
+    };
+    let client = match args.org_id {
+        Some(org_id) => build_http_client_for_org(&common, org_id)?,
+        None => build_http_client(&common)?,
+    };
+    let dashboard = DashboardResourceClient::new(&client);
+    let (exports, warnings) = collect_live_library_panel_exports_with_request(
+        dashboard_payload,
+        |method, path, params, payload| dashboard.request_json(method, path, params, payload),
+    )?;
+    for warning in warnings {
+        eprintln!("Dashboard raw-to-prompt warning: {warning}");
+    }
+    Ok(exports)
 }
 
 fn is_dashboard_v2_payload(payload: &Value) -> bool {
@@ -166,6 +256,69 @@ fn collect_library_panel_reference_count(node: &Value, count: &mut usize) {
             }
         }
         _ => {}
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn collect_live_library_panel_exports_with_request_returns_exports_for_models() {
+        let dashboard = json!({
+            "panels": [{
+                "id": 1,
+                "libraryPanel": {"uid": "shared-panel", "name": "Shared Panel"}
+            }]
+        });
+        let (exports, warnings) =
+            collect_live_library_panel_exports_with_request(&dashboard, |_, path, _, _| {
+                assert_eq!(path, "/api/library-elements/shared-panel");
+                Ok(Some(json!({
+                    "result": {
+                        "uid": "shared-panel",
+                        "name": "Shared Panel",
+                        "kind": 1,
+                        "type": "graph",
+                        "model": {
+                            "type": "graph",
+                            "datasource": {"uid": "prom-main", "type": "prometheus"}
+                        }
+                    }
+                })))
+            })
+            .unwrap();
+        assert!(warnings.is_empty());
+        assert_eq!(exports.len(), 1);
+        assert_eq!(exports["shared-panel"]["model"]["type"], "graph");
+    }
+
+    #[test]
+    fn collect_live_library_panel_exports_with_request_warns_when_model_is_missing() {
+        let dashboard = json!({
+            "panels": [{
+                "id": 1,
+                "libraryPanel": {"uid": "shared-panel", "name": "Shared Panel"}
+            }]
+        });
+        let (exports, warnings) =
+            collect_live_library_panel_exports_with_request(&dashboard, |_, path, _, _| {
+                assert_eq!(path, "/api/library-elements/shared-panel");
+                Ok(Some(json!({
+                    "result": {
+                        "uid": "shared-panel",
+                        "name": "Shared Panel",
+                        "kind": 1,
+                        "type": "graph"
+                    }
+                })))
+            })
+            .unwrap();
+        assert!(exports.is_empty());
+        assert!(warnings
+            .iter()
+            .any(|warning| warning.contains("Unexpected library panel payload")));
     }
 }
 
