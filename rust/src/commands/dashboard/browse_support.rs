@@ -14,14 +14,15 @@ use super::list::{fetch_current_org_with_request, org_id_value};
 use super::source_loader::{load_dashboard_source, LoadedDashboardSource};
 use super::{
     build_auth_context, build_http_client, build_http_client_for_org,
-    collect_folder_inventory_with_request, fetch_dashboard_with_request,
-    list_dashboard_summaries_with_request, BrowseArgs, DashboardImportInputFormat,
-    DEFAULT_DASHBOARD_TITLE, DEFAULT_FOLDER_TITLE,
+    collect_folder_inventory_with_request, list_dashboard_summaries_with_request, BrowseArgs,
+    DashboardImportInputFormat, DEFAULT_DASHBOARD_TITLE, DEFAULT_FOLDER_TITLE,
 };
 use crate::dashboard::files::{
     discover_dashboard_files, extract_dashboard_object, load_export_metadata,
     load_folder_inventory, load_json_file,
 };
+
+pub(crate) use super::browse_live_detail::fetch_dashboard_view_lines_with_request;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct DashboardBrowseSummary {
@@ -646,96 +647,6 @@ fn build_org_node(
         org_id: org_id.to_string(),
         child_count: folder_count,
     }
-}
-
-pub(crate) fn fetch_dashboard_view_lines_with_request<F>(
-    mut request_json: F,
-    node: &DashboardBrowseNode,
-) -> Result<Vec<String>>
-where
-    F: FnMut(Method, &str, &[(String, String)], Option<&Value>) -> Result<Option<Value>>,
-{
-    if node.kind != DashboardBrowseNodeKind::Dashboard {
-        return Ok(node.details.clone());
-    }
-    let Some(uid) = node.uid.as_deref() else {
-        return Err(message("Dashboard browse requires a dashboard UID."));
-    };
-    let dashboard = fetch_dashboard_with_request(&mut request_json, uid)?;
-    let dashboard_object = dashboard
-        .get("dashboard")
-        .and_then(Value::as_object)
-        .ok_or_else(|| message("Grafana returned a dashboard payload without dashboard data."))?;
-    let meta = dashboard
-        .get("meta")
-        .and_then(Value::as_object)
-        .cloned()
-        .unwrap_or_default();
-
-    let mut lines = vec![
-        "Live details:".to_string(),
-        format!("Org: {}", node.org_name),
-        format!("Org ID: {}", node.org_id),
-        format!(
-            "Title: {}",
-            string_field(dashboard_object, "title", DEFAULT_DASHBOARD_TITLE)
-        ),
-        format!("UID: {}", string_field(dashboard_object, "uid", uid)),
-        format!(
-            "Version: {}",
-            dashboard_object
-                .get("version")
-                .map(Value::to_string)
-                .unwrap_or_else(|| "-".to_string())
-        ),
-        format!("Folder path: {}", node.path),
-        format!(
-            "Folder UID: {}",
-            string_field(&meta, "folderUid", node.uid.as_deref().unwrap_or("-"))
-        ),
-        format!(
-            "Slug: {}",
-            string_field(&meta, "slug", "")
-                .split('?')
-                .next()
-                .unwrap_or_default()
-        ),
-        format!(
-            "URL: {}",
-            string_field(&meta, "url", node.url.as_deref().unwrap_or("-"))
-        ),
-    ];
-
-    if let Ok(versions) =
-        super::history::list_dashboard_history_versions_with_request(&mut request_json, uid, 5)
-    {
-        if !versions.is_empty() {
-            lines.push("Recent versions:".to_string());
-            for version in versions {
-                lines.push(format!(
-                    "v{} | {} | {} | {}",
-                    version.version,
-                    if version.created.is_empty() {
-                        "-"
-                    } else {
-                        &version.created
-                    },
-                    if version.created_by.is_empty() {
-                        "-"
-                    } else {
-                        &version.created_by
-                    },
-                    if version.message.is_empty() {
-                        "-"
-                    } else {
-                        &version.message
-                    }
-                ));
-            }
-        }
-    }
-
-    Ok(lines)
 }
 
 fn ensure_folder_path(
