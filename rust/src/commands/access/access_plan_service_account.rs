@@ -15,12 +15,13 @@ use crate::access::service_account::{
     build_service_account_diff_map, list_all_service_accounts_with_request,
     load_service_account_import_records,
 };
+use crate::access::user::build_record_diff_fields;
 use crate::access::{ACCESS_EXPORT_KIND_SERVICE_ACCOUNTS, ACCESS_SERVICE_ACCOUNT_EXPORT_FILENAME};
 use crate::common::{message, tool_version, Result};
 
 use super::{
-    build_record_diff_fields, sort_actions, AccessPlanAction, AccessPlanChange, AccessPlanDocument,
-    AccessPlanResourceReport, AccessPlanSummary,
+    sort_actions, AccessPlanAction, AccessPlanChange, AccessPlanDocument, AccessPlanResourceReport,
+    AccessPlanSummary,
 };
 
 type ServiceAccountPlanIndex = BTreeMap<String, (String, Map<String, Value>)>;

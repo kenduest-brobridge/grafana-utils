@@ -941,7 +941,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">什麼時候看這頁</p>
-  <ul class="command-intro-list"><li>當你想在 import 或 prune access state 前，先用結構化方式確認「會改什麼」，使用這個命令。</li><li>目前實作支援 user、org、team、service-account bundles。--resource all 先保留給後續 aggregate layer。</li></ul>
+  <ul class="command-intro-list"><li>當你想在 import 或 prune access state 前，先用結構化方式確認「會改什麼」，使用這個命令。</li><li>planner 支援具體的 user、org、team、service-account bundles。--resource all 會從同一個 access export root 彙整這些 bundle types。</li></ul>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">適合誰</p>
@@ -953,9 +953,9 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <p>依據本地 access bundle 與遠端 Grafana live 狀態，產生 review-first 的 access reconcile plan。</p>
 <h2 id="何時使用">何時使用</h2>
 <p>當你想在 import 或 prune access state 前，先用結構化方式確認「會改什麼」，使用這個命令。</p>
-<p>目前實作支援 <code>user</code>、<code>org</code>、<code>team</code>、<code>service-account</code> bundles。<code>--resource all</code> 先保留給後續 aggregate layer。</p>
+<p>planner 支援具體的 <code>user</code>、<code>org</code>、<code>team</code>、<code>service-account</code> bundles。<code>--resource all</code> 會從同一個 access export root 彙整這些 bundle types。</p>
 <h2 id="重要參數">重要參數</h2>
-<ul><li><code>--input-dir</code>: 要 review 的本地 access export bundle。</li><li><code>--resource</code>: 選擇 <code>user</code>、<code>team</code>、<code>org</code>、<code>service-account</code> 或 <code>all</code>。目前 planner 支援具體 resource，會拒絕 <code>all</code>。</li><li><code>--prune</code>: 將遠端多出的 users 顯示成刪除候選。沒有這個參數時只會當成 extra remote review items。</li><li><code>--output-format</code>: 選擇 <code>text</code>、<code>table</code> 或 <code>json</code>。</li><li><code>--show-same</code>: 在 text/table 輸出中包含沒有變更的 row。</li><li><code>--output-columns</code>, <code>--list-columns</code>, <code>--no-header</code>: 調整 table 輸出。</li></ul>
+<ul><li><code>--input-dir</code>: 要 review 的本地 access export bundle。使用 <code>--resource all</code> 時，請指到包含 <code>access-users/</code>、<code>access-orgs/</code>、<code>access-teams/</code> 或 <code>access-service-accounts/</code> 的 root。</li><li><code>--resource</code>: 選擇 <code>user</code>、<code>team</code>、<code>org</code>、<code>service-account</code> 或 <code>all</code>。</li><li><code>--prune</code>: 將遠端多出的 users 顯示成刪除候選。沒有這個參數時只會當成 extra remote review items。</li><li><code>--output-format</code>: 選擇 <code>text</code>、<code>table</code> 或 <code>json</code>。</li><li><code>--show-same</code>: 在 text/table 輸出中包含沒有變更的 row。</li><li><code>--output-columns</code>, <code>--list-columns</code>, <code>--no-header</code>: 調整 table 輸出。</li></ul>
 <h2 id="範例">範例</h2>
 <pre><code># 對 user access bundle 產生摘要 plan。
 grafana-util access plan --profile prod --input-dir ./access-users</code></pre>
@@ -967,12 +967,14 @@ grafana-util access plan --profile prod --input-dir ./access-users --resource us
 grafana-util access plan --profile prod --input-dir ./access-orgs --resource org --output-format table
 grafana-util access plan --profile prod --input-dir ./access-teams --resource team --output-format table
 grafana-util access plan --profile prod --input-dir ./access-service-accounts --resource service-account --output-format json</code></pre>
+<pre><code># 從同一個 root 彙整所有 access bundle types。
+grafana-util access plan --profile prod --input-dir ./access --resource all --output-format json</code></pre>
 <h2 id="before-after">Before / After</h2>
-<ul><li><strong>Before</strong>: access export、import、diff 依 resource type 分散，review bundle 時仍可能需要人工推理才敢 mutation。</li><li><strong>After</strong>: <code>access plan</code> 會輸出單一 review document，用穩定 action rows 表示 user、org、team 與 service-account reconcile 結果。</li><li>JSON 輸出保留穩定 <code>actionId</code>、status、changed fields、target details、blocked reason 與 review hints，可供 CI 或後續 TUI 使用。</li></ul>
+<ul><li><strong>Before</strong>: access export、import、diff 依 resource type 分散，review bundle 時仍可能需要人工推理才敢 mutation。</li><li><strong>After</strong>: <code>access plan</code> 會輸出單一 review document，用穩定 action rows 表示 user、org、team 與 service-account reconcile 結果，也支援 <code>--resource all</code> aggregate review。</li><li>JSON 輸出保留穩定 <code>actionId</code>、status、changed fields、target details、blocked reason 與 review hints，可供 CI 或後續 TUI 使用。</li></ul>
 <h2 id="成功狀態">成功狀態</h2>
-<ul><li>import 前可看出 create、update、same 與 remote-only 狀態</li><li>delete candidates 必須明確使用 <code>--prune</code></li><li>JSON output 可作為 review evidence 或 automation input</li></ul>
+<ul><li>import 前可看出 create、update、same 與 remote-only 狀態</li><li><code>--resource all</code> 會把缺少的 bundle type 顯示成 skipped resource，不會默默忽略</li><li>delete candidates 必須明確使用 <code>--prune</code></li><li>JSON output 可作為 review evidence 或 automation input</li></ul>
 <h2 id="失敗檢查">失敗檢查</h2>
-<ul><li>如果命令回報 selected resource 尚未支援，改用具體 resource，不要用 <code>--resource all</code></li><li>如果 plan 指到錯誤 org，確認 profile 或 shared auth flags</li><li>如果 delete candidates 看起來不合理，先移除 <code>--prune</code> 並檢查 extra remote rows</li></ul>
+<ul><li>如果 <code>--resource all</code> 找不到任何 bundle directory，確認 input root 包含預設 access export directories</li><li>如果 plan 指到錯誤 org，確認 profile 或 shared auth flags</li><li>如果 delete candidates 看起來不合理，先移除 <code>--prune</code> 並檢查 extra remote rows</li></ul>
 <h2 id="相關命令">相關命令</h2>
 <ul><li><a href="access-user.html">access user</a></li><li><a href="access-org.html">access org</a></li><li><a href="access-team.html">access team</a></li><li><a href="access-service-account.html">access service-account</a></li></ul>
 

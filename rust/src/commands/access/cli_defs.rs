@@ -29,7 +29,8 @@ pub use access_cli_shared::{
     ACCESS_EXPORT_KIND_USERS, ACCESS_EXPORT_METADATA_FILENAME, ACCESS_EXPORT_VERSION,
     ACCESS_ORG_EXPORT_FILENAME, ACCESS_SERVICE_ACCOUNT_EXPORT_FILENAME,
     ACCESS_TEAM_EXPORT_FILENAME, ACCESS_USER_EXPORT_FILENAME, DEFAULT_ACCESS_ORG_EXPORT_DIR,
-    DEFAULT_ACCESS_TEAM_EXPORT_DIR, DEFAULT_PAGE_SIZE, DEFAULT_TIMEOUT, DEFAULT_URL,
+    DEFAULT_ACCESS_SERVICE_ACCOUNT_EXPORT_DIR, DEFAULT_ACCESS_TEAM_EXPORT_DIR,
+    DEFAULT_ACCESS_USER_EXPORT_DIR, DEFAULT_PAGE_SIZE, DEFAULT_TIMEOUT, DEFAULT_URL,
 };
 use access_cli_shared::{
     ACCESS_ORG_ADD_HELP_TEXT, ACCESS_ORG_DELETE_HELP_TEXT, ACCESS_ORG_DIFF_HELP_TEXT,
@@ -566,7 +567,7 @@ pub struct AccessPlanArgs {
         long,
         value_enum,
         default_value_t = AccessPlanResource::User,
-        help = "Select which access resource bundle to plan. The current vertical slice supports user, org, team, and service-account bundles."
+        help = "Select which access resource bundle to plan. Use all to aggregate user, org, team, and service-account bundles from one root directory."
     )]
     pub resource: AccessPlanResource,
     #[arg(

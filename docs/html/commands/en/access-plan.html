@@ -941,7 +941,7 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">When to open this page</p>
-  <ul class="command-intro-list"><li>Use this before importing or pruning access state when you want a structured answer to &quot;what would change?&quot; without mutating Grafana.</li><li>The current implementation plans user, org, team, and service-account bundles. --resource all is still reserved for a later aggregate layer.</li></ul>
+  <ul class="command-intro-list"><li>Use this before importing or pruning access state when you want a structured answer to &quot;what would change?&quot; without mutating Grafana.</li><li>The planner supports concrete user, org, team, and service-account bundles. --resource all aggregates those bundle types from one access export root.</li></ul>
 </div>
 <div class="command-intro-block">
   <p class="command-intro-label">Who this page is for</p>
@@ -953,9 +953,9 @@ code[class*="language-"],pre[class*="language-"]{color:#ccc;background:none;font
 <p>Build a review-first access reconcile plan from a local access bundle against live Grafana.</p>
 <h2 id="when-to-use">When to use</h2>
 <p>Use this before importing or pruning access state when you want a structured answer to &quot;what would change?&quot; without mutating Grafana.</p>
-<p>The current implementation plans <code>user</code>, <code>org</code>, <code>team</code>, and <code>service-account</code> bundles. <code>--resource all</code> is still reserved for a later aggregate layer.</p>
+<p>The planner supports concrete <code>user</code>, <code>org</code>, <code>team</code>, and <code>service-account</code> bundles. <code>--resource all</code> aggregates those bundle types from one access export root.</p>
 <h2 id="key-flags">Key flags</h2>
-<ul><li><code>--input-dir</code>: local access export bundle to review.</li><li><code>--resource</code>: choose <code>user</code>, <code>team</code>, <code>org</code>, <code>service-account</code>, or <code>all</code>. The current planner supports the concrete resource choices and rejects <code>all</code>.</li><li><code>--prune</code>: show remote-only users as delete candidates. Without this flag they remain extra remote review items.</li><li><code>--output-format</code>: choose <code>text</code>, <code>table</code>, or <code>json</code>.</li><li><code>--show-same</code>: include unchanged rows in text and table output.</li><li><code>--output-columns</code>, <code>--list-columns</code>, <code>--no-header</code>: tune table output.</li></ul>
+<ul><li><code>--input-dir</code>: local access export bundle to review. With <code>--resource all</code>, point this at a root that contains <code>access-users/</code>, <code>access-orgs/</code>, <code>access-teams/</code>, or <code>access-service-accounts/</code>.</li><li><code>--resource</code>: choose <code>user</code>, <code>team</code>, <code>org</code>, <code>service-account</code>, or <code>all</code>.</li><li><code>--prune</code>: show remote-only users as delete candidates. Without this flag they remain extra remote review items.</li><li><code>--output-format</code>: choose <code>text</code>, <code>table</code>, or <code>json</code>.</li><li><code>--show-same</code>: include unchanged rows in text and table output.</li><li><code>--output-columns</code>, <code>--list-columns</code>, <code>--no-header</code>: tune table output.</li></ul>
 <h2 id="examples">Examples</h2>
 <pre><code># Build a concise user access plan.
 grafana-util access plan --profile prod --input-dir ./access-users</code></pre>
@@ -967,12 +967,14 @@ grafana-util access plan --profile prod --input-dir ./access-users --resource us
 grafana-util access plan --profile prod --input-dir ./access-orgs --resource org --output-format table
 grafana-util access plan --profile prod --input-dir ./access-teams --resource team --output-format table
 grafana-util access plan --profile prod --input-dir ./access-service-accounts --resource service-account --output-format json</code></pre>
+<pre><code># Aggregate all access bundle types from one root directory.
+grafana-util access plan --profile prod --input-dir ./access --resource all --output-format json</code></pre>
 <h2 id="before-after">Before / After</h2>
-<ul><li><strong>Before</strong>: access export, import, and diff flows were split by resource type, so bundle review could still require manual reasoning before mutation.</li><li><strong>After</strong>: <code>access plan</code> emits a single review document with stable action rows for user, org, team, and service-account reconciliation.</li><li>JSON output is structured for CI and future TUI review. Rows include stable <code>actionId</code>, status, changed fields, target details, blocked reason, and review hints.</li></ul>
+<ul><li><strong>Before</strong>: access export, import, and diff flows were split by resource type, so bundle review could still require manual reasoning before mutation.</li><li><strong>After</strong>: <code>access plan</code> emits a single review document with stable action rows for user, org, team, and service-account reconciliation, including aggregate <code>--resource all</code> review.</li><li>JSON output is structured for CI and future TUI review. Rows include stable <code>actionId</code>, status, changed fields, target details, blocked reason, and review hints.</li></ul>
 <h2 id="what-success-looks-like">What success looks like</h2>
-<ul><li>create, update, same, and remote-only states are visible before import</li><li>delete candidates require an explicit <code>--prune</code> review mode</li><li>JSON output can be saved as review evidence or loaded by automation</li></ul>
+<ul><li>create, update, same, and remote-only states are visible before import</li><li><code>--resource all</code> shows missing bundle types as skipped resources instead of hiding them</li><li>delete candidates require an explicit <code>--prune</code> review mode</li><li>JSON output can be saved as review evidence or loaded by automation</li></ul>
 <h2 id="failure-checks">Failure checks</h2>
-<ul><li>if the command says the selected resource is unsupported, choose one concrete resource instead of <code>--resource all</code></li><li>if the plan points at the wrong org, confirm the profile or shared auth flags</li><li>if delete candidates appear unexpectedly, rerun without <code>--prune</code> and inspect the extra remote rows first</li></ul>
+<ul><li>if <code>--resource all</code> finds no bundle directories, confirm the input root contains the default access export directories</li><li>if the plan points at the wrong org, confirm the profile or shared auth flags</li><li>if delete candidates appear unexpectedly, rerun without <code>--prune</code> and inspect the extra remote rows first</li></ul>
 <h2 id="related-commands">Related commands</h2>
 <ul><li><a href="access-user.html">access user</a></li><li><a href="access-org.html">access org</a></li><li><a href="access-team.html">access team</a></li><li><a href="access-service-account.html">access service-account</a></li></ul>
 

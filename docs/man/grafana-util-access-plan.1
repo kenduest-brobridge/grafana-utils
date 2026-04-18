@@ -12,16 +12,16 @@ Use this before importing or pruning access state when you want a structured ans
 .IP \(bu 2
 Before: access export, import, and diff flows were split by resource type, so bundle review could still require manual reasoning before mutation.
 .IP \(bu 2
-After: access plan emits a single review document with stable action rows for user, org, team, and service\-account reconciliation.
+After: access plan emits a single review document with stable action rows for user, org, team, and service\-account reconciliation, including aggregate \-\-resource all review.
 .IP \(bu 2
 JSON output is structured for CI and future TUI review. Rows include stable actionId, status, changed fields, target details, blocked reason, and review hints.
 .SH COMMON OPTIONS
 .TP
 .B \-\-input\-dir
-local access export bundle to review.
+local access export bundle to review. With \-\-resource all, point this at a root that contains access\-users/, access\-orgs/, access\-teams/, or access\-service\-accounts/.
 .TP
 .B \-\-resource
-choose user, team, org, service\-account, or all. The current planner supports the concrete resource choices and rejects all.
+choose user, team, org, service\-account, or all.
 .TP
 .B \-\-prune
 show remote\-only users as delete candidates. Without this flag they remain extra remote review items.
@@ -38,12 +38,14 @@ tune table output.
 .IP \(bu 2
 create, update, same, and remote\-only states are visible before import
 .IP \(bu 2
+\-\-resource all shows missing bundle types as skipped resources instead of hiding them
+.IP \(bu 2
 delete candidates require an explicit \-\-prune review mode
 .IP \(bu 2
 JSON output can be saved as review evidence or loaded by automation
 .SH FAILURE CHECKS
 .IP \(bu 2
-if the command says the selected resource is unsupported, choose one concrete resource instead of \-\-resource all
+if \-\-resource all finds no bundle directories, confirm the input root contains the default access export directories
 .IP \(bu 2
 if the plan points at the wrong org, confirm the profile or shared auth flags
 .IP \(bu 2

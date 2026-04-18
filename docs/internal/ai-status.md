@@ -15,6 +15,13 @@ Current AI-maintained status only.
 - Older entries moved to [`ai-status-archive-2026-04-17.md`](docs/internal/archive/ai-status-archive-2026-04-17.md).
 - Older entries moved to [`ai-status-archive-2026-04-18.md`](docs/internal/archive/ai-status-archive-2026-04-18.md).
 
+## 2026-04-18 - Add access plan aggregate resource
+- State: Done
+- Scope: Rust access plan aggregate routing/tests, access plan docs/help, generated docs, and AI trace docs. README files and Python implementation are out of scope.
+- Baseline: `access plan` supports concrete `user`, `org`, `team`, and `service-account` resources, but `--resource all` is parsed and rejected as a future aggregate layer.
+- Current Update: Added `--resource all` as a read-only aggregate over root-level `access-users`, `access-orgs`, `access-teams`, and `access-service-accounts` bundle directories. Split access plan code by contract types, renderers, user planner, aggregate planner, and tests so production files stay below the 500-line review threshold.
+- Result: Focused access plan tests, access lib tests, full Rust tests, clippy, formatting, generated docs, docs-surface, AI workflow, man/html checks, whitespace checks, and CLI help smoke pass.
+
 ## 2026-04-18 - Add dashboard plan multi-org routing
 - State: Done
 - Scope: Rust dashboard plan routing/model/tests, dashboard plan command docs, generated docs if needed, and AI trace docs. README files and Python implementation are out of scope.
@@ -49,10 +56,3 @@ Current AI-maintained status only.
 - Baseline: older all-orgs export artifacts can contain valid `org_*` child exports while the root `index.json` and `export-metadata.json` only describe one org. `export-layout` repairs file layout and existing root index paths, but it does not rebuild missing all-orgs aggregate root data from child org indexes.
 - Current Update: `dashboard convert export-layout` now rebuilds legacy all-orgs root `index.json` and root metadata from child `org_*/raw` and `org_*/prompt` indexes, even when no layout moves are possible because legacy folder identity is missing. The current exporter regression now asserts all-orgs root metadata uses all-orgs scope and does not carry a single root `org/orgId`.
 - Result: Focused export-layout and all-orgs export tests pass; a copied legacy sample rebuilds root aggregate metadata to 138 dashboards across 2 orgs.
-
-## 2026-04-18 - Align dashboard export/import with Grafana source
-- State: Done
-- Scope: Rust dashboard prompt export, raw-to-prompt fixture parity tests, import/publish target preflight evidence, dashboard command docs, generated docs, maintainer contract notes, and AI trace docs. README files, Python implementation, and dashboard v2 support are out of scope.
-- Baseline: prompt export always emitted empty `__elements`, raw-to-prompt parity coverage did not include Grafana-source datasource/library/v2 fixture shapes, and dashboard import/publish did not surface or block provisioned target dashboard ownership before live overwrite.
-- Current Update: Live dashboard export now fetches referenced library panel models into prompt `__elements` while offline raw-to-prompt remains warning-only. Raw-to-prompt tests now cover selected datasource variables, default datasource variables, special datasource refs, string datasource mappings, library panel warnings, and v2/k8s rejection. Dashboard import/publish dry-run surfaces target evidence and live apply blocks provisioned overwrite before POST.
-- Result: Focused dashboard tests, full Rust tests, clippy, formatting, docs-surface, generated man/html checks, and whitespace checks pass.
