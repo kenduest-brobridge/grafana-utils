@@ -349,7 +349,7 @@ def validate_contract_fixtures(
                 errors.append(f"{name}: {error}")
             allowed_set = set(allowed_values)
             for matched_path, value in matches:
-                if value not in allowed_set:
+                if not _is_scalar_json_value(value) or value not in allowed_set:
                     errors.append(
                         f"{name}: path {matched_path!r} expected one of {allowed_values!r} but found {value!r}"
                     )
