@@ -84,6 +84,31 @@ Use three layers:
     golden / manifest layer and do not describe it as a stable public contract
     yet.
 
+## Current Contract Lane Overlap
+
+The output-contract registry and schema manifests intentionally do not have a
+one-to-one contract-id mapping yet.
+
+- Runtime output contracts currently cover deep golden regression checks for
+  selected machine outputs, including dashboard summary/governance, dashboard
+  topology/impact/policy, datasource export index, and sync plan/preflight/source
+  bundle artifacts.
+- Schema manifests currently publish schema/help contracts for status, change
+  workflow, dashboard history, and diff families.
+- Overlap should be promoted by artifact family, not by renaming IDs. For
+  example, `grafana-utils-sync-plan` in the runtime output registry and
+  `sync-plan` in the change schema manifest both describe the workspace preview
+  family, but each layer owns a different validation purpose.
+
+Promotion rule:
+
+- Add or update runtime output-contract coverage when a JSON command output has
+  behavior-sensitive fields that need golden regression checks.
+- Add or update schema manifest coverage when the same output is documented as a
+  published `--help-schema` or schema/help surface.
+- Treat an output as stable public surface only after both lanes have coverage
+  or there is an explicit reason that one lane does not apply.
+
 ## Maintainer Rules
 
 - Keep `docs/DEVELOPER.md` short enough to orient maintainers quickly.

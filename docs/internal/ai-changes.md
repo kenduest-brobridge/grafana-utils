@@ -31,6 +31,13 @@ Current AI change log only.
 - Impact: `docs/internal/contract-doc-map.md`, `docs/internal/ai-status.md`, and `docs/internal/ai-changes.md`. Runtime code, public CLI behavior, generated docs, README files, JSON contracts, and Python implementation were intentionally left unchanged.
 - Rollback/Risk: low documentation-only change. Rollback would return the contract map to the less explicit ownership wording.
 
+## 2026-04-19 - Advance status and review-governance cleanup
+- Summary: routed the alert live status producer through the shared status reading model while preserving the existing project-status output shape. Cleaned stale backlog entries, documented how runtime golden contracts and schema manifests should overlap, and added an internal inventory for future mutation review-envelope work without changing public JSON contracts.
+- Tests: preserved behavior for alert live project-status output and avoided public CLI or schema changes.
+- Test Run: `cargo test --manifest-path rust/Cargo.toml --quiet alert_live_project_status`; `cargo test --manifest-path rust/Cargo.toml --quiet project_status`; `cargo fmt --manifest-path rust/Cargo.toml --all --check`; `make quality-output-contracts`; `make schema-check`; `make quality-architecture`; `cargo clippy --manifest-path rust/Cargo.toml --all-targets -- -D warnings`; `cargo test --manifest-path rust/Cargo.toml --quiet`; `make quality-ai-workflow`.
+- Impact: Rust alert live status internals, maintainer contract guidance, mutation review planning docs, TODO backlog, and AI trace docs. README files, generated docs, public CLI behavior, and Python implementation were intentionally left unchanged.
+- Rollback/Risk: low behavior-preserving status-model refactor plus maintainer docs. Rollback would restore direct alert live project-status construction and remove the new review-envelope planning note.
+
 ## 2026-04-18 - Split oversized Rust test surfaces
 - Summary: split large Rust regression files into behavior-focused modules while preserving public behavior and existing test names. Sync bundle execution now separates source, domain artifact, and preflight cases; dashboard export/import/topology and browse workflow tests now route through small facades; snapshot tests now separate fixture, export, review, and metadata cases; access org runtime tests now separate routing, diff, import/export, and local-list cases.
 - Tests: preserved existing coverage and added no public behavior changes.
@@ -86,11 +93,3 @@ Current AI change log only.
 - Impact: Rust dashboard plan routing/model/tests, dashboard plan type module, dashboard plan command docs in English and zh-TW, generated man/html docs, and AI trace docs. README files and Python implementation were intentionally left unchanged.
 - Rollback/Risk: medium dashboard planning behavior expansion. Rollback should restore single-org `DashboardPlanInput` handling and return `--use-export-org` to unsupported while leaving the existing single-org plan path intact.
 - Follow-up: consider extracting dashboard plan route discovery into a shared import/plan helper after source/raw routing has more real-world coverage.
-
-## 2026-04-18 - Extend access plan resource coverage
-- Summary: extended `grafana-util access plan` beyond user bundles. The planner now supports concrete `--resource org`, `--resource team`, and `--resource service-account` modes with the same stable action contract, opt-in prune handling, changed fields, target evidence, and review hints. `--resource all` remains a future aggregate layer.
-- Tests: added focused Rust plan regressions for org, team, and service-account create/same/update/extra/delete-candidate rows, including team membership/provisioned hints and service-account role/disabled hints.
-- Test Run: `cargo test --manifest-path rust/Cargo.toml --quiet access --lib`; `cargo clippy --manifest-path rust/Cargo.toml --all-targets -- -D warnings`.
-- Impact: Rust access plan routing and resource-specific plan helpers, access CLI help text, access command docs in English and zh-TW, generated docs, and AI trace docs.
-- Rollback/Risk: medium access plan behavior expansion. Rollback should remove the new org/team/service-account planner modules and route those selectors back to unsupported, while keeping the user plan path intact.
-- Follow-up: implement `--resource all` as an aggregate layer after the concrete resource contracts settle, preferably without duplicating per-resource planners.

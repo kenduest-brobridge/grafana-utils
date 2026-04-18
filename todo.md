@@ -35,14 +35,15 @@ changes priority.
 1. Continue normalizing the remaining project status producers around a shared
    internal status reading model. Include live Grafana evidence such as
    health/version where available.
-2. Split the next TUI browse boundaries for access user browse input refresh
-   and any remaining dashboard browse support behavior that is still mixed.
+2. Split the next TUI browse boundary only when a mixed responsibility remains
+   after the access reload and dashboard live-detail splits.
 3. Continue sync live apply cleanup only where a stable phase boundary remains;
    datasource target lookup and alert dispatch are already split.
-4. Reconcile output contracts and schema manifests so runtime goldens and
-   published schema/help contracts have clear ownership.
-5. Finish dashboard prompt external export parity for the remaining library
-   panel live-model handling.
+4. Reconcile output contracts and schema manifests by adding concrete promotion
+   checks after the ownership lanes are documented.
+5. Keep dashboard prompt external export parity guarded with fixtures and tests;
+   library-panel live-model coverage is now in place, while dashboard v2 remains
+   a future adapter boundary.
 
 Completed cleanup now closed:
 
@@ -50,6 +51,7 @@ Completed cleanup now closed:
 - Status producers routed through `StatusReading` for access and dashboard.
 - Access user browse mutation dispatch was split into a dedicated mutation
   module.
+- Access user browse reload behavior was split into a dedicated reload module.
 - Dashboard browse footer and action rendering were split from the main render
   path.
 - Sync live apply datasource target lookup was split into a shared helper.
@@ -57,6 +59,8 @@ Completed cleanup now closed:
 - Dashboard browse live detail loading was split from browse document support.
 - Raw-to-prompt resolver responsibilities were split into prompt path and
   datasource resolution modules.
+- Raw-to-prompt live library-panel prompt export parity is covered by a mock
+  Grafana regression test.
 - Raw-to-prompt clippy test module ordering was fixed.
 - Output contract checker collection and enum constraint checks are in place.
 - Docs diff classifier is in place.
@@ -105,8 +109,9 @@ place.
 
 ### Align Prompt Export With Grafana UI Semantics
 
-Status: partially done for classic prompt parity. Keep this item open only for
-the remaining library panel live-model parity and any future dashboard v2
+Status: classic prompt parity is covered for datasource variables, placeholder
+references, selected current datasource mapping, and live library-panel model
+export. Keep this item open for regression hardening and any future dashboard v2
 adapter work.
 
 Problem:
@@ -140,15 +145,16 @@ Action:
   datasource inputs.
 - Reject dashboard v2 resource/spec input in raw-to-prompt until a dedicated
   adapter exists.
-- Add later parity for library panel `__elements` live-model export and import
-  input validation.
+- Keep library panel `__elements` live-model export covered by regression tests
+  and add import input validation only when the import lane consumes those
+  elements directly.
 
 ### Dashboard Source-Alignment Follow-ups
 
 Keep these follow-ups separated from the classic prompt contract so the next
 changes stay reviewable and do not blur lane boundaries.
 
-- Add live library-panel `__elements` lookup only on the live export /
+- Keep live library-panel `__elements` lookup limited to the live export /
   import-handoff path. Keep local raw-to-prompt conversion warning-only when a
   referenced library panel model is missing.
 - Keep prompt/export fixture parity anchored to Grafana source testdata for
@@ -181,13 +187,12 @@ Validation:
 
 Problem:
 
-`rust/src/commands/access/user_browse_input.rs` is still a dense TUI input surface. It mixes key handling, selection state, mutation dispatch, refresh behavior, and error handling.
+`rust/src/commands/access/user_browse_input.rs` is still a dense TUI input surface. Mutation dispatch and reload behavior are now split; key dispatch, selection state, and error handling should be split only if a stable responsibility boundary remains.
 
 Action:
 
-- Extract only the most stable focused boundary first. Candidate boundaries are:
-  - action dispatch
-  - refresh/reload behavior
+- Extract only the next stable focused boundary if it remains mixed. Candidate
+  boundary:
   - key handling
 - Keep public behavior unchanged.
 - Do not create all candidate modules in one pass unless each one removes a clearly mixed responsibility.
@@ -210,8 +215,8 @@ Hotspots:
 
 Action:
 
-- Extract detail-pane rendering.
-- Extract footer/action rendering.
+- Detail-pane rendering, footer/action rendering, and live detail loading are
+  already split.
 - Separate live-tree rendering from local-export-tree rendering where practical.
 - Keep the main render path readable from the current parent module; do not turn one render file into many single-widget files.
 

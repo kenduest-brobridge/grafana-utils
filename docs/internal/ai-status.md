@@ -29,6 +29,12 @@ Current AI-maintained status only.
 - Current Update: Clarified the boundary between runtime golden output contracts, CLI/docs routing contracts, docs-entrypoint navigation, and schema/help manifests so the maintainer map now names the source of truth for each layer explicitly.
 - Result: The contract map now distinguishes `command-surface.json`, `docs-entrypoints.json`, `output-contracts.json`, and `schemas/manifests/` as separate ownership surfaces.
 
+## 2026-04-19 - Advance status and review-governance cleanup
+- State: Done
+- Scope: Rust alert live project-status normalization, TODO backlog cleanup, contract promotion guidance, mutation review-envelope inventory, focused tests, formatting, architecture checks, and AI trace docs. Public CLI behavior, generated docs, README files, and Python implementation are out of scope.
+- Current Update: Routed the alert live status producer through the shared status reading model, removed stale completed work from the active backlog, documented runtime-vs-schema promotion rules, and captured an internal review-envelope inventory before any public JSON changes.
+- Result: Focused alert/status tests, contract/schema checks, full Rust tests, clippy, formatting, architecture, and AI workflow checks pass locally.
+
 ## 2026-04-18 - Split oversized Rust test surfaces
 - State: Done
 - Scope: Rust test-surface maintainability for sync bundle execution, dashboard export/import/topology, dashboard browse workflow, snapshot, access org runtime, TODO backlog, focused tests, full Rust test, clippy, architecture gate, and AI trace docs. README files, generated user docs, public CLI behavior, JSON contracts, and Python implementation are out of scope.
@@ -49,10 +55,3 @@ Current AI-maintained status only.
 - Baseline: `make quality-architecture` failed because `rust/src/commands/datasource/plan/mod.rs` was 1065 lines, above the 800-line hard limit; review action/status/reason strings were also spread through datasource/access/dashboard/sync plan, preview, apply, and TUI paths.
 - Current Update: Split datasource plan into `model`, `builder`, `render`, and `tests` modules, leaving `mod.rs` as a thin re-export layer. Added a shared review contract vocabulary and routed core plan/preview/apply summary filters through it instead of scattering `would-*`, `same`, `blocked`, `warning`, and related reason strings.
 - Result: Focused datasource plan tests, full Rust tests, clippy, formatting, and `make quality-architecture` pass. Remaining architecture output contains warning-threshold files only, with zero hard failures.
-
-## 2026-04-18 - Advance review and contract backlog
-- State: Done
-- Scope: Rust dashboard browse render cleanup, status producer shared shape, sync live apply phase split, output contract checker depth, focused tests, generated docs if public docs change, and AI trace docs. README files and Python implementation are out of scope.
-- Baseline: The remaining backlog has oversized dashboard browse render/support surfaces, scattered project status producer shapes, a high-risk live apply path, and shallow output contract validation.
-- Current Update: Split dashboard browse detail rendering out of the frame renderer, introduced a shared status producer model for staged datasource/alert adapters, extracted the sync live apply phase loop, and extended output contract checks with collection-aware constraints.
-- Result: Focused dashboard/status/sync/contract tests, full Rust tests, formatting, output contract checks, and sync quality gate pass. `make quality-architecture` still reports the pre-existing `rust/src/commands/datasource/plan/mod.rs` hard line-count blocker.
