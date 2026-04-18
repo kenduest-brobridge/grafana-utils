@@ -1525,8 +1525,9 @@ run_access_smoke() {
     --input-dir "${ACCESS_ORG_EXPORT_DIR}" \
     --replace-existing \
     --dry-run >"${org_import_dry_run_log}"
-  # Dry-run does not inspect live org users, so the preview stays additive here.
-  grep -q 'Would add org user rust-access-org-replay-user -> Editor in org rust-access-org-replay' \
+  # Dry-run inspects live org users and should preview role reconciliation,
+  # without mutating Grafana before the non-dry-run import below.
+  grep -q 'Would update org user role rust-access-org-replay-user -> Editor in org rust-access-org-replay' \
     "${org_import_dry_run_log}" \
     || fail "rust access org dry-run import did not predict the expected user-role update"
   grep -q 'Import summary for org: processed=' "${org_import_dry_run_log}" \

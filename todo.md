@@ -32,18 +32,16 @@ Scope rules:
 Run the next development passes in this order unless a CI failure or user report
 changes priority.
 
-1. Continue normalizing the remaining project status producers around a shared
-   internal status reading model. Include live Grafana evidence such as
-   health/version where available.
-2. Split the next TUI browse boundary only when a mixed responsibility remains
-   after the access reload and dashboard live-detail splits.
-3. Continue sync live apply cleanup only where a stable phase boundary remains;
-   datasource target lookup and alert dispatch are already split.
-4. Reconcile output contracts and schema manifests by adding concrete promotion
-   checks after the ownership lanes are documented.
-5. Keep dashboard prompt external export parity guarded with fixtures and tests;
-   library-panel live-model coverage is now in place, while dashboard v2 remains
-   a future adapter boundary.
+1. Finish the remaining project status producer audit and only normalize the
+   last direct producers that still need the shared internal status reading
+   model. Keep live Grafana evidence such as health and version where available.
+2. Add the first concrete contract promotion checker report after the contract
+   ownership lanes are documented. Start informational only.
+3. Keep the mutation review envelope adapter work later and only introduce a
+   shared adapter once two or more domains prove the same review shape.
+4. Keep dashboard v2 as a future adapter boundary. Continue rejecting v2-shaped
+   input in the classic prompt lane and keep prompt export parity guarded with
+   fixtures and tests.
 
 Completed cleanup now closed:
 

@@ -12,6 +12,7 @@ use crate::project_status::{
     status_finding, ProjectDomainStatus, PROJECT_STATUS_BLOCKED, PROJECT_STATUS_PARTIAL,
     PROJECT_STATUS_READY,
 };
+use crate::project_status_model::StatusReading;
 
 const PROMOTION_DOMAIN_ID: &str = "promotion";
 const PROMOTION_SCOPE: &str = "staged";
@@ -326,25 +327,26 @@ pub(crate) fn build_promotion_domain_status(
         actions
     };
 
-    Some(ProjectDomainStatus {
-        id: PROMOTION_DOMAIN_ID.to_string(),
-        scope: PROMOTION_SCOPE.to_string(),
-        mode: PROMOTION_MODE.to_string(),
-        status: status.to_string(),
-        reason_code: reason_code.to_string(),
-        primary_count: resources,
-        blocker_count: blockers.iter().map(|item| item.count).sum(),
-        warning_count: warnings.iter().map(|item| item.count).sum(),
-        source_kinds: PROMOTION_SOURCE_KINDS
-            .iter()
-            .map(|item| (*item).to_string())
-            .collect(),
-        signal_keys,
-        blockers,
-        warnings,
-        next_actions,
-        freshness: Default::default(),
-    })
+    Some(
+        StatusReading {
+            id: PROMOTION_DOMAIN_ID.to_string(),
+            scope: PROMOTION_SCOPE.to_string(),
+            mode: PROMOTION_MODE.to_string(),
+            status: status.to_string(),
+            reason_code: reason_code.to_string(),
+            primary_count: resources,
+            source_kinds: PROMOTION_SOURCE_KINDS
+                .iter()
+                .map(|item| (*item).to_string())
+                .collect(),
+            signal_keys,
+            blockers: blockers.into_iter().map(Into::into).collect(),
+            warnings: warnings.into_iter().map(Into::into).collect(),
+            next_actions,
+            freshness: Default::default(),
+        }
+        .into_project_domain_status(),
+    )
 }
 
 #[cfg(test)]
