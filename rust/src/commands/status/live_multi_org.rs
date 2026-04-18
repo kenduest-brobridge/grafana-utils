@@ -4,9 +4,10 @@ use std::collections::{BTreeMap, BTreeSet};
 use crate::common::{message, Result};
 use crate::http::JsonHttpClient;
 use crate::project_status::{
-    ProjectDomainStatus, ProjectDomainStatusReading, ProjectStatusFinding, PROJECT_STATUS_BLOCKED,
-    PROJECT_STATUS_PARTIAL, PROJECT_STATUS_READY,
+    ProjectDomainStatus, ProjectStatusFinding, PROJECT_STATUS_BLOCKED, PROJECT_STATUS_PARTIAL,
+    PROJECT_STATUS_READY,
 };
+use crate::project_status_model::{StatusReading, StatusRecordCount};
 use crate::project_status_support::build_live_project_status_client_from_api;
 
 use super::{
@@ -108,7 +109,7 @@ fn merge_live_domain_statuses(statuses: Vec<ProjectDomainStatus>) -> Result<Proj
             acc
         });
 
-    Ok(ProjectDomainStatusReading {
+    Ok(StatusReading {
         id: aggregate.id.clone(),
         scope: aggregate.scope.clone(),
         mode,
@@ -117,12 +118,12 @@ fn merge_live_domain_statuses(statuses: Vec<ProjectDomainStatus>) -> Result<Proj
         primary_count: statuses.iter().map(|status| status.primary_count).sum(),
         source_kinds,
         signal_keys,
-        blockers,
-        warnings,
+        blockers: blockers.into_iter().map(StatusRecordCount::from).collect(),
+        warnings: warnings.into_iter().map(StatusRecordCount::from).collect(),
         next_actions,
         freshness,
     }
-    .into_domain_status())
+    .into_project_domain_status())
 }
 
 pub(super) fn build_live_multi_org_domain_status_with_orgs<F>(

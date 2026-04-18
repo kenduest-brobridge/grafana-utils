@@ -4,7 +4,9 @@ use crate::common::{message, Result};
 use crate::review_contract::REVIEW_ACTION_WOULD_DELETE;
 use crate::sync::live::SyncApplyOperation;
 
-use super::sync_live_apply_result::{append_live_apply_result, finish_live_apply_response};
+use super::sync_live_apply_result::{
+    append_live_apply_result, finish_live_apply_response, normalize_live_apply_result,
+};
 
 pub(crate) fn execute_live_apply_phase<F>(
     operations: &[SyncApplyOperation],
@@ -25,7 +27,8 @@ where
             ));
         }
         let response = apply_operation(operation)?;
-        append_live_apply_result(&mut results, operation, response);
+        let normalized = normalize_live_apply_result(operation, response);
+        append_live_apply_result(&mut results, normalized);
     }
     Ok(finish_live_apply_response(results))
 }

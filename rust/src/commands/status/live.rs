@@ -21,14 +21,15 @@ use std::path::PathBuf;
 
 use crate::common::{load_json_object_file, message, Result};
 use crate::project_status::{
-    build_project_status, status_finding, ProjectDomainStatus, ProjectDomainStatusReading,
-    ProjectStatus, ProjectStatusFreshness, PROJECT_STATUS_PARTIAL,
+    build_project_status, ProjectDomainStatus, ProjectStatus, ProjectStatusFreshness,
+    PROJECT_STATUS_PARTIAL,
 };
 use crate::project_status_command::{ProjectStatusLiveArgs, PROJECT_STATUS_DOMAIN_COUNT};
 use crate::project_status_freshness::{
     build_live_project_status_freshness, build_live_project_status_freshness_from_samples,
     build_live_project_status_freshness_from_source_count, ProjectStatusFreshnessSample,
 };
+use crate::project_status_model::{StatusReading, StatusRecordCount};
 use crate::project_status_support::{build_live_project_status_api_client, project_status_live};
 
 use self::live_discovery::build_live_status_discovery;
@@ -51,7 +52,7 @@ fn build_live_read_failed_domain_status(
     signal_key: &str,
     action: &str,
 ) -> ProjectDomainStatus {
-    ProjectDomainStatusReading {
+    StatusReading {
         id: id.to_string(),
         scope: PROJECT_STATUS_LIVE_SCOPE.to_string(),
         mode: mode.to_string(),
@@ -60,7 +61,7 @@ fn build_live_read_failed_domain_status(
         primary_count: 0,
         source_kinds: vec![source_kind.to_string()],
         signal_keys: vec![signal_key.to_string()],
-        blockers: vec![status_finding(
+        blockers: vec![StatusRecordCount::new(
             PROJECT_STATUS_LIVE_READ_FAILED,
             1,
             signal_key,
@@ -69,7 +70,7 @@ fn build_live_read_failed_domain_status(
         next_actions: vec![action.to_string()],
         freshness: ProjectStatusFreshness::default(),
     }
-    .into_domain_status()
+    .into_project_domain_status()
 }
 
 fn load_optional_project_status_document_with_metadata(
