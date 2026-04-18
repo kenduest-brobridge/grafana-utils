@@ -11,6 +11,7 @@ use serde_json::Value;
 use crate::project_status::{
     status_finding, ProjectDomainStatus, PROJECT_STATUS_PARTIAL, PROJECT_STATUS_READY,
 };
+use crate::project_status_model::{StatusReading, StatusRecordCount};
 
 use super::{
     ACCESS_EXPORT_KIND_ORGS, ACCESS_EXPORT_KIND_SERVICE_ACCOUNTS, ACCESS_EXPORT_KIND_TEAMS,
@@ -165,25 +166,25 @@ pub(crate) fn build_access_domain_status(
         )
     };
 
-    Some(ProjectDomainStatus {
+    let reading = StatusReading {
         id: ACCESS_DOMAIN_ID.to_string(),
         scope: ACCESS_SCOPE.to_string(),
         mode: ACCESS_MODE.to_string(),
         status: status.to_string(),
         reason_code: reason_code.to_string(),
         primary_count: total_records,
-        blocker_count: 0,
-        warning_count: warnings.iter().map(|item| item.count).sum(),
         source_kinds,
         signal_keys: ACCESS_SIGNAL_KEYS
             .iter()
             .map(|item| (*item).to_string())
             .collect(),
-        blockers: Vec::new(),
-        warnings,
+        blockers: Vec::<StatusRecordCount>::new(),
+        warnings: warnings.into_iter().map(Into::into).collect(),
         next_actions,
         freshness: Default::default(),
-    })
+    };
+
+    Some(reading.into_project_domain_status())
 }
 
 #[cfg(test)]

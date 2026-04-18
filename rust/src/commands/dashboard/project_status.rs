@@ -14,6 +14,7 @@ use crate::project_status::{
     status_finding, ProjectDomainStatus, PROJECT_STATUS_BLOCKED, PROJECT_STATUS_PARTIAL,
     PROJECT_STATUS_READY,
 };
+use crate::project_status_model::StatusReading;
 
 const DASHBOARD_DOMAIN_ID: &str = "dashboard";
 const DASHBOARD_SCOPE: &str = "staged";
@@ -384,25 +385,25 @@ pub(crate) fn build_dashboard_domain_status(
         &["dashboardUid", "dashboardTitle"],
     );
 
-    Some(ProjectDomainStatus {
+    let reading = StatusReading {
         id: DASHBOARD_DOMAIN_ID.to_string(),
         scope: DASHBOARD_SCOPE.to_string(),
         mode: DASHBOARD_MODE.to_string(),
         status: status.to_string(),
         reason_code: reason_code.to_string(),
         primary_count: dashboards.max(queries),
-        blocker_count: blockers.iter().map(|item| item.count).sum(),
-        warning_count: warnings.iter().map(|item| item.count).sum(),
         source_kinds: DASHBOARD_SOURCE_KINDS
             .iter()
             .map(|item| (*item).to_string())
             .collect(),
         signal_keys,
-        blockers,
-        warnings,
+        blockers: blockers.into_iter().map(Into::into).collect(),
+        warnings: warnings.into_iter().map(Into::into).collect(),
         next_actions,
         freshness: Default::default(),
-    })
+    };
+
+    Some(reading.into_project_domain_status())
 }
 
 #[cfg(test)]
